@@ -184,6 +184,11 @@ func (p *Process) Start() {
 		}
 
 		p.Cmd.Wait()
+		err = p.Cmd.Wait()
+		if err != nil {
+			p.ErrorMsg <- &ErrorMsg{p.Address, false, fmt.Errorf("Failed to execute sub-process")}
+			return
+		}
 		err = os.Remove(p.Address)
 		if err != nil {
 			p.ErrorMsg <- &ErrorMsg{p.Address, false, fmt.Errorf("Couldn't delete unix connection file")}
