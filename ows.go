@@ -87,13 +87,24 @@ func init() {
 
 }
 
-// TODO This is a mocked version of the real load balancer sitting in front to the service
-func LoadBalance(servers []string) string {
-	return servers[rand.Intn(len(servers))]
+func RoundRobin(array []string) func() string {
+        nextidx := 0
+        iterfunc := func() string {
+                curidx := nextidx
+                nextidx++
+                if nextidx >= len(array) {
+                        nextidx = 0
+                }
+		return array[curidx]
+	}
+        return iterfunc
 }
 
 func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, reqURL string, w http.ResponseWriter) {
 
+	// TODO: Proper load balancing
+	NextWorker := RoundRobin(config.ServiceConfig.WorkerNodes)
+	
 	if params.Request == nil {
 		http.Error(w, "Malformed WMS, a Request field needs to be specified", 400)
 		return
@@ -204,7 +215,7 @@ func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r
 		ctx, ctxCancel := context.WithCancel(ctx)
 		errChan := make(chan error)
 		//start := time.Now()
-		tp := proc.InitTilePipeline(ctx, config.ServiceConfig.MASAddress, LoadBalance(config.ServiceConfig.WorkerNodes), errChan)
+		tp := proc.InitTilePipeline(ctx, config.ServiceConfig.MASAddress, NextWorker(), errChan)
 		//log.Println("Pipeline Init Time", time.Since(start))
 		select {
 		case res := <-tp.Process(geoReq):
