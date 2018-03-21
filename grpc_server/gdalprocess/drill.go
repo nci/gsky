@@ -30,21 +30,6 @@ type DrillFileDescriptor struct {
 
 var cWGS84WKT *C.char = C.CString(`GEOGCS["WGS 84",DATUM["WGS_1984",SPHEROID["WGS 84",6378137,298.257223563,AUTHORITY["EPSG","7030"]],TOWGS84[0,0,0,0,0,0,0],AUTHORITY["EPSG","6326"]],PRIMEM["Greenwich",0,AUTHORITY["EPSG","8901"]],UNIT["degree",0.0174532925199433,AUTHORITY["EPSG","9108"]],AUTHORITY["EPSG","4326"]]","proj4":"+proj=longlat +ellps=WGS84 +towgs84=0,0,0,0,0,0,0 +no_defs `)
 
-func getGDALTypeSize(dtype C.GDALDataType) (int32, error) {
-	switch dtype {
-	case 0:
-		return 0, fmt.Errorf("Unkown GDAL data type")
-	case 1:
-		return 1, nil
-	case 2, 3:
-		return 2, nil
-	case 4, 5, 6:
-		return 4, nil
-	default:
-		return 0, fmt.Errorf("GDAL data type not implemented")
-	}
-}
-
 func DrillDataset(in *pb.GeoRPCGranule) *pb.Result {
 
 	var feat geo.Feature
@@ -101,8 +86,9 @@ func readData(ds C.GDALDatasetH, bands []int32, geom C.OGRGeometryH) *pb.Result 
 		bandH := C.GDALGetRasterBand(ds, C.int(band))
 		dType := C.GDALGetRasterDataType(bandH)
 
-		dSize, err := getGDALTypeSize(dType)
-		if err != nil {
+		dSize := C.GDALGetDataTypeSizeBytes(dType)
+		if dSize == 0 {
+			err := fmt.Errorf("GDAL data type not implemented")
 			return &pb.Result{Error: err.Error()}
 		}
 
@@ -110,7 +96,7 @@ func readData(ds C.GDALDatasetH, bands []int32, geom C.OGRGeometryH) *pb.Result 
 		total := int32(0)
 		switch GDALTypes[dType] {
 		case "Byte":
-			canvas := make([]uint8, dsDscr.CountX*dsDscr.CountY*dSize)
+			canvas := make([]uint8, dsDscr.CountX*dsDscr.CountY*int32(dSize))
 			C.GDALRasterIO(bandH, C.GF_Read, C.int(dsDscr.OffX), C.int(dsDscr.OffY), C.int(dsDscr.CountX), C.int(dsDscr.CountY), unsafe.Pointer(&canvas[0]), C.int(dsDscr.CountX), C.int(dsDscr.CountY), C.GDT_Byte, 0, 0)
 
 			nodata := uint8(C.GDALGetRasterNoDataValue(bandH, nil))
