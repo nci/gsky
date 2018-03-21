@@ -136,8 +136,9 @@ func WarpRaster(in *pb.GeoRPCGranule, debug bool) *pb.Result {
 	// TODO Remove this code once verified all use cases work
 	// This section is in quarantine as it seems GDALWarp doesn't write outside its limits
 	// so parts of the canvas remain initialised with zero values instead of the nodata valuek
-	/*dSize, err := getGDALTypeSize(dType)
-	if err != nil {
+	/* dSize := C.GDALGetDataTypeSizeBytes(dType)
+	if dSize == 0 {
+		err := fmt.Errorf("GDAL data type not implemented")
 		return &pb.Result{Error: err.Error()}
 	}
 	canvas := make([]uint8, in.Width*in.Height*dSize)
