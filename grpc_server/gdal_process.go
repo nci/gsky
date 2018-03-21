@@ -1,6 +1,7 @@
 package main
 
 // #include "gdal.h"
+// #include "gdal_frmts.h"
 // #cgo LDFLAGS: -lgdal
 import "C"
 
@@ -72,6 +73,15 @@ func main() {
 	sock := flag.String("sock", "", "unix socket path")
 	flag.Parse()
 
+	// Register these drivers first for higher performance when
+	// opening files (drivers are interrogated in a linear scan)
+	C.GDALRegister_netCDF()
+	C.GDALRegister_HDF4()
+	C.GDALRegister_HDF5()
+	C.GDALRegister_JP2OpenJPEG()
+	C.GDALRegister_GTiff()
+
+	// Now register everything else
 	C.GDALAllRegister()
 
 	l, err := net.ListenUnix("unix", &net.UnixAddr{Name: *sock, Net: "unix"})
