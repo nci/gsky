@@ -14,7 +14,7 @@ import (
 
 var LibexecDir = "/usr/local/libexec"
 var EtcDir = "/usr/local/etc"
-var DatarootDir = "/usr/local/share"
+var DataDir = "/usr/local/share"
 
 type ServiceConfig struct {
 	OWSHostname string   `json:"ows_hostname"`
@@ -242,23 +242,11 @@ func (config *Config) Watch(infoLog, errLog *log.Logger) {
 		select {
 		case <-sighup:
 			infoLog.Println("Caught SIGHUP, reloading config...")
-			err := config.LoadConfigFile("./config.json")
+			err := config.LoadConfigFile(EtcDir + "/config.json")
 			if err != nil {
 				errLog.Printf("%v\n", err)
 				panic(err)
 			}
 		}
 	}()
-	/*sighup := make(chan os.Signal, 1)
-	signal.Notify(sighup, syscall.SIGHUP)
-	go func() {
-		for range sighup {
-			infoLog.Println("Caught SIGHUP, reloading config...")
-			err := config.LoadConfigFile("./config.json")
-			if err != nil {
-				errLog.Printf("%v\n", err)
-				panic(err)
-			}
-		}
-	}()*/
 }

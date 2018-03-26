@@ -10,7 +10,8 @@ sysconfdir = @sysconfdir@
 srcdir = @srcdir@
 VPATH = @srcdir@
 
-LDFLAGS="-X=_$(srcdir)/utils.LibexecDir=${libexecdir} -X=_$(srcdir)/utils.EtcDir=$(sysconfdir) -X=_$(srcdir)/utils.Datadir=${datarootdir}/gsky"
+LDFLAGS="-X=_$(srcdir)/utils.LibexecDir=${libexecdir} -X=_$(srcdir)/grpc_server/gdalservice.LibexecDir=${libexecdir} \
+	-X=_$(srcdir)/utils.EtcDir=$(sysconfdir) -X=_$(srcdir)/utils.Datadir=${datarootdir}/gsky"
 
 all: $(PROGS)
 
