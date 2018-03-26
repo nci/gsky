@@ -6,6 +6,8 @@ import (
 	"log"
 )
 
+var LibexecDir = "/usr/local/libexec"
+
 type ProcessPool struct {
 	Pool      []*Process
 	TaskQueue chan *Task
@@ -24,7 +26,7 @@ func (p *ProcessPool) AddQueue(task *Task) {
 //func (p *ProcessPool) AddProcess(errChan chan error, healthChan chan *HealthMsg) {
 func (p *ProcessPool) AddProcess(debug bool) {
 
-	proc := NewProcess(context.Background(), p.TaskQueue, "./gdal_process", p.ErrorMsg, debug)
+	proc := NewProcess(context.Background(), p.TaskQueue, LibexecDir + "/gsky-gdal-process", p.ErrorMsg, debug)
 	proc.Start()
 	p.Pool = append(p.Pool, proc)
 }
