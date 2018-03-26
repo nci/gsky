@@ -61,13 +61,12 @@ func init() {
 
 	filePaths := [] string {
 		utils.EtcDir + "/config.json",
-		utils.DataDir + "/gsky/templates/WMS_GetCapabilities.tpl",
-		utils.DataDir + "/gsky/templates/WMS_DescribeLayer.tpl",
-		utils.DataDir + "/gsky/templates/WMS_ServiceException.tpl",
-		utils.DataDir + "/gsky/templates/WPS_DescribeProcess.tpl",
-		utils.DataDir + "/gsky/templates/WPS_Execute.tpl",
-		utils.DataDir + "/gsky/templates/WPS_GetCapabilities.tpl"
-	}
+		utils.DataDir + "/templates/WMS_GetCapabilities.tpl",
+		utils.DataDir + "/templates/WMS_DescribeLayer.tpl",
+		utils.DataDir + "/templates/WMS_ServiceException.tpl",
+		utils.DataDir + "/templates/WPS_DescribeProcess.tpl",
+		utils.DataDir + "/templates/WPS_Execute.tpl",
+		utils.DataDir + "/templates/WPS_GetCapabilities.tpl" }
 
 	for _, filePath := range filePaths {
 		if _, err := os.Stat(filePath); os.IsNotExist(err) {
@@ -107,8 +106,8 @@ func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r
 			return
 		}
 
-		err := utils.ExecuteWriteTemplateFile(w, conf, utils.DataDir +
-			"/gsky/templates/WMS_GetCapabilities.tpl")
+		err := utils.ExecuteWriteTemplateFile(w, conf,
+			utils.DataDir + "/templates/WMS_GetCapabilities.tpl")
 		if err != nil {
 			http.Error(w, err.Error(), 500)
 		}
@@ -130,8 +129,8 @@ func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r
 			return
 		}
 
-		err = utils.ExecuteWriteTemplateFile(w, conf.Layers[idx], utils.Datadir +
-			"/gsky/templates/WMS_DescribeLayer.tpl")
+		err = utils.ExecuteWriteTemplateFile(w, conf.Layers[idx],
+			utils.DataDir + "/templates/WMS_DescribeLayer.tpl")
 		if err != nil {
 			http.Error(w, err.Error(), 500)
 		}
@@ -225,8 +224,8 @@ func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r
 		idx, err := utils.GetLayerIndex(params, conf)
 		if err != nil {
 			Error.Printf("%s\n", err)
-			utils.ExecuteWriteTemplateFile(w, params.Layers[0], utils.DataDir +
-				"/gsky/templates/WMS_ServiceException.tpl")
+			utils.ExecuteWriteTemplateFile(w, params.Layers[0],
+				utils.DataDir + "/templates/WMS_ServiceException.tpl")
 			return
 		}
 
@@ -252,16 +251,16 @@ func serveWPS(ctx context.Context, params utils.WPSParams, conf *utils.Config, r
 
 	switch *params.Request {
 	case "GetCapabilities":
-		err := utils.ExecuteWriteTemplateFile(w, conf.Processes, utils.DataDir +
-			"/gsky/templates/WPS_GetCapabilities.tpl")
+		err := utils.ExecuteWriteTemplateFile(w, conf.Processes,
+			utils.DataDir + "/templates/WPS_GetCapabilities.tpl")
 		if err != nil {
 			http.Error(w, err.Error(), 500)
 		}
 	case "DescribeProcess":
 		for _, process := range conf.Processes {
 			if process.Identifier == *params.Identifier {
-				err := utils.ExecuteWriteTemplateFile(w, process, utils.DataDir +
-					"/gsky/templates/WPS_DescribeProcess.tpl")
+				err := utils.ExecuteWriteTemplateFile(w, process,
+					utils.DataDir + "/templates/WPS_DescribeProcess.tpl")
 				if err != nil {
 					http.Error(w, err.Error(), 500)
 				}
@@ -271,7 +270,7 @@ func serveWPS(ctx context.Context, params utils.WPSParams, conf *utils.Config, r
 	case "Execute":
 		if len(params.FeatCol.Features) == 0 {
 			err := utils.ExecuteWriteTemplateFile(w, "Request doesn't contain any Feature.",
-				utils.DataDir + "/gsky/templates/WPS_Exception.tpl")
+				utils.DataDir + "/templates/WPS_Exception.tpl")
 			if err != nil {
 				http.Error(w, err.Error(), 500)
 			}
@@ -349,8 +348,8 @@ func serveWPS(ctx context.Context, params utils.WPSParams, conf *utils.Config, r
 			}
 		}
 
-		err := utils.ExecuteWriteTemplateFile(w, result, utils.DataDir +
-			"/gsky/templates/WPS_Execute.tpl")
+		err := utils.ExecuteWriteTemplateFile(w, result,
+			utils.DataDir + "/templates/WPS_Execute.tpl")
 		if err != nil {
 			http.Error(w, err.Error(), 500)
 		}

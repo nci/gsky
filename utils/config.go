@@ -14,7 +14,7 @@ import (
 
 var LibexecDir = "/usr/local/libexec"
 var EtcDir = "/usr/local/etc"
-var DatarootDir = "/usr/local/share"
+var DataDir = "/usr/local/share"
 
 type ServiceConfig struct {
 	OWSHostname string   `json:"ows_hostname"`
