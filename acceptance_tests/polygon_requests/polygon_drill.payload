@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<wps:Execute version="1.0.0" service="WPS" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://www.opengis.net/wps/1.0.0" xmlns:wfs="http://www.opengis.net/wfs" xmlns:wps="http://www.opengis.net/wps/1.0.0" xmlns:ows="http://www.opengis.net/ows/1.1" xmlns:gml="http://www.opengis.net/gml" xmlns:ogc="http://www.opengis.net/ogc" xmlns:wcs="http://www.opengis.net/wcs/1.1.1" xmlns:xlink="http://www.w3.org/1999/xlink" xsi:schemaLocation="http://www.opengis.net/wps/1.0.0 http://schemas.opengis.net/wps/1.0.0/wpsAll.xsd">
+  <ows:Identifier>geometryDrill</ows:Identifier>
+  <wps:DataInputs>
+    <wps:Input>
+      <ows:Identifier>geometry</ows:Identifier>
+      <wps:Data>
+        <wps:ComplexData>{"type":"FeatureCollection","features":[{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[149.1339111328125,-35.13338685425307],[148.8427734375,-35.31736632923786],[148.787841796875,-35.6037187406973],[148.787841796875,-35.71975793933432],[148.8427734375,-35.764343479667176],[148.897705078125,-35.69745580725804],[148.9471435546875,-35.88905007936092],[149.0350341796875,-35.92464453144098],[149.1064453125,-35.84008157153468],[149.0789794921875,-35.594785665487244],[149.1448974609375,-35.53669637839501],[149.161376953125,-35.38457160381764],[149.39208984375,-35.33529320309328],[149.27673339843747,-35.2456190942068],[149.13940429687497,-35.10193405724606],[149.1339111328125,-35.13338685425307]]]}}]}</wps:ComplexData>
+      </wps:Data>
+    </wps:Input>
+  </wps:DataInputs>
+  <wps:ResponseForm>
+    <wps:ResponseDocument storeExecuteResponse="true" status="true"/>
+  </wps:ResponseForm>
+</wps:Execute>

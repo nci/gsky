@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="">
+    <meta name="author" content="">
+    <title>gsky</title>
+    <link href="/css/bootstrap.min.css" rel="stylesheet">
+    <link href="/css/landing-page.css" rel="stylesheet">
+    <link href="/css/font-awesome.min.css" rel="stylesheet" type="text/css">
+    <link href="http://fonts.googleapis.com/css?family=Lato:300,400,700,300italic,400italic,700italic" rel="stylesheet" type="text/css">
+</head>
+<body>
+
+<nav class="navbar navbar-default navbar-fixed-top" role="navigation">
+    <div class="container">
+        <div class="navbar-header page-scroll">
+            <button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#bs-example-navbar-collapse-1">
+                <span class="sr-only">Toggle navigation</span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+            </button>
+            <a class="page-scroll navbar-brand" href="#intro">gsky</a>
+        </div>
+        <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
+            <ul class="nav navbar-nav navbar-right">
+                <li>
+                    <a class="page-scroll" href=http://github.com>Github</a>
+                </li>
+                <li>
+                    <a class="page-scroll" href=http://gsky.nci.org.au/docs>Docs</a>
+                </li>
+                <li>
+                    <a class="page-scroll" href=http://nci.org.au>NCI</a>
+                </li>
+            </ul>
+        </div> 
+    </div>
+</nav>
+
+<section id="intro">
+	<div class="intro-header">
+		<div class="container header-container">
+			<div class="row">
+				<div class="intro-image col-md-4"></div>
+				<div class="intro-message col-md-6">
+					<h1>gsky</h1>
+					<h3>gsky, pronounced [<i>jee-skee</i>], is a distributed geospatial data server exposing OGC services developed at the <a href="http://nci.org.au">NCI</a>.</h3>
+					<iframe class="github-btn" src="https://ghbtns.com/github-btn.html?&count=true&size=large" frameborder="0" scrolling="0" width="160px" height="30px"></iframe>
+					
+					<hr class="intro-divider">
+				</div>
+			</div>
+		</div>
+	</div>
+</section>
+
+<section id="about" class="container content-section text-center">
+</section>
+
+<section id="services">
+    <div class="content-section-a">
+        <div class="container">
+            <div class="row">
+                <div>
+                    <hr class="section-heading-spacer">
+                    <div class="clearfix"></div>
+                    <h2 class="section-heading">In a few lines</h2>
+                    <p>gsky is designed to:</p>
+
+<ul>
+<li><strong>Scale</strong>: Distributed solution that scales in serving volume of data and concurrent users</li>
+<li><strong>Work with raw data</strong>: Transparent ingestion of geospatial collections in many scientific data formats such as NetCDF, HDF or geoTIFF</li>
+<li><strong>Compute on-the-fly</strong>: No caching, no precomputed products. Resampling and reprojection happen in real time</li>
+<li><strong>Standards</strong>: Implements OGC standards such as WMS and WPS</li>
+<li>More functionalities to come&hellip;.</li>
+</ul>
+
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="content-section-b">
+        <div class="container">
+            <div class="row">
+                <div>
+                    <hr class="section-heading-spacer">
+                    <div class="clearfix"></div>
+                    <h2 class="section-heading">Want to try it?</h2>
+                    
+
+<p>Any OGC compatible client can be used. For example:</p>
+
+<h3 id="cocoapods:4c40a97dcf30b230e73eabba1323c21c">Go to the National Map web site</h3>
+
+<pre><code>http://nationalmap.gov.au
+</code></pre>
+
+<h3 id="carthage:4c40a97dcf30b230e73eabba1323c21c">Click on Add Data -> My Data -> Web Data and type</h3>
+
+<pre><code>http://gsky.nci.org.au/ows
+</code></pre>
+
+<h3 id="examples:4c40a97dcf30b230e73eabba1323c21c">Examples</h3>
+
+<p>A list of examples can be found on <a href="https://github.com">github</a></p>
+
+                </div>
+            </div>
+        </div> 
+    </div>
+    
+    <div class="content-section-a">
+        <div class="container">
+            <div class="row">
+                <div>
+                    <hr class="section-heading-spacer">
+                    <div class="clearfix"></div>
+                    <h2 class="section-heading">Get help</h2>
+                    <ul>
+<li>Join the chat on <a href="https://gitter.im">gitter</a></li>
+<li>Ping the NCI on twitter <a href="http://twitter.com">@nci</a></li>
+<li>Submit an <a href="https://github.com">issue</a> on github</li>
+</ul>
+
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<footer>
+    <div class="container">
+        <div class="row">
+            <div class="col-md-8">
+                <ul class="list-inline">
+                    <li>
+                        <a class="page-scroll" href="#services">Services</a>
+                    </li>
+                </ul>
+                <p class="copyright text-muted small">Copyright &copy 2016; NCI All Rights Reserved</p>
+            </div>
+            <div class="col-md-4">
+		    Built with <a href="http://golang.org">Go</a> by <a href="mailto:pablo.larraondo@anu.edu.au?Subject=gsky info" target="_top">Pablo Rozas Larraondo</a> 
+            </div>
+        </div>
+    </div>
+</footer>
+
+<script src="/js/jquery-1.11.0.js"></script>
+<script src="/js/jquery.easing.min.js"></script>
+<script src="/js/bootstrap.min.js"></script>
+<script src="/js/landing-page.js"></script>
+</body>
+</html>
