@@ -110,7 +110,6 @@ func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r
 		if err != nil {
 			Error.Printf("%s\n", err)
 			http.Error(w, fmt.Sprintf("Malformed WMS GetFeatureInfo request: %v", err), 400)
-			//utils.ExecuteWriteTemplateFile(w, params.Layers[0], "./templates/WMS_ServiceException.tpl")
 			return
 		}
 		resp := fmt.Sprintf(`{"type":"FeatureCollection","totalFeatures":"unknown","features":[{"type":"Feature","id":"","geometry":null,"properties":{"x":%f, "y":%f}}],"crs":null}`, x, y)
@@ -291,12 +290,6 @@ func serveWPS(ctx context.Context, params utils.WPSParams, conf *utils.Config, r
 			feat, _ = json.Marshal(&geo.Feature{Type: "Feature", Geometry: geom})
 
 		default:
-			/*
-				err := utils.ExecuteWriteTemplateFile(w, "Geometry not supported. Only Features containing Polygon or MultiPolygon are available.", "./templates/WPS_ServiceException.tpl")
-				if err != nil {
-					http.Error(w, err.Error(), 500)
-				}
-			*/
 			http.Error(w, "Geometry not supported. Only Features containing Polygon or MultiPolygon are available..", 400)
 			return
 		}
