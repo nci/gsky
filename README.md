@@ -52,19 +52,19 @@ Install required packages:
 
 These packages can be done easily installed with `make get`.
 
-Now compile the Go code with `make all`. This compiles `rpc_server`
-and `ows`.
+Now compile the Go code with `configure` and then `make`. The
+`configure` script takes all of the standard GNU `configure` flags
+such as `--prefix` (to specify where to install GSKY). Once GSKY is
+compiled, install it with `make install`.
 
 
 How To Start the Server
 -----------------------
 
-- Set the `GSKY_HOME` environment variable, eg: `GSKY_HOME=/opt/gsky`
-
-- Start all the RPC worker nodes: `$GSKY_HOME/grpc_server -p 6000`
+- Start all the RPC worker nodes: `/opt/gsky/sbin/gsky-rpc -p 6000`
 
 	The `-p` option sets the gRPC listening port. The default is port 6000.
 
-- Start the main server: `$GSKY_HOME/ows -c 4`
+- Start the main server: `/opt/gsky/sbin/gsky-ows -c 4`
 
 	The `-c` option sets the level of concurrency at an RPC node.
