@@ -242,7 +242,7 @@ func (config *Config) Watch(infoLog, errLog *log.Logger) {
 		select {
 		case <-sighup:
 			infoLog.Println("Caught SIGHUP, reloading config...")
-			err := config.LoadConfigFile("./config.json")
+			err := config.LoadConfigFile(EtcDir + "/config.json")
 			if err != nil {
 				errLog.Printf("%v\n", err)
 				panic(err)
