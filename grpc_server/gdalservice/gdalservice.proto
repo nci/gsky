@@ -1,0 +1,64 @@
+syntax = "proto3";
+
+package gdalservice;
+
+import "google/protobuf/timestamp.proto";
+
+message GeoRPCGranule {
+    string path = 1;
+    string geometry = 2;
+    repeated int32 bands = 3;
+    int32 height = 4;
+    int32 width = 5;
+    int32 ePSG = 6;
+    repeated double geot = 7;
+}
+
+message Raster {
+    bytes data = 1;
+    double noData = 2;
+    string rasterType = 3;
+}
+
+message TimeSeries {
+    double value = 1;
+    int32 count = 2;
+}
+
+message Overview {
+    int32 xSize = 1;
+    int32 ySize = 2;
+}
+
+message GeoMetaData {
+    string datasetName = 1;
+    string nameSpace = 2;
+    string type = 3;
+    int32 rasterCount = 4;
+    repeated google.protobuf.Timestamp timeStamps = 5;
+    repeated double height = 6;
+    repeated Overview overviews = 7;
+    int32 xSize = 8;
+    int32 ySize = 9;
+    repeated double geoTransform = 10;
+    string polygon = 11;
+    string projWKT = 12;
+    string proj4 = 13;
+}
+
+message GeoFile {
+    string fileName = 1;
+    string driver   = 2;
+    repeated GeoMetaData dataSets = 3;
+}
+
+message Result {
+    repeated TimeSeries timeSeries = 1;
+    Raster raster = 2;
+    GeoFile info = 3;
+    string error = 4;
+}
+
+service GDAL {
+    rpc Process (GeoRPCGranule) returns (Result);
+}
