@@ -1,5 +1,4 @@
-PROGS = acceptance_tests/accept ows crawl/crawl \
-	grpc_server/gdal_process grpc_server/grpc_server
+PROGS = ows crawl/crawl grpc_server/gdal_process grpc_server/grpc_server
 
 prefix = @prefix@
 exec_prefix = @exec_prefix@
