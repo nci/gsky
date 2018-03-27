@@ -39,7 +39,6 @@ install:
 	install crawl/crawl $(sbindir)/gsky-crawl
 	install -m 644 $(srcdir)/zoom.png $(sysconfdir)
 	install -m 644 $(srcdir)/data_unavailable.png $(sysconfdir)
-	install -m 644 /dev/null $(sysconfdir)/config.json
 	install -d $(datarootdir)/gsky/templates
 	install -d $(datarootdir)/gsky/static
 	for f in $(srcdir)/templates/* ; do install -m 644 $$f $(datarootdir)/gsky/templates; done
