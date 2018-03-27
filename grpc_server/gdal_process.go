@@ -68,21 +68,66 @@ func dataHandler(conn net.Conn, debug bool) {
 
 }
 
+func register_gdal_drivers() {
+	// This is a bit nasty, but this is one way to work out which
+	// drivers are present in the GDAL shared library. We then
+	// load the drivers of interest and then load all of the
+	// drivers. This places common drivers at the front of the
+	// driver list.
+	var have_netCDF, have_HDF4, have_HDF5, have_JP2OpenJPEG bool
+	var have_GTiff bool
+
+	// Find out which drivers are present
+	C.GDALAllRegister()
+	for i := 0; i < int(C.GDALGetDriverCount()); i++ {
+		driver := C.GDALGetDriver(C.int(i));
+		switch (C.GoString(C.GDALGetDriverShortName(driver))) {
+		case "netCDF":
+			have_netCDF = true
+		case "HDF4":
+			have_HDF4 = true
+		case "HDF5":
+			have_HDF5 = true
+		case "JP2OpenJPEG":
+			have_JP2OpenJPEG = true
+		case "GTiff":
+			have_GTiff = true
+		}
+	}
+
+	// De-register all the drivers again
+	for i := 0; i < int(C.GDALGetDriverCount()); i++ {
+		driver := C.GDALGetDriver(C.int(i));
+		C.GDALDeregisterDriver(driver)
+	}
+
+	// Register these drivers first for higher performance when
+	// opening files (drivers are interrogated in a linear scan)
+	if have_netCDF {
+		C.GDALRegister_netCDF()
+	}
+	if have_HDF4 {
+		C.GDALRegister_HDF4()
+	}
+	if have_HDF5 {
+		C.GDALRegister_HDF5()
+	}
+	if have_JP2OpenJPEG {
+		C.GDALRegister_JP2OpenJPEG()
+	}
+	if have_GTiff {
+		C.GDALRegister_GTiff()
+	}
+	// Now register everything else
+	C.GDALAllRegister()
+}
+
 func main() {
 	debug := flag.Bool("debug", false, "verbose logging")
 	sock := flag.String("sock", "", "unix socket path")
 	flag.Parse()
 
-	// Register these drivers first for higher performance when
-	// opening files (drivers are interrogated in a linear scan)
-	C.GDALRegister_netCDF()
-	C.GDALRegister_HDF4()
-	C.GDALRegister_HDF5()
-	C.GDALRegister_JP2OpenJPEG()
-	C.GDALRegister_GTiff()
-
-	// Now register everything else
-	C.GDALAllRegister()
+	register_gdal_drivers()
 
 	l, err := net.ListenUnix("unix", &net.UnixAddr{Name: *sock, Net: "unix"})
 	if err != nil {
