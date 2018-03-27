@@ -68,14 +68,14 @@ func dataHandler(conn net.Conn, debug bool) {
 
 }
 
-func register_gdal_drivers() {
+func registerGDALDrivers() {
 	// This is a bit nasty, but this is one way to work out which
 	// drivers are present in the GDAL shared library. We then
 	// load the drivers of interest and then load all of the
 	// drivers. This places common drivers at the front of the
 	// driver list.
-	var have_netCDF, have_HDF4, have_HDF5, have_JP2OpenJPEG bool
-	var have_GTiff bool
+	var haveNetCDF, haveHDF4, haveHDF5, haveJP2OpenJPEG bool
+	var haveGTiff bool
 
 	// Find out which drivers are present
 	C.GDALAllRegister()
@@ -83,15 +83,15 @@ func register_gdal_drivers() {
 		driver := C.GDALGetDriver(C.int(i));
 		switch (C.GoString(C.GDALGetDriverShortName(driver))) {
 		case "netCDF":
-			have_netCDF = true
+			haveNetCDF = true
 		case "HDF4":
-			have_HDF4 = true
+			haveHDF4 = true
 		case "HDF5":
-			have_HDF5 = true
+			haveHDF5 = true
 		case "JP2OpenJPEG":
-			have_JP2OpenJPEG = true
+			haveJP2OpenJPEG = true
 		case "GTiff":
-			have_GTiff = true
+			haveGTiff = true
 		}
 	}
 
@@ -103,19 +103,19 @@ func register_gdal_drivers() {
 
 	// Register these drivers first for higher performance when
 	// opening files (drivers are interrogated in a linear scan)
-	if have_netCDF {
+	if haveNetCDF {
 		C.GDALRegister_netCDF()
 	}
-	if have_HDF4 {
+	if haveHDF4 {
 		C.GDALRegister_HDF4()
 	}
-	if have_HDF5 {
+	if haveHDF5 {
 		C.GDALRegister_HDF5()
 	}
-	if have_JP2OpenJPEG {
+	if haveJP2OpenJPEG {
 		C.GDALRegister_JP2OpenJPEG()
 	}
-	if have_GTiff {
+	if haveGTiff {
 		C.GDALRegister_GTiff()
 	}
 	// Now register everything else
@@ -127,7 +127,7 @@ func main() {
 	sock := flag.String("sock", "", "unix socket path")
 	flag.Parse()
 
-	register_gdal_drivers()
+	registerGDALDrivers()
 
 	l, err := net.ListenUnix("unix", &net.UnixAddr{Name: *sock, Net: "unix"})
 	if err != nil {
