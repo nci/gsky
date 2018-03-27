@@ -8,6 +8,8 @@ GSK was developed at [NCI](http://nci.org.au) and is a scalable,
 distributed server which presents a new approach for geospatial data
 discovery and delivery using OGC standards.
 
+[![Build Status](https://travis-ci.com/nci/gsky.svg?token=UnJphTz9GcxvBUhiHkKJ&branch=master)](https://travis-ci.com/nci/gsky)
+
 License
 -------
 
