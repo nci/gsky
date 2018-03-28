@@ -1,9 +1,13 @@
 language: go
 go: 1.9.x
-before_install:
-  - sudo apt-get -qq update
-  - sudo apt-get install -y libgdal20
 install: true
+before_script:
+  - wget http://download.osgeo.org/gdal/2.2.4/gdal-2.2.4.tar.gz
+  - tar xfz gdal-2.2.4.tar.gz
+  - cd gdal-2.2.4
+  - ./configure --prefix=$HOME/local --with-png=internal --with-jpeg=internal --with-geotiff=internal --without-sfcgal
+  - make -s all install
+  
 script:
   - ./configure
   - make get
