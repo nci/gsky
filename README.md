@@ -40,7 +40,7 @@ How To Compile the Source
 Dependencies:
 
 + Go > 1.6.0
-+ GDAL > 2.0.0
++ GDAL > 2.1.0
 + Various Go packages listed below
 
 
