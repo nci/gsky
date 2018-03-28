@@ -1,7 +1,6 @@
 language: go
 go: 1.9.x
-install:
-  - make get
+install: true
 script:
   - ./configure
   - make get
