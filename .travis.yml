@@ -1,13 +1,15 @@
 language: go
+sudo: required
 go: 1.9.x
 install: true
 before_script:
   - wget http://download.osgeo.org/gdal/2.2.4/gdal-2.2.4.tar.gz
   - tar xfz gdal-2.2.4.tar.gz
   - cd gdal-2.2.4
-  - ./configure --prefix=$HOME/local --with-png=internal --with-jpeg=internal --with-geotiff=internal --without-sfcgal
-  - make -s all install
-  
+  - ./configure  --with-png=internal --with-jpeg=internal --with-geotiff=internal --without-sfcgal
+  - make -s -j32 all
+  - sudo make install
+ 
 script:
   - ./configure
   - make get
