@@ -32,9 +32,6 @@ get:
 format:
 	find . -name '*.go' | xargs gofmt -w
 
-check:
-	go test
-
 # Note: install(1) can't deal with directories as source, so use cp -r.
 install:
 	install -d $(sbindir) $(libexecdir) $(sysconfdir)
