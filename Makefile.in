@@ -1,4 +1,4 @@
-PROGS = ows crawl/crawl grpc_server/gdal_process grpc_server/grpc_server
+PROGS = ows crawl/crawl grpc_server/grpc_server grpc_server/gdal_process
 
 prefix = @prefix@
 exec_prefix = @exec_prefix@
@@ -9,6 +9,7 @@ sysconfdir = @sysconfdir@
 srcdir = @srcdir@
 VPATH = @srcdir@
 
+CGO_CFLAGS="@CGO_CFLAGS@"
 LDFLAGS="-X=_$(srcdir)/utils.LibexecDir=${libexecdir} -X=_$(srcdir)/grpc_server/gdalservice.LibexecDir=${libexecdir} \
 	-X=_$(srcdir)/utils.EtcDir=$(sysconfdir) -X=_$(srcdir)/utils.DataDir=${datarootdir}/gsky"
 
@@ -17,6 +18,10 @@ all: $(PROGS)
 # Implicit rule for .go source files.
 % :: %.go
 	go build -ldflags=$(LDFLAGS) -o $@ $<
+
+# Override rule for gdal_process.go to pass cgo flags.
+grpc_server/gdal_process :: grpc_server/gdal_process.go
+	CGO_FLAGS=$(CGO_CFLAGS) go build -ldflags=$(LDFLAGS) -o $@ $<
 
 get:
 	go get bitbucket.org/monkeyforecaster/geometry
