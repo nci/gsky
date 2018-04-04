@@ -17,7 +17,7 @@ import (
 	"math"
 	"unsafe"
 
-	pb "../gdalservice"
+	pb "github.com/nci/gsky/grpc_server/gdalservice"
 	geo "bitbucket.org/monkeyforecaster/geometry"
 	"encoding/json"
 )

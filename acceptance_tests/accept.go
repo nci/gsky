@@ -1,7 +1,7 @@
 package main
 
 import (
-	proc "../processor"
+	proc "github.com/nci/gsky/processor"
 	"bufio"
 	"flag"
 	"fmt"

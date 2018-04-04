@@ -38,7 +38,7 @@ import (
 	"log"
 	"unsafe"
 
-	pb "../gdalservice"
+	pb "github.com/nci/gsky/grpc_server/gdalservice"
 	"reflect"
 )
 
