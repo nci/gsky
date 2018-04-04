@@ -28,8 +28,8 @@ import (
 	"strings"
 	"time"
 
-	proc "./processor"
-	"./utils"
+	proc "github.com/nci/gsky/processor"
+	"github.com/nci/gsky/utils"
 
 	geo "bitbucket.org/monkeyforecaster/geometry"
 	_ "net/http/pprof"
