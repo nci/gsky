@@ -1686,11 +1686,11 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 if test "${with_gdal+set}" = set; then :
   withval=$with_gdal;
 else
-  with_gdal=default
+  with_gdal=yes
 fi
 
 
-if test "x$with_gdal" != xdefault; then :
+if test "x$with_gdal" != xyes; then :
   CGO_CFLAGS="-I$with_gdal/include -L$with_gdal/lib"
 
 fi
