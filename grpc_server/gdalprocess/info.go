@@ -34,7 +34,7 @@ import (
 	"time"
 	"unsafe"
 
-	pb "../gdalservice"
+	pb "github.com/nci/gsky/grpc_server/gdalservice"
 	"github.com/golang/protobuf/ptypes"
 	google_protobuf "github.com/golang/protobuf/ptypes/timestamp"
 )

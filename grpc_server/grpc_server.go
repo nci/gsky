@@ -1,7 +1,7 @@
 package main
 
 import (
-	pb "./gdalservice"
+	pb "github.com/nci/gsky/grpc_server/gdalservice"
 	"flag"
 	"fmt"
 	"log"

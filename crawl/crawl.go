@@ -1,7 +1,7 @@
 package main
 
 import (
-	extr "./extractor"
+	extr "github.com/nci/gsky/crawl/extractor"
 	"bufio"
 	"encoding/json"
 	"log"

@@ -14,8 +14,8 @@ import (
 	"net"
 	"os"
 
-	gp "./gdalprocess"
-	pb "./gdalservice"
+	gp "github.com/nci/gsky/grpc_server/gdalprocess"
+	pb "github.com/nci/gsky/grpc_server/gdalservice"
 	"github.com/golang/protobuf/proto"
 )
 
