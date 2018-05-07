@@ -4,7 +4,7 @@ GSKY: Distributed Scalable Geospatial Data Server
 What Is This?
 -------------
 
-GSK was developed at [NCI](http://nci.org.au) and is a scalable,
+GSKY was developed at [NCI](http://nci.org.au) and is a scalable,
 distributed server which presents a new approach for geospatial data
 discovery and delivery using OGC standards.
 
