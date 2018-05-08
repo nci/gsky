@@ -50,7 +50,7 @@ Install required packages:
 + ```go get google.golang.org/grpc```
 + ```golang.org/x/crypto/ssh/terminal```
 
-These packages can be done easily installed with `make get`.
+These packages can be easily installed with `make get`.
 
 Now compile the Go code with `configure` and then `make`. The
 `configure` script takes all of the standard GNU `configure` flags
