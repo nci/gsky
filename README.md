@@ -18,6 +18,13 @@ may not use this package except in compliance with the License.  A
 copy of the [License](http://www.apache.org/licenses/LICENSE-2.0) may
 be found in this source distribution in `LICENSE-2.0.txt`.
 
+Contributions
+-------------
+
+Suggestions, enhancement requests, bug reports and patches to GSKY are
+welcome via this GitHub page. Authors retain copyright over their
+contributions.
+
 Citing GSKY in publications
 ---------------------------
 
