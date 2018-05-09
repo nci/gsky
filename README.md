@@ -18,6 +18,13 @@ may not use this package except in compliance with the License.  A
 copy of the [License](http://www.apache.org/licenses/LICENSE-2.0) may
 be found in this source distribution in `LICENSE-2.0.txt`.
 
+Citing GSKY in publications
+---------------------------
+
+When referring to GSKY in publications please use the citation in
+[CITATION.md](CITATION.md).  A ready-to-use BibTeX entry for LaTeX
+users can also be found in this file.
+
 Configuration Files
 -------------------
 
