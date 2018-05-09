@@ -22,8 +22,8 @@ Contributions
 -------------
 
 Suggestions, enhancement requests, bug reports and patches to GSKY are
-welcome via this GitHub page. Authors retain copyright over their
-contributions.
+welcome via this GitHub page. Please submit patches as a GitHub pull
+request. Authors retain copyright over their contributions.
 
 Citing GSKY in publications
 ---------------------------
