@@ -4,7 +4,7 @@ GSKY: Distributed Scalable Geospatial Data Server
 What Is This?
 -------------
 
-GSK was developed at [NCI](http://nci.org.au) and is a scalable,
+GSKY was developed at [NCI](http://nci.org.au) and is a scalable,
 distributed server which presents a new approach for geospatial data
 discovery and delivery using OGC standards.
 
@@ -17,6 +17,20 @@ Licensed under the Apache License, Version 2.0 (the "License"); you
 may not use this package except in compliance with the License.  A
 copy of the [License](http://www.apache.org/licenses/LICENSE-2.0) may
 be found in this source distribution in `LICENSE-2.0.txt`.
+
+Contributions
+-------------
+
+Suggestions, enhancement requests, bug reports and patches to GSKY are
+welcome via this GitHub page. Please submit patches as a GitHub pull
+request. Authors retain copyright over their contributions.
+
+Citing GSKY in publications
+---------------------------
+
+When referring to GSKY in publications please use the citation in
+[CITATION.md](CITATION.md).  A ready-to-use BibTeX entry for LaTeX
+users can also be found in this file.
 
 Configuration Files
 -------------------
@@ -38,7 +52,7 @@ How To Compile the Source
 Dependencies:
 
 + Go > 1.6.0
-+ GDAL > 2.0.0
++ GDAL > 2.1.0
 + Various Go packages listed below
 
 
@@ -50,7 +64,7 @@ Install required packages:
 + ```go get google.golang.org/grpc```
 + ```golang.org/x/crypto/ssh/terminal```
 
-These packages can be done easily installed with `make get`.
+These packages can be easily installed with `make get`.
 
 Now compile the Go code with `configure` and then `make`. The
 `configure` script takes all of the standard GNU `configure` flags

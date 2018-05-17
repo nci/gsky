@@ -1,13 +1,10 @@
 package processor
 
 import (
-	//"../utils"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	//"log"
 	"net/http"
-	//"path/filepath"
 	"context"
 	"log"
 	"strings"

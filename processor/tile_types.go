@@ -1,7 +1,7 @@
 package processor
 
 import (
-	"../utils"
+	"github.com/nci/gsky/utils"
 	"time"
 )
 

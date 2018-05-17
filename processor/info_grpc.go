@@ -6,7 +6,7 @@ import (
 	"math/rand"
 	"time"
 
-	pb "../grpc_server/gdalservice"
+	pb "github.com/nci/gsky/grpc_server/gdalservice"
 	"github.com/golang/protobuf/ptypes"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"

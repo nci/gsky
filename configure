@@ -583,6 +583,7 @@ PACKAGE_URL=''
 
 ac_subst_vars='LTLIBOBJS
 LIBOBJS
+CGO_CFLAGS
 target_alias
 host_alias
 build_alias
@@ -625,6 +626,7 @@ SHELL'
 ac_subst_files=''
 ac_user_opts='
 enable_option_checking
+with_gdal
 '
       ac_precious_vars='build_alias
 host_alias
@@ -1245,6 +1247,11 @@ if test -n "$ac_init_help"; then
    esac
   cat <<\_ACEOF
 
+Optional Packages:
+  --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
+  --without-PACKAGE       do not use PACKAGE (same as --with-PACKAGE=no)
+  --with-gdal[=DIR]       location of GDAL library [default: /usr/local]
+
 Report bugs to the package provider.
 _ACEOF
 ac_status=$?
@@ -1672,6 +1679,21 @@ ac_compile='$CC -c $CFLAGS $CPPFLAGS conftest.$ac_ext >&5'
 ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
 ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
+
+
+
+# Check whether --with-gdal was given.
+if test "${with_gdal+set}" = set; then :
+  withval=$with_gdal;
+else
+  with_gdal=yes
+fi
+
+
+if test "x$with_gdal" != xyes; then :
+  CGO_CFLAGS="-I$with_gdal/include -L$with_gdal/lib"
+
+fi
 
 ac_config_files="$ac_config_files Makefile"
 
