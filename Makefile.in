@@ -1,5 +1,3 @@
-PROGS = ows crawl/crawl grpc_server/gdal_process grpc_server/grpc_server
-
 prefix = @prefix@
 exec_prefix = @exec_prefix@
 datarootdir = @datarootdir@
@@ -9,41 +7,32 @@ sysconfdir = @sysconfdir@
 srcdir = @srcdir@
 VPATH = @srcdir@
 
+CGO_CFLAGS="@CGO_CFLAGS@"
 LDFLAGS="-X=_$(srcdir)/utils.LibexecDir=${libexecdir} -X=_$(srcdir)/grpc_server/gdalservice.LibexecDir=${libexecdir} \
-	-X=_$(srcdir)/utils.EtcDir=$(sysconfdir) -X=_$(srcdir)/utils.Datadir=${datarootdir}/gsky"
+	-X=_$(srcdir)/utils.EtcDir=$(sysconfdir) -X=_$(srcdir)/utils.DataDir=${datarootdir}/gsky"
+GOBUILD = CGO_CFLAGS=$(CGO_CFLAGS) CGO_LDFLAGS=$(CGO_LDFLAGS) go build -ldflags=$(LDFLAGS)
 
-all: $(PROGS)
-
-# Implicit rule for .go source files.
-% :: %.go
-	go build -ldflags=$(LDFLAGS) -o $@ $<
-
-get:
-	go get bitbucket.org/monkeyforecaster/geometry
-	go get github.com/golang/protobuf/proto
-	go get google.golang.org/grpc
-	go get golang.org/x/crypto/ssh/terminal
-
-format:
-	find . -name '*.go' | xargs gofmt -w
-
-check:
-	go test
+all:
+	go get
+	$(GOBUILD) -o gsky-rpc grpc_server/grpc_server.go
+	$(GOBUILD) -o gsky-gdal-process grpc_server/gdal_process.go
+	$(GOBUILD) -o gsky-ows ows.go
+	$(GOBUILD) -o gsky-crawl crawl/crawl.go
+	$(GOBUILD) -o accept acceptance_tests/accept.go
 
 # Note: install(1) can't deal with directories as source, so use cp -r.
 install:
 	install -d $(sbindir) $(libexecdir) $(sysconfdir)
-	install ows $(sbindir)/gsky-ows
-	install grpc_server/gdal_process $(libexecdir)/gsky-gdal-process
-	install grpc_server/grpc_server $(sbindir)/gsky-rpc
-	install crawl/crawl $(sbindir)/gsky-crawl
+	install gsky-ows $(sbindir)
+	install gsky-gdal-process $(libexecdir)
+	install gsky-rpc $(sbindir)
+	install gsky-crawl $(sbindir)
 	install -m 644 $(srcdir)/zoom.png $(sysconfdir)
 	install -m 644 $(srcdir)/data_unavailable.png $(sysconfdir)
-	install -m 644 /dev/null $(sysconfdir)/config.json
 	install -d $(datarootdir)/gsky/templates
 	install -d $(datarootdir)/gsky/static
 	for f in $(srcdir)/templates/* ; do install -m 644 $$f $(datarootdir)/gsky/templates; done
 	cp -rp $(srcdir)/static/* $(datarootdir)/gsky/static
 
 clean:
-	-rm -f $(PROGS)
+	-rm -f accept gsky-crawl gsky-gdal-process gsky-ows gsky-rpc

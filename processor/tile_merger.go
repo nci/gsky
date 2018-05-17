@@ -1,7 +1,7 @@
 package processor
 
 import (
-	"../utils"
+	"github.com/nci/gsky/utils"
 	"fmt"
 	"hash/fnv"
 	"reflect"
