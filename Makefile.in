@@ -8,6 +8,7 @@ srcdir = @srcdir@
 VPATH = @srcdir@
 
 CGO_CFLAGS="@CGO_CFLAGS@"
+CGO_LDFLAGS="@CGO_LDFLAGS@"
 LDFLAGS="-X=_$(srcdir)/utils.LibexecDir=${libexecdir} -X=_$(srcdir)/grpc_server/gdalservice.LibexecDir=${libexecdir} \
 	-X=_$(srcdir)/utils.EtcDir=$(sysconfdir) -X=_$(srcdir)/utils.DataDir=${datarootdir}/gsky"
 GOBUILD = CGO_CFLAGS=$(CGO_CFLAGS) CGO_LDFLAGS=$(CGO_LDFLAGS) go build -ldflags=$(LDFLAGS)
