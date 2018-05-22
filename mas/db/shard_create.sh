@@ -1,12 +1,10 @@
 #!/bin/bash
 
 here="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-
 shard=$1
 gpath=$2
 
-(cd "$here" &&
- runuser postgres -c 'psql -v ON_ERROR_STOP=1 -A -t -q -d nci' <<EOD
+(cd "$here" && runuser postgres -c 'psql -v ON_ERROR_STOP=1 -A -t -q -d nci' <<EOD
 
 set role nci;
 create schema if not exists ${shard};
