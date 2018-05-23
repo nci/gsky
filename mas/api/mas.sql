@@ -437,34 +437,6 @@ create or replace function mas_intersects(
 
     end if;
 
-    -- &metadata=pdal - bundle some raw PDAL metadata for Skua
-    if raw_metadata = 'pdal' then
-
-      result := result || jsonb_build_object('pdal', coalesce((
-
-        select
-          jsonb_agg(md_json)
-
-        from
-          metadata
-
-        inner join
-          -- Extract and iterate the files discovered above
-          jsonb_array_elements_text(result->'files') path
-            on md_hash = path_hash(path.value)
-
-        where
-          md_type = 'pdal'
-
-          --and (
-          --  namespace is null
-          --  or dataset->>'namespace' = any(namespace)
-          --)
-
-      ), '[]'::jsonb));
-
-    end if;
-
     perform mas_reset();
 
     return result;
