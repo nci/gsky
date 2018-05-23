@@ -13,7 +13,7 @@ LDFLAGS="-X=_$(srcdir)/utils.LibexecDir=${libexecdir} -X=_$(srcdir)/grpc_server/
 	-X=_$(srcdir)/utils.EtcDir=$(sysconfdir) -X=_$(srcdir)/utils.DataDir=${datarootdir}/gsky"
 GOBUILD = CGO_CFLAGS=$(CGO_CFLAGS) CGO_LDFLAGS=$(CGO_LDFLAGS) go build -ldflags=$(LDFLAGS)
 
-all:
+all: concurrent
 	go get
 	$(GOBUILD) -o gsky-rpc grpc_server/grpc_server.go
 	$(GOBUILD) -o gsky-gdal-process grpc_server/gdal_process.go
@@ -22,12 +22,19 @@ all:
 	$(GOBUILD) -o accept acceptance_tests/accept.go
 	$(GOBUILD) -o masapi mas/api/api.go
 
+concurrent: concurrent.c
+	$(CC) -Wall -O2 $< -o $@
+
+concurrent.c:
+	wget --quiet https://github.com/seanpringle/concurrent/raw/master/concurrent.c
+
 # Note: install(1) can't deal with directories as source, so use cp -r.
 install:
 	install -d $(sbindir) $(libexecdir) $(sysconfdir)
 	install -d $(datarootdir)/gsky/templates
 	install -d $(datarootdir)/gsky/static
 	install -d $(datarootdir)/mas
+	install concurrent $(sbindir)
 	install gsky-ows $(sbindir)
 	install gsky-gdal-process $(libexecdir)
 	install gsky-rpc $(sbindir)
@@ -40,4 +47,4 @@ install:
 	for f in $(srcdir)/mas/db/* ; do install -m 644 $$f $(datarootdir)/mas ; done
 
 clean:
-	-rm -f accept gsky-crawl gsky-gdal-process gsky-ows gsky-rpc masapi
+	-rm -f accept gsky-crawl gsky-gdal-process gsky-ows gsky-rpc masapi concurrent
