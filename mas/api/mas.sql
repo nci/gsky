@@ -161,11 +161,11 @@ create or replace function mas_reset()
   end
 $$;
 
--- The MAS database is split into schemas, one per NCI project, and the
--- public schema contains multi-schema views to enable cross-project queries.
--- If an API request is only targetting a single project, it's obviously more
--- efficient to query a single schema. The mas_view() function sets a
--- session's search_path appropriately.
+-- The MAS database is split into shards, represented using schemas, one
+-- per "dataset"... whatever that means in your environment! NCI uses GDATA
+-- project codes. An AWS GSKY test used a "vsis3" prefix. The public schema
+-- contains multi-schema views to enable cross-dataset queries. The mas_view
+-- function sets an API request search_path appropriately.
 
 create or replace function mas_view(gpath text)
   returns void language plpgsql as $$
@@ -177,12 +177,8 @@ create or replace function mas_view(gpath text)
   begin
 
     shard := coalesce(
-      (select sh_code from shards where sh_code = split_part(gpath, '/', 4)), ''
+      (select sh_code from shards where gpath like concat(sh_path,'%') limit 1), ''
     );
-
-    if gpath ~ 'vsis3' then
-      shard := 's3landsat';
-    end if;
 
     if octet_length(shard) > 0 and (select true from information_schema.schemata where schema_name = shard) then
 
@@ -335,7 +331,7 @@ create or replace function mas_intersects(
 
   begin
 
-    if gpath is null or not gpath ~ '^/g' then
+    if gpath is null then
       raise exception 'invalid search path';
     end if;
 
