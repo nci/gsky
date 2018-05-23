@@ -21,7 +21,7 @@ func InitDrillPipeline(ctx context.Context, apiAddr string, rpcAddrs []string, e
 	}
 }
 
-func (dp *DrillPipeline) Process(geoReq GeoDrillRequest) chan string {
+func (dp *DrillPipeline) Process(geoReq GeoDrillRequest, suffix string) chan string {
 	grpcDriller := NewDrillGRPC(dp.Context, dp.RPCAddrs, dp.Error)
 	if grpcDriller == nil {
 		dp.Error <- fmt.Errorf("Couldn't instantiate RPCDriller %s/n", dp.RPCAddrs)
@@ -42,7 +42,7 @@ func (dp *DrillPipeline) Process(geoReq GeoDrillRequest) chan string {
 	go splt.Run()
 	go i.Run()
 	go grpcDriller.Run()
-	go dm.Run()
+	go dm.Run(suffix)
 
 	return dm.Out
 }

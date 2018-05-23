@@ -1,6 +1,7 @@
 package processor
 
 import (
+	"../utils"
 	"fmt"
 	"golang.org/x/net/context"
 )
@@ -8,7 +9,7 @@ import (
 type GeoProcessor struct {
 	Context    context.Context
 	In         chan *GeoTileRequest
-	Out        chan *ByteRaster
+	Out        chan []utils.Raster
 	Error      chan error
 	APIAddress string
 	RPCAddress string
@@ -18,7 +19,7 @@ func NewGeoProcessor(ctx context.Context, apiAddr, serverAddr string, errChan ch
 	return &GeoProcessor{
 		Context:    ctx,
 		In:         make(chan *GeoTileRequest, 100),
-		Out:        make(chan *ByteRaster, 100),
+		Out:        make(chan []utils.Raster, 100),
 		Error:      errChan,
 		APIAddress: apiAddr,
 		RPCAddress: serverAddr,
