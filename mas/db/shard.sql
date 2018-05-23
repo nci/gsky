@@ -19,7 +19,7 @@
 -- cat <tsv> | parallel -j 8 --pipe -L 100000 --retries 10 --will-cite \
 --   'psql -c "set search_path to ${shard}; copy ingest from stdin with (format 'csv', delimiter E'\t', quote E'\b');"'
 
-set role nci;
+set role mas;
 
 -- Data ingest holding yard
 drop table if exists ingest cascade;
