@@ -25,6 +25,9 @@ all:
 # Note: install(1) can't deal with directories as source, so use cp -r.
 install:
 	install -d $(sbindir) $(libexecdir) $(sysconfdir)
+	install -d $(datarootdir)/gsky/templates
+	install -d $(datarootdir)/gsky/static
+	install -d $(datarootdir)/mas
 	install gsky-ows $(sbindir)
 	install gsky-gdal-process $(libexecdir)
 	install gsky-rpc $(sbindir)
@@ -32,9 +35,6 @@ install:
 	install masapi $(sbindir)
 	install -m 644 $(srcdir)/zoom.png $(sysconfdir)
 	install -m 644 $(srcdir)/data_unavailable.png $(sysconfdir)
-	install -d $(datarootdir)/gsky/templates
-	install -d $(datarootdir)/gsky/static
-	install -d $(datarootdir)/mas
 	for f in $(srcdir)/templates/* ; do install -m 644 $$f $(datarootdir)/gsky/templates ; done
 	cp -rp $(srcdir)/static/* $(datarootdir)/gsky/static
 	for f in $(srcdir)/mas/db/*.sql ; do install -m 644 $$f $(datarootdir)/mas ; done
