@@ -69,7 +69,7 @@ func splitGeoTileRequest(request *GeoTileRequest) []*GeoTileRequest {
 
 			out = append(out, &GeoTileRequest{ConfigPayLoad: request.ConfigPayLoad, Collection: request.Collection,
 				CRS: request.CRS, BBox: []float64{xMin, yMin, xMax, yMax},
-				Width: tileXSize, Height: tileYSize, OffX: x, OffY: y,
+				Width: tileXSize, Height: tileYSize, OffX: x, OffY: request.Height - y - tileYSize,
 				StartTime: request.StartTime, EndTime: request.EndTime})
 		}
 	}

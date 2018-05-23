@@ -2,6 +2,7 @@ package processor
 
 import (
 	"context"
+	"../utils"
 )
 
 type TilePipeline struct {
@@ -20,22 +21,16 @@ func InitTilePipeline(ctx context.Context, masAddr string, rpcAddr string, errCh
 	}
 }
 
-func (dp *TilePipeline) Process(geoReq *GeoTileRequest) chan []byte {
-
-	s := NewTileSplitter(dp.Context, dp.Error)
-	go func() {
-		s.In <- geoReq
-		close(s.In)
-	}()
+func (dp *TilePipeline) Process(geoReq *GeoTileRequest) chan []utils.Raster {
+	// We can actually simplify this piece of code as GeoProcessor only takes a single request right now.
+	// but we will leave it for now in case we need to handle multile time points for WCS.
+	// In the case of WCS with multiple time points, we will create one request per time point
+	// which will require looping through the input channel as the GeoProcessor currently does.
 	p := NewGeoProcessor(dp.Context, dp.MASAddress, dp.RPCAddress, dp.Error)
-	enc := NewPNGEncoder(dp.Error)
 
-	p.In = s.Out
-	enc.In = p.Out
+	p.In <- geoReq
+	close(p.In)
 
-	go s.Run()
 	go p.Run()
-	go enc.Run()
-
-	return enc.Out
+	return p.Out
 }

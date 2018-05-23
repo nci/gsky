@@ -17,14 +17,15 @@ const SIZE_OF_FLOAT32 = 4
 
 type RasterMerger struct {
 	In    chan *FlexRaster
-	Out   chan Raster
+	Out   chan []utils.Raster
 	Error chan error
 }
 
 func NewRasterMerger(errChan chan error) *RasterMerger {
 	return &RasterMerger{
 		In:    make(chan *FlexRaster, 100),
-		Out:   make(chan Raster, 100),
+		Out:   make(chan []utils.Raster, 100),
+		
 		Error: errChan,
 	}
 }
@@ -328,39 +329,53 @@ func (enc *RasterMerger) Run() {
 		delete(canvasMap, "Nadir_Reflectance_Band2")
 	}
 
-	//start := time.Now()
-
+	var nameSpaces []string
 	for _, canvas := range canvasMap {
+		nameSpaces = canvas.ConfigPayLoad.NameSpaces
+		break
+	}
+
+	if len(nameSpaces) == 0 {
+		enc.Out <- []utils.Raster{&utils.ByteRaster{Data: make([]uint8, 0), Height: 0, Width: 0}}
+		return
+	}
+
+	out := make([]utils.Raster, len(nameSpaces))
+	for i, ns := range nameSpaces {
+		canvas := canvasMap[ns] 
 		headr := *(*reflect.SliceHeader)(unsafe.Pointer(&canvas.Data))
 		switch canvas.Type {
 		case "Byte":
-			enc.Out <- &ByteRaster{ConfigPayLoad: canvas.ConfigPayLoad, NoData: canvas.NoData, Data: canvas.Data,
-				Height: canvas.Height, Width: canvas.Width, OffX: canvas.OffX, OffY: canvas.OffY,
-				NameSpace: canvas.NameSpace}
+			out[i] = &utils.ByteRaster{NoData: canvas.NoData, Data: canvas.Data,
+				Width: canvas.Width, Height: canvas.Height}
+
 		case "UInt16":
 			headr.Len /= SIZE_OF_UINT16
 			headr.Cap /= SIZE_OF_UINT16
 			data := *(*[]uint16)(unsafe.Pointer(&headr))
-			enc.Out <- &UInt16Raster{ConfigPayLoad: canvas.ConfigPayLoad, NoData: canvas.NoData, Data: data,
-				Height: canvas.Height, Width: canvas.Width, OffX: canvas.OffX, OffY: canvas.OffY,
-				NameSpace: canvas.NameSpace}
+			out[i] = &utils.UInt16Raster{NoData: canvas.NoData, Data: data,
+				Width: canvas.Width, Height: canvas.Height}
+
 		case "Int16":
 			headr.Len /= SIZE_OF_INT16
 			headr.Cap /= SIZE_OF_INT16
 			data := *(*[]int16)(unsafe.Pointer(&headr))
-			enc.Out <- &Int16Raster{ConfigPayLoad: canvas.ConfigPayLoad, NoData: canvas.NoData, Data: data,
-				Height: canvas.Height, Width: canvas.Width, OffX: canvas.OffX, OffY: canvas.OffY,
-				NameSpace: canvas.NameSpace}
+			out[i] = &utils.Int16Raster{NoData: canvas.NoData, Data: data,
+				Width: canvas.Width, Height: canvas.Height}
+
 		case "Float32":
 			headr.Len /= SIZE_OF_FLOAT32
 			headr.Cap /= SIZE_OF_FLOAT32
 			data := *(*[]float32)(unsafe.Pointer(&headr))
-			enc.Out <- &Float32Raster{ConfigPayLoad: canvas.ConfigPayLoad, NoData: canvas.NoData, Data: data,
-				Height: canvas.Height, Width: canvas.Width, OffX: canvas.OffX, OffY: canvas.OffY,
-				NameSpace: canvas.NameSpace}
+			out[i] = &utils.Float32Raster{NoData: canvas.NoData, Data: data,
+				Width: canvas.Width, Height: canvas.Height}
+
 		default:
-			enc.Error <- fmt.Errorf("FlexRaster type %s not recognised", canvas.Type)
+			enc.Error <- fmt.Errorf("raster type %s not recognised", canvas.Type)
 		}
+
 	}
-	//fmt.Println("Merger Time", time.Since(start))
+
+	enc.Out <- out
+
 }

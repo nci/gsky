@@ -1,6 +1,7 @@
 package processor
 
 import (
+	"../utils"
 	"context"
 	"fmt"
 )
@@ -21,7 +22,7 @@ func NewTileInternalPipeline(ctx context.Context, apiAddr string, rpcAddr string
 	}
 }
 
-func (dp *TileInternalPipeline) Process(geoReq *GeoTileRequest) chan *ByteRaster {
+func (dp *TileInternalPipeline) Process(geoReq *GeoTileRequest) chan []utils.Raster {
 	grpcTiler := NewRasterGRPC(dp.Context, dp.RPCAddress, dp.Error)
 	if grpcTiler == nil {
 		dp.Error <- fmt.Errorf("Couldn't instantiate RPCTiler %s/n", dp.RPCAddress)
@@ -35,16 +36,13 @@ func (dp *TileInternalPipeline) Process(geoReq *GeoTileRequest) chan *ByteRaster
 	}()
 
 	m := NewRasterMerger(dp.Error)
-	sc := NewRasterScaler(dp.Error)
 
 	grpcTiler.In = i.Out
 	m.In = grpcTiler.Out
-	sc.In = m.Out
 
 	go i.Run()
 	go grpcTiler.Run()
 	go m.Run()
-	go sc.Run()
 
-	return sc.Out
+	return m.Out
 }

@@ -151,6 +151,29 @@ func GenerateDatesMCD43A4(start, end time.Time, stepMins time.Duration) []string
 	return dates
 }
 
+func GenerateDatesGeoglam(start, end time.Time, stepMins time.Duration) []string {
+	dates := []string{}
+	year := start.Year()
+	for start.Before(end) {
+		for start.Year() == year && start.Before(end) {
+			dates = append(dates, start.Format(ISOFormat))
+			nextDate := start.AddDate(0, 0, 4)
+			if start.Month() == nextDate.Month() {
+				start = start.Add(stepMins)
+			} else {
+				start = nextDate	
+			}
+
+		}
+		if !start.Before(end) {
+			break
+		}
+		year = start.Year()
+		start = time.Date(year, 1, 1, 0, 0, 0, 0, time.UTC)
+	}
+	return dates
+}
+
 func GenerateDatesChirps20(start, end time.Time, stepMins time.Duration) []string {
 	dates := []string{}
 	for start.Before(end) {
@@ -193,6 +216,7 @@ func GenerateDates(name string, start, end time.Time, stepMins time.Duration) []
 	dateGen := make(map[string]func(time.Time, time.Time, time.Duration) []string)
 	dateGen["aux"] = GenerateDatesAux
 	dateGen["mcd43"] = GenerateDatesMCD43A4
+	dateGen["geoglam"] = GenerateDatesGeoglam
 	dateGen["chirps20"] = GenerateDatesChirps20
 	dateGen["regular"] = GenerateDatesRegular
 	dateGen["monthly"] = GenerateMonthlyDates
