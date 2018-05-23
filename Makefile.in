@@ -37,7 +37,8 @@ install:
 	install -d $(datarootdir)/mas
 	for f in $(srcdir)/templates/* ; do install -m 644 $$f $(datarootdir)/gsky/templates ; done
 	cp -rp $(srcdir)/static/* $(datarootdir)/gsky/static
-	for f in $(srcdir)/mas/db/* ; do install -m 644 $$f $(datarootdir)/mas ; done
+	for f in $(srcdir)/mas/db/*.sql ; do install -m 644 $$f $(datarootdir)/mas ; done
+	for f in $(srcdir)/mas/db/*.sh ; do install -m 755 $$f $(datarootdir)/mas ; done
 
 clean:
 	-rm -f accept gsky-crawl gsky-gdal-process gsky-ows gsky-rpc masapi
