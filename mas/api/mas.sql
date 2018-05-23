@@ -3,7 +3,7 @@
 -- Copyright (c) 2017, NCI, Australian National University.
 -- All Rights Reserved.
 
--- ST_Transform will throw an dexception if points cannot be meaninfully transformed
+-- ST_Transform will throw an exception if points cannot be meaninfully transformed
 -- between projections. Fair enough. Sometimes it's useful to be a bit more lenient,
 -- especially when querying across NCI projects with differing data consistency.
 
