@@ -327,3 +327,5 @@ create function path_absolute(path text, relative text)
   returns text language sql immutable as $$
     select case when path like '.%' then concat(relative, '/', substr(path, 3)) else path end;
 $$;
+
+\echo Done!
