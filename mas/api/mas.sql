@@ -7,8 +7,8 @@
 -- between projections. Fair enough. Sometimes it's useful to be a bit more lenient,
 -- especially when querying across NCI projects with differing data consistency.
 
-\c nci
-set role nci;
+\c mas
+set role mas;
 
 create or replace function public.ST_SplitDatelineWGS84(polygon geometry)
   returns geometry language plpgsql immutable as $$
