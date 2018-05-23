@@ -15,17 +15,17 @@ set role postgres;
 \c postgres
 
 -- Atomic DDL can't handle a database drop, so kill off active clients
-update pg_database set datallowconn = 'false' where datname = 'nci';
-select pg_terminate_backend(pid) from pg_stat_activity where datname = 'nci';
+update pg_database set datallowconn = 'false' where datname = 'mas';
+select pg_terminate_backend(pid) from pg_stat_activity where datname = 'mas';
 
-drop database if exists nci;
+drop database if exists mas;
 
 do $$
   begin
 
-    if (select true from pg_roles where rolname = 'nci') then
-      drop owned by nci cascade;
-      drop role nci;
+    if (select true from pg_roles where rolname = 'mas') then
+      drop owned by mas cascade;
+      drop role mas;
     end if;
 
     if (select true from pg_roles where rolname = 'api') then
@@ -36,23 +36,23 @@ do $$
   end
 $$;
 
-create role nci with password null;
-create database nci owner nci;
-grant all privileges on database nci to nci;
+create role mas with password null;
+create database mas owner mas;
+grant all privileges on database mas to mas;
 
 create role api with password null login;
-grant connect on database nci to api;
+grant connect on database mas to api;
 
-\c nci
+\c mas
 
 alter default privileges for role postgres in schema public grant select on tables to public;
-alter default privileges for role nci in schema public grant select on tables to public;
+alter default privileges for role mas in schema public grant select on tables to public;
 
 set search_path to public;
 set client_min_messages to warning;
 
 create extension postgis;
-grant all on spatial_ref_sys to nci;
+grant all on spatial_ref_sys to mas;
 
 -- Postgres has no built-in operators for indexing UUID using GIN
 create operator class _uuid_ops default
@@ -67,7 +67,7 @@ create operator class _uuid_ops default
   function 4 ginarrayconsistent(internal, smallint, anyarray, integer, internal, internal, internal, internal),
   storage uuid;
 
-set role nci;
+set role mas;
 
 \i util.sql
 
