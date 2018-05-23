@@ -318,11 +318,6 @@ create function path_hash(path text)
     select md5(path)::uuid;
 $$;
 
-create function path_resolve(path text)
-  returns text language sql immutable as $$
-    select regexp_replace(path, '^/g/data[0-9]*/[^/]+', sh_path) from public.shards where sh_path like concat('%', split_part(path, '/', 4));
-$$;
-
 create function path_absolute(path text, relative text)
   returns text language sql immutable as $$
     select case when path like '.%' then concat(relative, '/', substr(path, 3)) else path end;
