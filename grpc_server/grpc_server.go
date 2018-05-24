@@ -28,7 +28,7 @@ func (s *server) Process(ctx context.Context, in *pb.GeoRPCGranule) (*pb.Result,
 	errChan := make(chan error)
 	defer close(errChan)
 
-	s.Pool.AddQueue(&pb.Task{in, rChan, errChan})
+	s.Pool.AddQueue(&pb.Task{Payload: in, Resp: rChan, Error: errChan})
 
 	select {
 	case out, ok := <-rChan:
