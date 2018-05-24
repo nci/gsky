@@ -26,7 +26,7 @@ concurrent: concurrent.c
 	$(CC) -Wall -O2 $< -o $@
 
 concurrent.c:
-	wget --quiet https://github.com/seanpringle/concurrent/raw/master/concurrent.c
+	wget --quiet https://github.com/seanpringle/concurrent/raw/634330a119f16916e5ad24da32172fa9312ab5a3/concurrent.c
 
 # Note: install(1) can't deal with directories as source, so use cp -r.
 install:
