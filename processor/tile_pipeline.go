@@ -2,7 +2,7 @@ package processor
 
 import (
 	"context"
-	"../utils"
+	"github.com/nci/gsky/utils"
 )
 
 type TilePipeline struct {
