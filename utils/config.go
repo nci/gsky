@@ -38,6 +38,8 @@ type CacheLevel struct {
 type Mask struct {
 	Id    string `json:"id"`
 	Value string `json:"value"`
+	DataSource string `json:"data_source"`
+	Inclusive bool `json:"inclusive"`
 }
 
 type Palette struct {

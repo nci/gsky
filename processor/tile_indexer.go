@@ -83,10 +83,15 @@ func (p *TileIndexer) Run() {
 				go URLIndexGet(p.Context, url, nameSpace, geoReq, p.Error, p.Out, &wg)
 			}
 			if geoReq.Mask != nil {
+				maskCollection := geoReq.Mask.DataSource
+				if len(maskCollection) == 0 {
+					maskCollection = geoReq.Collection
+				}
+
 				if geoReq.EndTime == nil {
-					url = strings.Replace(fmt.Sprintf("http://%s%s?intersects&metadata=gdal&time=%s&srs=%s&wkt=%s&namespace=%s", p.APIAddress, geoReq.Collection, geoReq.StartTime.Format(ISOFormat), geoReq.CRS, BBox2WKT(geoReq.BBox), geoReq.Mask.Id), " ", "%20", -1)
+					url = strings.Replace(fmt.Sprintf("http://%s%s?intersects&metadata=gdal&time=%s&srs=%s&wkt=%s&namespace=%s", p.APIAddress, maskCollection, geoReq.StartTime.Format(ISOFormat), geoReq.CRS, BBox2WKT(geoReq.BBox), geoReq.Mask.Id), " ", "%20", -1)
 				} else {
-					url = strings.Replace(fmt.Sprintf("http://%s%s?intersects&metadata=gdal&time=%s&until=%s&srs=%s&wkt=%s&namespace=%s", p.APIAddress, geoReq.Collection, geoReq.StartTime.Format(ISOFormat), geoReq.EndTime.Format(ISOFormat), geoReq.CRS, BBox2WKT(geoReq.BBox), geoReq.Mask.Id), " ", "%20", -1)
+					url = strings.Replace(fmt.Sprintf("http://%s%s?intersects&metadata=gdal&time=%s&until=%s&srs=%s&wkt=%s&namespace=%s", p.APIAddress, maskCollection, geoReq.StartTime.Format(ISOFormat), geoReq.EndTime.Format(ISOFormat), geoReq.CRS, BBox2WKT(geoReq.BBox), geoReq.Mask.Id), " ", "%20", -1)
 				}
 				log.Println(url)
 

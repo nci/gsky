@@ -277,7 +277,10 @@ func (enc *RasterMerger) Run() {
 				return
 			}
 			maskMap[geoStamp] = mask
-			continue
+			if !r.Mask.Inclusive {
+				continue
+			}
+
 		}
 
 		rasterStack[geoStamp] = append(rasterStack[geoStamp], r)
