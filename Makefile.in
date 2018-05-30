@@ -8,13 +8,14 @@ srcdir = @srcdir@
 VPATH = @srcdir@
 
 CGO_CFLAGS="@CGO_CFLAGS@"
-CGO_LDFLAGS="@CGO_LDFLAGS@"
+CGO_LDFLAGS=-lgdal
 LDFLAGS="-X=_$(srcdir)/utils.LibexecDir=${libexecdir} -X=_$(srcdir)/grpc_server/gdalservice.LibexecDir=${libexecdir} \
 	-X=_$(srcdir)/utils.EtcDir=$(sysconfdir) -X=_$(srcdir)/utils.DataDir=${datarootdir}/gsky"
 GOBUILD = CGO_CFLAGS=$(CGO_CFLAGS) CGO_LDFLAGS=$(CGO_LDFLAGS) go build -ldflags=$(LDFLAGS)
+GOGET = CGO_CFLAGS=$(CGO_CFLAGS) go get
 
 all: concurrent
-	go get
+	$(GOGET)
 	$(GOBUILD) -o gsky-rpc grpc_server/grpc_server.go
 	$(GOBUILD) -o gsky-gdal-process grpc_server/gdal_process.go
 	$(GOBUILD) -o gsky-ows ows.go
