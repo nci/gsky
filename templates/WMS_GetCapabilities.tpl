@@ -116,10 +116,12 @@
 					<Name>{{ .Name }}</Name>
 					<Title>{{ .Title }}</Title>
 					<Abstract>A sample style that draws a raster, good for displaying imagery</Abstract>
+					{{if .LegendPath }}
 					<LegendURL width="160" height="424">
 						<Format>image/png</Format>
 						<OnlineResource xlink:type="simple" xlink:href="http://{{ .OWSHostname }}/ows?service=WMS&amp;request=GetLegendGraphic&amp;version=1.3.0&amp;layers={{ .Name }}"/>
 					</LegendURL>
+					{{end}}
 				</Style>
 			</Layer>
 			{{end}}
