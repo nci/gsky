@@ -198,7 +198,7 @@ func GetProduct(params WMSParams, config Config) (string, error) {
 func GetLayerIndex(params WMSParams, config *Config) (int, error) {
 	if params.Layers != nil {
 		product := params.Layers[0]
-		for i, _ := range config.Layers {
+		for i := range config.Layers {
 			if config.Layers[i].Name == product {
 				return i, nil
 			}
