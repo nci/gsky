@@ -41,8 +41,6 @@
 			</GetCapabilities>
 			<GetMap>
 				<Format>image/png</Format>
-				<Format>image/gif</Format>
-				<Format>image/jpeg</Format>
 				<DCPType>
 				  <HTTP>
 				    <Get>
