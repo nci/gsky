@@ -38,7 +38,7 @@ type WMSParams struct {
 // --- invalid code but filter most of the malformed
 // --- cases. Error free JSON deserialisation into types
 // --- also validates correct values.
-var WMSRegexpMap map[string]string = map[string]string{"service": `^WMS$`,
+var WMSRegexpMap = map[string]string{"service": `^WMS$`,
 	"request": `^GetCapabilities$|^GetFeatureInfo$|^DescribeLayer$|^GetMap$|^GetLegendGraphic$`,
 	"crs":     `^(?i)(?:[A-Z]+):(?:[0-9]+)$`,
 	"bbox":    `^[-+]?[0-9]*\.?[0-9]*([eE][-+]?[0-9]+)?(,[-+]?[0-9]*\.?[0-9]*([eE][-+]?[0-9]+)?){3}$`,

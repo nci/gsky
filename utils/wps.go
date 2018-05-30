@@ -67,7 +67,7 @@ type WPSParams struct {
 // --- invalid code but filter most of the malformed
 // --- cases. Error free JSON deserialisation into types
 // --- also validates correct values.
-var WPSRegexpMap map[string]string = map[string]string{"service": `^WPS$`,
+var WPSRegexpMap = map[string]string{"service": `^WPS$`,
 	"request": `^GetCapabilities$|^DescribeProcess$|^Execute$`,
 	"time":    `^\d{4}-(?:1[0-2]|0[1-9])-(?:3[01]|0[1-9]|[12][0-9])T[0-2]\d:[0-5]\d:[0-5]\d\.\d+Z$`}
 
