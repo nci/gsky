@@ -63,6 +63,7 @@
     </supportedCRSs>
     <supportedFormats>
       <formats>GeoTIFF</formats>
+      <formats>NetCDF</formats>
     </supportedFormats>
     <supportedInterpolations>
       <interpolationMethod>none</interpolationMethod>
