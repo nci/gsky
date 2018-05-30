@@ -19,7 +19,7 @@ import (
 var (
 	db        *sql.DB
 	mc        *memcache.Client
-	db_name   = flag.String("database", "nci", "database name")
+	db_name   = flag.String("database", "mas", "database name")
 	db_user   = flag.String("user", "api", "database user name")
 	db_pool   = flag.Int("pool", 8, "database pool size")
 	db_limit  = flag.Int("limit", 64, "database concurrent requests")
@@ -113,7 +113,6 @@ func main() {
 
 	if err != nil {
 		panic(err)
-		return
 	}
 
 	defer db.Close()

@@ -3,12 +3,12 @@
 -- Copyright (c) 2017, NCI, Australian National University.
 -- All Rights Reserved.
 
--- ST_Transform will throw an dexception if points cannot be meaninfully transformed
+-- ST_Transform will throw an exception if points cannot be meaninfully transformed
 -- between projections. Fair enough. Sometimes it's useful to be a bit more lenient,
 -- especially when querying across NCI projects with differing data consistency.
 
-\c nci
-set role nci;
+\c mas
+set role mas;
 
 create or replace function public.ST_SplitDatelineWGS84(polygon geometry)
   returns geometry language plpgsql immutable as $$
@@ -161,11 +161,11 @@ create or replace function mas_reset()
   end
 $$;
 
--- The MAS database is split into schemas, one per NCI project, and the
--- public schema contains multi-schema views to enable cross-project queries.
--- If an API request is only targetting a single project, it's obviously more
--- efficient to query a single schema. The mas_view() function sets a
--- session's search_path appropriately.
+-- The MAS database is split into shards, represented using schemas, one
+-- per "dataset"... whatever that means in your environment! NCI uses GDATA
+-- project codes. An AWS GSKY test used a "vsis3" prefix. The public schema
+-- contains multi-schema views to enable cross-dataset queries. The mas_view
+-- function sets an API request search_path appropriately.
 
 create or replace function mas_view(gpath text)
   returns void language plpgsql as $$
@@ -177,12 +177,8 @@ create or replace function mas_view(gpath text)
   begin
 
     shard := coalesce(
-      (select sh_code from shards where sh_code = split_part(gpath, '/', 4)), ''
+      (select sh_code from shards where gpath like concat(sh_path,'%') limit 1), ''
     );
-
-    if gpath ~ 'vsis3' then
-      shard := 's3landsat';
-    end if;
 
     if octet_length(shard) > 0 and (select true from information_schema.schemata where schema_name = shard) then
 
@@ -335,7 +331,7 @@ create or replace function mas_intersects(
 
   begin
 
-    if gpath is null or not gpath ~ '^/g' then
+    if gpath is null then
       raise exception 'invalid search path';
     end if;
 
@@ -436,34 +432,6 @@ create or replace function mas_intersects(
             namespace is null
             or dataset->>'namespace' = any(namespace)
           )
-
-      ), '[]'::jsonb));
-
-    end if;
-
-    -- &metadata=pdal - bundle some raw PDAL metadata for Skua
-    if raw_metadata = 'pdal' then
-
-      result := result || jsonb_build_object('pdal', coalesce((
-
-        select
-          jsonb_agg(md_json)
-
-        from
-          metadata
-
-        inner join
-          -- Extract and iterate the files discovered above
-          jsonb_array_elements_text(result->'files') path
-            on md_hash = path_hash(path.value)
-
-        where
-          md_type = 'pdal'
-
-          --and (
-          --  namespace is null
-          --  or dataset->>'namespace' = any(namespace)
-          --)
 
       ), '[]'::jsonb));
 
