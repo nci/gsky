@@ -22,13 +22,12 @@ type ServiceConfig struct {
 	WorkerNodes []string `json:"worker_nodes"`
 }
 
-// DataSource contains the source files of one layer
-// as well as the max and min resolutions it represents.
-// Its fields encode the path to the collection and
-// the maximum and mimum resolution that can be served.
-// This enables the definition of different versions
-// of the same dataset with different resolutions
-// to speedup response times.
+// CacheLevel contains the source files of one layer as well as the
+// max and min resolutions it represents.  Its fields encode the path
+// to the collection and the maximum and minimum resolution that can
+// be served.  This enables the definition of different versions of
+// the same dataset with different resolutions to speedup response
+// times.
 type CacheLevel struct {
 	Path   string  `json:"path"`
 	MinRes float64 `json:"min_res"`
@@ -87,8 +86,8 @@ type Process struct {
 	ComplexData []CompData `json:"complex_data"`
 }
 
-// DataInput contains the description of a variable
-// used to compute a WPS operation
+// LitData contains the description of a variable used to compute a
+// WPS operation
 type LitData struct {
 	Identifier    string   `json:"identifier"`
 	Title         string   `json:"title"`
@@ -98,8 +97,8 @@ type LitData struct {
 	AllowedValues []string `json:"allowed_values"`
 }
 
-// DataInput contains the description of a variable
-// used to compute a WPS operation
+// CompData contains the description of a variable used to compute a
+// WPS operation
 type CompData struct {
 	Identifier string `json:"identifier"`
 	Title      string `json:"title"`
@@ -131,9 +130,8 @@ func GenerateDatesAux(start, end time.Time, stepMins time.Duration) []string {
 	return dates
 }
 
-// GenerateDates function is used to generate the
-// list of ISO dates from its especification in the
-// Config.Layer struct.
+// GenerateDatesMCD43A4 function is used to generate the list of ISO
+// dates from its especification in the Config.Layer struct.
 func GenerateDatesMCD43A4(start, end time.Time, stepMins time.Duration) []string {
 	dates := []string{}
 	year := start.Year()
@@ -201,9 +199,8 @@ func GenerateDates(name string, start, end time.Time, stepMins time.Duration) []
 	return dateGen[name](start, end, stepMins)
 }
 
-// GetConfig marshall the config.json document
-// returning an instance of a Config variable
-// containing all the values
+// LoadConfigFile marshall the config.json document returning an
+// instance of a Config variable containing all the values
 func (config *Config) LoadConfigFile(configFile string) error {
 	*config = Config{}
 	cfg, err := ioutil.ReadFile(configFile)

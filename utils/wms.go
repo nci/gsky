@@ -208,9 +208,9 @@ func GetLayerIndex(params WMSParams, config *Config) (int, error) {
 	return -1, fmt.Errorf("WMS request doesn't specify a product")
 }
 
-// General template compilation, execution and
-// writting in to a stream.
 func ExecuteWriteTemplateFile(w io.Writer, data interface{}, filePath string) error {
+	// General template compilation, execution and writting in to
+	// a stream.
 	tplStr, err := ioutil.ReadFile(filePath)
 	if err != nil {
 		return fmt.Errorf("Error trying to read %s file: %v", filePath, err)
