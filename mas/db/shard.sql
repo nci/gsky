@@ -19,7 +19,7 @@
 -- cat <tsv> | parallel -j 8 --pipe -L 100000 --retries 10 --will-cite \
 --   'psql -c "set search_path to ${shard}; copy ingest from stdin with (format 'csv', delimiter E'\t', quote E'\b');"'
 
-set role nci;
+set role mas;
 
 -- Data ingest holding yard
 drop table if exists ingest cascade;
@@ -351,80 +351,6 @@ create materialized view directories as
 create unique index dii_hash
   on directories (di_hash);
 
---create index dii_parent
---  on directories (di_parent);
-
-drop view if exists pdal cascade;
-create view pdal as
-  select
-    fi_hash
-      as pd_hash,
-    (md_json->>'pdal_version')::text
-      as pd_version,
-    (md_json->'metadata'->>'maxx')::float8
-      as pd_maxx,
-    (md_json->'metadata'->>'maxy')::float8
-      as pd_maxy,
-    (md_json->'metadata'->>'maxz')::float8
-      as pd_maxz,
-    (md_json->'metadata'->>'minx')::float8
-      as pd_minx,
-    (md_json->'metadata'->>'miny')::float8
-      as pd_miny,
-    (md_json->'metadata'->>'minz')::float8
-      as pd_minz,
-    (md_json->'metadata'->>'count')::bigint
-      as pd_count,
-    (md_json->'metadata'->>'scale_x')::float8
-      as pd_scale_x,
-    (md_json->'metadata'->>'scale_y')::float8
-      as pd_scale_y,
-    (md_json->'metadata'->>'scale_z')::float8
-      as pd_scale_z,
-    (md_json->'metadata'->>'offset_x')::float8
-      as pd_offset_x,
-    (md_json->'metadata'->>'offset_y')::float8
-      as pd_offset_y,
-    (md_json->'metadata'->>'offset_z')::float8
-      as pd_offset_z,
-    (md_json->'metadata'->>'system_id')::text
-      as pd_system_id,
-    (md_json->'metadata'->>'project_id')::text
-      as pd_project_id,
-    trim((md_json->'metadata'->>'software_id')::text)
-      as pd_software_id,
-    (md_json->'metadata'->'srs'->>'wkt')::text
-      as pd_srs_wkt,
-    (md_json->'metadata'->'srs'->>'proj4')::text
-      as pd_srs_proj4,
-    (md_json->'metadata'->'srs'->'units'->>'vertical')::text
-      as pd_srs_units_vertical,
-    (md_json->'metadata'->'srs'->'units'->>'horizontal')::text
-      as pd_srs_units_horizontal,
-    (md_json->'boundary'->>'density')::float8
-      as pd_density,
-    srid
-      as pd_srid,
-    public.st_geomfromtext(md_json->'boundary'->>'boundary', srid)
-      as pd_boundary
-  from
-    files
-  inner join
-    metadata
-      on fi_hash = md_hash
-      and md_type = 'pdal'
-  inner join
-    public.spatial_ref_sys
-      on srtext = (md_json->'metadata'->'srs'->>'wkt')::text
-      and proj4text = (md_json->'metadata'->'srs'->>'proj4')::text
-;
-
-create index if not exists mdi_wkt
-  on metadata ((md_json->'metadata'->'srs'->>'wkt'));
-
-create index if not exists mdi_proj4
-  on metadata ((md_json->'metadata'->'srs'->>'proj4'));
-
 -- View of polygon metadata supplied by GDAL crawler, for GSKY
 drop materialized view if exists polygons cascade;
 create materialized view polygons as
@@ -475,28 +401,6 @@ create materialized view polygons as
   join public.spatial_ref_sys s
     on b.srtext = s.srtext
     and b.proj4text = s.proj4text
-
-  union all
-
-  select
-    pd_hash
-      as po_hash,
-    null
-      as po_stamps,
-    null
-      as po_min_stamp,
-    null
-      as po_max_stamp,
-    null
-      as po_name,
-    null
-      as po_pixel_x,
-    null
-      as po_pixel_y,
-    pd_boundary
-      as po_polygon
-  from
-    pdal
 ;
 
 create index poi_hash
@@ -697,10 +601,6 @@ create function refresh_views()
     refresh materialized view directories;
 
     return true;
-
---  exception
---    when others then
---      raise notice 'exception!';
   end
 $$;
 
@@ -747,38 +647,6 @@ create or replace function refresh_polygons()
         and s2.srtext is null
     ;
 
-    insert into public.nci_spatial_ref_sys (auth_name, srtext, proj4text)
-      select
-        'NCI',
-        b.srtext,
-        b.proj4text
-      from (
-        select
-          trim(md_json->'metadata'->'srs'->>'wkt')
-            as srtext,
-          trim(md_json->'metadata'->'srs'->>'proj4')
-            as proj4text
-        from
-          metadata
-        where
-          md_type = 'pdal'
-        group by
-          srtext,
-          proj4text
-      ) b
-      left join
-        public.spatial_ref_sys s1
-          on b.srtext = trim(s1.srtext)
-          and b.proj4text = trim(s1.proj4text)
-      left join
-        public.nci_spatial_ref_sys s2
-          on b.srtext = trim(s2.srtext)
-          and b.proj4text = trim(s2.proj4text)
-      where
-        s1.srtext is null
-        and s2.srtext is null
-    ;
-
     insert into public.spatial_ref_sys (srid, auth_name, auth_srid, srtext, proj4text)
       select srid, auth_name, srid, srtext, proj4text from public.nci_spatial_ref_sys
     on conflict (srid) do nothing;
@@ -812,10 +680,6 @@ create or replace function refresh_polygons()
     end loop;
 
     return true;
-
---  exception
---    when others then
---      raise notice 'exception!';
   end
 $$;
 
