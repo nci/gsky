@@ -631,9 +631,6 @@ func owsHandler(w http.ResponseWriter, r *http.Request) {
 	if len(r.URL.Path) > len("/ows/") {
 		namespace = r.URL.Path[len("/ows/"):]
 	}
-	if len(namespace) == 0 {
-		namespace = "."
-	}
 	config, ok := configMap[namespace]
 	if !ok {
 		Info.Printf("Invalid dataset namespace: %v for url: %v\n", namespace, r.URL.Path)
