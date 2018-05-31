@@ -236,7 +236,7 @@ func LoadAllConfigFiles(rootDir string) (map[string]*Config, error) {
     }
 
     if !info.IsDir() && info.Name() == "config.json" {
-      relPath , _:= filepath.Rel(rootDir, filepath.Dir(path))
+      relPath , _ := filepath.Rel(rootDir, filepath.Dir(path))
       log.Printf("Loading config file: %s under namespace: %s\n", path, relPath)
 
 			config := &Config{}
@@ -255,7 +255,6 @@ func LoadAllConfigFiles(rootDir string) (map[string]*Config, error) {
 	}
 
 	return configMap, err
-
 }
 
 // GetConfig marshall the config.json document
@@ -315,4 +314,3 @@ func WatchConfig(infoLog, errLog *log.Logger, configMap *map[string]*Config) {
 		}
 	}()
 }
-
