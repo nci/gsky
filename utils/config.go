@@ -10,6 +10,7 @@ import (
 	"os/signal"
 	"syscall"
 	"time"
+	"path/filepath"
 )
 
 var LibexecDir = "/usr/local/libexec"
@@ -227,6 +228,35 @@ func GenerateDates(name string, start, end time.Time, stepMins time.Duration) []
 	return dateGen[name](start, end, stepMins)
 }
 
+func LoadAllConfigFiles(rootDir string) (map[string]*Config, error) {
+	configMap := make(map[string]*Config)
+	err := filepath.Walk(rootDir, func(path string, info os.FileInfo, err error) error { 
+    if err != nil {
+      return err
+    }
+
+    if !info.IsDir() && info.Name() == "config.json" {
+      relPath , _ := filepath.Rel(rootDir, filepath.Dir(path))
+      log.Printf("Loading config file: %s under namespace: %s\n", path, relPath)
+
+			config := &Config{}
+			e := config.LoadConfigFile(path)
+			if e != nil {
+				return err
+			}
+
+			configMap[relPath] = config
+    }
+    return nil
+  })
+
+	if len(configMap) == 0 {
+		err = fmt.Errorf("No config file found")
+	}
+
+	return configMap, err
+}
+
 // GetConfig marshall the config.json document
 // returning an instance of a Config variable
 // containing all the values
@@ -260,7 +290,7 @@ func (config *Config) LoadConfigFile(configFile string) error {
 	return nil
 }
 
-func (config *Config) Watch(infoLog, errLog *log.Logger) {
+func WatchConfig(infoLog, errLog *log.Logger, configMap *map[string]*Config) {
 	// Catch SIGHUP to automatically reload cache
 	sighup := make(chan os.Signal, 1)
 	signal.Notify(sighup, syscall.SIGHUP)
@@ -268,10 +298,18 @@ func (config *Config) Watch(infoLog, errLog *log.Logger) {
 		select {
 		case <-sighup:
 			infoLog.Println("Caught SIGHUP, reloading config...")
-			err := config.LoadConfigFile(EtcDir + "/config.json")
+			confMap, err := LoadAllConfigFiles(EtcDir)
 			if err != nil {
-				errLog.Printf("%v\n", err)
-				panic(err)
+				errLog.Printf("Error in loading config files: %v\n", err)
+				return
+			}
+
+			for k := range *configMap {
+				delete(*configMap, k)
+			}
+
+			for k := range confMap {
+				(*configMap)[k] = confMap[k]
 			}
 		}
 	}()
