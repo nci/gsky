@@ -46,7 +46,7 @@ const SIZE_OF_UINT16 = 2
 const SIZE_OF_INT16 = 2
 const SIZE_OF_FLOAT32 = 4
 
-var GDALTypes map[C.GDALDataType]string = map[C.GDALDataType]string{0: "Unkown", 1: "Byte", 2: "UInt16", 3: "Int16",
+var GDALTypes = map[C.GDALDataType]string{0: "Unkown", 1: "Byte", 2: "UInt16", 3: "Int16",
 	4: "UInt32", 5: "Int32", 6: "Float32", 7: "Float64",
 	8: "CInt16", 9: "CInt32", 10: "CFloat32", 11: "CFloat64",
 	12: "TypeCount"}

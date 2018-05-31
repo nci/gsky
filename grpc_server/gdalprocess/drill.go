@@ -103,7 +103,7 @@ func readData(ds C.GDALDatasetH, bands []int32, geom C.OGRGeometryH) *pb.Result 
 			for i := 0; i < len(canvas); i++ {
 				if dsDscr.Mask.Pix[i] == 255 && canvas[i] != nodata {
 					sum += float64(canvas[i])
-					total += 1
+					total++
 				}
 			}
 
@@ -115,7 +115,7 @@ func readData(ds C.GDALDatasetH, bands []int32, geom C.OGRGeometryH) *pb.Result 
 			for i := 0; i < len(canvas); i++ {
 				if dsDscr.Mask.Pix[i] == 255 && canvas[i] != nodata {
 					sum += float64(canvas[i])
-					total += 1
+					total++
 				}
 			}
 
