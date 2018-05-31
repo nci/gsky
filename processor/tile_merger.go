@@ -11,9 +11,9 @@ import (
 	"unsafe"
 )
 
-const SizeofUint16 = unsafe.Sizeof(uint16(0))
-const SizeofInt16 = unsafe.Sizeof(int16(0))
-const SizeofFloat32 = unsafe.Sizeof(float32(0))
+const SIZE_OF_UINT16 = 2
+const SIZE_OF_INT16 = 2
+const SIZE_OF_FLOAT32 = 4
 
 type RasterMerger struct {
 	In    chan *FlexRaster
@@ -56,13 +56,13 @@ func MergeMaskedRaster(r *FlexRaster, canvasMap map[string]*FlexRaster, mask []b
 		}
 	case "Int16":
 		headr := *(*reflect.SliceHeader)(unsafe.Pointer(&canvasMap[r.NameSpace].Data))
-		headr.Len /= Sizeof_int16
-		headr.Cap /= Sizeof_int16
+		headr.Len /= SIZE_OF_INT16
+		headr.Cap /= SIZE_OF_INT16
 		canvas := *(*[]int16)(unsafe.Pointer(&headr))
 
 		header := *(*reflect.SliceHeader)(unsafe.Pointer(&r.Data))
-		header.Len /= Sizeof_int16
-		header.Cap /= Sizeof_int16
+		header.Len /= SIZE_OF_INT16
+		header.Cap /= SIZE_OF_INT16
 		data := *(*[]int16)(unsafe.Pointer(&header))
 		nodata := int16(r.NoData)
 
@@ -82,13 +82,13 @@ func MergeMaskedRaster(r *FlexRaster, canvasMap map[string]*FlexRaster, mask []b
 		}
 	case "UInt16":
 		headr := *(*reflect.SliceHeader)(unsafe.Pointer(&canvasMap[r.NameSpace].Data))
-		headr.Len /= Sizeof_uint16
-		headr.Cap /= Sizeof_uint16
+		headr.Len /= SIZE_OF_UINT16
+		headr.Cap /= SIZE_OF_UINT16
 		canvas := *(*[]uint16)(unsafe.Pointer(&headr))
 
 		header := *(*reflect.SliceHeader)(unsafe.Pointer(&r.Data))
-		header.Len /= Sizeof_uint16
-		header.Cap /= Sizeof_uint16
+		header.Len /= SIZE_OF_UINT16
+		header.Cap /= SIZE_OF_UINT16
 		data := *(*[]uint16)(unsafe.Pointer(&header))
 		nodata := uint16(r.NoData)
 
@@ -108,13 +108,13 @@ func MergeMaskedRaster(r *FlexRaster, canvasMap map[string]*FlexRaster, mask []b
 		}
 	case "Float32":
 		headr := *(*reflect.SliceHeader)(unsafe.Pointer(&canvasMap[r.NameSpace].Data))
-		headr.Len /= Sizeof_float32
-		headr.Cap /= Sizeof_float32
+		headr.Len /= SIZE_OF_FLOAT32
+		headr.Cap /= SIZE_OF_FLOAT32
 		canvas := *(*[]float32)(unsafe.Pointer(&headr))
 
 		header := *(*reflect.SliceHeader)(unsafe.Pointer(&r.Data))
-		header.Len /= Sizeof_float32
-		header.Cap /= Sizeof_float32
+		header.Len /= SIZE_OF_FLOAT32
+		header.Cap /= SIZE_OF_FLOAT32
 		data := *(*[]float32)(unsafe.Pointer(&header))
 		nodata := float32(r.NoData)
 
@@ -155,8 +155,8 @@ func initNoDataSlice(rType string, noDataValue float64, size int) []uint8 {
 			out[i] = fill
 		}
 		headr := *(*reflect.SliceHeader)(unsafe.Pointer(&out))
-		headr.Len *= Sizeof_int16
-		headr.Cap *= Sizeof_int16
+		headr.Len *= SIZE_OF_INT16
+		headr.Cap *= SIZE_OF_INT16
 		return *(*[]uint8)(unsafe.Pointer(&headr))
 	case "UInt16":
 		out := make([]uint16, size)
@@ -165,8 +165,8 @@ func initNoDataSlice(rType string, noDataValue float64, size int) []uint8 {
 			out[i] = fill
 		}
 		headr := *(*reflect.SliceHeader)(unsafe.Pointer(&out))
-		headr.Len *= Sizeof_uint16
-		headr.Cap *= Sizeof_uint16
+		headr.Len *= SIZE_OF_UINT16
+		headr.Cap *= SIZE_OF_UINT16
 		return *(*[]uint8)(unsafe.Pointer(&headr))
 	case "Float32":
 		out := make([]float32, size)
@@ -175,8 +175,8 @@ func initNoDataSlice(rType string, noDataValue float64, size int) []uint8 {
 			out[i] = fill
 		}
 		headr := *(*reflect.SliceHeader)(unsafe.Pointer(&out))
-		headr.Len *= Sizeof_float32
-		headr.Cap *= Sizeof_float32
+		headr.Len *= SIZE_OF_FLOAT32
+		headr.Cap *= SIZE_OF_FLOAT32
 		return *(*[]uint8)(unsafe.Pointer(&headr))
 	default:
 		return []uint8{}
@@ -228,8 +228,8 @@ func ComputeMask(mask *utils.Mask, data []byte, rType string) (out []bool, err e
 			}
 		}
 	case "Int16":
-		header.Len /= Sizeof_int16
-		header.Cap /= Sizeof_int16
+		header.Len /= SIZE_OF_INT16
+		header.Cap /= SIZE_OF_INT16
 		data := *(*[]int16)(unsafe.Pointer(&header))
 		out = make([]bool, len(data))
 		maskValue64, _ := strconv.ParseInt(mask.Value, 2, 16)
@@ -240,8 +240,8 @@ func ComputeMask(mask *utils.Mask, data []byte, rType string) (out []bool, err e
 			}
 		}
 	case "UInt16":
-		header.Len /= Sizeof_uint16
-		header.Cap /= Sizeof_uint16
+		header.Len /= SIZE_OF_UINT16
+		header.Cap /= SIZE_OF_UINT16
 		data := *(*[]uint16)(unsafe.Pointer(&header))
 		out = make([]bool, len(data))
 		maskValue64, _ := strconv.ParseUint(mask.Value, 2, 16)
@@ -290,13 +290,13 @@ func (enc *RasterMerger) Run() {
 
 	if len(canvasMap) == 2 && canvasMap["Nadir_Reflectance_Band1"].Type == "Int16" {
 		headerB1 := *(*reflect.SliceHeader)(unsafe.Pointer(&canvasMap["Nadir_Reflectance_Band1"].Data))
-		headerB1.Len /= Sizeof_int16
-		headerB1.Cap /= Sizeof_int16
+		headerB1.Len /= SIZE_OF_INT16
+		headerB1.Cap /= SIZE_OF_INT16
 		DataB1 := *(*[]int16)(unsafe.Pointer(&headerB1))
 
 		headerB2 := *(*reflect.SliceHeader)(unsafe.Pointer(&canvasMap["Nadir_Reflectance_Band2"].Data))
-		headerB2.Len /= Sizeof_int16
-		headerB2.Cap /= Sizeof_int16
+		headerB2.Len /= SIZE_OF_INT16
+		headerB2.Cap /= SIZE_OF_INT16
 		DataB2 := *(*[]int16)(unsafe.Pointer(&headerB2))
 
 		nodata := float32(canvasMap["Nadir_Reflectance_Band1"].NoData)
@@ -338,22 +338,22 @@ func (enc *RasterMerger) Run() {
 				Height: canvas.Height, Width: canvas.Width, OffX: canvas.OffX, OffY: canvas.OffY,
 				NameSpace: canvas.NameSpace}
 		case "UInt16":
-			headr.Len /= Sizeof_uint16
-			headr.Cap /= Sizeof_uint16
+			headr.Len /= SIZE_OF_UINT16
+			headr.Cap /= SIZE_OF_UINT16
 			data := *(*[]uint16)(unsafe.Pointer(&headr))
 			enc.Out <- &UInt16Raster{ConfigPayLoad: canvas.ConfigPayLoad, NoData: canvas.NoData, Data: data,
 				Height: canvas.Height, Width: canvas.Width, OffX: canvas.OffX, OffY: canvas.OffY,
 				NameSpace: canvas.NameSpace}
 		case "Int16":
-			headr.Len /= Sizeof_int16
-			headr.Cap /= Sizeof_int16
+			headr.Len /= SIZE_OF_INT16
+			headr.Cap /= SIZE_OF_INT16
 			data := *(*[]int16)(unsafe.Pointer(&headr))
 			enc.Out <- &Int16Raster{ConfigPayLoad: canvas.ConfigPayLoad, NoData: canvas.NoData, Data: data,
 				Height: canvas.Height, Width: canvas.Width, OffX: canvas.OffX, OffY: canvas.OffY,
 				NameSpace: canvas.NameSpace}
 		case "Float32":
-			headr.Len /= Sizeof_float32
-			headr.Cap /= Sizeof_float32
+			headr.Len /= SIZE_OF_FLOAT32
+			headr.Cap /= SIZE_OF_FLOAT32
 			data := *(*[]float32)(unsafe.Pointer(&headr))
 			enc.Out <- &Float32Raster{ConfigPayLoad: canvas.ConfigPayLoad, NoData: canvas.NoData, Data: data,
 				Height: canvas.Height, Width: canvas.Width, OffX: canvas.OffX, OffY: canvas.OffY,
