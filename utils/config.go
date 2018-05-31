@@ -35,7 +35,7 @@ type CacheLevel struct {
 }
 
 type Mask struct {
-	Id    string `json:"id"`
+	ID    string `json:"id"`
 	Value string `json:"value"`
 }
 
