@@ -37,7 +37,7 @@ import (
 
 // Global variable to hold the values specified
 // on the config.json document.
-var config *utils.Config
+var configMap map[string]*utils.Config
 
 var (
 	port = flag.Int("p", 8080, "Server listening port.")
@@ -61,7 +61,6 @@ func init() {
 	Info = log.New(os.Stdout, "OWS: ", log.Ldate|log.Ltime|log.Lshortfile)
 
 	filePaths := []string{
-		utils.EtcDir + "/config.json",
 		utils.DataDir + "/templates/WMS_GetCapabilities.tpl",
 		utils.DataDir + "/templates/WMS_DescribeLayer.tpl",
 		utils.DataDir + "/templates/WMS_ServiceException.tpl",
@@ -75,13 +74,14 @@ func init() {
 		}
 	}
 
-	config = &utils.Config{}
-	err := config.LoadConfigFile(utils.EtcDir + "/config.json")
+	confMap, err := utils.LoadAllConfigFiles(utils.EtcDir)
 	if err != nil {
-		Error.Printf("%v\n", err)
+		Error.Printf("Error in loading config files: %v\n", err)
 		panic(err)
 	}
-	config.Watch(Info, Error)
+	configMap = confMap
+
+	utils.WatchConfig(Info, Error, &configMap)
 
 	reWMSMap = utils.CompileWMSRegexMap()
 	reWCSMap = utils.CompileWCSRegexMap()
@@ -217,7 +217,7 @@ func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r
 
 		ctx, ctxCancel := context.WithCancel(ctx)
 		errChan := make(chan error)
-		tp := proc.InitTilePipeline(ctx, config.ServiceConfig.MASAddress, LoadBalance(config.ServiceConfig.WorkerNodes), errChan)
+		tp := proc.InitTilePipeline(ctx, conf.ServiceConfig.MASAddress, LoadBalance(conf.ServiceConfig.WorkerNodes), errChan)
 		select {
 		case res := <-tp.Process(geoReq):
 			scaleParams := utils.ScaleParams{Offset: geoReq.ScaleParams.Offset,
@@ -402,7 +402,7 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 		ctx, ctxCancel := context.WithCancel(ctx)
 		errChan := make(chan error)
 		//start := time.Now()
-		tp := proc.InitTilePipeline(ctx, config.ServiceConfig.MASAddress, LoadBalance(config.ServiceConfig.WorkerNodes), errChan)
+		tp := proc.InitTilePipeline(ctx, conf.ServiceConfig.MASAddress, LoadBalance(conf.ServiceConfig.WorkerNodes), errChan)
 		//log.Println("Pipeline Init Time", time.Since(start))
 
 		select {
@@ -539,9 +539,9 @@ func serveWPS(ctx context.Context, params utils.WPSParams, conf *utils.Config, r
 		//start := time.Now()
 		
 		suffix := fmt.Sprintf("_%04d", rand.Intn(1000))
-		dp1 := proc.InitDrillPipeline(ctx, config.ServiceConfig.MASAddress, config.ServiceConfig.WorkerNodes, errChan)
+		dp1 := proc.InitDrillPipeline(ctx, conf.ServiceConfig.MASAddress, conf.ServiceConfig.WorkerNodes, errChan)
 		proc1 := dp1.Process(geoReq1, suffix)
-		dp2 := proc.InitDrillPipeline(ctx, config.ServiceConfig.MASAddress, config.ServiceConfig.WorkerNodes, errChan)
+		dp2 := proc.InitDrillPipeline(ctx, conf.ServiceConfig.MASAddress, conf.ServiceConfig.WorkerNodes, errChan)
 		proc2 := dp2.Process(geoReq2, suffix)
 
 		for _, proc := range []chan string{proc1, proc2} {
@@ -627,6 +627,19 @@ func generalHandler(conf *utils.Config, w http.ResponseWriter, r *http.Request) 
 }
 
 func owsHandler(w http.ResponseWriter, r *http.Request) {
+	namespace := "."
+	if len(r.URL.Path) > len("/ows/") {
+		namespace = r.URL.Path[len("/ows/"):]
+	}
+	if len(namespace) == 0 {
+		namespace = "."
+	}
+	config, ok := configMap[namespace]
+	if !ok {
+		Info.Printf("Invalid dataset namespace: %v for url: %v\n", namespace, r.URL.Path)
+		http.Error(w, fmt.Sprintf("Invalid dataset namespace: %v\n", namespace), 404)
+		return
+	}
 	generalHandler(config, w, r)
 }
 
@@ -635,7 +648,7 @@ func main() {
 
 	fs := http.FileServer(http.Dir("static"))
 	http.Handle("/", fs)
-	http.HandleFunc("/ows", owsHandler)
+	http.HandleFunc("/ows/", owsHandler)
 	Info.Printf("GSKY is ready")
 	http.ListenAndServe(fmt.Sprintf("0.0.0.0:%d", *port), nil)
 }
