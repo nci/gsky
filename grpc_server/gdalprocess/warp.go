@@ -42,9 +42,9 @@ import (
 	"reflect"
 )
 
-const SIZE_OF_UINT16 = 2
-const SIZE_OF_INT16 = 2
-const SIZE_OF_FLOAT32 = 4
+const SizeofUint16 = 2
+const SizeofInt16 = 2
+const SizeofFloat32 = 4
 
 var GDALTypes = map[C.GDALDataType]string{0: "Unkown", 1: "Byte", 2: "UInt16", 3: "Int16",
 	4: "UInt32", 5: "Int32", 6: "Float32", 7: "Float64",
@@ -69,8 +69,8 @@ func initNoDataSlice(rType string, noDataValue float64, ssize int32) []uint8 {
 			out[i] = fill
 		}
 		headr := *(*reflect.SliceHeader)(unsafe.Pointer(&out))
-		headr.Len *= SIZE_OF_INT16
-		headr.Cap *= SIZE_OF_INT16
+		headr.Len *= SizeofInt16
+		headr.Cap *= SizeofInt16
 		return *(*[]uint8)(unsafe.Pointer(&headr))
 	case "UInt16":
 		out := make([]uint16, size)
@@ -79,8 +79,8 @@ func initNoDataSlice(rType string, noDataValue float64, ssize int32) []uint8 {
 			out[i] = fill
 		}
 		headr := *(*reflect.SliceHeader)(unsafe.Pointer(&out))
-		headr.Len *= SIZE_OF_UINT16
-		headr.Cap *= SIZE_OF_UINT16
+		headr.Len *= SizeofUint16
+		headr.Cap *= SizeofUint16
 		return *(*[]uint8)(unsafe.Pointer(&headr))
 	case "Float32":
 		out := make([]float32, size)
@@ -89,8 +89,8 @@ func initNoDataSlice(rType string, noDataValue float64, ssize int32) []uint8 {
 			out[i] = fill
 		}
 		headr := *(*reflect.SliceHeader)(unsafe.Pointer(&out))
-		headr.Len *= SIZE_OF_FLOAT32
-		headr.Cap *= SIZE_OF_FLOAT32
+		headr.Len *= SizeofFloat32
+		headr.Cap *= SizeofFloat32
 		return *(*[]uint8)(unsafe.Pointer(&headr))
 	default:
 		return []uint8{}
