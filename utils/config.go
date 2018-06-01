@@ -257,9 +257,8 @@ func LoadAllConfigFiles(rootDir string) (map[string]*Config, error) {
 	return configMap, err
 }
 
-// GetConfig marshall the config.json document
-// returning an instance of a Config variable
-// containing all the values
+// LoadConfigFile marshalls the config.json document returning an
+// instance of a Config variable containing all the values
 func (config *Config) LoadConfigFile(configFile string) error {
 	*config = Config{}
 	cfg, err := ioutil.ReadFile(configFile)
