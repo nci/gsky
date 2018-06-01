@@ -31,7 +31,7 @@ type WCSParams struct {
 // --- invalid code but filter most of the malformed
 // --- cases. Error free JSON deserialisation into types
 // --- also validates correct values.
-var WCSRegexpMap map[string]string = map[string]string{"service": `^WCS$`,
+var WCSRegexpMap = map[string]string{"service": `^WCS$`,
 	"request":  `^GetCapabilities$|^DescribeCoverage$|^GetCoverage$`,
 	"coverage": `^[A-Za-z.:0-9\s_-]+$`,
 	"crs":      `^(?i)(?:[A-Z]+):(?:[0-9]+)$`,
