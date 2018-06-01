@@ -116,10 +116,18 @@ func WMSParamsChecker(params map[string][]string, compREMap map[string]*regexp.R
 		}
 	}
 
+	if i, iOK := params["i"]; iOK {
+		params["x"] = i
+	}
+
 	if x, xOK := params["x"]; xOK {
 		if compREMap["x"].MatchString(x[0]) {
 			jsonFields = append(jsonFields, fmt.Sprintf(`"x":%s`, x[0]))
 		}
+	}
+
+	if j, jOK := params["j"]; jOK {
+		params["y"] = j
 	}
 
 	if y, yOK := params["y"]; yOK {
