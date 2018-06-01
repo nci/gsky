@@ -87,7 +87,8 @@ func init() {
 
 }
 
-// TODO This is a mocked version of the real load balancer sitting in front to the service
+// LoadBalance is a mocked version of the real load balancer sitting
+// in front to the service
 func LoadBalance(servers []string) string {
 	return servers[rand.Intn(len(servers))]
 }

@@ -269,7 +269,7 @@ func (enc *RasterMerger) Run() {
 		geoStamp := r.TimeStamp.UnixNano() + int64(h.Sum32())
 
 		// Raster namespace is identified as Mask
-		if r.Mask != nil && r.Mask.Id == r.NameSpace {
+		if r.Mask != nil && r.Mask.ID == r.NameSpace {
 			mask, err := ComputeMask(r.Mask, r.Data, r.Type)
 			if err != nil {
 				enc.Error <- err

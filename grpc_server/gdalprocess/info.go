@@ -39,7 +39,7 @@ import (
 	google_protobuf "github.com/golang/protobuf/ptypes/timestamp"
 )
 
-var parserStrings map[string]string = map[string]string{"landsat": `LC(?P<mission>\d)(?P<path>\d\d\d)(?P<row>\d\d\d)(?P<year>\d\d\d\d)(?P<julian_day>\d\d\d)(?P<processing_level>[a-zA-Z0-9]+)_(?P<band>[a-zA-Z0-9]+)`,
+var parserStrings = map[string]string{"landsat": `LC(?P<mission>\d)(?P<path>\d\d\d)(?P<row>\d\d\d)(?P<year>\d\d\d\d)(?P<julian_day>\d\d\d)(?P<processing_level>[a-zA-Z0-9]+)_(?P<band>[a-zA-Z0-9]+)`,
 	"modis43A4":     `^LHTC_(?P<year>\d\d\d\d)(?P<julian_day>\d\d\d).(?P<horizontal>h\d\d)(?P<vertical>v\d\d).(?P<resolution>\d\d\d).[0-9]+`,
 	"lhtc":          `^COMPOSITE_(?P<namespace>LOW|HIGH).+_PER_20.nc$`,
 	"modis1":        `^(?P<product>MCD\d\d[A-Z]\d).A(?P<year>\d\d\d\d)(?P<julian_day>\d\d\d).(?P<horizontal>h\d\d)(?P<vertical>v\d\d).(?P<resolution>\d\d\d).[0-9]+`,
@@ -58,21 +58,14 @@ var parserStrings map[string]string = map[string]string{"landsat": `LC(?P<missio
 
 //var parsers map[string]*regexp.Regexp = map[string]*regexp.Regexp{}
 
-var dateFormats []string = []string{"2006-01-02 15:04:05.0", "2006-1-2 15:4:5"}
-var durationUnits map[string]time.Duration = map[string]time.Duration{"seconds": time.Second, "hours": time.Hour, "days": time.Hour * 24}
-var CWGS84WKT *C.char = C.CString(`GEOGCS["WGS 84",DATUM["WGS_1984",SPHEROID["WGS 84",6378137,298.257223563,AUTHORITY["EPSG","7030"]],TOWGS84[0,0,0,0,0,0,0],AUTHORITY["EPSG","6326"]],PRIMEM["Greenwich",0,AUTHORITY["EPSG","8901"]],UNIT["degree",0.0174532925199433,AUTHORITY["EPSG","9108"]],AUTHORITY["EPSG","4326"]]","proj4":"+proj=longlat +ellps=WGS84 +towgs84=0,0,0,0,0,0,0 +no_defs `)
-var CsubDS *C.char = C.CString("SUBDATASETS")
-var CtimeUnits *C.char = C.CString("time#units")
-var CncDimTimeValues *C.char = C.CString("NETCDF_DIM_time_VALUES")
-var CncDimLevelValues *C.char = C.CString("NETCDF_DIM_lev_VALUES")
+var dateFormats = []string{"2006-01-02 15:04:05.0", "2006-1-2 15:4:5"}
+var durationUnits = map[string]time.Duration{"seconds": time.Second, "hours": time.Hour, "days": time.Hour * 24}
+var CWGS84WKT = C.CString(`GEOGCS["WGS 84",DATUM["WGS_1984",SPHEROID["WGS 84",6378137,298.257223563,AUTHORITY["EPSG","7030"]],TOWGS84[0,0,0,0,0,0,0],AUTHORITY["EPSG","6326"]],PRIMEM["Greenwich",0,AUTHORITY["EPSG","8901"]],UNIT["degree",0.0174532925199433,AUTHORITY["EPSG","9108"]],AUTHORITY["EPSG","4326"]]","proj4":"+proj=longlat +ellps=WGS84 +towgs84=0,0,0,0,0,0,0 +no_defs `)
+var CsubDS = C.CString("SUBDATASETS")
+var CtimeUnits = C.CString("time#units")
+var CncDimTimeValues = C.CString("NETCDF_DIM_time_VALUES")
+var CncDimLevelValues = C.CString("NETCDF_DIM_lev_VALUES")
 
-/*
-func init() {
-	for key, value := range parserStrings {
-		parsers[key] = regexp.MustCompile(value)
-	}
-}
-*/
 
 func ExtractGDALInfo(in *pb.GeoRPCGranule) *pb.Result {
 	cPath := C.CString(in.Path)
@@ -215,7 +208,7 @@ func getGeometryWKT(geot []float64, xSize, ySize int) string {
 }
 
 func parseName(filePath string) (map[string]string, time.Time) {
-	var parsers map[string]*regexp.Regexp = map[string]*regexp.Regexp{}
+	var parsers = map[string]*regexp.Regexp{}
 	for key, value := range parserStrings {
 		parsers[key] = regexp.MustCompile(value)
 	}
