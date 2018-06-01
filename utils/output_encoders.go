@@ -198,7 +198,7 @@ func ValidateRasterSlice(rs []Raster) (int, int, string, error) {
 	return width, height, rasterType, err
 }
 
-var GDALTypes map[string]C.GDALDataType = map[string]C.GDALDataType{"Unkown": 0, "Byte": 1, "UInt16": 2, "Int16": 3,
+var GDALTypes = map[string]C.GDALDataType{"Unkown": 0, "Byte": 1, "UInt16": 2, "Int16": 3,
 	"UInt32": 4, "Int32": 5, "Float32": 6, "Float64": 7,
 	"CInt16": 8, "CInt32": 9, "CFloat32": 10, "CFloat64": 11,
 	"TypeCount": 12}
@@ -229,7 +229,7 @@ func EncodeGdal(format string, rs []Raster, geot []float64, epsg int) ([]byte, e
 
 	C.GDALAllRegister()
 	
-	var driverNameC *C.char = C.CString(driverName)
+	var driverNameC = C.CString(driverName)
 	hDriver := C.GDALGetDriverByName(driverNameC)
 
 	hDstDS := C.GDALCreate(hDriver, C.CString(tempFile), C.int(w), C.int(h), C.int(len(rs)), GDALTypes[rType], nil)
