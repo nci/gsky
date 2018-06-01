@@ -76,9 +76,8 @@
 			<Title>GSKY Web Map Service</Title>
 			<Abstract>A compliant implementation of WMS</Abstract>
 			<!--All supported EPSG projections:-->
-			<CRS>EPSG:WGS84(DD)</CRS>
 			<CRS>EPSG:3857</CRS>
-			<CRS>CRS:84</CRS>
+			<CRS>EPSG:4326</CRS>
 			<EX_GeographicBoundingBox>
 				<westBoundLongitude>-180.0</westBoundLongitude>
 				<eastBoundLongitude>180.0</eastBoundLongitude>
