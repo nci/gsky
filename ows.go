@@ -87,7 +87,8 @@ func init() {
 
 }
 
-// TODO This is a mocked version of the real load balancer sitting in front to the service
+// LoadBalance is a mocked version of the real load balancer sitting
+// in front to the service
 func LoadBalance(servers []string) string {
 	return servers[rand.Intn(len(servers))]
 }
@@ -203,21 +204,18 @@ func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r
 
 		ctx, ctxCancel := context.WithCancel(ctx)
 		errChan := make(chan error)
-		//start := time.Now()
 		tp := proc.InitTilePipeline(ctx, config.ServiceConfig.MASAddress, LoadBalance(config.ServiceConfig.WorkerNodes), errChan)
-		//log.Println("Pipeline Init Time", time.Since(start))
 		select {
 		case res := <-tp.Process(geoReq):
 			w.Write(res)
-			//log.Println("Pipeline Total Time", time.Since(start))
 		case err := <-errChan:
-			ctxCancel()
 			Info.Printf("Error in the pipeline: %v\n", err)
 			http.Error(w, err.Error(), 500)
 		case <-ctx.Done():
 			Error.Printf("Context cancelled with message: %v\n", ctx.Err())
 			http.Error(w, ctx.Err().Error(), 500)
 		}
+		ctxCancel()
 		return
 
 	case "GetLegendGraphic":
@@ -343,10 +341,12 @@ func serveWPS(ctx context.Context, params utils.WPSParams, conf *utils.Config, r
 				return
 			case <-ctx.Done():
 				Error.Printf("Context cancelled with message: %v\n", ctx.Err())
+				ctxCancel()
 				http.Error(w, ctx.Err().Error(), 500)
 				return
 			}
 		}
+		ctxCancel()
 
 		err := utils.ExecuteWriteTemplateFile(w, result,
 			utils.DataDir+"/templates/WPS_Execute.tpl")

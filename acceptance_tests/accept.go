@@ -13,11 +13,11 @@ import (
 	"time"
 )
 
-var wms_caps string = "http://%s/ows?service=WMS&version=1.3.0&request=GetCapabilities"
-var wps_caps string = "http://%s/ows?service=WPS&request=GetCapabilities&version=1.0.0"
-var wps_descr string = "http://%s/ows?service=WPS&request=DescribeProcess&version=1.0.0&Identifier=geometryDrill"
-var passed string = "Passed"
-var failed string = "Failed"
+var wmsCaps = "http://%s/ows?service=WMS&version=1.3.0&request=GetCapabilities"
+var wpsCaps = "http://%s/ows?service=WPS&request=GetCapabilities&version=1.0.0"
+var wpsDescr = "http://%s/ows?service=WPS&request=DescribeProcess&version=1.0.0&Identifier=geometryDrill"
+var passed = "Passed"
+var failed = "Failed"
 
 func Capabilities(host, req string) bool {
 	resp, err := http.Get(fmt.Sprintf(req, host))
@@ -147,7 +147,7 @@ func main() {
 	switch *suite {
 	case "wms":
 		fmt.Printf("Testing WMS GetCapabilities: ")
-		if !Capabilities(*host, wms_caps) {
+		if !Capabilities(*host, wmsCaps) {
 			fmt.Println(failed)
 			os.Exit(1)
 		}
@@ -161,7 +161,7 @@ func main() {
 		fmt.Println(passed, t)
 	case "usgs":
 		fmt.Printf("Testing WMS GetCapabilities: ")
-		if !Capabilities(*host, wms_caps) {
+		if !Capabilities(*host, wmsCaps) {
 			fmt.Println(failed)
 			os.Exit(1)
 		}
@@ -175,14 +175,14 @@ func main() {
 		fmt.Println(passed, t)
 	case "wps":
 		fmt.Printf("Testing WPS GetCapabilities: ")
-		if !Capabilities(*host, wps_caps) {
+		if !Capabilities(*host, wpsCaps) {
 			fmt.Println("\x1b[31;1mFailed\x1b[0m")
 			os.Exit(1)
 		}
 		fmt.Println(passed)
 
 		fmt.Printf("Testing WPS DescrProcess: ")
-		if !Capabilities(*host, wps_descr) {
+		if !Capabilities(*host, wpsDescr) {
 			fmt.Println(failed)
 			os.Exit(1)
 		}
