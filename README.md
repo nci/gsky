@@ -25,6 +25,8 @@ Suggestions, enhancement requests, bug reports and patches to GSKY are
 welcome via this GitHub page. Please submit patches as a GitHub pull
 request. Authors retain copyright over their contributions.
 
+[![Build Status](https://travis-ci.org/nci/gsky.svg?branch=master)](https://travis-ci.org/nci/gsky)
+
 Citing GSKY in publications
 ---------------------------
 
