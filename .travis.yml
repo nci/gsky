@@ -12,6 +12,8 @@ addons:
 before_script:
   - psql -U postgres -c "create extension postgis"
   - cd gsky/mas/gdb && psql -f schema.sql -U postgres
-    
+
+install: true
+
 script:
   - go tool vet .
