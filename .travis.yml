@@ -11,7 +11,7 @@ addons:
 
 before_script:
   - psql -U postgres -c "create extension postgis"
-  - cd gsky/mas/gdb && psql -f schema.sql -U postgres
+  - cd $TRAVIS_REPO_SLUG/mas/gdb && psql -f schema.sql -U postgres
 
 install: true
 
