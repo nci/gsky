@@ -15,5 +15,5 @@ before_script:
 install: true
 
 script:
-  - cd mas/gdb && psql -f schema.sql -U postgres
+  - cd $TRAVIS_BUILD_DIR/mas/gdb && psql -f schema.sql -U postgres
   - go tool vet .
