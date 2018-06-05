@@ -152,9 +152,7 @@ func WMSParamsChecker(params map[string][]string, compREMap map[string]*regexp.R
 		if compREMap["time"].MatchString(time[0]) {
 			jsonFields = append(jsonFields, fmt.Sprintf(`"time":"%s"`, time[0]))
 		}
-	} /*else {
-		jsonFields = append(jsonFields, fmt.Sprintf(`"time":"%s"`, ISOZeroTime))
-	}*/
+	}
 
 	if layers, layersOK := params["layers"]; layersOK {
 		if !strings.Contains(layers[0], "\"") {
@@ -188,17 +186,6 @@ func GetCoordinates(params WMSParams) (float64, float64, error) {
 
 	return params.BBox[0] + (params.BBox[2]-params.BBox[0])*float64(*params.X)/float64(*params.Width), params.BBox[3] + (params.BBox[1]-params.BBox[3])*float64(*params.Y)/float64(*params.Height), nil
 }
-
-/*
-// GetProduct returns the name of a layer
-// specified on the request parameters.
-func GetProduct(params WMSParams, config Config) (string, error) {
-	if params.Layers != nil {
-		return params.Layers[0], nil
-	}
-	return "", fmt.Errorf("Config struct contains no product field")
-}
-*/
 
 // GetLayerIndex returns the index of the
 // specified layer inside the Config.Layers

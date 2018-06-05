@@ -264,19 +264,6 @@ func parseTime(nameFields map[string]string) time.Time {
 	return time.Time{}
 }
 
-/*
-func goStrings(argc C.int, argv **C.char) []string {
-
-	length := int(argc)
-	tmpslice := (*[1 << 30]*C.char)(unsafe.Pointer(argv))[:length:length]
-	gostrings := make([]string, length)
-	for i, s := range tmpslice {
-		gostrings[i] = C.GoString(s)
-	}
-	return gostrings
-}
-*/
-
 func getDate(inDate string) (time.Time, error) {
 	for _, dateFormat := range dateFormats {
 		if t, err := time.Parse(dateFormat, inDate); err == nil {
