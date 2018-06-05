@@ -240,27 +240,27 @@ func ComputeMask(mask *utils.Mask, data []byte, rType string) (out []bool, err e
 				}
 			}
 		} else {
-      for i, val := range data {
-        for j := 0; j < len(mask.BitTests); j += 2 {
-          maskFilter64, _ := strconv.ParseInt(mask.BitTests[j], 2, 8)
-          maskFilter := uint8(maskFilter64)
+			for i, val := range data {
+				for j := 0; j < len(mask.BitTests); j += 2 {
+					maskFilter64, _ := strconv.ParseInt(mask.BitTests[j], 2, 8)
+					maskFilter := uint8(maskFilter64)
 
-          maskValue64, _ := strconv.ParseInt(mask.BitTests[j+1], 2, 8)
-          maskValue := uint8(maskValue64)
+					maskValue64, _ := strconv.ParseInt(mask.BitTests[j+1], 2, 8)
+					maskValue := uint8(maskValue64)
 
-          if (val & maskFilter) == maskValue {
-            out[i] = true 
-            break
-          }
-        }
-      }
-    }
+					if (val & maskFilter) == maskValue {
+						out[i] = true
+						break
+					}
+				}
+			}
+		}
 	case "Int16":
 		header.Len /= SIZE_OF_INT16
 		header.Cap /= SIZE_OF_INT16
 		data := *(*[]int16)(unsafe.Pointer(&header))
 		out = make([]bool, len(data))
-    if len(mask.Value) > 0 {
+		if len(mask.Value) > 0 {
 			maskValue64, _ := strconv.ParseInt(mask.Value, 2, 16)
 			maskValue := int16(maskValue64)
 			for i, val := range data {
@@ -269,21 +269,21 @@ func ComputeMask(mask *utils.Mask, data []byte, rType string) (out []bool, err e
 				}
 			}
 		} else {
-      for i, val := range data {
-        for j := 0; j < len(mask.BitTests); j += 2 {
-          maskFilter64, _ := strconv.ParseInt(mask.BitTests[j], 2, 16)
-          maskFilter := int16(maskFilter64)
+			for i, val := range data {
+				for j := 0; j < len(mask.BitTests); j += 2 {
+					maskFilter64, _ := strconv.ParseInt(mask.BitTests[j], 2, 16)
+					maskFilter := int16(maskFilter64)
 
-          maskValue64, _ := strconv.ParseInt(mask.BitTests[j+1], 2, 16)
-          maskValue := int16(maskValue64)
+					maskValue64, _ := strconv.ParseInt(mask.BitTests[j+1], 2, 16)
+					maskValue := int16(maskValue64)
 
-          if (val & maskFilter) == maskValue {
-            out[i] = true 
-            break
-          }
-        }
-      }
-    }
+					if (val & maskFilter) == maskValue {
+						out[i] = true
+						break
+					}
+				}
+			}
+		}
 	case "UInt16":
 		header.Len /= SIZE_OF_UINT16
 		header.Cap /= SIZE_OF_UINT16
@@ -298,21 +298,21 @@ func ComputeMask(mask *utils.Mask, data []byte, rType string) (out []bool, err e
 				}
 			}
 		} else {
-      for i, val := range data {
-        for j := 0; j < len(mask.BitTests); j += 2 {
-          maskFilter64, _ := strconv.ParseInt(mask.BitTests[j], 2, 16)
-          maskFilter := uint16(maskFilter64)
+			for i, val := range data {
+				for j := 0; j < len(mask.BitTests); j += 2 {
+					maskFilter64, _ := strconv.ParseInt(mask.BitTests[j], 2, 16)
+					maskFilter := uint16(maskFilter64)
 
-          maskValue64, _ := strconv.ParseInt(mask.BitTests[j+1], 2, 16)
-          maskValue := uint16(maskValue64)
+					maskValue64, _ := strconv.ParseInt(mask.BitTests[j+1], 2, 16)
+					maskValue := uint16(maskValue64)
 
-          if (val & maskFilter) == maskValue {
-            out[i] = true 
-            break
-          }
-        }
-      }
-    }
+					if (val & maskFilter) == maskValue {
+						out[i] = true
+						break
+					}
+				}
+			}
+		}
 	default:
 		err = fmt.Errorf("Type %s cannot contain a bit mask", rType)
 
