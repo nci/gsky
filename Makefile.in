@@ -7,10 +7,11 @@ sysconfdir = @sysconfdir@
 srcdir = @srcdir@
 VPATH = @srcdir@
 
+PKGROOT=github.com/nci/gsky
 CGO_CFLAGS="@CGO_CFLAGS@"
 CGO_LDFLAGS=-lgdal
-LDFLAGS="-X=_$(srcdir)/utils.LibexecDir=${libexecdir} -X=_$(srcdir)/grpc_server/gdalservice.LibexecDir=${libexecdir} \
-	-X=_$(srcdir)/utils.EtcDir=$(sysconfdir) -X=_$(srcdir)/utils.DataDir=${datarootdir}/gsky"
+LDFLAGS="-X=$(PKGROOT)/utils.LibexecDir=${libexecdir} -X=$(PKGROOT)/grpc_server/gdalservice.LibexecDir=${libexecdir} \
+	-X=$(PKGROOT)/utils.EtcDir=$(sysconfdir) -X=$(PKGROOT)/utils.DataDir=${datarootdir}/gsky"
 GOBUILD = CGO_CFLAGS=$(CGO_CFLAGS) CGO_LDFLAGS=$(CGO_LDFLAGS) go build -ldflags=$(LDFLAGS)
 GOGET = CGO_CFLAGS=$(CGO_CFLAGS) go get
 
