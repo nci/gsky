@@ -51,3 +51,7 @@ install:
 
 clean:
 	-rm -f accept gsky-crawl gsky-gdal-process gsky-ows gsky-rpc masapi concurrent
+
+distclean: clean
+	-rm -f Makefile config.log config.status
+	-rm -r src
