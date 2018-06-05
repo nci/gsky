@@ -51,11 +51,6 @@ func (dm *DrillMerger) Run(suffix string) {
 		dates = append(dates, ts)
 	}
 	sort.Strings(dates)
-	/*nameMap := map[string]string{
-	  "": "Prec",
-	  "phot_veg": "PV",
-	  "nphot_veg": "NPV",
-	  "bare_soil": "BS",}*/
 	out := `<wps:Output>`
 
 	switch len(namespaces) {

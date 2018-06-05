@@ -41,7 +41,6 @@ var configMap map[string]*utils.Config
 
 var (
 	port = flag.Int("p", 8080, "Server listening port.")
-	//conc = flag.Int("c", 100, "Maximum number of concurrent requests.")
 )
 
 var reWMSMap map[string]*regexp.Regexp
@@ -313,7 +312,6 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 		if err != nil {
 			Info.Printf("Error in the pipeline: %v\n", err)
 			http.Error(w, fmt.Sprintf("Malformed WMS DescribeCoverage request: %v", err), 400)
-			//utils.ExecuteWriteTemplateFile(w, params.Coverages[0], "./templates/WMS_ServiceException.tpl")
 			return
 		}
 
@@ -331,7 +329,6 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 		idx, err := utils.GetCoverageIndex(params, conf)
 		if err != nil {
 			http.Error(w, fmt.Sprintf("%v: %s", err, reqURL), 400)
-			//utils.ExecuteWriteTemplateFile(w, params.Coverages[0], "./templates/WMS_ServiceException.tpl")
 			return
 		}
 
@@ -402,9 +399,7 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 		ctx, ctxCancel := context.WithCancel(ctx)
 		defer ctxCancel()
 		errChan := make(chan error)
-		//start := time.Now()
 		tp := proc.InitTilePipeline(ctx, conf.ServiceConfig.MASAddress, LoadBalance(conf.ServiceConfig.WorkerNodes), errChan)
-		//log.Println("Pipeline Init Time", time.Since(start))
 
 		select {
 		case res := <-tp.Process(geoReq):
@@ -436,7 +431,6 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 			w.Header().Set("Content-Length", fmt.Sprintf("%d", len(out)))
 
 			w.Write(out)
-			//log.Println("Pipeline Total Time", time.Since(start))
 		case err := <-errChan:
 			Info.Printf("Error in the pipeline: %v\n", err)
 			http.Error(w, err.Error(), 500)
@@ -537,7 +531,6 @@ func serveWPS(ctx context.Context, params utils.WPSParams, conf *utils.Config, r
 		ctx, ctxCancel := context.WithCancel(ctx)
 		defer ctxCancel()
 		errChan := make(chan error)
-		//start := time.Now()
 		
 		suffix := fmt.Sprintf("_%04d", rand.Intn(1000))
 		dp1 := proc.InitDrillPipeline(ctx, conf.ServiceConfig.MASAddress, conf.ServiceConfig.WorkerNodes, errChan)

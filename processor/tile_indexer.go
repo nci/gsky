@@ -49,7 +49,6 @@ func BBox2WKT(bbox []float64) string {
 
 func (p *TileIndexer) Run() {
 	defer close(p.Out)
-	//start := time.Now()
 	for geoReq := range p.In {
 		select {
 		case <-p.Context.Done():
@@ -101,26 +100,7 @@ func (p *TileIndexer) Run() {
 			wg.Wait()
 		}
 	}
-	//log.Println("Indexer Time", time.Since(start))
 }
-
-/*
-func getCachedFiles(caches []utils.CacheLevel, xRes float64, gdalFile string) string {
-	for _, cacheLevel := range caches {
-		if cacheLevel.MinRes <= xRes && xRes < cacheLevel.MaxRes {
-			parts := strings.Split(gdalFile, ":")
-
-			switch len(parts) {
-			case 1:
-				return filepath.Join(cacheLevel.Path, filepath.Base(parts[0]))
-			case 3:
-				return fmt.Sprintf(`%s:"%s":%s`, parts[0], filepath.Join(cacheLevel.Path, strings.Trim(filepath.Base(parts[1]), `"`)), parts[2])
-			}
-		}
-	}
-	return gdalFile
-}
-*/
 
 func URLIndexGet(ctx context.Context, url, nameSpace string, geoReq *GeoTileRequest, errChan chan error, out chan *GeoTileGranule, wg *sync.WaitGroup) {
 	defer wg.Done()
@@ -156,7 +136,6 @@ func URLIndexGet(ctx context.Context, url, nameSpace string, geoReq *GeoTileRequ
 					out <- &GeoTileGranule{ConfigPayLoad: ConfigPayLoad{NameSpaces: geoReq.NameSpaces, Mask: geoReq.Mask, ScaleParams: geoReq.ScaleParams, Palette: geoReq.Palette}, Path: ds.DSName, NameSpace: nameSpace, RasterType: ds.ArrayType, TimeStamps: ds.TimeStamps, TimeStamp: t, Polygon: ds.Polygon, BBox: geoReq.BBox, Height: geoReq.Height, Width: geoReq.Width, OffX: geoReq.OffX, OffY: geoReq.OffY, CRS: geoReq.CRS}
 				}
 			}
-			//cacheName := getCachedFiles(geoReq.CacheLevels, xRes, ds.DSName)
 		}
 	}
 }
