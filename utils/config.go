@@ -41,6 +41,7 @@ type Mask struct {
 	Value string `json:"value"`
 	DataSource string `json:"data_source"`
 	Inclusive bool `json:"inclusive"`
+	BitTests []string `json:"bit_tests"`
 }
 
 type Palette struct {

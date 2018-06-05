@@ -215,43 +215,104 @@ func ProcessRasterStack(rasterStack map[int64][]*FlexRaster, maskMap map[int64][
 }
 
 func ComputeMask(mask *utils.Mask, data []byte, rType string) (out []bool, err error) {
+	if len(mask.Value) == 0 {
+		if len(mask.BitTests) == 0 {
+			err = fmt.Errorf("Please specify either mask.Value or mask.BitTests")
+			return
+		} else if len(mask.BitTests) % 2 != 0 {
+			err = fmt.Errorf("The entries in mask.BitTests must be in pairs")
+			return
+		}
+	}
+
 	header := *(*reflect.SliceHeader)(unsafe.Pointer(&data))
 
 	switch rType {
 	case "Byte":
 		data := *(*[]uint8)(unsafe.Pointer(&header))
 		out = make([]bool, len(data))
-		maskValue64, _ := strconv.ParseUint(mask.Value, 2, 8)
-		maskValue := uint8(maskValue64)
-		for i, val := range data {
-			if (val & maskValue) > 0 {
-				out[i] = true
+		if len(mask.Value) > 0 {
+			maskValue64, _ := strconv.ParseUint(mask.Value, 2, 8)
+			maskValue := uint8(maskValue64)
+			for i, val := range data {
+				if (val & maskValue) > 0 {
+					out[i] = true
+				}
 			}
-		}
+		} else {
+      for i, val := range data {
+        for j := 0; j < len(mask.BitTests); j += 2 {
+          maskFilter64, _ := strconv.ParseInt(mask.BitTests[j], 2, 8)
+          maskFilter := uint8(maskFilter64)
+
+          maskValue64, _ := strconv.ParseInt(mask.BitTests[j+1], 2, 8)
+          maskValue := uint8(maskValue64)
+
+          if (val & maskFilter) == maskValue {
+            out[i] = true 
+            break
+          }
+        }
+      }
+    }
 	case "Int16":
 		header.Len /= SIZE_OF_INT16
 		header.Cap /= SIZE_OF_INT16
 		data := *(*[]int16)(unsafe.Pointer(&header))
 		out = make([]bool, len(data))
-		maskValue64, _ := strconv.ParseInt(mask.Value, 2, 16)
-		maskValue := int16(maskValue64)
-		for i, val := range data {
-			if (val & maskValue) > 0 {
-				out[i] = true
+    if len(mask.Value) > 0 {
+			maskValue64, _ := strconv.ParseInt(mask.Value, 2, 16)
+			maskValue := int16(maskValue64)
+			for i, val := range data {
+				if (val & maskValue) > 0 {
+					out[i] = true
+				}
 			}
-		}
+		} else {
+      for i, val := range data {
+        for j := 0; j < len(mask.BitTests); j += 2 {
+          maskFilter64, _ := strconv.ParseInt(mask.BitTests[j], 2, 16)
+          maskFilter := int16(maskFilter64)
+
+          maskValue64, _ := strconv.ParseInt(mask.BitTests[j+1], 2, 16)
+          maskValue := int16(maskValue64)
+
+          if (val & maskFilter) == maskValue {
+            out[i] = true 
+            break
+          }
+        }
+      }
+    }
 	case "UInt16":
 		header.Len /= SIZE_OF_UINT16
 		header.Cap /= SIZE_OF_UINT16
 		data := *(*[]uint16)(unsafe.Pointer(&header))
 		out = make([]bool, len(data))
-		maskValue64, _ := strconv.ParseUint(mask.Value, 2, 16)
-		maskValue := uint16(maskValue64)
-		for i, val := range data {
-			if (val & maskValue) > 0 {
-				out[i] = true
+		if len(mask.Value) > 0 {
+			maskValue64, _ := strconv.ParseUint(mask.Value, 2, 16)
+			maskValue := uint16(maskValue64)
+			for i, val := range data {
+				if (val & maskValue) > 0 {
+					out[i] = true
+				}
 			}
-		}
+		} else {
+      for i, val := range data {
+        for j := 0; j < len(mask.BitTests); j += 2 {
+          maskFilter64, _ := strconv.ParseInt(mask.BitTests[j], 2, 16)
+          maskFilter := uint16(maskFilter64)
+
+          maskValue64, _ := strconv.ParseInt(mask.BitTests[j+1], 2, 16)
+          maskValue := uint16(maskValue64)
+
+          if (val & maskFilter) == maskValue {
+            out[i] = true 
+            break
+          }
+        }
+      }
+    }
 	default:
 		err = fmt.Errorf("Type %s cannot contain a bit mask", rType)
 
