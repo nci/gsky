@@ -41,8 +41,6 @@
 			</GetCapabilities>
 			<GetMap>
 				<Format>image/png</Format>
-				<Format>image/gif</Format>
-				<Format>image/jpeg</Format>
 				<DCPType>
 				  <HTTP>
 				    <Get>
@@ -78,9 +76,8 @@
 			<Title>GSKY Web Map Service</Title>
 			<Abstract>A compliant implementation of WMS</Abstract>
 			<!--All supported EPSG projections:-->
-			<CRS>EPSG:WGS84(DD)</CRS>
 			<CRS>EPSG:3857</CRS>
-			<CRS>CRS:84</CRS>
+			<CRS>EPSG:4326</CRS>
 			<EX_GeographicBoundingBox>
 				<westBoundLongitude>-180.0</westBoundLongitude>
 				<eastBoundLongitude>180.0</eastBoundLongitude>
@@ -116,10 +113,12 @@
 					<Name>{{ .Name }}</Name>
 					<Title>{{ .Title }}</Title>
 					<Abstract>A sample style that draws a raster, good for displaying imagery</Abstract>
+					{{if .LegendPath }}
 					<LegendURL width="160" height="424">
 						<Format>image/png</Format>
 						<OnlineResource xlink:type="simple" xlink:href="http://{{ .OWSHostname }}/ows?service=WMS&amp;request=GetLegendGraphic&amp;version=1.3.0&amp;layers={{ .Name }}"/>
 					</LegendURL>
+					{{end}}
 				</Style>
 			</Layer>
 			{{end}}

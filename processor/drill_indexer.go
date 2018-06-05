@@ -28,7 +28,6 @@ type DrillIndexer struct {
 	APIAddress string
 }
 
-//func NewDrillIndexer(apiAddr string, errChan chan error) (*DrillIndexer) {
 func NewDrillIndexer(ctx context.Context, apiAddr string, errChan chan error) *DrillIndexer {
 	return &DrillIndexer{
 		Context:    ctx,

@@ -23,7 +23,6 @@ func (p *ProcessPool) AddQueue(task *Task) {
 	p.TaskQueue <- task
 }
 
-//func (p *ProcessPool) AddProcess(errChan chan error, healthChan chan *HealthMsg) {
 func (p *ProcessPool) AddProcess(debug bool) {
 
 	proc := NewProcess(context.Background(), p.TaskQueue, LibexecDir + "/gsky-gdal-process", p.ErrorMsg, debug)

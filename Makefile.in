@@ -8,13 +8,14 @@ srcdir = @srcdir@
 VPATH = @srcdir@
 
 CGO_CFLAGS="@CGO_CFLAGS@"
-CGO_LDFLAGS="@CGO_LDFLAGS@"
+CGO_LDFLAGS=-lgdal
 LDFLAGS="-X=_$(srcdir)/utils.LibexecDir=${libexecdir} -X=_$(srcdir)/grpc_server/gdalservice.LibexecDir=${libexecdir} \
 	-X=_$(srcdir)/utils.EtcDir=$(sysconfdir) -X=_$(srcdir)/utils.DataDir=${datarootdir}/gsky"
 GOBUILD = CGO_CFLAGS=$(CGO_CFLAGS) CGO_LDFLAGS=$(CGO_LDFLAGS) go build -ldflags=$(LDFLAGS)
+GOGET = CGO_CFLAGS=$(CGO_CFLAGS) go get
 
 all: concurrent
-	go get
+	$(GOGET)
 	$(GOBUILD) -o gsky-rpc grpc_server/grpc_server.go
 	$(GOBUILD) -o gsky-gdal-process grpc_server/gdal_process.go
 	$(GOBUILD) -o gsky-ows ows.go
@@ -22,11 +23,12 @@ all: concurrent
 	$(GOBUILD) -o accept acceptance_tests/accept.go
 	$(GOBUILD) -o masapi mas/api/api.go
 
-concurrent: concurrent.c
+concurrent: src/concurrent.c
 	$(CC) -Wall -O2 $< -o $@
 
-concurrent.c:
-	wget --quiet https://github.com/seanpringle/concurrent/raw/634330a119f16916e5ad24da32172fa9312ab5a3/concurrent.c
+src/concurrent.c:
+	mkdir -p $(dir $@)
+	wget --quiet https://github.com/seanpringle/concurrent/raw/634330a119f16916e5ad24da32172fa9312ab5a3/concurrent.c -O $@
 
 # Note: install(1) can't deal with directories as source, so use cp -r.
 install:
