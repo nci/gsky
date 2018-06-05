@@ -28,7 +28,7 @@ type DrillFileDescriptor struct {
 	Mask           *image.Gray
 }
 
-var cWGS84WKT *C.char = C.CString(`GEOGCS["WGS 84",DATUM["WGS_1984",SPHEROID["WGS 84",6378137,298.257223563,AUTHORITY["EPSG","7030"]],TOWGS84[0,0,0,0,0,0,0],AUTHORITY["EPSG","6326"]],PRIMEM["Greenwich",0,AUTHORITY["EPSG","8901"]],UNIT["degree",0.0174532925199433,AUTHORITY["EPSG","9108"]],AUTHORITY["EPSG","4326"]]","proj4":"+proj=longlat +ellps=WGS84 +towgs84=0,0,0,0,0,0,0 +no_defs `)
+var cWGS84WKT = C.CString(`GEOGCS["WGS 84",DATUM["WGS_1984",SPHEROID["WGS 84",6378137,298.257223563,AUTHORITY["EPSG","7030"]],TOWGS84[0,0,0,0,0,0,0],AUTHORITY["EPSG","6326"]],PRIMEM["Greenwich",0,AUTHORITY["EPSG","8901"]],UNIT["degree",0.0174532925199433,AUTHORITY["EPSG","9108"]],AUTHORITY["EPSG","4326"]]","proj4":"+proj=longlat +ellps=WGS84 +towgs84=0,0,0,0,0,0,0 +no_defs `)
 
 func DrillDataset(in *pb.GeoRPCGranule) *pb.Result {
 
@@ -103,7 +103,7 @@ func readData(ds C.GDALDatasetH, bands []int32, geom C.OGRGeometryH) *pb.Result 
 			for i := 0; i < len(canvas); i++ {
 				if dsDscr.Mask.Pix[i] == 255 && canvas[i] != nodata {
 					sum += float64(canvas[i])
-					total += 1
+					total++
 				}
 			}
 
@@ -115,7 +115,7 @@ func readData(ds C.GDALDatasetH, bands []int32, geom C.OGRGeometryH) *pb.Result 
 			for i := 0; i < len(canvas); i++ {
 				if dsDscr.Mask.Pix[i] == 255 && canvas[i] != nodata {
 					sum += float64(canvas[i])
-					total += 1
+					total++
 				}
 			}
 

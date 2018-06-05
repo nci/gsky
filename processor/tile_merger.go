@@ -11,20 +11,21 @@ import (
 	"unsafe"
 )
 
-const SIZE_OF_UINT16 = 2
-const SIZE_OF_INT16 = 2
-const SIZE_OF_FLOAT32 = 4
+const SizeofUint16 = 2
+const SizeofInt16 = 2
+const SizeofFloat32 = 4
 
 type RasterMerger struct {
 	In    chan *FlexRaster
-	Out   chan Raster
+	Out   chan []utils.Raster
 	Error chan error
 }
 
 func NewRasterMerger(errChan chan error) *RasterMerger {
 	return &RasterMerger{
 		In:    make(chan *FlexRaster, 100),
-		Out:   make(chan Raster, 100),
+		Out:   make(chan []utils.Raster, 100),
+		
 		Error: errChan,
 	}
 }
@@ -56,13 +57,13 @@ func MergeMaskedRaster(r *FlexRaster, canvasMap map[string]*FlexRaster, mask []b
 		}
 	case "Int16":
 		headr := *(*reflect.SliceHeader)(unsafe.Pointer(&canvasMap[r.NameSpace].Data))
-		headr.Len /= SIZE_OF_INT16
-		headr.Cap /= SIZE_OF_INT16
+		headr.Len /= SizeofInt16
+		headr.Cap /= SizeofInt16
 		canvas := *(*[]int16)(unsafe.Pointer(&headr))
 
 		header := *(*reflect.SliceHeader)(unsafe.Pointer(&r.Data))
-		header.Len /= SIZE_OF_INT16
-		header.Cap /= SIZE_OF_INT16
+		header.Len /= SizeofInt16
+		header.Cap /= SizeofInt16
 		data := *(*[]int16)(unsafe.Pointer(&header))
 		nodata := int16(r.NoData)
 
@@ -82,13 +83,13 @@ func MergeMaskedRaster(r *FlexRaster, canvasMap map[string]*FlexRaster, mask []b
 		}
 	case "UInt16":
 		headr := *(*reflect.SliceHeader)(unsafe.Pointer(&canvasMap[r.NameSpace].Data))
-		headr.Len /= SIZE_OF_UINT16
-		headr.Cap /= SIZE_OF_UINT16
+		headr.Len /= SizeofUint16
+		headr.Cap /= SizeofUint16
 		canvas := *(*[]uint16)(unsafe.Pointer(&headr))
 
 		header := *(*reflect.SliceHeader)(unsafe.Pointer(&r.Data))
-		header.Len /= SIZE_OF_UINT16
-		header.Cap /= SIZE_OF_UINT16
+		header.Len /= SizeofUint16
+		header.Cap /= SizeofUint16
 		data := *(*[]uint16)(unsafe.Pointer(&header))
 		nodata := uint16(r.NoData)
 
@@ -108,13 +109,13 @@ func MergeMaskedRaster(r *FlexRaster, canvasMap map[string]*FlexRaster, mask []b
 		}
 	case "Float32":
 		headr := *(*reflect.SliceHeader)(unsafe.Pointer(&canvasMap[r.NameSpace].Data))
-		headr.Len /= SIZE_OF_FLOAT32
-		headr.Cap /= SIZE_OF_FLOAT32
+		headr.Len /= SizeofFloat32
+		headr.Cap /= SizeofFloat32
 		canvas := *(*[]float32)(unsafe.Pointer(&headr))
 
 		header := *(*reflect.SliceHeader)(unsafe.Pointer(&r.Data))
-		header.Len /= SIZE_OF_FLOAT32
-		header.Cap /= SIZE_OF_FLOAT32
+		header.Len /= SizeofFloat32
+		header.Cap /= SizeofFloat32
 		data := *(*[]float32)(unsafe.Pointer(&header))
 		nodata := float32(r.NoData)
 
@@ -155,8 +156,8 @@ func initNoDataSlice(rType string, noDataValue float64, size int) []uint8 {
 			out[i] = fill
 		}
 		headr := *(*reflect.SliceHeader)(unsafe.Pointer(&out))
-		headr.Len *= SIZE_OF_INT16
-		headr.Cap *= SIZE_OF_INT16
+		headr.Len *= SizeofInt16
+		headr.Cap *= SizeofInt16
 		return *(*[]uint8)(unsafe.Pointer(&headr))
 	case "UInt16":
 		out := make([]uint16, size)
@@ -165,8 +166,8 @@ func initNoDataSlice(rType string, noDataValue float64, size int) []uint8 {
 			out[i] = fill
 		}
 		headr := *(*reflect.SliceHeader)(unsafe.Pointer(&out))
-		headr.Len *= SIZE_OF_UINT16
-		headr.Cap *= SIZE_OF_UINT16
+		headr.Len *= SizeofUint16
+		headr.Cap *= SizeofUint16
 		return *(*[]uint8)(unsafe.Pointer(&headr))
 	case "Float32":
 		out := make([]float32, size)
@@ -175,8 +176,8 @@ func initNoDataSlice(rType string, noDataValue float64, size int) []uint8 {
 			out[i] = fill
 		}
 		headr := *(*reflect.SliceHeader)(unsafe.Pointer(&out))
-		headr.Len *= SIZE_OF_FLOAT32
-		headr.Cap *= SIZE_OF_FLOAT32
+		headr.Len *= SizeofFloat32
+		headr.Cap *= SizeofFloat32
 		return *(*[]uint8)(unsafe.Pointer(&headr))
 	default:
 		return []uint8{}
@@ -214,41 +215,102 @@ func ProcessRasterStack(rasterStack map[int64][]*FlexRaster, maskMap map[int64][
 }
 
 func ComputeMask(mask *utils.Mask, data []byte, rType string) (out []bool, err error) {
+	if len(mask.Value) == 0 {
+		if len(mask.BitTests) == 0 {
+			err = fmt.Errorf("Please specify either mask.Value or mask.BitTests")
+			return
+		} else if len(mask.BitTests) % 2 != 0 {
+			err = fmt.Errorf("The entries in mask.BitTests must be in pairs")
+			return
+		}
+	}
+
 	header := *(*reflect.SliceHeader)(unsafe.Pointer(&data))
 
 	switch rType {
 	case "Byte":
 		data := *(*[]uint8)(unsafe.Pointer(&header))
 		out = make([]bool, len(data))
-		maskValue64, _ := strconv.ParseUint(mask.Value, 2, 8)
-		maskValue := uint8(maskValue64)
-		for i, val := range data {
-			if (val & maskValue) > 0 {
-				out[i] = true
+		if len(mask.Value) > 0 {
+			maskValue64, _ := strconv.ParseUint(mask.Value, 2, 8)
+			maskValue := uint8(maskValue64)
+			for i, val := range data {
+				if (val & maskValue) > 0 {
+					out[i] = true
+				}
+			}
+		} else {
+			for i, val := range data {
+				for j := 0; j < len(mask.BitTests); j += 2 {
+					maskFilter64, _ := strconv.ParseInt(mask.BitTests[j], 2, 8)
+					maskFilter := uint8(maskFilter64)
+
+					maskValue64, _ := strconv.ParseInt(mask.BitTests[j+1], 2, 8)
+					maskValue := uint8(maskValue64)
+
+					if (val & maskFilter) == maskValue {
+						out[i] = true
+						break
+					}
+				}
 			}
 		}
 	case "Int16":
-		header.Len /= SIZE_OF_INT16
-		header.Cap /= SIZE_OF_INT16
+		header.Len /= SizeofInt16
+		header.Cap /= SizeofInt16
 		data := *(*[]int16)(unsafe.Pointer(&header))
 		out = make([]bool, len(data))
-		maskValue64, _ := strconv.ParseInt(mask.Value, 2, 16)
-		maskValue := int16(maskValue64)
-		for i, val := range data {
-			if (val & maskValue) > 0 {
-				out[i] = true
+		if len(mask.Value) > 0 {
+			maskValue64, _ := strconv.ParseInt(mask.Value, 2, 16)
+			maskValue := int16(maskValue64)
+			for i, val := range data {
+				if (val & maskValue) > 0 {
+					out[i] = true
+				}
+			}
+		} else {
+			for i, val := range data {
+				for j := 0; j < len(mask.BitTests); j += 2 {
+					maskFilter64, _ := strconv.ParseInt(mask.BitTests[j], 2, 16)
+					maskFilter := int16(maskFilter64)
+
+					maskValue64, _ := strconv.ParseInt(mask.BitTests[j+1], 2, 16)
+					maskValue := int16(maskValue64)
+
+					if (val & maskFilter) == maskValue {
+						out[i] = true
+						break
+					}
+				}
 			}
 		}
 	case "UInt16":
-		header.Len /= SIZE_OF_UINT16
-		header.Cap /= SIZE_OF_UINT16
+		header.Len /= SizeofUint16
+		header.Cap /= SizeofUint16
 		data := *(*[]uint16)(unsafe.Pointer(&header))
 		out = make([]bool, len(data))
-		maskValue64, _ := strconv.ParseUint(mask.Value, 2, 16)
-		maskValue := uint16(maskValue64)
-		for i, val := range data {
-			if (val & maskValue) > 0 {
-				out[i] = true
+		if len(mask.Value) > 0 {
+			maskValue64, _ := strconv.ParseUint(mask.Value, 2, 16)
+			maskValue := uint16(maskValue64)
+			for i, val := range data {
+				if (val & maskValue) > 0 {
+					out[i] = true
+				}
+			}
+		} else {
+			for i, val := range data {
+				for j := 0; j < len(mask.BitTests); j += 2 {
+					maskFilter64, _ := strconv.ParseInt(mask.BitTests[j], 2, 16)
+					maskFilter := uint16(maskFilter64)
+
+					maskValue64, _ := strconv.ParseInt(mask.BitTests[j+1], 2, 16)
+					maskValue := uint16(maskValue64)
+
+					if (val & maskFilter) == maskValue {
+						out[i] = true
+						break
+					}
+				}
 			}
 		}
 	default:
@@ -269,14 +331,17 @@ func (enc *RasterMerger) Run() {
 		geoStamp := r.TimeStamp.UnixNano() + int64(h.Sum32())
 
 		// Raster namespace is identified as Mask
-		if r.Mask != nil && r.Mask.Id == r.NameSpace {
+		if r.Mask != nil && r.Mask.ID == r.NameSpace {
 			mask, err := ComputeMask(r.Mask, r.Data, r.Type)
 			if err != nil {
 				enc.Error <- err
 				return
 			}
 			maskMap[geoStamp] = mask
-			continue
+			if !r.Mask.Inclusive {
+				continue
+			}
+
 		}
 
 		rasterStack[geoStamp] = append(rasterStack[geoStamp], r)
@@ -290,13 +355,13 @@ func (enc *RasterMerger) Run() {
 
 	if len(canvasMap) == 2 && canvasMap["Nadir_Reflectance_Band1"].Type == "Int16" {
 		headerB1 := *(*reflect.SliceHeader)(unsafe.Pointer(&canvasMap["Nadir_Reflectance_Band1"].Data))
-		headerB1.Len /= SIZE_OF_INT16
-		headerB1.Cap /= SIZE_OF_INT16
+		headerB1.Len /= SizeofInt16
+		headerB1.Cap /= SizeofInt16
 		DataB1 := *(*[]int16)(unsafe.Pointer(&headerB1))
 
 		headerB2 := *(*reflect.SliceHeader)(unsafe.Pointer(&canvasMap["Nadir_Reflectance_Band2"].Data))
-		headerB2.Len /= SIZE_OF_INT16
-		headerB2.Cap /= SIZE_OF_INT16
+		headerB2.Len /= SizeofInt16
+		headerB2.Cap /= SizeofInt16
 		DataB2 := *(*[]int16)(unsafe.Pointer(&headerB2))
 
 		nodata := float32(canvasMap["Nadir_Reflectance_Band1"].NoData)
@@ -328,39 +393,53 @@ func (enc *RasterMerger) Run() {
 		delete(canvasMap, "Nadir_Reflectance_Band2")
 	}
 
-	//start := time.Now()
-
+	var nameSpaces []string
 	for _, canvas := range canvasMap {
+		nameSpaces = canvas.ConfigPayLoad.NameSpaces
+		break
+	}
+
+	if len(nameSpaces) == 0 {
+		enc.Out <- []utils.Raster{&utils.ByteRaster{Data: make([]uint8, 0), Height: 0, Width: 0}}
+		return
+	}
+
+	out := make([]utils.Raster, len(nameSpaces))
+	for i, ns := range nameSpaces {
+		canvas := canvasMap[ns] 
 		headr := *(*reflect.SliceHeader)(unsafe.Pointer(&canvas.Data))
 		switch canvas.Type {
 		case "Byte":
-			enc.Out <- &ByteRaster{ConfigPayLoad: canvas.ConfigPayLoad, NoData: canvas.NoData, Data: canvas.Data,
-				Height: canvas.Height, Width: canvas.Width, OffX: canvas.OffX, OffY: canvas.OffY,
-				NameSpace: canvas.NameSpace}
+			out[i] = &utils.ByteRaster{NoData: canvas.NoData, Data: canvas.Data,
+				Width: canvas.Width, Height: canvas.Height}
+
 		case "UInt16":
-			headr.Len /= SIZE_OF_UINT16
-			headr.Cap /= SIZE_OF_UINT16
+			headr.Len /= SizeofUint16
+			headr.Cap /= SizeofUint16
 			data := *(*[]uint16)(unsafe.Pointer(&headr))
-			enc.Out <- &UInt16Raster{ConfigPayLoad: canvas.ConfigPayLoad, NoData: canvas.NoData, Data: data,
-				Height: canvas.Height, Width: canvas.Width, OffX: canvas.OffX, OffY: canvas.OffY,
-				NameSpace: canvas.NameSpace}
+			out[i] = &utils.UInt16Raster{NoData: canvas.NoData, Data: data,
+				Width: canvas.Width, Height: canvas.Height}
+
 		case "Int16":
-			headr.Len /= SIZE_OF_INT16
-			headr.Cap /= SIZE_OF_INT16
+			headr.Len /= SizeofInt16
+			headr.Cap /= SizeofInt16
 			data := *(*[]int16)(unsafe.Pointer(&headr))
-			enc.Out <- &Int16Raster{ConfigPayLoad: canvas.ConfigPayLoad, NoData: canvas.NoData, Data: data,
-				Height: canvas.Height, Width: canvas.Width, OffX: canvas.OffX, OffY: canvas.OffY,
-				NameSpace: canvas.NameSpace}
+			out[i] = &utils.Int16Raster{NoData: canvas.NoData, Data: data,
+				Width: canvas.Width, Height: canvas.Height}
+
 		case "Float32":
-			headr.Len /= SIZE_OF_FLOAT32
-			headr.Cap /= SIZE_OF_FLOAT32
+			headr.Len /= SizeofFloat32
+			headr.Cap /= SizeofFloat32
 			data := *(*[]float32)(unsafe.Pointer(&headr))
-			enc.Out <- &Float32Raster{ConfigPayLoad: canvas.ConfigPayLoad, NoData: canvas.NoData, Data: data,
-				Height: canvas.Height, Width: canvas.Width, OffX: canvas.OffX, OffY: canvas.OffY,
-				NameSpace: canvas.NameSpace}
+			out[i] = &utils.Float32Raster{NoData: canvas.NoData, Data: data,
+				Width: canvas.Width, Height: canvas.Height}
+
 		default:
-			enc.Error <- fmt.Errorf("FlexRaster type %s not recognised", canvas.Type)
+			enc.Error <- fmt.Errorf("raster type %s not recognised", canvas.Type)
 		}
+
 	}
-	//fmt.Println("Merger Time", time.Since(start))
+
+	enc.Out <- out
+
 }

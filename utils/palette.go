@@ -1,7 +1,6 @@
-package processor
+package utils
 
 import (
-	"github.com/nci/gsky/utils"
 	"image/color"
 )
 
@@ -25,7 +24,7 @@ func InterpolateColor(a, b color.RGBA, i, sectionLength int) color.RGBA {
 
 // GradientRGBAPalette returns a palette of 256 colors creating an
 // interpolation that goes though a list of provided colours.
-func GradientRGBAPalette(palette *utils.Palette) ([]color.RGBA, error) {
+func GradientRGBAPalette(palette *Palette) ([]color.RGBA, error) {
 	if palette == nil {
 		return nil, nil
 	}

@@ -6,7 +6,8 @@ What Is This?
 
 GSKY was developed at [NCI](http://nci.org.au) and is a scalable,
 distributed server which presents a new approach for geospatial data
-discovery and delivery using OGC standards.
+discovery and delivery using OGC standards. The most recent release is
+version 1.0 (June 2018).
 
 License
 -------
@@ -24,6 +25,8 @@ Contributions
 Suggestions, enhancement requests, bug reports and patches to GSKY are
 welcome via this GitHub page. Please submit patches as a GitHub pull
 request. Authors retain copyright over their contributions.
+
+[![Build Status](https://travis-ci.org/nci/gsky.svg?branch=master)](https://travis-ci.org/nci/gsky)
 
 Citing GSKY in publications
 ---------------------------

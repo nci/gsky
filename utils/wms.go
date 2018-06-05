@@ -38,7 +38,7 @@ type WMSParams struct {
 // --- invalid code but filter most of the malformed
 // --- cases. Error free JSON deserialisation into types
 // --- also validates correct values.
-var WMSRegexpMap map[string]string = map[string]string{"service": `^WMS$`,
+var WMSRegexpMap = map[string]string{"service": `^WMS$`,
 	"request": `^GetCapabilities$|^GetFeatureInfo$|^DescribeLayer$|^GetMap$|^GetLegendGraphic$`,
 	"crs":     `^(?i)(?:[A-Z]+):(?:[0-9]+)$`,
 	"bbox":    `^[-+]?[0-9]*\.?[0-9]*([eE][-+]?[0-9]+)?(,[-+]?[0-9]*\.?[0-9]*([eE][-+]?[0-9]+)?){3}$`,
@@ -116,10 +116,18 @@ func WMSParamsChecker(params map[string][]string, compREMap map[string]*regexp.R
 		}
 	}
 
+	if i, iOK := params["i"]; iOK {
+		params["x"] = i
+	}
+
 	if x, xOK := params["x"]; xOK {
 		if compREMap["x"].MatchString(x[0]) {
 			jsonFields = append(jsonFields, fmt.Sprintf(`"x":%s`, x[0]))
 		}
+	}
+
+	if j, jOK := params["j"]; jOK {
+		params["y"] = j
 	}
 
 	if y, yOK := params["y"]; yOK {
@@ -198,7 +206,7 @@ func GetProduct(params WMSParams, config Config) (string, error) {
 func GetLayerIndex(params WMSParams, config *Config) (int, error) {
 	if params.Layers != nil {
 		product := params.Layers[0]
-		for i, _ := range config.Layers {
+		for i := range config.Layers {
 			if config.Layers[i].Name == product {
 				return i, nil
 			}
@@ -208,9 +216,9 @@ func GetLayerIndex(params WMSParams, config *Config) (int, error) {
 	return -1, fmt.Errorf("WMS request doesn't specify a product")
 }
 
-// General template compilation, execution and
-// writting in to a stream.
 func ExecuteWriteTemplateFile(w io.Writer, data interface{}, filePath string) error {
+	// General template compilation, execution and writting in to
+	// a stream.
 	tplStr, err := ioutil.ReadFile(filePath)
 	if err != nil {
 		return fmt.Errorf("Error trying to read %s file: %v", filePath, err)

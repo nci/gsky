@@ -82,7 +82,7 @@ func getBand(times []time.Time, rasterTime time.Time) (int32, error) {
 			return int32(i + 1), nil
 		}
 	}
-	return -1, fmt.Errorf("%s dataset does not contain Unix date: %d", "Handler", rasterTime)
+	return -1, fmt.Errorf("%s dataset does not contain Unix date: %d", "Handler", rasterTime.Unix())
 }
 
 // ExtractEPSGCode parses an SRS string and gets

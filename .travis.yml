@@ -1,0 +1,19 @@
+language: go
+go: 1.9.x
+
+services:
+  - postgresql
+addons:
+  postgresql: "9.6"
+  apt:
+    packages:
+    - postgresql-9.6-postgis-2.3
+
+before_script:
+  - psql -U postgres -c "create extension postgis"
+
+install: true
+
+script:
+  - cd $TRAVIS_BUILD_DIR/mas/db && psql -f schema.sql -U postgres
+  - go tool vet $TRAVIS_BUILD_DIR

@@ -19,16 +19,16 @@ import (
 var (
 	db        *sql.DB
 	mc        *memcache.Client
-	db_name   = flag.String("database", "mas", "database name")
-	db_user   = flag.String("user", "api", "database user name")
-	db_pool   = flag.Int("pool", 8, "database pool size")
-	db_limit  = flag.Int("limit", 64, "database concurrent requests")
-	http_port = flag.Int("port", 8080, "http port")
-	mc_uri    = flag.String("memcache", "", "memcache uri host:port")
+	dbName   = flag.String("database", "mas", "database name")
+	dbUser   = flag.String("user", "api", "database user name")
+	dbPool   = flag.Int("pool", 8, "database pool size")
+	dbLimit  = flag.Int("limit", 64, "database concurrent requests")
+	httpPort = flag.Int("port", 8080, "http port")
+	mcURI    = flag.String("memcache", "", "memcache uri host:port")
 )
 
 // Spit out a simple JSON-formatted error message for Content-Type: application/json
-func httpJsonError(response http.ResponseWriter, err error, status int) {
+func httpJSONError(response http.ResponseWriter, err error, status int) {
 	http.Error(response, fmt.Sprintf(`{ "error": %q }`, err.Error()), status)
 }
 
@@ -83,7 +83,7 @@ func handler(response http.ResponseWriter, request *http.Request) {
 		).Scan(&payload)
 
 		if err != nil {
-			httpJsonError(response, err, 400)
+			httpJSONError(response, err, 400)
 			return
 		}
 
@@ -97,35 +97,34 @@ func handler(response http.ResponseWriter, request *http.Request) {
 		return
 	}
 
-	httpJsonError(response, errors.New("unknown operation; currently supported: ?intersects"), 400)
+	httpJSONError(response, errors.New("unknown operation; currently supported: ?intersects"), 400)
 }
 
 func main() {
 
 	flag.Parse()
 
-	log.Printf("db_user %s db_name %s db_pool %d http_port %d", *db_user, *db_name, *db_pool, *http_port)
+	log.Printf("dbUser %s dbName %s dbPool %d httpPort %d", *dbUser, *dbName, *dbPool, *httpPort)
 
-	dbinfo := fmt.Sprintf("user=%s host=/var/run/postgresql dbname=%s sslmode=disable", *db_user, *db_name)
+	dbinfo := fmt.Sprintf("user=%s host=/var/run/postgresql dbname=%s sslmode=disable", *dbUser, *dbName)
 
 	var err error
 	db, err = sql.Open("postgres", dbinfo)
 
 	if err != nil {
 		panic(err)
-		return
 	}
 
 	defer db.Close()
 
-	db.SetMaxIdleConns(*db_pool)
-	db.SetMaxOpenConns(*db_limit)
+	db.SetMaxIdleConns(*dbPool)
+	db.SetMaxOpenConns(*dbLimit)
 
-	if *mc_uri != "" {
+	if *mcURI != "" {
 		// lazy connection; errors returned in .Get
-		mc = memcache.New(*mc_uri)
+		mc = memcache.New(*mcURI)
 	}
 
 	http.HandleFunc("/", handler)
-	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", *http_port), nil))
+	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", *httpPort), nil))
 }

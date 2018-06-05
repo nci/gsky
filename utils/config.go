@@ -10,6 +10,7 @@ import (
 	"os/signal"
 	"syscall"
 	"time"
+	"path/filepath"
 )
 
 var LibexecDir = "/usr/local/libexec"
@@ -22,13 +23,12 @@ type ServiceConfig struct {
 	WorkerNodes []string `json:"worker_nodes"`
 }
 
-// DataSource contains the source files of one layer
-// as well as the max and min resolutions it represents.
-// Its fields encode the path to the collection and
-// the maximum and mimum resolution that can be served.
-// This enables the definition of different versions
-// of the same dataset with different resolutions
-// to speedup response times.
+// CacheLevel contains the source files of one layer as well as the
+// max and min resolutions it represents.  Its fields encode the path
+// to the collection and the maximum and minimum resolution that can
+// be served.  This enables the definition of different versions of
+// the same dataset with different resolutions to speedup response
+// times.
 type CacheLevel struct {
 	Path   string  `json:"path"`
 	MinRes float64 `json:"min_res"`
@@ -36,8 +36,11 @@ type CacheLevel struct {
 }
 
 type Mask struct {
-	Id    string `json:"id"`
+	ID    string `json:"id"`
 	Value string `json:"value"`
+	DataSource string `json:"data_source"`
+	Inclusive bool `json:"inclusive"`
+	BitTests []string `json:"bit_tests"`
 }
 
 type Palette struct {
@@ -87,8 +90,8 @@ type Process struct {
 	ComplexData []CompData `json:"complex_data"`
 }
 
-// DataInput contains the description of a variable
-// used to compute a WPS operation
+// LitData contains the description of a variable used to compute a
+// WPS operation
 type LitData struct {
 	Identifier    string   `json:"identifier"`
 	Title         string   `json:"title"`
@@ -98,8 +101,8 @@ type LitData struct {
 	AllowedValues []string `json:"allowed_values"`
 }
 
-// DataInput contains the description of a variable
-// used to compute a WPS operation
+// CompData contains the description of a variable used to compute a
+// WPS operation
 type CompData struct {
 	Identifier string `json:"identifier"`
 	Title      string `json:"title"`
@@ -131,9 +134,8 @@ func GenerateDatesAux(start, end time.Time, stepMins time.Duration) []string {
 	return dates
 }
 
-// GenerateDates function is used to generate the
-// list of ISO dates from its especification in the
-// Config.Layer struct.
+// GenerateDatesMCD43A4 function is used to generate the list of ISO
+// dates from its especification in the Config.Layer struct.
 func GenerateDatesMCD43A4(start, end time.Time, stepMins time.Duration) []string {
 	dates := []string{}
 	year := start.Year()
@@ -141,6 +143,29 @@ func GenerateDatesMCD43A4(start, end time.Time, stepMins time.Duration) []string
 		for start.Year() == year && start.Before(end) {
 			dates = append(dates, start.Format(ISOFormat))
 			start = start.Add(stepMins)
+		}
+		if !start.Before(end) {
+			break
+		}
+		year = start.Year()
+		start = time.Date(year, 1, 1, 0, 0, 0, 0, time.UTC)
+	}
+	return dates
+}
+
+func GenerateDatesGeoglam(start, end time.Time, stepMins time.Duration) []string {
+	dates := []string{}
+	year := start.Year()
+	for start.Before(end) {
+		for start.Year() == year && start.Before(end) {
+			dates = append(dates, start.Format(ISOFormat))
+			nextDate := start.AddDate(0, 0, 4)
+			if start.Month() == nextDate.Month() {
+				start = start.Add(stepMins)
+			} else {
+				start = nextDate	
+			}
+
 		}
 		if !start.Before(end) {
 			break
@@ -193,6 +218,7 @@ func GenerateDates(name string, start, end time.Time, stepMins time.Duration) []
 	dateGen := make(map[string]func(time.Time, time.Time, time.Duration) []string)
 	dateGen["aux"] = GenerateDatesAux
 	dateGen["mcd43"] = GenerateDatesMCD43A4
+	dateGen["geoglam"] = GenerateDatesGeoglam
 	dateGen["chirps20"] = GenerateDatesChirps20
 	dateGen["regular"] = GenerateDatesRegular
 	dateGen["monthly"] = GenerateMonthlyDates
@@ -201,9 +227,37 @@ func GenerateDates(name string, start, end time.Time, stepMins time.Duration) []
 	return dateGen[name](start, end, stepMins)
 }
 
-// GetConfig marshall the config.json document
-// returning an instance of a Config variable
-// containing all the values
+func LoadAllConfigFiles(rootDir string) (map[string]*Config, error) {
+	configMap := make(map[string]*Config)
+	err := filepath.Walk(rootDir, func(path string, info os.FileInfo, err error) error { 
+    if err != nil {
+      return err
+    }
+
+    if !info.IsDir() && info.Name() == "config.json" {
+      relPath , _ := filepath.Rel(rootDir, filepath.Dir(path))
+      log.Printf("Loading config file: %s under namespace: %s\n", path, relPath)
+
+			config := &Config{}
+			e := config.LoadConfigFile(path)
+			if e != nil {
+				return err
+			}
+
+			configMap[relPath] = config
+    }
+    return nil
+  })
+
+	if len(configMap) == 0 {
+		err = fmt.Errorf("No config file found")
+	}
+
+	return configMap, err
+}
+
+// LoadConfigFile marshalls the config.json document returning an
+// instance of a Config variable containing all the values
 func (config *Config) LoadConfigFile(configFile string) error {
 	*config = Config{}
 	cfg, err := ioutil.ReadFile(configFile)
@@ -234,7 +288,7 @@ func (config *Config) LoadConfigFile(configFile string) error {
 	return nil
 }
 
-func (config *Config) Watch(infoLog, errLog *log.Logger) {
+func WatchConfig(infoLog, errLog *log.Logger, configMap *map[string]*Config) {
 	// Catch SIGHUP to automatically reload cache
 	sighup := make(chan os.Signal, 1)
 	signal.Notify(sighup, syscall.SIGHUP)
@@ -242,10 +296,18 @@ func (config *Config) Watch(infoLog, errLog *log.Logger) {
 		select {
 		case <-sighup:
 			infoLog.Println("Caught SIGHUP, reloading config...")
-			err := config.LoadConfigFile(EtcDir + "/config.json")
+			confMap, err := LoadAllConfigFiles(EtcDir)
 			if err != nil {
-				errLog.Printf("%v\n", err)
-				panic(err)
+				errLog.Printf("Error in loading config files: %v\n", err)
+				return
+			}
+
+			for k := range *configMap {
+				delete(*configMap, k)
+			}
+
+			for k := range confMap {
+				(*configMap)[k] = confMap[k]
 			}
 		}
 	}()
