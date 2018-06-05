@@ -21,7 +21,7 @@ func NewDrillMerger(errChan chan error) *DrillMerger {
 	}
 }
 
-func (dm *DrillMerger) Run() {
+func (dm *DrillMerger) Run(suffix string) {
 	defer close(dm.Out)
 	results := make(map[string]map[string][]*pb.TimeSeries)
 	namespaces := []string{}
@@ -66,6 +66,7 @@ func (dm *DrillMerger) Run() {
 <wps:Data>
 <wps:ComplexData mimeType="application/vnd.terriajs.catalog-member+json" schema="https://tools.ietf.org/html/rfc7159">
 <![CDATA[{ "data": "date,Prec\n`
+
 		for _, key := range dates {
 			values := map[string]float64{}
 			for _, ns := range namespaces {
@@ -87,7 +88,7 @@ func (dm *DrillMerger) Run() {
 			}
 			out += ",\\n"
 		}
-		out += `", "isEnabled": true, "type": "csv", "name": "Precipitation", "tableStyle": { "columns": { "Prec": { "units": "mm", "chartLineColor": "#72ecfa", "yAxisMin": 0, "active": true } } } }]]>`
+		out += fmt.Sprintf(`", "isEnabled": true, "type": "csv", "name": "Precipitation%s", "tableStyle": { "columns": { "Prec": { "units": "mm", "chartLineColor": "#72ecfa", "yAxisMin": 0, "active": true } } } }]]>`, suffix)
 	case 3:
 		out += `<ows:Identifier>veg_cover</ows:Identifier>
 <ows:Title>Vegetation Cover</ows:Title>
@@ -131,7 +132,7 @@ func (dm *DrillMerger) Run() {
 			}
 			out += "\\n"
 		}
-		out += `", "isEnabled": true, "type": "csv", "name": "Veg. Frac.", "tableStyle": { "columns": { "NPV": { "units": "%", "chartLineColor": "#0070c0", "yAxisMin": 0, "yAxisMax": 100, "active": true }, "PV": { "units": "%", "chartLineColor": "#00b050", "yAxisMin": 0, "yAxisMax": 100, "active": true }, "BS": { "units": "%", "chartLineColor": "#FF0000", "yAxisMin": 0, "yAxisMax": 100,  "active": true }, "Total": { "units": "%", "chartLineColor": "#FFFFFF", "yAxisMin": 0, "yAxisMax": 100,  "active": true } } } }]]>`
+		out += fmt.Sprintf(`", "isEnabled": true, "type": "csv", "name": "Veg. Frac.%s", "tableStyle": { "columns": { "NPV": { "units": "%%", "chartLineColor": "#0070c0", "yAxisMin": 0, "yAxisMax": 100, "active": true }, "PV": { "units": "%%", "chartLineColor": "#00b050", "yAxisMin": 0, "yAxisMax": 100, "active": true }, "BS": { "units": "%%", "chartLineColor": "#FF0000", "yAxisMin": 0, "yAxisMax": 100,  "active": true }, "Total": { "units": "%%", "chartLineColor": "#FFFFFF", "yAxisMin": 0, "yAxisMax": 100,  "active": true } } } }]]>`, suffix)
 	}
 	out += `</wps:ComplexData>
 </wps:Data>
