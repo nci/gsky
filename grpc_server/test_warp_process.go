@@ -1,9 +1,9 @@
 package main
 
 import (
-	pb "github.com/nci/gsky/grpc_server/gdalservice"
 	"fmt"
 	"github.com/golang/protobuf/proto"
+	pb "github.com/nci/gsky/grpc_server/gdalservice"
 	"log"
 	"net"
 )
