@@ -1,9 +1,9 @@
 package processor
 
 import (
-	"github.com/nci/gsky/utils"
 	"context"
 	"fmt"
+	"github.com/nci/gsky/utils"
 )
 
 type TileInternalPipeline struct {

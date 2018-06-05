@@ -17,8 +17,8 @@ import (
 )
 
 var (
-	db        *sql.DB
-	mc        *memcache.Client
+	db       *sql.DB
+	mc       *memcache.Client
 	dbName   = flag.String("database", "mas", "database name")
 	dbUser   = flag.String("user", "api", "database user name")
 	dbPool   = flag.Int("pool", 8, "database pool size")

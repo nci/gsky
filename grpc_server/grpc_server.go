@@ -1,9 +1,9 @@
 package main
 
 import (
-	pb "github.com/nci/gsky/grpc_server/gdalservice"
 	"flag"
 	"fmt"
+	pb "github.com/nci/gsky/grpc_server/gdalservice"
 	"log"
 	"net"
 

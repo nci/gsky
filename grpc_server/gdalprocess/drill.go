@@ -17,9 +17,9 @@ import (
 	"math"
 	"unsafe"
 
-	pb "github.com/nci/gsky/grpc_server/gdalservice"
 	geo "bitbucket.org/monkeyforecaster/geometry"
 	"encoding/json"
+	pb "github.com/nci/gsky/grpc_server/gdalservice"
 )
 
 type DrillFileDescriptor struct {

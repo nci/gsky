@@ -8,9 +8,9 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"syscall"
 	"time"
-	"path/filepath"
 )
 
 var LibexecDir = "/usr/local/libexec"
@@ -36,11 +36,11 @@ type CacheLevel struct {
 }
 
 type Mask struct {
-	ID    string `json:"id"`
-	Value string `json:"value"`
-	DataSource string `json:"data_source"`
-	Inclusive bool `json:"inclusive"`
-	BitTests []string `json:"bit_tests"`
+	ID         string   `json:"id"`
+	Value      string   `json:"value"`
+	DataSource string   `json:"data_source"`
+	Inclusive  bool     `json:"inclusive"`
+	BitTests   []string `json:"bit_tests"`
 }
 
 type Palette struct {
@@ -163,7 +163,7 @@ func GenerateDatesGeoglam(start, end time.Time, stepMins time.Duration) []string
 			if start.Month() == nextDate.Month() {
 				start = start.Add(stepMins)
 			} else {
-				start = nextDate	
+				start = nextDate
 			}
 
 		}
@@ -229,14 +229,14 @@ func GenerateDates(name string, start, end time.Time, stepMins time.Duration) []
 
 func LoadAllConfigFiles(rootDir string) (map[string]*Config, error) {
 	configMap := make(map[string]*Config)
-	err := filepath.Walk(rootDir, func(path string, info os.FileInfo, err error) error { 
-    if err != nil {
-      return err
-    }
+	err := filepath.Walk(rootDir, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
 
-    if !info.IsDir() && info.Name() == "config.json" {
-      relPath , _ := filepath.Rel(rootDir, filepath.Dir(path))
-      log.Printf("Loading config file: %s under namespace: %s\n", path, relPath)
+		if !info.IsDir() && info.Name() == "config.json" {
+			relPath, _ := filepath.Rel(rootDir, filepath.Dir(path))
+			log.Printf("Loading config file: %s under namespace: %s\n", path, relPath)
 
 			config := &Config{}
 			e := config.LoadConfigFile(path)
@@ -245,9 +245,9 @@ func LoadAllConfigFiles(rootDir string) (map[string]*Config, error) {
 			}
 
 			configMap[relPath] = config
-    }
-    return nil
-  })
+		}
+		return nil
+	})
 
 	if len(configMap) == 0 {
 		err = fmt.Errorf("No config file found")

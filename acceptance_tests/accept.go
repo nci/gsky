@@ -1,10 +1,10 @@
 package main
 
 import (
-	proc "github.com/nci/gsky/processor"
 	"bufio"
 	"flag"
 	"fmt"
+	proc "github.com/nci/gsky/processor"
 	"golang.org/x/crypto/ssh/terminal"
 	"io/ioutil"
 	"log"
