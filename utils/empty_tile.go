@@ -11,10 +11,10 @@ import (
 
 const tSize = 256
 
-func GetEmptyTile(image_filename string, height, width int) ([]byte, error) {
+func GetEmptyTile(imageFilename string, height, width int) ([]byte, error) {
 	canvas := image.NewNRGBA(image.Rect(0, 0, width, height))
 
-	infile, err := os.Open(image_filename)
+	infile, err := os.Open(imageFilename)
 	if err != nil {
 		return nil, err
 	}
