@@ -279,11 +279,6 @@ func (config *Config) LoadConfigFile(configFile string) error {
 		if layer.Palette != nil && layer.Palette.Colours != nil && len(layer.Palette.Colours) < 3 {
 			return fmt.Errorf("The colour palette must contain at least 2 colours.")
 		}
-		/*
-			if _, err := os.Stat(layer.DataSource); err != nil {
-				return fmt.Errorf("Config layer %s DataSource defined a not reachable location.", layer.Name)
-			}
-		*/
 	}
 	return nil
 }

@@ -298,7 +298,6 @@ func getNCTime(sdsName string, hSubdataset C.GDALDatasetH) ([]string, error) {
 	if len(timeUnitsWords) == 3 {
 		timeUnitsWords = append(timeUnitsWords, "00:00:00.0")
 	}
-	//timeUnitsSlice := strings.Split(timeUnits, "since")
 	stepUnit := durationUnits[strings.Trim(timeUnitsWords[0], " ")]
 	startDate, err := getDate(strings.Join(timeUnitsWords[2:], " "))
 	if err != nil {

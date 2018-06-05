@@ -93,7 +93,6 @@ func EncodePNG(br []*ByteRaster, palette *Palette) ([]byte, error) {
 
 		var start int
 		for i := 0; i < rasterR.Width*rasterR.Height; i++ {
-			//if rasterR.Data[i] != nodataR && rasterR.Data[i] != 0xFF || rasterG.Data[i] != nodataG && rasterG.Data[i] != 0xFF || rasterB.Data[i] != nodataB && rasterB.Data[i] != 0xFF {
 			if rasterR.Data[i] != 0xFF || rasterG.Data[i] != 0xFF || rasterB.Data[i] != 0xFF {
 				start = i * 4
 				canvas.Pix[start] = rasterR.Data[i]
