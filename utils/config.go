@@ -241,7 +241,7 @@ func LoadAllConfigFiles(rootDir string) (map[string]*Config, error) {
 			config := &Config{}
 			e := config.LoadConfigFile(path)
 			if e != nil {
-				return err
+				return e
 			}
 
 			configMap[relPath] = config
