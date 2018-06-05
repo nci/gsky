@@ -217,6 +217,7 @@ func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r
 		}
 
 		ctx, ctxCancel := context.WithCancel(ctx)
+		defer ctxCancel()
 		errChan := make(chan error)
 		tp := proc.InitTilePipeline(ctx, conf.ServiceConfig.MASAddress, LoadBalance(conf.ServiceConfig.WorkerNodes), errChan)
 		select {
@@ -251,7 +252,6 @@ func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r
 				return
 			}
 			w.Write(out)
-			//log.Println("Pipeline Total Time", time.Since(start))
 		case err := <-errChan:
 			Info.Printf("Error in the pipeline: %v\n", err)
 			http.Error(w, err.Error(), 500)
@@ -259,7 +259,6 @@ func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r
 			Error.Printf("Context cancelled with message: %v\n", ctx.Err())
 			http.Error(w, ctx.Err().Error(), 500)
 		}
-		ctxCancel()
 		return
 
 	case "GetLegendGraphic":
@@ -401,6 +400,7 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 		}
 
 		ctx, ctxCancel := context.WithCancel(ctx)
+		defer ctxCancel()
 		errChan := make(chan error)
 		//start := time.Now()
 		tp := proc.InitTilePipeline(ctx, conf.ServiceConfig.MASAddress, LoadBalance(conf.ServiceConfig.WorkerNodes), errChan)
@@ -438,7 +438,6 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 			w.Write(out)
 			//log.Println("Pipeline Total Time", time.Since(start))
 		case err := <-errChan:
-			ctxCancel()
 			Info.Printf("Error in the pipeline: %v\n", err)
 			http.Error(w, err.Error(), 500)
 		case <-ctx.Done():
@@ -536,6 +535,7 @@ func serveWPS(ctx context.Context, params utils.WPSParams, conf *utils.Config, r
 		// This is not concurrent as in the previous version
 		var result string
 		ctx, ctxCancel := context.WithCancel(ctx)
+		defer ctxCancel()
 		errChan := make(chan error)
 		//start := time.Now()
 		
