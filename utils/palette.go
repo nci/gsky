@@ -22,9 +22,8 @@ func InterpolateColor(a, b color.RGBA, i, sectionLength int) color.RGBA {
 		255}
 }
 
-// GradientPalette returns a palette of 256 colors
-// creating an interpolation that goes though
-// a list of provided colours.
+// GradientRGBAPalette returns a palette of 256 colors creating an
+// interpolation that goes though a list of provided colours.
 func GradientRGBAPalette(palette *Palette) ([]color.RGBA, error) {
 	if palette == nil {
 		return nil, nil
