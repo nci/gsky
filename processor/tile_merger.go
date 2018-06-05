@@ -17,14 +17,15 @@ const SizeofFloat32 = 4
 
 type RasterMerger struct {
 	In    chan *FlexRaster
-	Out   chan Raster
+	Out   chan []utils.Raster
 	Error chan error
 }
 
 func NewRasterMerger(errChan chan error) *RasterMerger {
 	return &RasterMerger{
 		In:    make(chan *FlexRaster, 100),
-		Out:   make(chan Raster, 100),
+		Out:   make(chan []utils.Raster, 100),
+		
 		Error: errChan,
 	}
 }
@@ -214,17 +215,44 @@ func ProcessRasterStack(rasterStack map[int64][]*FlexRaster, maskMap map[int64][
 }
 
 func ComputeMask(mask *utils.Mask, data []byte, rType string) (out []bool, err error) {
+	if len(mask.Value) == 0 {
+		if len(mask.BitTests) == 0 {
+			err = fmt.Errorf("Please specify either mask.Value or mask.BitTests")
+			return
+		} else if len(mask.BitTests) % 2 != 0 {
+			err = fmt.Errorf("The entries in mask.BitTests must be in pairs")
+			return
+		}
+	}
+
 	header := *(*reflect.SliceHeader)(unsafe.Pointer(&data))
 
 	switch rType {
 	case "Byte":
 		data := *(*[]uint8)(unsafe.Pointer(&header))
 		out = make([]bool, len(data))
-		maskValue64, _ := strconv.ParseUint(mask.Value, 2, 8)
-		maskValue := uint8(maskValue64)
-		for i, val := range data {
-			if (val & maskValue) > 0 {
-				out[i] = true
+		if len(mask.Value) > 0 {
+			maskValue64, _ := strconv.ParseUint(mask.Value, 2, 8)
+			maskValue := uint8(maskValue64)
+			for i, val := range data {
+				if (val & maskValue) > 0 {
+					out[i] = true
+				}
+			}
+		} else {
+			for i, val := range data {
+				for j := 0; j < len(mask.BitTests); j += 2 {
+					maskFilter64, _ := strconv.ParseInt(mask.BitTests[j], 2, 8)
+					maskFilter := uint8(maskFilter64)
+
+					maskValue64, _ := strconv.ParseInt(mask.BitTests[j+1], 2, 8)
+					maskValue := uint8(maskValue64)
+
+					if (val & maskFilter) == maskValue {
+						out[i] = true
+						break
+					}
+				}
 			}
 		}
 	case "Int16":
@@ -232,11 +260,28 @@ func ComputeMask(mask *utils.Mask, data []byte, rType string) (out []bool, err e
 		header.Cap /= SizeofInt16
 		data := *(*[]int16)(unsafe.Pointer(&header))
 		out = make([]bool, len(data))
-		maskValue64, _ := strconv.ParseInt(mask.Value, 2, 16)
-		maskValue := int16(maskValue64)
-		for i, val := range data {
-			if (val & maskValue) > 0 {
-				out[i] = true
+		if len(mask.Value) > 0 {
+			maskValue64, _ := strconv.ParseInt(mask.Value, 2, 16)
+			maskValue := int16(maskValue64)
+			for i, val := range data {
+				if (val & maskValue) > 0 {
+					out[i] = true
+				}
+			}
+		} else {
+			for i, val := range data {
+				for j := 0; j < len(mask.BitTests); j += 2 {
+					maskFilter64, _ := strconv.ParseInt(mask.BitTests[j], 2, 16)
+					maskFilter := int16(maskFilter64)
+
+					maskValue64, _ := strconv.ParseInt(mask.BitTests[j+1], 2, 16)
+					maskValue := int16(maskValue64)
+
+					if (val & maskFilter) == maskValue {
+						out[i] = true
+						break
+					}
+				}
 			}
 		}
 	case "UInt16":
@@ -244,11 +289,28 @@ func ComputeMask(mask *utils.Mask, data []byte, rType string) (out []bool, err e
 		header.Cap /= SizeofUint16
 		data := *(*[]uint16)(unsafe.Pointer(&header))
 		out = make([]bool, len(data))
-		maskValue64, _ := strconv.ParseUint(mask.Value, 2, 16)
-		maskValue := uint16(maskValue64)
-		for i, val := range data {
-			if (val & maskValue) > 0 {
-				out[i] = true
+		if len(mask.Value) > 0 {
+			maskValue64, _ := strconv.ParseUint(mask.Value, 2, 16)
+			maskValue := uint16(maskValue64)
+			for i, val := range data {
+				if (val & maskValue) > 0 {
+					out[i] = true
+				}
+			}
+		} else {
+			for i, val := range data {
+				for j := 0; j < len(mask.BitTests); j += 2 {
+					maskFilter64, _ := strconv.ParseInt(mask.BitTests[j], 2, 16)
+					maskFilter := uint16(maskFilter64)
+
+					maskValue64, _ := strconv.ParseInt(mask.BitTests[j+1], 2, 16)
+					maskValue := uint16(maskValue64)
+
+					if (val & maskFilter) == maskValue {
+						out[i] = true
+						break
+					}
+				}
 			}
 		}
 	default:
@@ -276,7 +338,10 @@ func (enc *RasterMerger) Run() {
 				return
 			}
 			maskMap[geoStamp] = mask
-			continue
+			if !r.Mask.Inclusive {
+				continue
+			}
+
 		}
 
 		rasterStack[geoStamp] = append(rasterStack[geoStamp], r)
@@ -328,39 +393,53 @@ func (enc *RasterMerger) Run() {
 		delete(canvasMap, "Nadir_Reflectance_Band2")
 	}
 
-	//start := time.Now()
-
+	var nameSpaces []string
 	for _, canvas := range canvasMap {
+		nameSpaces = canvas.ConfigPayLoad.NameSpaces
+		break
+	}
+
+	if len(nameSpaces) == 0 {
+		enc.Out <- []utils.Raster{&utils.ByteRaster{Data: make([]uint8, 0), Height: 0, Width: 0}}
+		return
+	}
+
+	out := make([]utils.Raster, len(nameSpaces))
+	for i, ns := range nameSpaces {
+		canvas := canvasMap[ns] 
 		headr := *(*reflect.SliceHeader)(unsafe.Pointer(&canvas.Data))
 		switch canvas.Type {
 		case "Byte":
-			enc.Out <- &ByteRaster{ConfigPayLoad: canvas.ConfigPayLoad, NoData: canvas.NoData, Data: canvas.Data,
-				Height: canvas.Height, Width: canvas.Width, OffX: canvas.OffX, OffY: canvas.OffY,
-				NameSpace: canvas.NameSpace}
+			out[i] = &utils.ByteRaster{NoData: canvas.NoData, Data: canvas.Data,
+				Width: canvas.Width, Height: canvas.Height}
+
 		case "UInt16":
 			headr.Len /= SizeofUint16
 			headr.Cap /= SizeofUint16
 			data := *(*[]uint16)(unsafe.Pointer(&headr))
-			enc.Out <- &UInt16Raster{ConfigPayLoad: canvas.ConfigPayLoad, NoData: canvas.NoData, Data: data,
-				Height: canvas.Height, Width: canvas.Width, OffX: canvas.OffX, OffY: canvas.OffY,
-				NameSpace: canvas.NameSpace}
+			out[i] = &utils.UInt16Raster{NoData: canvas.NoData, Data: data,
+				Width: canvas.Width, Height: canvas.Height}
+
 		case "Int16":
 			headr.Len /= SizeofInt16
 			headr.Cap /= SizeofInt16
 			data := *(*[]int16)(unsafe.Pointer(&headr))
-			enc.Out <- &Int16Raster{ConfigPayLoad: canvas.ConfigPayLoad, NoData: canvas.NoData, Data: data,
-				Height: canvas.Height, Width: canvas.Width, OffX: canvas.OffX, OffY: canvas.OffY,
-				NameSpace: canvas.NameSpace}
+			out[i] = &utils.Int16Raster{NoData: canvas.NoData, Data: data,
+				Width: canvas.Width, Height: canvas.Height}
+
 		case "Float32":
 			headr.Len /= SizeofFloat32
 			headr.Cap /= SizeofFloat32
 			data := *(*[]float32)(unsafe.Pointer(&headr))
-			enc.Out <- &Float32Raster{ConfigPayLoad: canvas.ConfigPayLoad, NoData: canvas.NoData, Data: data,
-				Height: canvas.Height, Width: canvas.Width, OffX: canvas.OffX, OffY: canvas.OffY,
-				NameSpace: canvas.NameSpace}
+			out[i] = &utils.Float32Raster{NoData: canvas.NoData, Data: data,
+				Width: canvas.Width, Height: canvas.Height}
+
 		default:
-			enc.Error <- fmt.Errorf("FlexRaster type %s not recognised", canvas.Type)
+			enc.Error <- fmt.Errorf("raster type %s not recognised", canvas.Type)
 		}
+
 	}
-	//fmt.Println("Merger Time", time.Since(start))
+
+	enc.Out <- out
+
 }

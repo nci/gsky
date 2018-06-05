@@ -37,7 +37,7 @@ import (
 
 // Global variable to hold the values specified
 // on the config.json document.
-var config *utils.Config
+var configMap map[string]*utils.Config
 
 var (
 	port = flag.Int("p", 8080, "Server listening port.")
@@ -45,6 +45,7 @@ var (
 )
 
 var reWMSMap map[string]*regexp.Regexp
+var reWCSMap map[string]*regexp.Regexp
 var reWPSMap map[string]*regexp.Regexp
 
 var (
@@ -60,7 +61,6 @@ func init() {
 	Info = log.New(os.Stdout, "OWS: ", log.Ldate|log.Ltime|log.Lshortfile)
 
 	filePaths := []string{
-		utils.EtcDir + "/config.json",
 		utils.DataDir + "/templates/WMS_GetCapabilities.tpl",
 		utils.DataDir + "/templates/WMS_DescribeLayer.tpl",
 		utils.DataDir + "/templates/WMS_ServiceException.tpl",
@@ -74,15 +74,17 @@ func init() {
 		}
 	}
 
-	config = &utils.Config{}
-	err := config.LoadConfigFile(utils.EtcDir + "/config.json")
+	confMap, err := utils.LoadAllConfigFiles(utils.EtcDir)
 	if err != nil {
-		Error.Printf("%v\n", err)
+		Error.Printf("Error in loading config files: %v\n", err)
 		panic(err)
 	}
-	config.Watch(Info, Error)
+	configMap = confMap
+
+	utils.WatchConfig(Info, Error, &configMap)
 
 	reWMSMap = utils.CompileWMSRegexMap()
+	reWCSMap = utils.CompileWCSRegexMap()
 	reWPSMap = utils.CompileWPSRegexMap()
 
 }
@@ -149,12 +151,12 @@ func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r
 			return
 		}
 		if params.Time == nil {
-			firstTime, err := time.Parse(utils.ISOFormat, conf.Layers[idx].Dates[0])
+			currentTime, err := time.Parse(utils.ISOFormat, conf.Layers[idx].Dates[len(conf.Layers[idx].Dates)-1])
 			if err != nil {
 				http.Error(w, fmt.Sprintf("Cannot find a valid date to proceed with the request: %s", reqURL), 400)
 				return
 			}
-			params.Time = &firstTime
+			params.Time = &currentTime
 		}
 		if params.CRS == nil {
 			http.Error(w, fmt.Sprintf("Request %s should contain a valid ISO 'crs/srs' parameter.", reqURL), 400)
@@ -184,6 +186,18 @@ func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r
 			endTime = &eT
 		}
 
+		xRes := (params.BBox[2] - params.BBox[0]) / float64(*params.Width)
+		if conf.Layers[idx].ZoomLimit != 0.0 && xRes > conf.Layers[idx].ZoomLimit {
+			out, err := utils.GetEmptyTile("zoom.png", *params.Height, *params.Width)
+			if err != nil {
+				Info.Printf("Error in the utils.GetEmptyTile(zoom.png): %v\n", err)
+				http.Error(w, err.Error(), 500)
+				return
+			}
+			w.Write(out)
+			return
+		}
+
 		geoReq := &proc.GeoTileRequest{ConfigPayLoad: proc.ConfigPayLoad{NameSpaces: conf.Layers[idx].RGBProducts,
 			Mask:    conf.Layers[idx].Mask,
 			Palette: conf.Layers[idx].Palette,
@@ -204,10 +218,40 @@ func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r
 
 		ctx, ctxCancel := context.WithCancel(ctx)
 		errChan := make(chan error)
-		tp := proc.InitTilePipeline(ctx, config.ServiceConfig.MASAddress, LoadBalance(config.ServiceConfig.WorkerNodes), errChan)
+		tp := proc.InitTilePipeline(ctx, conf.ServiceConfig.MASAddress, LoadBalance(conf.ServiceConfig.WorkerNodes), errChan)
 		select {
 		case res := <-tp.Process(geoReq):
-			w.Write(res)
+			scaleParams := utils.ScaleParams{Offset: geoReq.ScaleParams.Offset,
+				Scale: geoReq.ScaleParams.Scale,
+				Clip:  geoReq.ScaleParams.Clip,
+			}
+
+			norm, err := utils.Scale(res, scaleParams)
+			if err != nil {
+				Info.Printf("Error in the utils.Scale: %v\n", err)
+				http.Error(w, err.Error(), 500)
+				return
+			}
+
+			if norm[0].Width == 0 || norm[0].Height == 0 {
+				out, err := utils.GetEmptyTile("data_unavailable.png", *params.Height, *params.Width)
+				if err != nil {
+					Info.Printf("Error in the utils.GetEmptyTile(data_unavailable.png): %v\n", err)
+					http.Error(w, err.Error(), 500)
+				} else {
+					w.Write(out)
+				}
+				return
+			}
+
+			out, err := utils.EncodePNG(norm, conf.Layers[idx].Palette)
+			if err != nil {
+				Info.Printf("Error in the utils.EncodePNG: %v\n", err)
+				http.Error(w, err.Error(), 500)
+				return
+			}
+			w.Write(out)
+			//log.Println("Pipeline Total Time", time.Since(start))
 		case err := <-errChan:
 			Info.Printf("Error in the pipeline: %v\n", err)
 			http.Error(w, err.Error(), 500)
@@ -238,6 +282,174 @@ func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r
 		http.Error(w, fmt.Sprintf("%s not recognised.", *params.Request), 400)
 	}
 
+}
+
+func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, reqURL string, w http.ResponseWriter) {
+	if params.Request == nil {
+		http.Error(w, "Malformed WCS, a Request field needs to be specified", 400)
+	}
+
+	switch *params.Request {
+	case "GetCapabilities":
+		if params.Version == nil || *params.Version != "1.0.0" {
+			http.Error(w, fmt.Sprintf("This server can only accept WCS requests compliant with version 1.0.0: %s", reqURL), 400)
+			return
+		}
+
+		// TODO this might be solved copying the Layer slice
+		newConf := *conf
+		newConf.Layers = make([]utils.Layer, len(newConf.Layers))
+		for i, layer := range conf.Layers {
+			newConf.Layers[i] = layer
+			newConf.Layers[i].Dates = []string{newConf.Layers[i].Dates[0], newConf.Layers[i].Dates[len(newConf.Layers[i].Dates)-1]}
+		}
+
+		err := utils.ExecuteWriteTemplateFile(w, &newConf, "./templates/WCS_GetCapabilities.tpl")
+		if err != nil {
+			http.Error(w, err.Error(), 500)
+		}
+
+	case "DescribeCoverage":
+		idx, err := utils.GetCoverageIndex(params, conf)
+		if err != nil {
+			Info.Printf("Error in the pipeline: %v\n", err)
+			http.Error(w, fmt.Sprintf("Malformed WMS DescribeCoverage request: %v", err), 400)
+			//utils.ExecuteWriteTemplateFile(w, params.Coverages[0], "./templates/WMS_ServiceException.tpl")
+			return
+		}
+
+		err = utils.ExecuteWriteTemplateFile(w, conf.Layers[idx], "./templates/WCS_DescribeCoverage.tpl")
+		if err != nil {
+			http.Error(w, err.Error(), 500)
+		}
+
+	case "GetCoverage":
+		if params.Version == nil || *params.Version != "1.0.0" {
+			http.Error(w, fmt.Sprintf("This server can only accept WCS requests compliant with version 1.0.0: %s", reqURL), 400)
+			return
+		}
+
+		idx, err := utils.GetCoverageIndex(params, conf)
+		if err != nil {
+			http.Error(w, fmt.Sprintf("%v: %s", err, reqURL), 400)
+			//utils.ExecuteWriteTemplateFile(w, params.Coverages[0], "./templates/WMS_ServiceException.tpl")
+			return
+		}
+
+		if params.Time == nil {
+			currentTime, err := time.Parse(utils.ISOFormat, conf.Layers[idx].Dates[len(conf.Layers[idx].Dates)-1])
+			if err != nil {
+				http.Error(w, fmt.Sprintf("Cannot find a valid date to proceed with the request: %s", reqURL), 400)
+				return
+			}
+			params.Time = &currentTime
+		}
+		if params.CRS == nil {
+			http.Error(w, fmt.Sprintf("Request %s should contain a valid ISO 'crs/srs' parameter.", reqURL), 400)
+			return
+		}
+		if len(params.BBox) != 4 {
+			http.Error(w, fmt.Sprintf("Request %s should contain a valid 'bbox' parameter.", reqURL), 400)
+			return
+		}
+		if params.Height == nil || params.Width == nil {
+			http.Error(w, fmt.Sprintf("Request %s should contain valid 'width' and 'height' parameters.", reqURL), 400)
+			return
+		}
+		if params.Format == nil {
+			http.Error(w, fmt.Sprintf("Unsupported encoding format"), 400)
+			return
+		}
+
+		var endTime *time.Time
+		if conf.Layers[idx].Accum == true {
+			step := time.Minute * time.Duration(60*24*conf.Layers[idx].StepDays+60*conf.Layers[idx].StepHours+conf.Layers[idx].StepMinutes)
+			eT := params.Time.Add(step)
+			endTime = &eT
+		}
+
+		xRes := (params.BBox[2] - params.BBox[0]) / float64(*params.Width)
+		if conf.Layers[idx].ZoomLimit != 0.0 && xRes > conf.Layers[idx].ZoomLimit {
+			http.Error(w, err.Error(), 417)
+			return
+		}
+
+		geoReq := &proc.GeoTileRequest{ConfigPayLoad: proc.ConfigPayLoad{NameSpaces: conf.Layers[idx].RGBProducts,
+			Mask:    conf.Layers[idx].Mask,
+			Palette: conf.Layers[idx].Palette,
+			ScaleParams: proc.ScaleParams{Offset: conf.Layers[idx].OffsetValue,
+				Scale: conf.Layers[idx].ScaleValue,
+				Clip:  conf.Layers[idx].ClipValue,
+			},
+			ZoomLimit: conf.Layers[idx].ZoomLimit,
+		},
+			Collection: conf.Layers[idx].DataSource,
+			CRS:        *params.CRS,
+			BBox:       params.BBox,
+			Height:     *params.Height,
+			Width:      *params.Width,
+			StartTime:  params.Time,
+			EndTime:    endTime,
+		}
+
+		geot := utils.BBox2Geot(geoReq.Width, geoReq.Height, geoReq.BBox)
+		// TODO do this conversion here and pass the int to the pipeline
+		epsg, err := utils.ExtractEPSGCode(geoReq.CRS)
+		if err != nil {
+			http.Error(w, fmt.Sprintf("Request %s should contain valid 'width' and 'height' parameters.", reqURL), 400)
+			return
+		}
+
+		ctx, ctxCancel := context.WithCancel(ctx)
+		errChan := make(chan error)
+		//start := time.Now()
+		tp := proc.InitTilePipeline(ctx, conf.ServiceConfig.MASAddress, LoadBalance(conf.ServiceConfig.WorkerNodes), errChan)
+		//log.Println("Pipeline Init Time", time.Since(start))
+
+		select {
+		case res := <-tp.Process(geoReq):
+			out, err := utils.EncodeGdal(*params.Format, res, geot, epsg)
+			if err != nil {
+				Info.Printf("Error in the utils.EncodeGdal: %v\n", err)
+				http.Error(w, err.Error(), 500)
+				return
+			}
+
+			fileExt := "wcs"
+			contentType := "application/wcs"
+			switch strings.ToLower(*params.Format) {
+			case "geotiff":
+				fileExt = "tiff"	
+				contentType = "application/geotiff"
+			case "netcdf":
+				fileExt = "nc"
+				contentType = "application/netcdf"
+			}
+			ISOFormat := "2006-01-02T15:04:05.000Z"
+			fileNameDateTime := params.Time.Format(ISOFormat)
+
+			var re = regexp.MustCompile(`[^a-zA-Z0-9\-_\s]`)
+			fileNameCoverages := re.ReplaceAllString(params.Coverages[0], `-`)
+
+			w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%s.%s.%s", fileNameCoverages, fileNameDateTime, fileExt))
+			w.Header().Set("Content-Type", contentType)
+			w.Header().Set("Content-Length", fmt.Sprintf("%d", len(out)))
+
+			w.Write(out)
+			//log.Println("Pipeline Total Time", time.Since(start))
+		case err := <-errChan:
+			ctxCancel()
+			Info.Printf("Error in the pipeline: %v\n", err)
+			http.Error(w, err.Error(), 500)
+		case <-ctx.Done():
+			Error.Printf("Context cancelled with message: %v\n", ctx.Err())
+			http.Error(w, ctx.Err().Error(), 500)
+		}
+		return
+
+	default:
+		http.Error(w, fmt.Sprintf("%s not recognised.", *params.Request), 400)
+	}
 }
 
 func serveWPS(ctx context.Context, params utils.WPSParams, conf *utils.Config, reqURL string, w http.ResponseWriter) {
@@ -303,19 +515,20 @@ func serveWPS(ctx context.Context, params utils.WPSParams, conf *utils.Config, r
 			return
 		}
 
+		year, month, day := time.Now().Date()
 		geoReq1 := proc.GeoDrillRequest{Geometry: string(feat),
 			CRS:        "EPSG:4326",
 			Collection: conf.Processes[0].Paths[0],
 			NameSpaces: []string{"phot_veg", "nphot_veg", "bare_soil"},
 			StartTime:  time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC),
-			EndTime:    time.Date(2017, 6, 1, 0, 0, 0, 0, time.UTC),
+			EndTime:    time.Date(year, month, day, 0, 0, 0, 0, time.UTC),
 		}
 		geoReq2 := proc.GeoDrillRequest{Geometry: string(feat),
 			CRS:        "EPSG:4326",
 			Collection: conf.Processes[0].Paths[1],
 			NameSpaces: []string{""},
 			StartTime:  time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC),
-			EndTime:    time.Date(2017, 6, 1, 0, 0, 0, 0, time.UTC),
+			EndTime:    time.Date(year, month, day, 0, 0, 0, 0, time.UTC),
 		}
 
 		fmt.Println(geoReq1, geoReq2)
@@ -325,10 +538,12 @@ func serveWPS(ctx context.Context, params utils.WPSParams, conf *utils.Config, r
 		ctx, ctxCancel := context.WithCancel(ctx)
 		errChan := make(chan error)
 		//start := time.Now()
-		dp1 := proc.InitDrillPipeline(ctx, config.ServiceConfig.MASAddress, config.ServiceConfig.WorkerNodes, errChan)
-		proc1 := dp1.Process(geoReq1)
-		dp2 := proc.InitDrillPipeline(ctx, config.ServiceConfig.MASAddress, config.ServiceConfig.WorkerNodes, errChan)
-		proc2 := dp2.Process(geoReq2)
+		
+		suffix := fmt.Sprintf("_%04d", rand.Intn(1000))
+		dp1 := proc.InitDrillPipeline(ctx, conf.ServiceConfig.MASAddress, conf.ServiceConfig.WorkerNodes, errChan)
+		proc1 := dp1.Process(geoReq1, suffix)
+		dp2 := proc.InitDrillPipeline(ctx, conf.ServiceConfig.MASAddress, conf.ServiceConfig.WorkerNodes, errChan)
+		proc2 := dp2.Process(geoReq2, suffix)
 
 		for _, proc := range []chan string{proc1, proc2} {
 			select {
@@ -392,6 +607,13 @@ func generalHandler(conf *utils.Config, w http.ResponseWriter, r *http.Request) 
 			return
 		}
 		serveWMS(ctx, params, conf, r.URL.String(), w)
+	case "WCS":
+		params, err := utils.WCSParamsChecker(query, reWCSMap)
+		if err != nil {
+			http.Error(w, fmt.Sprintf("Wrong WCS parameters on URL: %s", err), 400)
+			return
+		}
+		serveWCS(ctx, params, conf, r.URL.String(), w)
 	case "WPS":
 		params, err := utils.WPSParamsChecker(query, reWPSMap)
 		if err != nil {
@@ -406,6 +628,16 @@ func generalHandler(conf *utils.Config, w http.ResponseWriter, r *http.Request) 
 }
 
 func owsHandler(w http.ResponseWriter, r *http.Request) {
+	namespace := "."
+	if len(r.URL.Path) > len("/ows/") {
+		namespace = r.URL.Path[len("/ows/"):]
+	}
+	config, ok := configMap[namespace]
+	if !ok {
+		Info.Printf("Invalid dataset namespace: %v for url: %v\n", namespace, r.URL.Path)
+		http.Error(w, fmt.Sprintf("Invalid dataset namespace: %v\n", namespace), 404)
+		return
+	}
 	generalHandler(config, w, r)
 }
 
@@ -414,7 +646,7 @@ func main() {
 
 	fs := http.FileServer(http.Dir("static"))
 	http.Handle("/", fs)
-	http.HandleFunc("/ows", owsHandler)
+	http.HandleFunc("/ows/", owsHandler)
 	Info.Printf("GSKY is ready")
 	http.ListenAndServe(fmt.Sprintf("0.0.0.0:%d", *port), nil)
 }
