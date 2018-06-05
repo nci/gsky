@@ -15,7 +15,6 @@ func scale(r Raster, params ScaleParams) (*ByteRaster, error) {
 	case *ByteRaster:
 		noData := uint8(t.NoData)
 		scale := params.Scale
-		//offset := uint8(t.ScaleParams.Offset)
 		clip := uint8(params.Clip)
 
 		for i, value := range t.Data {
@@ -33,8 +32,6 @@ func scale(r Raster, params ScaleParams) (*ByteRaster, error) {
 	case *Int16Raster:
 		out := &ByteRaster{NoData: t.NoData, Data: make([]uint8, t.Height*t.Width), Width: t.Width, Height: t.Height}
 		noData := int16(t.NoData)
-		//scale := float32(t.ScaleParams.Scale)
-		//offset := uint8(t.ScaleParams.Offset)
 		clip := int16(params.Clip)
 		for i, value := range t.Data {
 			if value == noData {
@@ -51,8 +48,6 @@ func scale(r Raster, params ScaleParams) (*ByteRaster, error) {
 	case *UInt16Raster:
 		out := &ByteRaster{NoData: t.NoData, Data: make([]uint8, t.Height*t.Width), Width: t.Width, Height: t.Height}
 		noData := uint16(t.NoData)
-		//scale := float32(t.ScaleParams.Scale)
-		//offset := uint8(t.ScaleParams.Offset)
 		clip := uint16(params.Clip)
 		for i, value := range t.Data {
 			if value == noData {
