@@ -49,7 +49,7 @@ install:
 
 clean:
 	go clean -i ./...
-	rm concurrent
+	rm -f concurrent
 
 distclean: clean
 	-rm -f Makefile config.log config.status
