@@ -12,7 +12,7 @@
 		<ContactInformation>
 		    <ContactPersonPrimary>
 		        <ContactOrganization>National Computational Infrastructure</ContactOrganization>
-						<ContactPerson>GSKY Developers</ContactPerson>
+			<ContactPerson>GSKY Developers</ContactPerson>
 		    </ContactPersonPrimary>
 			<ContactAddress>
 				<Address>143 Ward Road</Address>
