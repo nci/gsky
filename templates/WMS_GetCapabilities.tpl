@@ -35,9 +35,6 @@
 				    <Get>
 				      <OnlineResource xlink:type="simple" xlink:href="http://{{ .ServiceConfig.OWSHostname }}/ows?SERVICE=WMS&amp;"/>
 				    </Get>
-				    <Post>
-				      <OnlineResource xlink:type="simple" xlink:href="http://{{ .ServiceConfig.OWSHostname }}/ows?SERVICE=WMS&amp;"/>
-				    </Post>
 				  </HTTP>
 				</DCPType>
 			</GetCapabilities>
