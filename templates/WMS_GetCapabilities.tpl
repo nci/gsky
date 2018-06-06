@@ -12,11 +12,13 @@
 		<ContactInformation>
 		    <ContactPersonPrimary>
 		        <ContactOrganization>National Computational Infrastructure</ContactOrganization>
+						<ContactPerson>GSKY Developers</ContactPerson>
 		    </ContactPersonPrimary>
 			<ContactAddress>
 				<Address>143 Ward Road</Address>
 				<City>Acton</City>
 				<StateOrProvince>ACT</StateOrProvince>
+				<PostCode>2601</PostCode>
 				<Country>Australia</Country>
 			</ContactAddress>
 			<ContactElectronicMailAddress>help@nci.org.au</ContactElectronicMailAddress>
