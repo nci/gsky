@@ -56,24 +56,19 @@ Dependencies:
 
 + Go > 1.6.0
 + GDAL > 2.1.0
-+ Various Go packages listed below
++ Various Go packages (handled by the build system)
 
+```console
+    export GOPATH=~/go
+    git clone https://github.com/nci/gsky $GOPATH/src/gsky
+    cd $GOPATH/src/gsky
+    ./configure
+    make all install
+'''
 
-Install required packages:
-
-+ ```go get bitbucket.org/monkeyforecaster/geometry```
-+ ```go get github.com/golang/protobuf/proto```
-+ ```go get golang.org/x/net/context```
-+ ```go get google.golang.org/grpc```
-+ ```golang.org/x/crypto/ssh/terminal```
-
-These packages can be easily installed with `make get`.
-
-Now compile the Go code with `configure` and then `make`. The
-`configure` script takes all of the standard GNU `configure` flags
-such as `--prefix` (to specify where to install GSKY). Once GSKY is
-compiled, install it with `make install`.
-
+The `configure` script takes all of the standard GNU `configure` flags
+such as `--prefix` (to specify where to install GSKY). You may need to
+use `--with-gdal` to point to the installation of GDAL.
 
 How To Start the Server
 -----------------------
