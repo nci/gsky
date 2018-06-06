@@ -58,8 +58,8 @@
       </RangeSet>
     </rangeSet>
     <supportedCRSs>
-      <requestCRSs>OGC:CRS84</requestCRSs>
-      <responseCRSs>OGC:CRS84</responseCRSs>
+      <requestCRSs>EPSG:4326</requestCRSs>
+      <responseCRSs>EPSG:4326</responseCRSs>
     </supportedCRSs>
     <supportedFormats>
       <formats>GeoTIFF</formats>
