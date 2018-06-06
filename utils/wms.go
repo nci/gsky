@@ -75,6 +75,10 @@ func NormaliseKeys(params map[string][]string) map[string][]string {
 	return params
 }
 
+func CheckWMSVersion(version string) bool {
+	return version == "1.3.0" || version == "1.1.1"
+}
+
 // WMSParamsChecker checks and marshals the content
 // of the parameters of a WMS request into a
 // WMSParams struct.
@@ -89,9 +93,7 @@ func WMSParamsChecker(params map[string][]string, compREMap map[string]*regexp.R
 	}
 
 	if version, versionOK := params["version"]; versionOK {
-		if version[0] == "1.3.0" || version[0] == "1.1.1" {
-			jsonFields = append(jsonFields, fmt.Sprintf(`"version":"%s"`, version[0]))
-		}
+		jsonFields = append(jsonFields, fmt.Sprintf(`"version":"%s"`, version[0]))
 	}
 
 	if request, requestOK := params["request"]; requestOK {
