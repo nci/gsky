@@ -104,8 +104,8 @@ func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r
 	switch *params.Request {
 	case "GetCapabilities":
 		if params.Version != nil && !utils.CheckWMSVersion(*params.Version) {
-				http.Error(w, fmt.Sprintf("This server can only accept WMS requests compliant with version 1.1.1 and 1.3.0: %s", reqURL), 400)
-				return
+			http.Error(w, fmt.Sprintf("This server can only accept WMS requests compliant with version 1.1.1 and 1.3.0: %s", reqURL), 400)
+			return
 		}
 
 		err := utils.ExecuteWriteTemplateFile(w, conf,
