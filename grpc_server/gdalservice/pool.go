@@ -24,7 +24,7 @@ func (p *ProcessPool) AddQueue(task *Task) {
 
 func (p *ProcessPool) AddProcess(debug bool) {
 
-	proc := NewProcess(context.Background(), p.TaskQueue, LibexecDir + "/gsky-gdal-process", p.ErrorMsg, debug)
+	proc := NewProcess(context.Background(), p.TaskQueue, LibexecDir+"/gsky-gdal-process", p.ErrorMsg, debug)
 	proc.Start()
 	p.Pool = append(p.Pool, proc)
 }
