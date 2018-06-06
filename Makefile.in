@@ -1,6 +1,7 @@
 prefix = @prefix@
 exec_prefix = @exec_prefix@
 datarootdir = @datarootdir@
+bindir = @bindir@
 sbindir = @sbindir@
 libexecdir = @libexecdir@
 sysconfdir = @sysconfdir@
@@ -33,11 +34,11 @@ src/concurrent.c:
 
 # Note: install(1) can't deal with directories as source, so use cp -r.
 install:
-	install -d $(sbindir) $(libexecdir) $(sysconfdir)
+	install -d $(bindir) $(sbindir) $(libexecdir) $(sysconfdir)
 	install -d $(datarootdir)/gsky/templates
 	install -d $(datarootdir)/gsky/static
 	install -d $(datarootdir)/mas
-	install concurrent $(sbindir)
+	install concurrent $(bindir)
 	install gsky-ows $(sbindir)
 	install gsky-gdal-process $(libexecdir)
 	install gsky-rpc $(sbindir)
