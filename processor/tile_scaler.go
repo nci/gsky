@@ -1,10 +1,5 @@
 package processor
 
-import (
-//"time"
-//"fmt"
-)
-
 type RasterScaler struct {
 	In    chan Raster
 	Out   chan *ByteRaster
@@ -22,14 +17,12 @@ func NewRasterScaler(errChan chan error) *RasterScaler {
 func (scl *RasterScaler) Run() {
 	defer close(scl.Out)
 
-	//start := time.Now()
 	for raster := range scl.In {
 		switch t := raster.(type) {
 		case *ByteRaster:
 
 			noData := uint8(t.NoData)
 			scale := t.ScaleParams.Scale
-			//offset := uint8(t.ScaleParams.Offset)
 			clip := uint8(t.ScaleParams.Clip)
 
 			for i, value := range t.Data {
@@ -52,8 +45,6 @@ func (scl *RasterScaler) Run() {
 				NoData: t.NoData, Data: make([]uint8, t.Height*t.Width), Width: t.Width, Height: t.Height,
 				OffX: t.OffX, OffY: t.OffY, NameSpace: t.NameSpace}
 			noData := int16(t.NoData)
-			//scale := float32(t.ScaleParams.Scale)
-			//offset := uint8(t.ScaleParams.Offset)
 			clip := int16(t.ScaleParams.Clip)
 			for i, value := range t.Data {
 				if value == noData {
@@ -75,8 +66,6 @@ func (scl *RasterScaler) Run() {
 				NoData: t.NoData, Data: make([]uint8, t.Height*t.Width), Width: t.Width, Height: t.Height,
 				OffX: t.OffX, OffY: t.OffY, NameSpace: t.NameSpace}
 			noData := uint16(t.NoData)
-			//scale := float32(t.ScaleParams.Scale)
-			//offset := uint8(t.ScaleParams.Offset)
 			clip := uint16(t.ScaleParams.Clip)
 			for i, value := range t.Data {
 				if value == noData {
@@ -120,5 +109,4 @@ func (scl *RasterScaler) Run() {
 			scl.Out <- out
 		}
 	}
-	//fmt.Println("Scaler Time", time.Since(start))
 }

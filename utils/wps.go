@@ -134,16 +134,3 @@ func GetArea(wgs84Poly geo.Geometry) float64 {
 	C.OGR_G_AssignSpatialReference(hPt, selSRS)
 	return float64(C.OGR_G_Area(hPt))
 }
-
-/*
-func SimplifyPolygon(wgs84Poly geo.Geometry, tolerance float64) (float64, error) {
-	geomJSON, _ := json.Marshal(wgs84Poly)
-	hPt := C.OGR_G_CreateGeometryFromJson(C.CString(string(geomJSON)))
-	selSRS := C.OSRNewSpatialReference(C.CString(WGS84WKT))
-	C.OGR_G_AssignSpatialReference(hPt, selSRS)
-	simpPoly := C.OGR_G_Simplify(hPt, C.double(tolerance))
-	if simpPoly == nil {
-		return 0, fmt.Errorf("Could not simplify polygon")
-	}
-}
-*/

@@ -31,8 +31,6 @@ func NewDrillGRPC(ctx context.Context, serverAddress []string, errChan chan erro
 
 func (gi *GeoDrillGRPC) Run() {
 	defer close(gi.Out)
-	//start := time.Now()
-	//i := 0
 
 	conns := make([]*grpc.ClientConn, len(gi.Clients))
 	for i, client := range gi.Clients {
@@ -55,7 +53,6 @@ func (gi *GeoDrillGRPC) Run() {
 			return
 		default:
 			cLimiter.Increase()
-			//i += 1
 			go func(g *GeoDrillGranule, conc *ConcLimiter) {
 				defer conc.Decrease()
 				c := pb.NewGDALClient(conns[rand.Intn(len(conns))])

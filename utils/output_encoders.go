@@ -7,13 +7,13 @@ import "C"
 
 import (
 	"bytes"
-	"strings"
 	"fmt"
 	"image"
 	"image/png"
 	"io/ioutil"
-	"strconv"
 	"os"
+	"strconv"
+	"strings"
 	"unsafe"
 )
 
@@ -93,7 +93,6 @@ func EncodePNG(br []*ByteRaster, palette *Palette) ([]byte, error) {
 
 		var start int
 		for i := 0; i < rasterR.Width*rasterR.Height; i++ {
-			//if rasterR.Data[i] != nodataR && rasterR.Data[i] != 0xFF || rasterG.Data[i] != nodataG && rasterG.Data[i] != 0xFF || rasterB.Data[i] != nodataB && rasterB.Data[i] != 0xFF {
 			if rasterR.Data[i] != 0xFF || rasterG.Data[i] != 0xFF || rasterB.Data[i] != 0xFF {
 				start = i * 4
 				canvas.Pix[start] = rasterR.Data[i]
@@ -207,7 +206,7 @@ func EncodeGdal(format string, rs []Raster, geot []float64, epsg int) ([]byte, e
 	var driverName string
 	switch strings.ToLower(format) {
 	case "geotiff":
-		driverName = "GTiff"	
+		driverName = "GTiff"
 	case "netcdf":
 		driverName = "netCDF"
 	default:
@@ -228,7 +227,7 @@ func EncodeGdal(format string, rs []Raster, geot []float64, epsg int) ([]byte, e
 	defer os.Remove(tempFile)
 
 	C.GDALAllRegister()
-	
+
 	var driverNameC = C.CString(driverName)
 	hDriver := C.GDALGetDriverByName(driverNameC)
 
@@ -270,8 +269,8 @@ func EncodeGdal(format string, rs []Raster, geot []float64, epsg int) ([]byte, e
 			gerr = C.GDALRasterIO(hBand, C.GF_Write, 0, 0, C.int(t.Width), C.int(t.Height), unsafe.Pointer(&t.Data[0]), C.int(t.Width), C.int(t.Height), C.GDT_Float32, 0, 0)
 
 		default:
-				C.GDALClose(hDstDS)
-				return []byte{}, fmt.Errorf("Unsupported gdal data type")
+			C.GDALClose(hDstDS)
+			return []byte{}, fmt.Errorf("Unsupported gdal data type")
 		}
 
 		if gerr != 0 {
@@ -302,4 +301,3 @@ func EncodeGdal(format string, rs []Raster, geot []float64, epsg int) ([]byte, e
 func ExtractEPSGCode(srs string) (int, error) {
 	return strconv.Atoi(srs[5:])
 }
-

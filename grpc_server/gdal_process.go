@@ -14,9 +14,9 @@ import (
 	"net"
 	"os"
 
+	"github.com/golang/protobuf/proto"
 	gp "github.com/nci/gsky/grpc_server/gdalprocess"
 	pb "github.com/nci/gsky/grpc_server/gdalservice"
-	"github.com/golang/protobuf/proto"
 )
 
 func sendOutput(out *pb.Result, conn net.Conn) error {
@@ -80,8 +80,8 @@ func registerGDALDrivers() {
 	// Find out which drivers are present
 	C.GDALAllRegister()
 	for i := 0; i < int(C.GDALGetDriverCount()); i++ {
-		driver := C.GDALGetDriver(C.int(i));
-		switch (C.GoString(C.GDALGetDriverShortName(driver))) {
+		driver := C.GDALGetDriver(C.int(i))
+		switch C.GoString(C.GDALGetDriverShortName(driver)) {
 		case "netCDF":
 			haveNetCDF = true
 		case "HDF4":
@@ -97,7 +97,7 @@ func registerGDALDrivers() {
 
 	// De-register all the drivers again
 	for i := 0; i < int(C.GDALGetDriverCount()); i++ {
-		driver := C.GDALGetDriver(C.int(i));
+		driver := C.GDALGetDriver(C.int(i))
 		C.GDALDeregisterDriver(driver)
 	}
 

@@ -29,7 +29,6 @@ func GetEmptyTile(imageFilename string, height, width int) ([]byte, error) {
 
 	for x := 0; x < width; x += tSize {
 		for y := 0; y < height; y += tSize {
-			//fmt.Printf("xxxxxx %d, %d, %d, %d\n", x, y, x+tSize, y+tSize)
 			draw.Draw(canvas, image.Rect(x, y, x+tSize, y+tSize), tile, image.ZP, draw.Src)
 		}
 	}

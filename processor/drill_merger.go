@@ -1,8 +1,8 @@
 package processor
 
 import (
-	pb "github.com/nci/gsky/grpc_server/gdalservice"
 	"fmt"
+	pb "github.com/nci/gsky/grpc_server/gdalservice"
 	"math"
 	"sort"
 )
@@ -51,11 +51,6 @@ func (dm *DrillMerger) Run(suffix string) {
 		dates = append(dates, ts)
 	}
 	sort.Strings(dates)
-	/*nameMap := map[string]string{
-	  "": "Prec",
-	  "phot_veg": "PV",
-	  "nphot_veg": "NPV",
-	  "bare_soil": "BS",}*/
 	out := `<wps:Output>`
 
 	switch len(namespaces) {

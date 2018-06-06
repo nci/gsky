@@ -1,8 +1,8 @@
 package processor
 
 import (
-	"github.com/nci/gsky/utils"
 	"fmt"
+	"github.com/nci/gsky/utils"
 	"golang.org/x/net/context"
 )
 
