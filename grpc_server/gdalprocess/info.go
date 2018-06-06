@@ -34,9 +34,9 @@ import (
 	"time"
 	"unsafe"
 
-	pb "github.com/nci/gsky/grpc_server/gdalservice"
 	"github.com/golang/protobuf/ptypes"
 	google_protobuf "github.com/golang/protobuf/ptypes/timestamp"
+	pb "github.com/nci/gsky/grpc_server/gdalservice"
 )
 
 var parserStrings = map[string]string{"landsat": `LC(?P<mission>\d)(?P<path>\d\d\d)(?P<row>\d\d\d)(?P<year>\d\d\d\d)(?P<julian_day>\d\d\d)(?P<processing_level>[a-zA-Z0-9]+)_(?P<band>[a-zA-Z0-9]+)`,
@@ -63,7 +63,6 @@ var CsubDS = C.CString("SUBDATASETS")
 var CtimeUnits = C.CString("time#units")
 var CncDimTimeValues = C.CString("NETCDF_DIM_time_VALUES")
 var CncDimLevelValues = C.CString("NETCDF_DIM_lev_VALUES")
-
 
 func ExtractGDALInfo(in *pb.GeoRPCGranule) *pb.Result {
 	cPath := C.CString(in.Path)

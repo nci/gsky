@@ -1,8 +1,8 @@
 package processor
 
 import (
-	pb "github.com/nci/gsky/grpc_server/gdalservice"
 	"fmt"
+	pb "github.com/nci/gsky/grpc_server/gdalservice"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"log"

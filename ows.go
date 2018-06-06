@@ -414,7 +414,7 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 			contentType := "application/wcs"
 			switch strings.ToLower(*params.Format) {
 			case "geotiff":
-				fileExt = "tiff"	
+				fileExt = "tiff"
 				contentType = "application/geotiff"
 			case "netcdf":
 				fileExt = "nc"
@@ -531,7 +531,7 @@ func serveWPS(ctx context.Context, params utils.WPSParams, conf *utils.Config, r
 		ctx, ctxCancel := context.WithCancel(ctx)
 		defer ctxCancel()
 		errChan := make(chan error)
-		
+
 		suffix := fmt.Sprintf("_%04d", rand.Intn(1000))
 		dp1 := proc.InitDrillPipeline(ctx, conf.ServiceConfig.MASAddress, conf.ServiceConfig.WorkerNodes, errChan)
 		proc1 := dp1.Process(geoReq1, suffix)

@@ -139,4 +139,3 @@ func GetCoverageIndex(params WCSParams, config *Config) (int, error) {
 	}
 	return -1, fmt.Errorf("WCS request doesn't specify a product")
 }
-
