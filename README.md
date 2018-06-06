@@ -59,12 +59,12 @@ Dependencies:
 + Various Go packages (handled by the build system)
 
 ```console
-    export GOPATH=~/go
-    git clone https://github.com/nci/gsky $GOPATH/src/gsky
-    cd $GOPATH/src/gsky
-    ./configure
-    make all install
-'''
+$ export GOPATH=~/go
+$ git clone https://github.com/nci/gsky $GOPATH/src/gsky
+$ cd $GOPATH/src/gsky
+$ ./configure
+$ make all install
+```
 
 The `configure` script takes all of the standard GNU `configure` flags
 such as `--prefix` (to specify where to install GSKY). You may need to
