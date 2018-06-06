@@ -14,6 +14,10 @@ LDFLAGS="-X=$(PKGROOT)/utils.LibexecDir=${libexecdir} -X=$(PKGROOT)/grpc_server/
 	-X=$(PKGROOT)/utils.EtcDir=$(sysconfdir) -X=$(PKGROOT)/utils.DataDir=${datarootdir}/gsky"
 GOBUILD = CGO_CFLAGS=$(CGO_CFLAGS) CGO_LDFLAGS=$(CGO_LDFLAGS) go build -ldflags=$(LDFLAGS)
 GOGET = CGO_CFLAGS=$(CGO_CFLAGS) go get
+GOBIN=$(shell go env GOBIN)
+ifeq ($(strip $(GOBIN)),)
+  GOBIN=$(shell go env GOPATH)/bin
+endif
 
 all: concurrent
 	$(GOGET)
