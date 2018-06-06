@@ -76,7 +76,7 @@ func NormaliseKeys(params map[string][]string) map[string][]string {
 }
 
 func CheckWMSVersion(version string) bool {
-	return version == "1.3.0" || version == "1.1.1" 
+	return version == "1.3.0" || version == "1.1.1"
 }
 
 // WMSParamsChecker checks and marshals the content
