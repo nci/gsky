@@ -1,8 +1,8 @@
 package processor
 
 import (
-	pb "github.com/nci/gsky/grpc_server/gdalservice"
 	"fmt"
+	pb "github.com/nci/gsky/grpc_server/gdalservice"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"log"
@@ -30,8 +30,6 @@ func NewRasterGRPC(ctx context.Context, serverAddress string, errChan chan error
 
 func (gi *GeoRasterGRPC) Run() {
 	defer close(gi.Out)
-	//start := time.Now()
-	//i := 0
 
 	conn, err := grpc.Dial(gi.Client, grpc.WithInsecure())
 	if err != nil {
@@ -51,7 +49,6 @@ func (gi *GeoRasterGRPC) Run() {
 			}
 
 			cLimiter.Increase()
-			//i += 1
 			go func(g *GeoTileGranule, conc *ConcLimiter) {
 				defer conc.Decrease()
 				c := pb.NewGDALClient(conn)
@@ -69,8 +66,6 @@ func (gi *GeoRasterGRPC) Run() {
 		}
 	}
 	cLimiter.Wait()
-	//log.Println("gRPC Time", time.Since(start), "Processed:", i)
-
 }
 
 func getBand(times []time.Time, rasterTime time.Time) (int32, error) {

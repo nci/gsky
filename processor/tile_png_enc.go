@@ -30,8 +30,6 @@ func NewPNGEncoder(errChan chan error) *PNGEncoder {
 func (enc *PNGEncoder) Run() {
 	defer close(enc.Out)
 
-	//start := time.Now()
-
 	bands := map[string][]*ByteRaster{}
 	var nameSpaces []string
 	palette := []color.RGBA{}
@@ -146,6 +144,4 @@ func (enc *PNGEncoder) Run() {
 		enc.Out <- buf.Bytes()
 
 	}
-
-	//fmt.Println("PNG Encoder Time", time.Since(start))
 }

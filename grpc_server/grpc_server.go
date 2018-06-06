@@ -1,9 +1,9 @@
 package main
 
 import (
-	pb "github.com/nci/gsky/grpc_server/gdalservice"
 	"flag"
 	"fmt"
+	pb "github.com/nci/gsky/grpc_server/gdalservice"
 	"log"
 	"net"
 
@@ -48,7 +48,6 @@ func main() {
 	port := flag.Int("p", 6000, "gRPC server listening port.")
 	poolSize := flag.Int("n", 8, "Maximum number of requests handled concurrently.")
 	debug := flag.Bool("debug", false, "verbose logging")
-	//aws := flag.Bool("aws", true, "Needs access to AWS S3 rasters?")
 	flag.Parse()
 
 	go func() {

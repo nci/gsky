@@ -7,10 +7,11 @@ sysconfdir = @sysconfdir@
 srcdir = @srcdir@
 VPATH = @srcdir@
 
+PKGROOT=github.com/nci/gsky
 CGO_CFLAGS="@CGO_CFLAGS@"
 CGO_LDFLAGS=-lgdal
-LDFLAGS="-X=_$(srcdir)/utils.LibexecDir=${libexecdir} -X=_$(srcdir)/grpc_server/gdalservice.LibexecDir=${libexecdir} \
-	-X=_$(srcdir)/utils.EtcDir=$(sysconfdir) -X=_$(srcdir)/utils.DataDir=${datarootdir}/gsky"
+LDFLAGS="-X=$(PKGROOT)/utils.LibexecDir=${libexecdir} -X=$(PKGROOT)/grpc_server/gdalservice.LibexecDir=${libexecdir} \
+	-X=$(PKGROOT)/utils.EtcDir=$(sysconfdir) -X=$(PKGROOT)/utils.DataDir=${datarootdir}/gsky"
 GOBUILD = CGO_CFLAGS=$(CGO_CFLAGS) CGO_LDFLAGS=$(CGO_LDFLAGS) go build -ldflags=$(LDFLAGS)
 GOGET = CGO_CFLAGS=$(CGO_CFLAGS) go get
 
@@ -24,7 +25,7 @@ all: concurrent
 	$(GOBUILD) -o masapi mas/api/api.go
 
 concurrent: src/concurrent.c
-	$(CC) -Wall -O2 $< -o $@
+	$(CC) -std=c99 -Wall -O2 $< -o $@
 
 src/concurrent.c:
 	mkdir -p $(dir $@)
@@ -51,3 +52,7 @@ install:
 
 clean:
 	-rm -f accept gsky-crawl gsky-gdal-process gsky-ows gsky-rpc masapi concurrent
+
+distclean: clean
+	-rm -f Makefile config.log config.status
+	-rm -r src

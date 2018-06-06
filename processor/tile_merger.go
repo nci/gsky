@@ -1,8 +1,8 @@
 package processor
 
 import (
-	"github.com/nci/gsky/utils"
 	"fmt"
+	"github.com/nci/gsky/utils"
 	"hash/fnv"
 	"reflect"
 	"sort"
@@ -23,9 +23,9 @@ type RasterMerger struct {
 
 func NewRasterMerger(errChan chan error) *RasterMerger {
 	return &RasterMerger{
-		In:    make(chan *FlexRaster, 100),
-		Out:   make(chan []utils.Raster, 100),
-		
+		In:  make(chan *FlexRaster, 100),
+		Out: make(chan []utils.Raster, 100),
+
 		Error: errChan,
 	}
 }
@@ -219,7 +219,7 @@ func ComputeMask(mask *utils.Mask, data []byte, rType string) (out []bool, err e
 		if len(mask.BitTests) == 0 {
 			err = fmt.Errorf("Please specify either mask.Value or mask.BitTests")
 			return
-		} else if len(mask.BitTests) % 2 != 0 {
+		} else if len(mask.BitTests)%2 != 0 {
 			err = fmt.Errorf("The entries in mask.BitTests must be in pairs")
 			return
 		}
@@ -406,7 +406,7 @@ func (enc *RasterMerger) Run() {
 
 	out := make([]utils.Raster, len(nameSpaces))
 	for i, ns := range nameSpaces {
-		canvas := canvasMap[ns] 
+		canvas := canvasMap[ns]
 		headr := *(*reflect.SliceHeader)(unsafe.Pointer(&canvas.Data))
 		switch canvas.Type {
 		case "Byte":

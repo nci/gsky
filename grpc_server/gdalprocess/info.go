@@ -34,9 +34,9 @@ import (
 	"time"
 	"unsafe"
 
-	pb "github.com/nci/gsky/grpc_server/gdalservice"
 	"github.com/golang/protobuf/ptypes"
 	google_protobuf "github.com/golang/protobuf/ptypes/timestamp"
+	pb "github.com/nci/gsky/grpc_server/gdalservice"
 )
 
 var parserStrings = map[string]string{"landsat": `LC(?P<mission>\d)(?P<path>\d\d\d)(?P<row>\d\d\d)(?P<year>\d\d\d\d)(?P<julian_day>\d\d\d)(?P<processing_level>[a-zA-Z0-9]+)_(?P<band>[a-zA-Z0-9]+)`,
@@ -56,8 +56,6 @@ var parserStrings = map[string]string{"landsat": `LC(?P<mission>\d)(?P<path>\d\d
 	"agdc_landsat2": `LS(?P<mission>\d)_OLI_(?P<sensor>[A-Z]+)_(?P<product>[A-Z]+)_(?P<epsg>\d+)_(?P<x_coord>-?\d+)_(?P<y_coord>-?\d+)_(?P<year>\d\d\d\d).`,
 	"agdc_dem":      `SRTM_(?P<product>[A-Z]+)_(?P<x_coord>-?\d+)_(?P<y_coord>-?\d+)_(?P<year>\d\d\d\d)(?P<month>\d\d)(?P<day>\d\d)(?P<hour>\d\d)(?P<minute>\d\d)(?P<second>\d\d)`}
 
-//var parsers map[string]*regexp.Regexp = map[string]*regexp.Regexp{}
-
 var dateFormats = []string{"2006-01-02 15:04:05.0", "2006-1-2 15:4:5"}
 var durationUnits = map[string]time.Duration{"seconds": time.Second, "hours": time.Hour, "days": time.Hour * 24}
 var CWGS84WKT = C.CString(`GEOGCS["WGS 84",DATUM["WGS_1984",SPHEROID["WGS 84",6378137,298.257223563,AUTHORITY["EPSG","7030"]],TOWGS84[0,0,0,0,0,0,0],AUTHORITY["EPSG","6326"]],PRIMEM["Greenwich",0,AUTHORITY["EPSG","8901"]],UNIT["degree",0.0174532925199433,AUTHORITY["EPSG","9108"]],AUTHORITY["EPSG","4326"]]","proj4":"+proj=longlat +ellps=WGS84 +towgs84=0,0,0,0,0,0,0 +no_defs `)
@@ -65,7 +63,6 @@ var CsubDS = C.CString("SUBDATASETS")
 var CtimeUnits = C.CString("time#units")
 var CncDimTimeValues = C.CString("NETCDF_DIM_time_VALUES")
 var CncDimLevelValues = C.CString("NETCDF_DIM_lev_VALUES")
-
 
 func ExtractGDALInfo(in *pb.GeoRPCGranule) *pb.Result {
 	cPath := C.CString(in.Path)
@@ -266,19 +263,6 @@ func parseTime(nameFields map[string]string) time.Time {
 	return time.Time{}
 }
 
-/*
-func goStrings(argc C.int, argv **C.char) []string {
-
-	length := int(argc)
-	tmpslice := (*[1 << 30]*C.char)(unsafe.Pointer(argv))[:length:length]
-	gostrings := make([]string, length)
-	for i, s := range tmpslice {
-		gostrings[i] = C.GoString(s)
-	}
-	return gostrings
-}
-*/
-
 func getDate(inDate string) (time.Time, error) {
 	for _, dateFormat := range dateFormats {
 		if t, err := time.Parse(dateFormat, inDate); err == nil {
@@ -306,7 +290,6 @@ func getNCTime(sdsName string, hSubdataset C.GDALDatasetH) ([]string, error) {
 	if len(timeUnitsWords) == 3 {
 		timeUnitsWords = append(timeUnitsWords, "00:00:00.0")
 	}
-	//timeUnitsSlice := strings.Split(timeUnits, "since")
 	stepUnit := durationUnits[strings.Trim(timeUnitsWords[0], " ")]
 	startDate, err := getDate(strings.Join(timeUnitsWords[2:], " "))
 	if err != nil {
