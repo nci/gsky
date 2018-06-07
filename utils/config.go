@@ -249,7 +249,7 @@ func LoadAllConfigFiles(rootDir string) (map[string]*Config, error) {
 		return nil
 	})
 
-	if len(configMap) == 0 {
+	if err == nil && len(configMap) == 0 {
 		err = fmt.Errorf("No config file found")
 	}
 
