@@ -7,13 +7,17 @@ sysconfdir = @sysconfdir@
 srcdir = @srcdir@
 VPATH = @srcdir@
 
-PKGROOT=github.com/nci/gsky
+BASEPATH=github.com/nci/gsky
 CGO_CFLAGS="@CGO_CFLAGS@"
 CGO_LDFLAGS=-lgdal
-LDFLAGS="-X=$(PKGROOT)/utils.LibexecDir=${libexecdir} -X=$(PKGROOT)/grpc_server/gdalservice.LibexecDir=${libexecdir} \
-	-X=$(PKGROOT)/utils.EtcDir=$(sysconfdir) -X=$(PKGROOT)/utils.DataDir=${datarootdir}/gsky"
 GOBUILD = CGO_CFLAGS=$(CGO_CFLAGS) CGO_LDFLAGS=$(CGO_LDFLAGS) go build -ldflags=$(LDFLAGS)
 GOGET = CGO_CFLAGS=$(CGO_CFLAGS) go get
+LDFLAGS="-X=$(BASEPATH)/utils.LibexecDir=${libexecdir} -X=$(BASEPATH)/grpc_server/gdalservice.LibexecDir=${libexecdir} \
+	-X=$(BASEPATH)/utils.EtcDir=$(sysconfdir) -X=$(BASEPATH)/utils.DataDir=${datarootdir}/gsky"
+GOBIN=$(shell go env GOBIN)
+ifeq ($(strip $(GOBIN)),)
+  GOBIN=$(shell go env GOPATH)/bin
+endif
 
 all: concurrent
 	$(GOGET)
