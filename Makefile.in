@@ -29,6 +29,9 @@ all: concurrent
 	$(GOBUILD) -o accept acceptance_tests/accept.go
 	$(GOBUILD) -o masapi mas/api/api.go
 
+check test:
+	go test
+
 concurrent: src/concurrent.c
 	$(CC) -std=c99 -Wall -O2 $< -o $@
 
