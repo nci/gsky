@@ -6,7 +6,7 @@ import (
 	"log"
 )
 
-var LibexecDir = "/usr/local/libexec"
+var LibexecDir = "."
 
 type ProcessPool struct {
 	Pool      []*Process
