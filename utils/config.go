@@ -247,7 +247,7 @@ func LoadAllConfigFiles(rootDir string) (map[string]*Config, error) {
 
 			configMap[relPath] = config
 
-			for i, _ := range config.Layers {
+			for i := range config.Layers {
 				ns := relPath
 				if relPath == "." {
 					ns = ""
