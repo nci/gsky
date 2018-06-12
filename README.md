@@ -60,8 +60,8 @@ Dependencies:
 
 ```console
 $ export GOPATH=~/go
-$ git clone https://github.com/nci/gsky $GOPATH/src/gsky
-$ cd $GOPATH/src/gsky
+$ git clone https://github.com/nci/gsky $GOPATH/src/github.com/nci/gsky
+$ cd $GOPATH/srfc/github.com/nci/gsky
 $ ./configure
 $ make all install
 ```
