@@ -15,8 +15,8 @@ import (
 	"os"
 
 	"github.com/golang/protobuf/proto"
-	gp "github.com/nci/gsky/grpc_server/gdalprocess"
-	pb "github.com/nci/gsky/grpc_server/gdalservice"
+	gp "github.com/nci/gsky/worker/gdalprocess"
+	pb "github.com/nci/gsky/worker/gdalservice"
 )
 
 func sendOutput(out *pb.Result, conn net.Conn) error {
