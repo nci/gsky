@@ -13,9 +13,9 @@ import (
 	"time"
 )
 
-var LibexecDir = "/usr/local/libexec"
-var EtcDir = "/usr/local/etc"
-var DataDir = "/usr/local/share"
+var LibexecDir = "."
+var EtcDir = "."
+var DataDir = "."
 
 type ServiceConfig struct {
 	OWSHostname string   `json:"ows_hostname"`
