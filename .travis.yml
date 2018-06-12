@@ -19,5 +19,3 @@ script:
   - go tool vet $TRAVIS_BUILD_DIR
   # Ensure that gofmt -d produces zero diff output
   - test -z "$(gofmt -d $TRAVIS_BUILD_DIR)"
-  - cd $TRAVIS_BUILD_DIR && ./configure
-  - cd $TRAVIS_BUILD_DIR && make check
