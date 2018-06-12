@@ -3,7 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
-	pb "github.com/nci/gsky/grpc_server/gdalservice"
+	pb "github.com/nci/gsky/worker/gdalservice"
 	"log"
 	"net"
 

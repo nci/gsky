@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/ptypes"
-	pb "github.com/nci/gsky/grpc_server/gdalservice"
+	pb "github.com/nci/gsky/worker/gdalservice"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 )
