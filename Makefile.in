@@ -11,9 +11,7 @@ VPATH = @srcdir@
 BASEPATH=github.com/nci/gsky
 CGO_CFLAGS="@CGO_CFLAGS@"
 CGO_LDFLAGS=-lgdal
-GOBUILD = CGO_CFLAGS=$(CGO_CFLAGS) CGO_LDFLAGS=$(CGO_LDFLAGS) go build -ldflags=$(LDFLAGS)
-GOGET = CGO_CFLAGS=$(CGO_CFLAGS) go get
-LDFLAGS="-X=$(BASEPATH)/utils.LibexecDir=${libexecdir} -X=$(BASEPATH)/grpc_server/gdalservice.LibexecDir=${libexecdir} \
+LDFLAGS="-X=$(BASEPATH)/utils.LibexecDir=${libexecdir} -X=$(BASEPATH)/worker/gdalservice.LibexecDir=${libexecdir} \
 	-X=$(BASEPATH)/utils.EtcDir=$(sysconfdir) -X=$(BASEPATH)/utils.DataDir=${datarootdir}/gsky"
 GOBIN=$(shell go env GOBIN)
 ifeq ($(strip $(GOBIN)),)
@@ -21,13 +19,11 @@ ifeq ($(strip $(GOBIN)),)
 endif
 
 all: concurrent
-	$(GOGET)
-	$(GOBUILD) -o gsky-rpc grpc_server/grpc_server.go
-	$(GOBUILD) -o gsky-gdal-process grpc_server/gdal_process.go
-	$(GOBUILD) -o gsky-ows ows.go
-	$(GOBUILD) -o gsky-crawl crawl/crawl.go
-	$(GOBUILD) -o accept acceptance_tests/accept.go
-	$(GOBUILD) -o masapi mas/api/api.go
+	CGO_CFLAGS=$(CGO_CFLAGS) go get ./...
+	CGO_CFLAGS=$(CGO_CFLAGS) CGO_LDFLAGS=$(CGO_LDFLAGS) go install -ldflags=$(LDFLAGS) ./...
+
+check test:
+	go test
 
 check test:
 	go test
@@ -46,11 +42,11 @@ install:
 	install -d $(datarootdir)/gsky/static
 	install -d $(datarootdir)/mas
 	install concurrent $(bindir)
-	install gsky-ows $(sbindir)
-	install gsky-gdal-process $(libexecdir)
-	install gsky-rpc $(sbindir)
-	install gsky-crawl $(sbindir)
-	install masapi $(sbindir)
+	install $(GOBIN)/gsky $(sbindir)/gsky-ows
+	install $(GOBIN)/gdal-process $(libexecdir)/gsky-gdal-process
+	install $(GOBIN)/grpc-server $(sbindir)/gsky-rpc
+	install $(GOBIN)/crawl $(sbindir)/gsky-crawl
+	install $(GOBIN)/api $(sbindir)/masapi
 	install -m 644 $(srcdir)/zoom.png $(sysconfdir)
 	install -m 644 $(srcdir)/data_unavailable.png $(sysconfdir)
 	for f in $(srcdir)/templates/* ; do install -m 644 $$f $(datarootdir)/gsky/templates ; done
@@ -59,7 +55,8 @@ install:
 	for f in $(srcdir)/mas/db/*.sh ; do install -m 755 $$f $(datarootdir)/mas ; done
 
 clean:
-	-rm -f accept gsky-crawl gsky-gdal-process gsky-ows gsky-rpc masapi concurrent
+	go clean -i ./...
+	rm -f concurrent
 
 distclean: clean
 	-rm -f Makefile config.log config.status
