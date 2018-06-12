@@ -2,9 +2,10 @@ package processor
 
 import (
 	"fmt"
-	pb "github.com/nci/gsky/worker/gdalservice"
 	"math"
 	"sort"
+
+	pb "github.com/nci/gsky/worker/gdalservice"
 )
 
 type DrillMerger struct {
