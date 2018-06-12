@@ -52,6 +52,7 @@ type Palette struct {
 // to be published and rendered
 type Layer struct {
 	OWSHostname string `json:"ows_hostname"`
+	NameSpace   string
 	Name        string `json:"name"`
 	Title       string `json:"title"`
 	Abstract    string `json:"abstract"`
@@ -245,6 +246,14 @@ func LoadAllConfigFiles(rootDir string) (map[string]*Config, error) {
 			}
 
 			configMap[relPath] = config
+
+			for i, _ := range config.Layers {
+				ns := relPath
+				if relPath == "." {
+					ns = ""
+				}
+				config.Layers[i].NameSpace = ns
+			}
 		}
 		return nil
 	})
