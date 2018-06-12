@@ -25,9 +25,6 @@ all: concurrent
 check test:
 	go test
 
-check test:
-	go test
-
 concurrent: src/concurrent.c
 	$(CC) -std=c99 -Wall -O2 $< -o $@
 
