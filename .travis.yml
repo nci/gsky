@@ -20,5 +20,4 @@ script:
   # Ensure that gofmt -d produces zero diff output
   - test -z "$(gofmt -d $TRAVIS_BUILD_DIR)"
   - ./configure
-  - make all
   - make check
