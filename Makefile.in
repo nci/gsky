@@ -22,6 +22,9 @@ all: concurrent
 	CGO_CFLAGS=$(CGO_CFLAGS) go get ./...
 	CGO_CFLAGS=$(CGO_CFLAGS) CGO_LDFLAGS=$(CGO_LDFLAGS) go install -ldflags=$(LDFLAGS) ./...
 
+check test:
+	go test
+
 concurrent: src/concurrent.c
 	$(CC) -std=c99 -Wall -O2 $< -o $@
 

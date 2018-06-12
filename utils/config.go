@@ -13,9 +13,9 @@ import (
 	"time"
 )
 
-var LibexecDir = "/usr/local/libexec"
-var EtcDir = "/usr/local/etc"
-var DataDir = "/usr/local/share"
+var LibexecDir = "."
+var EtcDir = "."
+var DataDir = "."
 
 type ServiceConfig struct {
 	OWSHostname string   `json:"ows_hostname"`
@@ -288,21 +288,23 @@ func WatchConfig(infoLog, errLog *log.Logger, configMap *map[string]*Config) {
 	sighup := make(chan os.Signal, 1)
 	signal.Notify(sighup, syscall.SIGHUP)
 	go func() {
-		select {
-		case <-sighup:
-			infoLog.Println("Caught SIGHUP, reloading config...")
-			confMap, err := LoadAllConfigFiles(EtcDir)
-			if err != nil {
-				errLog.Printf("Error in loading config files: %v\n", err)
-				return
-			}
+		for {
+			select {
+			case <-sighup:
+				infoLog.Println("Caught SIGHUP, reloading config...")
+				confMap, err := LoadAllConfigFiles(EtcDir)
+				if err != nil {
+					errLog.Printf("Error in loading config files: %v\n", err)
+					return
+				}
 
-			for k := range *configMap {
-				delete(*configMap, k)
-			}
+				for k := range *configMap {
+					delete(*configMap, k)
+				}
 
-			for k := range confMap {
-				(*configMap)[k] = confMap[k]
+				for k := range confMap {
+					(*configMap)[k] = confMap[k]
+				}
 			}
 		}
 	}()

@@ -192,7 +192,7 @@ func ProcessRasterStack(rasterStack map[int64][]*FlexRaster, maskMap map[int64][
 	for k := range rasterStack {
 		keys = append(keys, k)
 	}
-	sort.Slice(keys, func(i, j int) bool { return keys[i] < keys[j] })
+	sort.Slice(keys, func(i, j int) bool { return keys[i] > keys[j] })
 
 	for _, geoStamp := range keys {
 		for _, r := range rasterStack[geoStamp] {
