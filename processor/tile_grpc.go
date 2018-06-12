@@ -2,7 +2,7 @@ package processor
 
 import (
 	"fmt"
-	pb "github.com/nci/gsky/grpc_server/gdalservice"
+	pb "github.com/nci/gsky/worker/gdalservice"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"log"
