@@ -17,8 +17,9 @@ import (
 	"math"
 	"unsafe"
 
-	geo "bitbucket.org/monkeyforecaster/geometry"
 	"encoding/json"
+
+	geo "bitbucket.org/monkeyforecaster/geometry"
 	pb "github.com/nci/gsky/worker/gdalservice"
 )
 

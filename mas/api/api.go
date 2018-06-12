@@ -10,10 +10,11 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"github.com/bradfitz/gomemcache/memcache"
-	_ "github.com/lib/pq"
 	"log"
 	"net/http"
+
+	"github.com/bradfitz/gomemcache/memcache"
+	_ "github.com/lib/pq"
 )
 
 var (

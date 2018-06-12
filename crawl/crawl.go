@@ -3,9 +3,10 @@ package main
 import (
 	"bufio"
 	"encoding/json"
-	extr "github.com/nci/gsky/crawl/extractor"
 	"log"
 	"os"
+
+	extr "github.com/nci/gsky/crawl/extractor"
 )
 
 func ensure(err error) {

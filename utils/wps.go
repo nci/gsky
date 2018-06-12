@@ -7,7 +7,6 @@ package utils
 import "C"
 
 import (
-	geo "bitbucket.org/monkeyforecaster/geometry"
 	"bytes"
 	"encoding/json"
 	"encoding/xml"
@@ -15,6 +14,8 @@ import (
 	"io"
 	"regexp"
 	"strings"
+
+	geo "bitbucket.org/monkeyforecaster/geometry"
 )
 
 type Data struct {
