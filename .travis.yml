@@ -19,4 +19,6 @@ script:
   - go tool vet $TRAVIS_BUILD_DIR
   # Ensure that gofmt -d produces zero diff output
   - test -z "$(gofmt -d $TRAVIS_BUILD_DIR)"
-  - go test github.com/$TRAVIS_REPO_SLUG
+  - ./configure
+  - make all
+  - make check
