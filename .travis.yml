@@ -8,6 +8,12 @@ addons:
   apt:
     packages:
     - postgresql-9.6-postgis-2.3
+    - libproj-dev
+    - libhdf4-dev
+    - libhdf5-dev
+    - libnetcdf-dev
+    - libopenjpeg-dev
+    - openjpeg-tools
 
 before_script:
   - psql -U postgres -c "create extension postgis"
@@ -17,7 +23,7 @@ install:
   - wget http://download.osgeo.org/gdal/2.2.4/gdal-2.2.4.tar.gz.md5
   - md5sum gdal-2.2.4.tar.gz | cmp - gdal-2.2.4.tar.gz.md5
   - tar xfvz gdal-2.2.4.tar.gz
-  - (cd gdal-2.2.4 && ./configure --prefix=$HOME/gdal-install && make -s all install)
+  - (cd gdal-2.2.4 && ./configure --with-openjpeg --prefix=$HOME/gdal-install && make -s all install)
 
 script:
   - cd $TRAVIS_BUILD_DIR/mas/db && psql -f schema.sql -U postgres
