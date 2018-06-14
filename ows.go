@@ -66,7 +66,9 @@ func init() {
 		utils.DataDir + "/templates/WMS_ServiceException.tpl",
 		utils.DataDir + "/templates/WPS_DescribeProcess.tpl",
 		utils.DataDir + "/templates/WPS_Execute.tpl",
-		utils.DataDir + "/templates/WPS_GetCapabilities.tpl"}
+		utils.DataDir + "/templates/WPS_GetCapabilities.tpl",
+		utils.DataDir + "/templates/WCS_GetCapabilities.tpl",
+		utils.DataDir + "/templates/WCS_DescribeCoverage.tpl"}
 
 	for _, filePath := range filePaths {
 		if _, err := os.Stat(filePath); os.IsNotExist(err) {
@@ -303,7 +305,7 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 			newConf.Layers[i].Dates = []string{newConf.Layers[i].Dates[0], newConf.Layers[i].Dates[len(newConf.Layers[i].Dates)-1]}
 		}
 
-		err := utils.ExecuteWriteTemplateFile(w, &newConf, "./templates/WCS_GetCapabilities.tpl")
+		err := utils.ExecuteWriteTemplateFile(w, &newConf, utils.DataDir+"/templates/WCS_GetCapabilities.tpl")
 		if err != nil {
 			http.Error(w, err.Error(), 500)
 		}
@@ -316,7 +318,7 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 			return
 		}
 
-		err = utils.ExecuteWriteTemplateFile(w, conf.Layers[idx], "./templates/WCS_DescribeCoverage.tpl")
+		err = utils.ExecuteWriteTemplateFile(w, conf.Layers[idx], utils.DataDir+"/templates/WCS_DescribeCoverage.tpl")
 		if err != nil {
 			http.Error(w, err.Error(), 500)
 		}
