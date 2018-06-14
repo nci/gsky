@@ -50,6 +50,8 @@ func CompileWCSRegexMap() map[string]*regexp.Regexp {
 	return REMap
 }
 
+// CheckWCSVersion checks if the requested
+// version of WCS is supported by the server
 func CheckWCSVersion(version string) bool {
 	return version == "1.0.0"
 }
