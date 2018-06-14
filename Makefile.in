@@ -10,7 +10,6 @@ VPATH = @srcdir@
 
 BASEPATH=github.com/nci/gsky
 CGO_CFLAGS="@CGO_CFLAGS@"
-CGO_LDFLAGS=-lgdal
 LDFLAGS="-X=$(BASEPATH)/utils.LibexecDir=${libexecdir} -X=$(BASEPATH)/worker/gdalservice.LibexecDir=${libexecdir} \
 	-X=$(BASEPATH)/utils.EtcDir=$(sysconfdir) -X=$(BASEPATH)/utils.DataDir=${datarootdir}/gsky"
 GOBIN=$(shell go env GOBIN)
@@ -20,10 +19,10 @@ endif
 
 all: concurrent
 	CGO_CFLAGS=$(CGO_CFLAGS) go get ./...
-	CGO_CFLAGS=$(CGO_CFLAGS) CGO_LDFLAGS=$(CGO_LDFLAGS) go install -ldflags=$(LDFLAGS) ./...
+	CGO_CFLAGS=$(CGO_CFLAGS) go install -ldflags=$(LDFLAGS) ./...
 
 check test:
-	go test ./...
+	CGO_CFLAGS=$(CGO_CFLAGS) go test ./...
 
 concurrent: src/concurrent.c
 	$(CC) -std=c99 -Wall -O2 $< -o $@
