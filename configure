@@ -1250,7 +1250,7 @@ if test -n "$ac_init_help"; then
 Optional Packages:
   --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
   --without-PACKAGE       do not use PACKAGE (same as --with-PACKAGE=no)
-  --with-gdal[=DIR]       location of GDAL library [default: /usr/local]
+  --with-gdal[=DIR]       location of GDAL library [default: /usr]
 
 Report bugs to the package provider.
 _ACEOF
@@ -1686,14 +1686,12 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 if test "${with_gdal+set}" = set; then :
   withval=$with_gdal;
 else
-  with_gdal=yes
+  with_gdal=/usr
 fi
 
 
-if test "x$with_gdal" != xyes; then :
-  CGO_CFLAGS="-I$with_gdal/include -L$with_gdal/lib"
+CGO_CFLAGS="-I$with_gdal/include -L$with_gdal/lib -Wl,-rpath-link=$with_gdal/lib"
 
-fi
 
 ac_config_files="$ac_config_files Makefile"
 
