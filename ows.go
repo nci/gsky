@@ -292,7 +292,7 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 
 	switch *params.Request {
 	case "GetCapabilities":
-		if params.Version == nil || *params.Version != "1.0.0" {
+		if params.Version != nil && !utils.CheckWCSVersion(*params.Version) {
 			http.Error(w, fmt.Sprintf("This server can only accept WCS requests compliant with version 1.0.0: %s", reqURL), 400)
 			return
 		}
@@ -324,7 +324,7 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 		}
 
 	case "GetCoverage":
-		if params.Version == nil || *params.Version != "1.0.0" {
+		if params.Version == nil || !utils.CheckWCSVersion(*params.Version) {
 			http.Error(w, fmt.Sprintf("This server can only accept WCS requests compliant with version 1.0.0: %s", reqURL), 400)
 			return
 		}
