@@ -50,6 +50,12 @@ func CompileWCSRegexMap() map[string]*regexp.Regexp {
 	return REMap
 }
 
+// CheckWCSVersion checks if the requested
+// version of WCS is supported by the server
+func CheckWCSVersion(version string) bool {
+	return version == "1.0.0"
+}
+
 // WCSParamsChecker checks and marshals the content
 // of the parameters of a WCS request into a
 // WCSParams struct.
@@ -64,9 +70,7 @@ func WCSParamsChecker(params map[string][]string, compREMap map[string]*regexp.R
 	}
 
 	if version, versionOK := params["version"]; versionOK {
-		if version[0] == "1.0.0" {
-			jsonFields = append(jsonFields, fmt.Sprintf(`"version":"%s"`, version[0]))
-		}
+		jsonFields = append(jsonFields, fmt.Sprintf(`"version":"%s"`, version[0]))
 	}
 
 	if request, requestOK := params["request"]; requestOK {
