@@ -67,8 +67,7 @@ $ make all install
 ```
 
 The `configure` script takes all of the standard GNU `configure` flags
-such as `--prefix` (to specify where to install GSKY). You may need to
-use `--with-gdal` to point to the installation of GDAL.
+such as `--prefix` (to specify where to install GSKY).
 
 How To Start the Server
 -----------------------
