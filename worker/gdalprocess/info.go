@@ -5,7 +5,7 @@ package gdalprocess
 // #include "gdal.h"
 // #include "ogr_srs_api.h" /* for SRS calls */
 // #include "cpl_string.h"
-// #cgo LDFLAGS: -lgdal
+// #cgo pkg-config: gdal
 //char *getProj4(char *projWKT)
 //{
 //	char *pszProj4;

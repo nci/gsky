@@ -3,7 +3,7 @@ package utils
 // #include "gdal.h"
 // #include "ogr_api.h"
 // #include "ogr_srs_api.h"
-// #cgo LDFLAGS: -lgdal
+// #cgo pkg-config: gdal
 import "C"
 
 import (

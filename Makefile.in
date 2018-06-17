@@ -9,7 +9,6 @@ srcdir = @srcdir@
 VPATH = @srcdir@
 
 BASEPATH=github.com/nci/gsky
-CGO_CFLAGS="@CGO_CFLAGS@"
 LDFLAGS="-X=$(BASEPATH)/utils.LibexecDir=${libexecdir} -X=$(BASEPATH)/worker/gdalservice.LibexecDir=${libexecdir} \
 	-X=$(BASEPATH)/utils.EtcDir=$(sysconfdir) -X=$(BASEPATH)/utils.DataDir=${datarootdir}/gsky"
 GOBIN=$(shell go env GOBIN)
@@ -17,12 +16,12 @@ ifeq ($(strip $(GOBIN)),)
   GOBIN=$(shell go env GOPATH)/bin
 endif
 
-all: concurrent
-	CGO_CFLAGS=$(CGO_CFLAGS) go get ./...
-	CGO_CFLAGS=$(CGO_CFLAGS) go install -ldflags=$(LDFLAGS) ./...
+all: concurrent pkg-config
+	go get ./...
+	go install -ldflags=$(LDFLAGS) ./...
 
-check test:
-	CGO_CFLAGS=$(CGO_CFLAGS) go test ./...
+check test: pkg-config
+	go test ./...
 
 concurrent: src/concurrent.c
 	$(CC) -std=c99 -Wall -O2 $< -o $@
@@ -50,10 +49,14 @@ install:
 	for f in $(srcdir)/mas/db/*.sql ; do install -m 644 $$f $(datarootdir)/mas ; done
 	for f in $(srcdir)/mas/db/*.sh ; do install -m 755 $$f $(datarootdir)/mas ; done
 
-clean:
+clean: pkg-config
 	go clean -i ./...
 	rm -f concurrent
 
 distclean: clean
 	-rm -f Makefile config.log config.status
 	-rm -r src
+
+.PHONY: pkg-config
+pkg-config:
+	pkg-config --exists gdal
