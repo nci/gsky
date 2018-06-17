@@ -2,7 +2,7 @@ package main
 
 // #include "gdal.h"
 // #include "gdal_frmts.h"
-// #cgo LDFLAGS: -lgdal
+// #cgo pkg-config: gdal
 import "C"
 
 import (

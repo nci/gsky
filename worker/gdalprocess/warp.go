@@ -6,7 +6,7 @@ package gdalprocess
 // #include "ogr_api.h"
 // #include "ogr_srs_api.h"
 // #include "cpl_string.h"
-// #cgo LDFLAGS: -lgdal
+// #cgo pkg-config: gdal
 // int
 // warp_operation(GDALDatasetH hSrcDS, GDALDatasetH hDstDS, int band)
 // {
