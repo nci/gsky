@@ -221,7 +221,7 @@ func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r
 		ctx, ctxCancel := context.WithCancel(ctx)
 		defer ctxCancel()
 		errChan := make(chan error)
-		tp := proc.InitTilePipeline(ctx, conf.ServiceConfig.MASAddress, LoadBalance(conf.ServiceConfig.WorkerNodes), errChan)
+		tp := proc.InitTilePipeline(ctx, conf.ServiceConfig.MASAddress, LoadBalance(conf.ServiceConfig.WorkerNodes), conf.Layers[idx].MaxGrpcRecvMsgSize, errChan)
 		select {
 		case res := <-tp.Process(geoReq):
 			scaleParams := utils.ScaleParams{Offset: geoReq.ScaleParams.Offset,
@@ -402,7 +402,7 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 		ctx, ctxCancel := context.WithCancel(ctx)
 		defer ctxCancel()
 		errChan := make(chan error)
-		tp := proc.InitTilePipeline(ctx, conf.ServiceConfig.MASAddress, LoadBalance(conf.ServiceConfig.WorkerNodes), errChan)
+		tp := proc.InitTilePipeline(ctx, conf.ServiceConfig.MASAddress, LoadBalance(conf.ServiceConfig.WorkerNodes), conf.Layers[idx].MaxGrpcRecvMsgSize, errChan)
 
 		select {
 		case res := <-tp.Process(geoReq):

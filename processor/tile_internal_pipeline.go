@@ -8,23 +8,25 @@ import (
 )
 
 type TileInternalPipeline struct {
-	Context    context.Context
-	Error      chan error
-	RPCAddress string
-	APIAddress string
+	Context            context.Context
+	Error              chan error
+	RPCAddress         string
+	MaxGrpcRecvMsgSize int
+	APIAddress         string
 }
 
-func NewTileInternalPipeline(ctx context.Context, apiAddr string, rpcAddr string, errChan chan error) *TileInternalPipeline {
+func NewTileInternalPipeline(ctx context.Context, apiAddr string, rpcAddr string, maxGrpcRecvMsgSize int, errChan chan error) *TileInternalPipeline {
 	return &TileInternalPipeline{
-		Context:    ctx,
-		Error:      errChan,
-		RPCAddress: rpcAddr,
-		APIAddress: apiAddr,
+		Context:            ctx,
+		Error:              errChan,
+		RPCAddress:         rpcAddr,
+		MaxGrpcRecvMsgSize: maxGrpcRecvMsgSize,
+		APIAddress:         apiAddr,
 	}
 }
 
 func (dp *TileInternalPipeline) Process(geoReq *GeoTileRequest) chan []utils.Raster {
-	grpcTiler := NewRasterGRPC(dp.Context, dp.RPCAddress, dp.Error)
+	grpcTiler := NewRasterGRPC(dp.Context, dp.RPCAddress, dp.MaxGrpcRecvMsgSize, dp.Error)
 	if grpcTiler == nil {
 		dp.Error <- fmt.Errorf("Couldn't instantiate RPCTiler %s/n", dp.RPCAddress)
 		return nil

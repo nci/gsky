@@ -8,22 +8,24 @@ import (
 )
 
 type GeoProcessor struct {
-	Context    context.Context
-	In         chan *GeoTileRequest
-	Out        chan []utils.Raster
-	Error      chan error
-	APIAddress string
-	RPCAddress string
+	Context            context.Context
+	In                 chan *GeoTileRequest
+	Out                chan []utils.Raster
+	Error              chan error
+	APIAddress         string
+	RPCAddress         string
+	MaxGrpcRecvMsgSize int
 }
 
-func NewGeoProcessor(ctx context.Context, apiAddr, serverAddr string, errChan chan error) *GeoProcessor {
+func NewGeoProcessor(ctx context.Context, apiAddr, serverAddr string, maxGrpcRecvMsgSize int, errChan chan error) *GeoProcessor {
 	return &GeoProcessor{
-		Context:    ctx,
-		In:         make(chan *GeoTileRequest, 100),
-		Out:        make(chan []utils.Raster, 100),
-		Error:      errChan,
-		APIAddress: apiAddr,
-		RPCAddress: serverAddr,
+		Context:            ctx,
+		In:                 make(chan *GeoTileRequest, 100),
+		Out:                make(chan []utils.Raster, 100),
+		Error:              errChan,
+		APIAddress:         apiAddr,
+		RPCAddress:         serverAddr,
+		MaxGrpcRecvMsgSize: maxGrpcRecvMsgSize,
 	}
 }
 
@@ -40,7 +42,7 @@ func (gp *GeoProcessor) Run() {
 			cLimiter.Increase()
 			go func(g *GeoTileRequest, conc *ConcLimiter) {
 				defer conc.Decrease()
-				p := NewTileInternalPipeline(gp.Context, gp.APIAddress, gp.RPCAddress, gp.Error)
+				p := NewTileInternalPipeline(gp.Context, gp.APIAddress, gp.RPCAddress, gp.MaxGrpcRecvMsgSize, gp.Error)
 				for rast := range p.Process(g) {
 					gp.Out <- rast
 				}
