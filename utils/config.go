@@ -59,24 +59,25 @@ type Layer struct {
 	MetadataURL string `json:"metadata_url"`
 	DataURL     string `json:"data_url"`
 	//CacheLevels  []CacheLevel `json:"cache_levels"`
-	DataSource   string   `json:"data_source"`
-	StartISODate string   `json:"start_isodate"`
-	EndISODate   string   `json:"end_isodate"`
-	StepDays     int      `json:"step_days"`
-	StepHours    int      `json:"step_hours"`
-	StepMinutes  int      `json:"step_minutes"`
-	Accum        bool     `json:"accum"`
-	TimeGen      string   `json:"time_generator"`
-	ResFilter    *int     `json:"resolution_filter"`
-	Dates        []string `json:"dates"`
-	RGBProducts  []string `json:"rgb_products"`
-	Mask         *Mask    `json:"mask"`
-	OffsetValue  float64  `json:"offset_value"`
-	ClipValue    float64  `json:"clip_value"`
-	ScaleValue   float64  `json:"scale_value"`
-	Palette      *Palette `json:"palette"`
-	LegendPath   string   `json:"legend_path"`
-	ZoomLimit    float64  `json:"zoom_limit"`
+	DataSource         string   `json:"data_source"`
+	StartISODate       string   `json:"start_isodate"`
+	EndISODate         string   `json:"end_isodate"`
+	StepDays           int      `json:"step_days"`
+	StepHours          int      `json:"step_hours"`
+	StepMinutes        int      `json:"step_minutes"`
+	Accum              bool     `json:"accum"`
+	TimeGen            string   `json:"time_generator"`
+	ResFilter          *int     `json:"resolution_filter"`
+	Dates              []string `json:"dates"`
+	RGBProducts        []string `json:"rgb_products"`
+	Mask               *Mask    `json:"mask"`
+	OffsetValue        float64  `json:"offset_value"`
+	ClipValue          float64  `json:"clip_value"`
+	ScaleValue         float64  `json:"scale_value"`
+	Palette            *Palette `json:"palette"`
+	LegendPath         string   `json:"legend_path"`
+	ZoomLimit          float64  `json:"zoom_limit"`
+	MaxGrpcRecvMsgSize int      `json:"max_grpc_recv_msg_size"`
 }
 
 // Process contains all the details that a WPS needs
@@ -265,6 +266,8 @@ func LoadAllConfigFiles(rootDir string) (map[string]*Config, error) {
 	return configMap, err
 }
 
+const DefaultRecvMsgSize = 10 * 1024 * 1024
+
 // LoadConfigFile marshalls the config.json document returning an
 // instance of a Config variable containing all the values
 func (config *Config) LoadConfigFile(configFile string) error {
@@ -284,6 +287,10 @@ func (config *Config) LoadConfigFile(configFile string) error {
 		step := time.Minute * time.Duration(60*24*layer.StepDays+60*layer.StepHours+layer.StepMinutes)
 		config.Layers[i].Dates = GenerateDates(layer.TimeGen, start, end, step)
 		config.Layers[i].OWSHostname = config.ServiceConfig.OWSHostname
+
+		if config.Layers[i].MaxGrpcRecvMsgSize <= 0 {
+			config.Layers[i].MaxGrpcRecvMsgSize = DefaultRecvMsgSize
+		}
 
 		if layer.Palette != nil && layer.Palette.Colours != nil && len(layer.Palette.Colours) < 3 {
 			return fmt.Errorf("The colour palette must contain at least 2 colours.")
