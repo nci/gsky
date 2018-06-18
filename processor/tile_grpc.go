@@ -12,27 +12,33 @@ import (
 )
 
 type GeoRasterGRPC struct {
-	Context context.Context
-	In      chan *GeoTileGranule
-	Out     chan *FlexRaster
-	Error   chan error
-	Client  string
+	Context            context.Context
+	In                 chan *GeoTileGranule
+	Out                chan *FlexRaster
+	Error              chan error
+	Client             string
+	MaxGrpcRecvMsgSize int
 }
 
-func NewRasterGRPC(ctx context.Context, serverAddress string, errChan chan error) *GeoRasterGRPC {
+func NewRasterGRPC(ctx context.Context, serverAddress string, maxGrpcRecvMsgSize int, errChan chan error) *GeoRasterGRPC {
 	return &GeoRasterGRPC{
-		Context: ctx,
-		In:      make(chan *GeoTileGranule, 100),
-		Out:     make(chan *FlexRaster, 100),
-		Error:   errChan,
-		Client:  serverAddress,
+		Context:            ctx,
+		In:                 make(chan *GeoTileGranule, 100),
+		Out:                make(chan *FlexRaster, 100),
+		Error:              errChan,
+		Client:             serverAddress,
+		MaxGrpcRecvMsgSize: maxGrpcRecvMsgSize,
 	}
 }
 
 func (gi *GeoRasterGRPC) Run() {
 	defer close(gi.Out)
 
-	conn, err := grpc.Dial(gi.Client, grpc.WithInsecure())
+	opts := []grpc.DialOption{
+		grpc.WithInsecure(),
+		grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(gi.MaxGrpcRecvMsgSize)),
+	}
+	conn, err := grpc.Dial(gi.Client, opts...)
 	if err != nil {
 		log.Fatalf("gRPC connection problem: %v", err)
 	}
