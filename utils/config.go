@@ -288,7 +288,7 @@ func (config *Config) LoadConfigFile(configFile string) error {
 		config.Layers[i].Dates = GenerateDates(layer.TimeGen, start, end, step)
 		config.Layers[i].OWSHostname = config.ServiceConfig.OWSHostname
 
-		if config.Layers[i].MaxGrpcRecvMsgSize <= 0 {
+		if config.Layers[i].MaxGrpcRecvMsgSize <= DefaultRecvMsgSize {
 			config.Layers[i].MaxGrpcRecvMsgSize = DefaultRecvMsgSize
 		}
 
