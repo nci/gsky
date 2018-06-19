@@ -1,6 +1,7 @@
 language: go
 go: 1.9.x
-
+env:
+  - PREFIX=$HOME/local
 services:
   - postgresql
 addons:
@@ -19,6 +20,8 @@ before_script:
   - psql -U postgres -c "create extension postgis"
 
 install:
+  - git clone https://github.com/sstephenson/bats.git
+  - (cd bats && ./install.sh $PREFIX)
   - wget http://download.osgeo.org/gdal/2.2.4/gdal-2.2.4.tar.gz
   - wget http://download.osgeo.org/gdal/2.2.4/gdal-2.2.4.tar.gz.md5
   - md5sum gdal-2.2.4.tar.gz | cmp - gdal-2.2.4.tar.gz.md5

@@ -22,6 +22,7 @@ all: concurrent pkg-config
 
 check test: pkg-config
 	go test ./...
+	bats testsuite
 
 concurrent: src/concurrent.c
 	$(CC) -std=c99 -Wall -O2 $< -o $@
