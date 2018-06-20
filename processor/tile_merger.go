@@ -386,7 +386,7 @@ func (enc *RasterMerger) Run() {
 		DataBytes := *(*[]uint8)(unsafe.Pointer(&dataBytesHdr))
 
 		canvas := canvasMap["Nadir_Reflectance_Band1"]
-		config := ConfigPayLoad{NameSpaces: []string{"NDVI"}, ScaleParams: canvas.ScaleParams, 
+		config := ConfigPayLoad{NameSpaces: []string{"NDVI"}, ScaleParams: canvas.ScaleParams,
 			Palette: canvas.Palette, Mask: canvas.Mask, ZoomLimit: canvas.ZoomLimit}
 		canvasMap["NDVI"] = &FlexRaster{ConfigPayLoad: config, NoData: 0, Data: DataBytes, Type: "Float32",
 			Height: canvas.Height, Width: canvas.Width, OffX: canvas.OffX, OffY: canvas.OffY,
