@@ -18,6 +18,7 @@ type ConfigPayLoad struct {
 	Palette     *utils.Palette
 	Mask        *utils.Mask
 	ZoomLimit   float64
+	PolygonSegments int
 }
 
 type GeoTileRequest struct {
