@@ -13,11 +13,12 @@ type ScaleParams struct {
 }
 
 type ConfigPayLoad struct {
-	NameSpaces  []string
-	ScaleParams ScaleParams
-	Palette     *utils.Palette
-	Mask        *utils.Mask
-	ZoomLimit   float64
+	NameSpaces      []string
+	ScaleParams     ScaleParams
+	Palette         *utils.Palette
+	Mask            *utils.Mask
+	ZoomLimit       float64
+	PolygonSegments int
 }
 
 type GeoTileRequest struct {

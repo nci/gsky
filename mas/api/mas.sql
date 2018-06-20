@@ -311,6 +311,7 @@ create or replace function mas_intersects(
   gpath      text,
   srs        text, -- EPSG:nnnn
   wkt        text, -- bounding polygon
+  n_seg      integer, -- number of segments for polygon segmentation
   time_a     timestamptz, -- time range low
   time_b     timestamptz, -- time range high
   namespace  text[], -- for NetCDF, the variable name
@@ -363,12 +364,16 @@ create or replace function mas_intersects(
       raise exception 'invalid WKT';
     end if;
 
+    if n_seg is null then
+      n_seg := 2;
+    end if;
+
     -- Intersection occurs in the dataset's original projection. Make
     -- sure the wgs84 bounding box covers roughly the same area after
     -- transformation.
     segmask := ST_Segmentize(
       mask,
-      ceil((ST_XMax(mask)-ST_XMin(mask))/2) -- degree lat/lon max segment length
+      ceil((ST_XMax(mask)-ST_XMin(mask))/n_seg) -- degree lat/lon max segment length
     );
 
     qstr := mas_intersect_polygons(gpath, segmask, namespace, time_a, time_b, resolution::bigint);
