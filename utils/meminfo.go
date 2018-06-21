@@ -306,4 +306,3 @@ func (m *MemInfo) Swap() int {
 	}
 	return int((100 * (total - free)) / total)
 }
-

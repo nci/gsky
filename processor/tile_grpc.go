@@ -43,7 +43,7 @@ func (gi *GeoRasterGRPC) Run() {
 	for gran := range gi.In {
 		if gran.Path == "NULL" {
 			gi.Out <- &FlexRaster{ConfigPayLoad: gran.ConfigPayLoad, Data: make([]uint8, gran.Width*gran.Height), Height: gran.Height, Width: gran.Width, OffX: gran.OffX, OffY: gran.OffY, Type: gran.RasterType, NoData: 0.0, NameSpace: gran.NameSpace, TimeStamp: gran.TimeStamp, Polygon: gran.Polygon}
-				continue
+			continue
 		} else {
 			grans = append(grans, gran)
 			if i == 0 {
@@ -70,7 +70,7 @@ func (gi *GeoRasterGRPC) Run() {
 
 	// We have to do this because there is no way to figure out
 	// the data type of the raster but returned from the grpc worker
-	// We need the data type to dertermine the byte size for memory 
+	// We need the data type to dertermine the byte size for memory
 	// bound calcuations
 	g0 := grans[0]
 	r0, err := getRpcRaster(gi.Context, g0, conn)
@@ -91,13 +91,15 @@ func (gi *GeoRasterGRPC) Run() {
 
 	if err == nil {
 		freeMem := int(meminfo.Available())
-		if freeMem - requestedSize <= ReservedMemorySize {
+		log.Printf("freeMem:%v, requested:%v, diff:%v", freeMem, requestedSize, freeMem-requestedSize)
+		if freeMem-requestedSize <= ReservedMemorySize {
 			log.Printf("Out of memory, freeMem:%v, requested:%v", freeMem, requestedSize)
-			gi.Error <- fmt.Errorf("Server resource exhausted")
+			gi.Error <- fmt.Errorf("Server resources exhausted")
 			return
 		}
+
 	} else {
-		// If we have error obtaining meminfo, 
+		// If we have error obtaining meminfo,
 		// we assume that we have enough memory.
 		// This can happen if the OS doesn't support
 		// /proc/meminfo
@@ -116,8 +118,9 @@ func (gi *GeoRasterGRPC) Run() {
 		case <-gi.Context.Done():
 			gi.Error <- fmt.Errorf("Tile gRPC context has been cancel: %v", gi.Context.Err())
 			return
-		case <- timeoutCtx.Done():
-			gi.Error <- fmt.Errorf("timed out")
+		case <-timeoutCtx.Done():
+			log.Printf("tile grpc timed out, threshold:%v seconds", g0.Timeout)
+			gi.Error <- fmt.Errorf("Processing timed out")
 			return
 		default:
 			if gran.Path == "NULL" {

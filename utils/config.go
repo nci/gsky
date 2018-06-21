@@ -277,7 +277,6 @@ const DefaultRecvMsgSize = 10 * 1024 * 1024
 const DefaultWmsPolygonSegments = 2
 const DefaultWcsPolygonSegments = 10
 
-
 const DefaultWmsTimeout = 5
 const DefaultWcsTimeout = 10
 
