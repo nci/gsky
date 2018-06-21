@@ -17,6 +17,8 @@ var LibexecDir = "."
 var EtcDir = "."
 var DataDir = "."
 
+const ReservedMemorySize = 1.5 * 1024 * 1024 * 1024
+
 type ServiceConfig struct {
 	OWSHostname string   `json:"ows_hostname"`
 	MASAddress  string   `json:"mas_address"`
@@ -80,6 +82,8 @@ type Layer struct {
 	MaxGrpcRecvMsgSize int      `json:"max_grpc_recv_msg_size"`
 	WmsPolygonSegments int      `json:"wms_polygon_segments"`
 	WcsPolygonSegments int      `json:"wcs_polygon_segments"`
+	WmsTimeout         int      `json:"wms_timeout"`
+	WcsTimeout         int      `json:"wcs_timeout"`
 }
 
 // Process contains all the details that a WPS needs
@@ -273,6 +277,10 @@ const DefaultRecvMsgSize = 10 * 1024 * 1024
 const DefaultWmsPolygonSegments = 2
 const DefaultWcsPolygonSegments = 10
 
+
+const DefaultWmsTimeout = 5
+const DefaultWcsTimeout = 10
+
 // LoadConfigFile marshalls the config.json document returning an
 // instance of a Config variable containing all the values
 func (config *Config) LoadConfigFile(configFile string) error {
@@ -303,6 +311,14 @@ func (config *Config) LoadConfigFile(configFile string) error {
 
 		if config.Layers[i].WcsPolygonSegments <= DefaultWcsPolygonSegments {
 			config.Layers[i].WcsPolygonSegments = DefaultWcsPolygonSegments
+		}
+
+		if config.Layers[i].WmsTimeout <= 0 {
+			config.Layers[i].WmsTimeout = DefaultWmsTimeout
+		}
+
+		if config.Layers[i].WcsTimeout <= 0 {
+			config.Layers[i].WcsTimeout = DefaultWcsTimeout
 		}
 
 		if layer.Palette != nil && layer.Palette.Colours != nil && len(layer.Palette.Colours) < 3 {
