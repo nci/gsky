@@ -83,18 +83,23 @@ func init() {
 	}
 	configMap = confMap
 
+	for {
+		err = utils.CreateGrpcPool(configMap)
+		if err != nil {
+			Error.Printf("Error in creating gRPC pool: %v\n", err)
+		} else {
+			break
+		}
+
+		time.Sleep(10 * time.Second)
+	}
+
 	utils.WatchConfig(Info, Error, &configMap)
 
 	reWMSMap = utils.CompileWMSRegexMap()
 	reWCSMap = utils.CompileWCSRegexMap()
 	reWPSMap = utils.CompileWPSRegexMap()
 
-}
-
-// LoadBalance is a mocked version of the real load balancer sitting
-// in front to the service
-func LoadBalance(servers []string) string {
-	return servers[rand.Intn(len(servers))]
 }
 
 func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, reqURL string, w http.ResponseWriter) {
@@ -210,6 +215,9 @@ func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r
 			ZoomLimit:       conf.Layers[idx].ZoomLimit,
 			PolygonSegments: conf.Layers[idx].WmsPolygonSegments,
 			Timeout:         conf.Layers[idx].WmsTimeout,
+			GrpcPool:        conf.ServiceConfig.GrpcPool,
+			GrpcPoolSize:    conf.ServiceConfig.GrpcPoolSize,
+			GrpcConcLimit:   conf.ServiceConfig.GrpcWmsConcLimit,
 		},
 			Collection: conf.Layers[idx].DataSource,
 			CRS:        *params.CRS,
@@ -223,7 +231,7 @@ func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r
 		ctx, ctxCancel := context.WithCancel(ctx)
 		defer ctxCancel()
 		errChan := make(chan error)
-		tp := proc.InitTilePipeline(ctx, conf.ServiceConfig.MASAddress, LoadBalance(conf.ServiceConfig.WorkerNodes), conf.Layers[idx].MaxGrpcRecvMsgSize, errChan)
+		tp := proc.InitTilePipeline(ctx, conf.ServiceConfig.MASAddress, errChan)
 		select {
 		case res := <-tp.Process(geoReq):
 			scaleParams := utils.ScaleParams{Offset: geoReq.ScaleParams.Offset,
@@ -385,6 +393,9 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 			ZoomLimit:       conf.Layers[idx].ZoomLimit,
 			PolygonSegments: conf.Layers[idx].WcsPolygonSegments,
 			Timeout:         conf.Layers[idx].WcsTimeout,
+			GrpcPool:        conf.ServiceConfig.GrpcPool,
+			GrpcPoolSize:    conf.ServiceConfig.GrpcPoolSize,
+			GrpcConcLimit:   conf.ServiceConfig.GrpcWcsConcLimit,
 		},
 			Collection: conf.Layers[idx].DataSource,
 			CRS:        *params.CRS,
@@ -406,7 +417,7 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 		ctx, ctxCancel := context.WithCancel(ctx)
 		defer ctxCancel()
 		errChan := make(chan error)
-		tp := proc.InitTilePipeline(ctx, conf.ServiceConfig.MASAddress, LoadBalance(conf.ServiceConfig.WorkerNodes), conf.Layers[idx].MaxGrpcRecvMsgSize, errChan)
+		tp := proc.InitTilePipeline(ctx, conf.ServiceConfig.MASAddress, errChan)
 
 		select {
 		case res := <-tp.Process(geoReq):
