@@ -14,6 +14,7 @@ import (
 
 type GDALDataset struct {
 	DSName     string      `json:"ds_name"`
+	NameSpace  string      `json:"namespace"`
 	ArrayType  string      `json:"array_type"`
 	TimeStamps []time.Time `json:"timestamps"`
 	Polygon    string      `json:"polygon"`
@@ -70,17 +71,17 @@ func (p *TileIndexer) Run() {
 			if len(geoReq.NameSpaces) == 0 {
 				geoReq.NameSpaces = append(geoReq.NameSpaces, "")
 			}
-			for _, nameSpace := range geoReq.NameSpaces {
-				if geoReq.EndTime == nil {
-					url = strings.Replace(fmt.Sprintf("http://%s%s?intersects&metadata=gdal&time=%s&srs=%s&wkt=%s&namespace=%s&nseg=%d", p.APIAddress, geoReq.Collection, geoReq.StartTime.Format(ISOFormat), geoReq.CRS, BBox2WKT(geoReq.BBox), nameSpace, geoReq.PolygonSegments), " ", "%20", -1)
-				} else {
-					url = strings.Replace(fmt.Sprintf("http://%s%s?intersects&metadata=gdal&time=%s&until=%s&srs=%s&wkt=%s&namespace=%s&nseg=%d", p.APIAddress, geoReq.Collection, geoReq.StartTime.Format(ISOFormat), geoReq.EndTime.Format(ISOFormat), geoReq.CRS, BBox2WKT(geoReq.BBox), nameSpace, geoReq.PolygonSegments), " ", "%20", -1)
-				}
-				log.Println(url)
 
-				wg.Add(1)
-				go URLIndexGet(p.Context, url, nameSpace, geoReq, p.Error, p.Out, &wg)
+			nameSpaces := strings.Join(geoReq.NameSpaces, ",")
+			if geoReq.EndTime == nil {
+				url = strings.Replace(fmt.Sprintf("http://%s%s?intersects&metadata=gdal&time=%s&srs=%s&wkt=%s&namespace=%s&nseg=%d", p.APIAddress, geoReq.Collection, geoReq.StartTime.Format(ISOFormat), geoReq.CRS, BBox2WKT(geoReq.BBox), nameSpaces, geoReq.PolygonSegments), " ", "%20", -1)
+			} else {
+				url = strings.Replace(fmt.Sprintf("http://%s%s?intersects&metadata=gdal&time=%s&until=%s&srs=%s&wkt=%s&namespace=%s&nseg=%d", p.APIAddress, geoReq.Collection, geoReq.StartTime.Format(ISOFormat), geoReq.EndTime.Format(ISOFormat), geoReq.CRS, BBox2WKT(geoReq.BBox), nameSpaces, geoReq.PolygonSegments), " ", "%20", -1)
 			}
+			log.Println(url)
+
+			wg.Add(1)
+			go URLIndexGet(p.Context, url, geoReq, p.Error, p.Out, &wg)
 			if geoReq.Mask != nil {
 				maskCollection := geoReq.Mask.DataSource
 				if len(maskCollection) == 0 {
@@ -88,21 +89,21 @@ func (p *TileIndexer) Run() {
 				}
 
 				if geoReq.EndTime == nil {
-					url = strings.Replace(fmt.Sprintf("http://%s%s?intersects&metadata=gdal&time=%s&srs=%s&wkt=%s&namespace=%s", p.APIAddress, maskCollection, geoReq.StartTime.Format(ISOFormat), geoReq.CRS, BBox2WKT(geoReq.BBox), geoReq.Mask.ID), " ", "%20", -1)
+					url = strings.Replace(fmt.Sprintf("http://%s%s?intersects&metadata=gdal&time=%s&srs=%s&wkt=%s&namespace=%s&nseg=%d", p.APIAddress, maskCollection, geoReq.StartTime.Format(ISOFormat), geoReq.CRS, BBox2WKT(geoReq.BBox), geoReq.Mask.ID, geoReq.PolygonSegments), " ", "%20", -1)
 				} else {
-					url = strings.Replace(fmt.Sprintf("http://%s%s?intersects&metadata=gdal&time=%s&until=%s&srs=%s&wkt=%s&namespace=%s", p.APIAddress, maskCollection, geoReq.StartTime.Format(ISOFormat), geoReq.EndTime.Format(ISOFormat), geoReq.CRS, BBox2WKT(geoReq.BBox), geoReq.Mask.ID), " ", "%20", -1)
+					url = strings.Replace(fmt.Sprintf("http://%s%s?intersects&metadata=gdal&time=%s&until=%s&srs=%s&wkt=%s&namespace=%s&nseg=%d", p.APIAddress, maskCollection, geoReq.StartTime.Format(ISOFormat), geoReq.EndTime.Format(ISOFormat), geoReq.CRS, BBox2WKT(geoReq.BBox), geoReq.Mask.ID, geoReq.PolygonSegments), " ", "%20", -1)
 				}
 				log.Println(url)
 
 				wg.Add(1)
-				go URLIndexGet(p.Context, url, geoReq.Mask.ID, geoReq, p.Error, p.Out, &wg)
+				go URLIndexGet(p.Context, url, geoReq, p.Error, p.Out, &wg)
 			}
 			wg.Wait()
 		}
 	}
 }
 
-func URLIndexGet(ctx context.Context, url, nameSpace string, geoReq *GeoTileRequest, errChan chan error, out chan *GeoTileGranule, wg *sync.WaitGroup) {
+func URLIndexGet(ctx context.Context, url string, geoReq *GeoTileRequest, errChan chan error, out chan *GeoTileGranule, wg *sync.WaitGroup) {
 	defer wg.Done()
 
 	resp, err := http.Get(url)
@@ -133,7 +134,7 @@ func URLIndexGet(ctx context.Context, url, nameSpace string, geoReq *GeoTileRequ
 		for _, ds := range metadata.GDALDatasets {
 			for _, t := range ds.TimeStamps {
 				if t.Equal(*geoReq.StartTime) || geoReq.EndTime != nil && t.After(*geoReq.StartTime) && t.Before(*geoReq.EndTime) {
-					out <- &GeoTileGranule{ConfigPayLoad: ConfigPayLoad{NameSpaces: geoReq.NameSpaces, Mask: geoReq.Mask, ScaleParams: geoReq.ScaleParams, Palette: geoReq.Palette, Timeout: geoReq.Timeout}, Path: ds.DSName, NameSpace: nameSpace, RasterType: ds.ArrayType, TimeStamps: ds.TimeStamps, TimeStamp: t, Polygon: ds.Polygon, BBox: geoReq.BBox, Height: geoReq.Height, Width: geoReq.Width, OffX: geoReq.OffX, OffY: geoReq.OffY, CRS: geoReq.CRS}
+					out <- &GeoTileGranule{ConfigPayLoad: ConfigPayLoad{NameSpaces: geoReq.NameSpaces, Mask: geoReq.Mask, ScaleParams: geoReq.ScaleParams, Palette: geoReq.Palette, Timeout: geoReq.Timeout}, Path: ds.DSName, NameSpace: ds.NameSpace, RasterType: ds.ArrayType, TimeStamps: ds.TimeStamps, TimeStamp: t, Polygon: ds.Polygon, BBox: geoReq.BBox, Height: geoReq.Height, Width: geoReq.Width, OffX: geoReq.OffX, OffY: geoReq.OffY, CRS: geoReq.CRS}
 				}
 			}
 		}
