@@ -277,8 +277,8 @@ const DefaultRecvMsgSize = 10 * 1024 * 1024
 const DefaultWmsPolygonSegments = 2
 const DefaultWcsPolygonSegments = 10
 
-const DefaultWmsTimeout = 5
-const DefaultWcsTimeout = 10
+const DefaultWmsTimeout = 10
+const DefaultWcsTimeout = 15
 
 // LoadConfigFile marshalls the config.json document returning an
 // instance of a Config variable containing all the values

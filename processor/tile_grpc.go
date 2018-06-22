@@ -76,6 +76,8 @@ func (gi *GeoRasterGRPC) Run() {
 	r0, err := getRpcRaster(gi.Context, g0, conn)
 	if err != nil {
 		gi.Error <- err
+		r0 = &pb.Result{Raster: &pb.Raster{Data: make([]uint8, g0.Width*g0.Height), RasterType: "Byte", NoData: -1.}}
+		gi.Out <- &FlexRaster{ConfigPayLoad: g0.ConfigPayLoad, Data: r0.Raster.Data, Height: g0.Height, Width: g0.Width, OffX: g0.OffX, OffY: g0.OffY, Type: r0.Raster.RasterType, NoData: r0.Raster.NoData, NameSpace: g0.NameSpace, TimeStamp: g0.TimeStamp, Polygon: g0.Polygon}
 		return
 	}
 
@@ -91,7 +93,6 @@ func (gi *GeoRasterGRPC) Run() {
 
 	if err == nil {
 		freeMem := int(meminfo.Available())
-		log.Printf("freeMem:%v, requested:%v, diff:%v", freeMem, requestedSize, freeMem-requestedSize)
 		if freeMem-requestedSize <= ReservedMemorySize {
 			log.Printf("Out of memory, freeMem:%v, requested:%v", freeMem, requestedSize)
 			gi.Error <- fmt.Errorf("Server resources exhausted")
