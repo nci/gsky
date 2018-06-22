@@ -11,6 +11,9 @@ import (
 	"path/filepath"
 	"syscall"
 	"time"
+
+	"github.com/processout/grpc-go-pool"
+	"google.golang.org/grpc"
 )
 
 var LibexecDir = "."
@@ -20,9 +23,14 @@ var DataDir = "."
 const ReservedMemorySize = 1.5 * 1024 * 1024 * 1024
 
 type ServiceConfig struct {
-	OWSHostname string   `json:"ows_hostname"`
-	MASAddress  string   `json:"mas_address"`
-	WorkerNodes []string `json:"worker_nodes"`
+	OWSHostname        string   `json:"ows_hostname"`
+	MASAddress         string   `json:"mas_address"`
+	WorkerNodes        []string `json:"worker_nodes"`
+	MaxGrpcRecvMsgSize int      `json:"max_grpc_recv_msg_size"`
+	GrpcPoolSize       int      `json:"rpc_pool_size"`
+	GrpcPool           *grpcpool.Pool
+	GrpcWmsConcLimit   int `json:"rpc_wms_conc_limit"`
+	GrpcWcsConcLimit   int `json:"rpc_wcs_conc_limit"`
 }
 
 // CacheLevel contains the source files of one layer as well as the
@@ -79,7 +87,6 @@ type Layer struct {
 	Palette            *Palette `json:"palette"`
 	LegendPath         string   `json:"legend_path"`
 	ZoomLimit          float64  `json:"zoom_limit"`
-	MaxGrpcRecvMsgSize int      `json:"max_grpc_recv_msg_size"`
 	WmsPolygonSegments int      `json:"wms_polygon_segments"`
 	WcsPolygonSegments int      `json:"wcs_polygon_segments"`
 	WmsTimeout         int      `json:"wms_timeout"`
@@ -272,6 +279,57 @@ func LoadAllConfigFiles(rootDir string) (map[string]*Config, error) {
 	return configMap, err
 }
 
+const DefaultGrpcIdleTimeout = 30
+
+func CreateGrpcPool(configMap map[string]*Config) error {
+	type GrpcRefCounter struct {
+		refCount int
+	}
+
+	for ns, config := range configMap {
+		counter := &GrpcRefCounter{}
+		factory := func() (*grpc.ClientConn, error) {
+			opts := []grpc.DialOption{
+				grpc.WithInsecure(),
+				grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(config.ServiceConfig.MaxGrpcRecvMsgSize)),
+			}
+
+			ii := counter.refCount % len(config.ServiceConfig.WorkerNodes)
+			counter.refCount += 1
+
+			address := config.ServiceConfig.WorkerNodes[ii]
+			conn, err := grpc.Dial(address, opts...)
+			if err != nil {
+				return nil, fmt.Errorf("Failed to start gRPC connection: %v", err)
+			}
+
+			log.Printf("%v, gRPC worker connected: %v", ns, address)
+			return conn, err
+		}
+
+		poolSize := config.ServiceConfig.GrpcPoolSize
+		pool, err := grpcpool.New(factory, poolSize, poolSize, DefaultGrpcIdleTimeout*time.Second)
+		if err != nil {
+			// It is possible that the gRPC pool is partially created.
+			// We shut it down completely in case of error to prevent resource leak.
+			ShutdownGrpcPool(configMap)
+			return fmt.Errorf("Failed to create gRPC pool: %v", err)
+		}
+
+		config.ServiceConfig.GrpcPool = pool
+	}
+
+	return nil
+}
+
+func ShutdownGrpcPool(configMap map[string]*Config) {
+	for _, config := range configMap {
+		if config.ServiceConfig.GrpcPool != nil {
+			config.ServiceConfig.GrpcPool.Close()
+		}
+	}
+}
+
 const DefaultRecvMsgSize = 10 * 1024 * 1024
 
 const DefaultWmsPolygonSegments = 2
@@ -279,6 +337,10 @@ const DefaultWcsPolygonSegments = 10
 
 const DefaultWmsTimeout = 10
 const DefaultWcsTimeout = 15
+
+const DefaultGrpcPoolSize = 2
+const DefaultGrpcWmsConcLimit = 16
+const DefaultGrpcWcsConcLimit = 32
 
 // LoadConfigFile marshalls the config.json document returning an
 // instance of a Config variable containing all the values
@@ -300,10 +362,6 @@ func (config *Config) LoadConfigFile(configFile string) error {
 		config.Layers[i].Dates = GenerateDates(layer.TimeGen, start, end, step)
 		config.Layers[i].OWSHostname = config.ServiceConfig.OWSHostname
 
-		if config.Layers[i].MaxGrpcRecvMsgSize <= DefaultRecvMsgSize {
-			config.Layers[i].MaxGrpcRecvMsgSize = DefaultRecvMsgSize
-		}
-
 		if config.Layers[i].WmsPolygonSegments <= DefaultWmsPolygonSegments {
 			config.Layers[i].WmsPolygonSegments = DefaultWmsPolygonSegments
 		}
@@ -324,6 +382,23 @@ func (config *Config) LoadConfigFile(configFile string) error {
 			return fmt.Errorf("The colour palette must contain at least 2 colours.")
 		}
 	}
+
+	if config.ServiceConfig.MaxGrpcRecvMsgSize <= DefaultRecvMsgSize {
+		config.ServiceConfig.MaxGrpcRecvMsgSize = DefaultRecvMsgSize
+	}
+
+	if config.ServiceConfig.GrpcPoolSize <= DefaultGrpcPoolSize {
+		config.ServiceConfig.GrpcPoolSize = DefaultGrpcPoolSize
+	}
+
+	if config.ServiceConfig.GrpcWmsConcLimit <= DefaultGrpcWmsConcLimit {
+		config.ServiceConfig.GrpcWmsConcLimit = DefaultGrpcWmsConcLimit
+	}
+
+	if config.ServiceConfig.GrpcWcsConcLimit <= DefaultGrpcWcsConcLimit {
+		config.ServiceConfig.GrpcWcsConcLimit = DefaultGrpcWcsConcLimit
+	}
+
 	return nil
 }
 
@@ -339,9 +414,16 @@ func WatchConfig(infoLog, errLog *log.Logger, configMap *map[string]*Config) {
 				confMap, err := LoadAllConfigFiles(EtcDir)
 				if err != nil {
 					errLog.Printf("Error in loading config files: %v\n", err)
-					return
+					continue
 				}
 
+				err = CreateGrpcPool(confMap)
+				if err != nil {
+					errLog.Printf("Error in creating gRPC pool: %v\n", err)
+					continue
+				}
+
+				ShutdownGrpcPool(*configMap)
 				for k := range *configMap {
 					delete(*configMap, k)
 				}
@@ -349,6 +431,7 @@ func WatchConfig(infoLog, errLog *log.Logger, configMap *map[string]*Config) {
 				for k := range confMap {
 					(*configMap)[k] = confMap[k]
 				}
+
 			}
 		}
 	}()

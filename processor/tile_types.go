@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/nci/gsky/utils"
+	"github.com/processout/grpc-go-pool"
 )
 
 type ScaleParams struct {
@@ -20,6 +21,9 @@ type ConfigPayLoad struct {
 	ZoomLimit       float64
 	PolygonSegments int
 	Timeout         int
+	GrpcPool        *grpcpool.Pool
+	GrpcPoolSize    int
+	GrpcConcLimit   int
 }
 
 type GeoTileRequest struct {
