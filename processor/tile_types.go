@@ -19,6 +19,7 @@ type ConfigPayLoad struct {
 	Mask            *utils.Mask
 	ZoomLimit       float64
 	PolygonSegments int
+	Timeout         int
 }
 
 type GeoTileRequest struct {
