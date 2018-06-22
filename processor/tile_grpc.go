@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/nci/gsky/utils"
+	"github.com/nci/go.procmeminfo"
 	pb "github.com/nci/gsky/worker/gdalservice"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
@@ -88,7 +88,7 @@ func (gi *GeoRasterGRPC) Run() {
 	}
 	requestedSize := imageSize * dataSize * len(grans)
 
-	meminfo := utils.MemInfo{}
+	meminfo := procmeminfo.MemInfo{}
 	err = meminfo.Update()
 
 	if err == nil {
