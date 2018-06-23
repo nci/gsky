@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	geo "bitbucket.org/monkeyforecaster/geometry"
+	geo "github.com/nci/geometry"
 )
 
 // string used to format Go ISO times

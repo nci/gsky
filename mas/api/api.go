@@ -13,7 +13,7 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/bradfitz/gomemcache/memcache"
+	"github.com/nci/gomemcache/memcache"
 	_ "github.com/lib/pq"
 )
 

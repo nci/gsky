@@ -33,7 +33,7 @@ import (
 
 	_ "net/http/pprof"
 
-	geo "bitbucket.org/monkeyforecaster/geometry"
+	geo "github.com/nci/geometry"
 )
 
 // Global variable to hold the values specified
