@@ -84,6 +84,8 @@ type Layer struct {
 	WcsPolygonSegments int      `json:"wcs_polygon_segments"`
 	WmsTimeout         int      `json:"wms_timeout"`
 	WcsTimeout         int      `json:"wcs_timeout"`
+	GrpcWmsConcPerNode   int `json:"grpc_wms_conc_per_node"`
+	GrpcWcsConcPerNode   int `json:"grpc_wcs_conc_per_node"`
 }
 
 // Process contains all the details that a WPS needs
@@ -277,8 +279,11 @@ const DefaultRecvMsgSize = 10 * 1024 * 1024
 const DefaultWmsPolygonSegments = 2
 const DefaultWcsPolygonSegments = 10
 
-const DefaultWmsTimeout = 10
-const DefaultWcsTimeout = 15
+const DefaultWmsTimeout = 20
+const DefaultWcsTimeout = 30
+
+const DefaultGrpcWmsConcPerNode = 16
+const DefaultGrpcWcsConcPerNode = 16
 
 // LoadConfigFile marshalls the config.json document returning an
 // instance of a Config variable containing all the values
@@ -318,6 +323,14 @@ func (config *Config) LoadConfigFile(configFile string) error {
 
 		if config.Layers[i].WcsTimeout <= 0 {
 			config.Layers[i].WcsTimeout = DefaultWcsTimeout
+		}
+
+		if config.Layers[i].GrpcWmsConcPerNode <= 0 {
+			config.Layers[i].GrpcWmsConcPerNode = DefaultGrpcWmsConcPerNode 
+		}
+
+		if config.Layers[i].GrpcWcsConcPerNode <= 0 {
+			config.Layers[i].GrpcWcsConcPerNode = DefaultGrpcWcsConcPerNode 
 		}
 
 		if layer.Palette != nil && layer.Palette.Colours != nil && len(layer.Palette.Colours) < 3 {

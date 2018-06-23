@@ -5,6 +5,7 @@ import (
 	"log"
 	"strconv"
 	"time"
+	"math"
 
 	"github.com/nci/go.procmeminfo"
 	pb "github.com/nci/gsky/worker/gdalservice"
@@ -19,17 +20,17 @@ type GeoRasterGRPC struct {
 	In                 chan *GeoTileGranule
 	Out                chan *FlexRaster
 	Error              chan error
-	Client             string
+	Clients            []string
 	MaxGrpcRecvMsgSize int
 }
 
-func NewRasterGRPC(ctx context.Context, serverAddress string, maxGrpcRecvMsgSize int, errChan chan error) *GeoRasterGRPC {
+func NewRasterGRPC(ctx context.Context, serverAddress []string, maxGrpcRecvMsgSize int, errChan chan error) *GeoRasterGRPC {
 	return &GeoRasterGRPC{
 		Context:            ctx,
 		In:                 make(chan *GeoTileGranule, 100),
 		Out:                make(chan *FlexRaster, 100),
 		Error:              errChan,
-		Client:             serverAddress,
+		Clients:            serverAddress,
 		MaxGrpcRecvMsgSize: maxGrpcRecvMsgSize,
 	}
 }
@@ -57,23 +58,43 @@ func (gi *GeoRasterGRPC) Run() {
 	if len(grans) == 0 {
 		return
 	}
+	
+	g0 := grans[0]
+	effectivePoolSize := int(math.Ceil(float64(len(grans)) / float64(g0.GrpcConcLimit)))
+	if effectivePoolSize < 1 {
+		effectivePoolSize = 1
+	} else if effectivePoolSize > len(gi.Clients) {
+		effectivePoolSize = len(gi.Clients)
+	}
+	connPool := make([]*grpc.ClientConn, effectivePoolSize)
 
 	opts := []grpc.DialOption{
 		grpc.WithInsecure(),
 		grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(gi.MaxGrpcRecvMsgSize)),
 	}
-	conn, err := grpc.Dial(gi.Client, opts...)
-	if err != nil {
-		log.Fatalf("gRPC connection problem: %v", err)
+	
+	successConn := 0
+	for i := 0; i < effectivePoolSize; i++ {
+		conn, err := grpc.Dial(gi.Clients[i], opts...)
+		if err != nil {
+			log.Printf("gRPC connection problem: %v", err)
+		}
+		defer conn.Close()
+
+		connPool[i] = conn
+		successConn += 1
 	}
-	defer conn.Close()
+
+	if successConn == 0 {
+		gi.Error <- fmt.Errorf("All gRPC servers offline") 
+		return
+	}
 
 	// We have to do this because there is no way to figure out
 	// the data type of the raster but returned from the grpc worker
 	// We need the data type to dertermine the byte size for memory
 	// bound calcuations
-	g0 := grans[0]
-	r0, err := getRpcRaster(gi.Context, g0, conn)
+	r0, err := getRpcRaster(gi.Context, g0, connPool[0])
 	if err != nil {
 		gi.Error <- err
 		r0 = &pb.Result{Raster: &pb.Raster{Data: make([]uint8, g0.Width*g0.Height), RasterType: "Byte", NoData: -1.}}
@@ -112,7 +133,7 @@ func (gi *GeoRasterGRPC) Run() {
 
 	timeoutCtx, cancel := context.WithTimeout(gi.Context, time.Duration(g0.Timeout)*time.Second)
 	defer cancel()
-	cLimiter := NewConcLimiter(16)
+	cLimiter := NewConcLimiter(g0.GrpcConcLimit*len(connPool))
 	for i := 1; i < len(grans); i++ {
 		gran := grans[i]
 		select {
@@ -130,15 +151,15 @@ func (gi *GeoRasterGRPC) Run() {
 			}
 
 			cLimiter.Increase()
-			go func(g *GeoTileGranule, conc *ConcLimiter) {
+			go func(g *GeoTileGranule, conc *ConcLimiter, iTile int) {
 				defer conc.Decrease()
-				r, err := getRpcRaster(gi.Context, g, conn)
+				r, err := getRpcRaster(gi.Context, g, connPool[iTile % effectivePoolSize])
 				if err != nil {
 					gi.Error <- err
 					r = &pb.Result{Raster: &pb.Raster{Data: make([]uint8, g.Width*g.Height), RasterType: "Byte", NoData: -1.}}
 				}
 				gi.Out <- &FlexRaster{ConfigPayLoad: g.ConfigPayLoad, Data: r.Raster.Data, Height: g.Height, Width: g.Width, OffX: g.OffX, OffY: g.OffY, Type: r.Raster.RasterType, NoData: r.Raster.NoData, NameSpace: g.NameSpace, TimeStamp: g.TimeStamp, Polygon: g.Polygon}
-			}(gran, cLimiter)
+			}(gran, cLimiter, i)
 		}
 	}
 	cLimiter.Wait()
