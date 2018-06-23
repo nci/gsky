@@ -3,9 +3,9 @@ package processor
 import (
 	"fmt"
 	"log"
+	"math"
 	"strconv"
 	"time"
-	"math"
 
 	"github.com/nci/go.procmeminfo"
 	pb "github.com/nci/gsky/worker/gdalservice"
@@ -58,7 +58,7 @@ func (gi *GeoRasterGRPC) Run() {
 	if len(grans) == 0 {
 		return
 	}
-	
+
 	g0 := grans[0]
 	effectivePoolSize := int(math.Ceil(float64(len(grans)) / float64(g0.GrpcConcLimit)))
 	if effectivePoolSize < 1 {
@@ -72,7 +72,7 @@ func (gi *GeoRasterGRPC) Run() {
 		grpc.WithInsecure(),
 		grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(gi.MaxGrpcRecvMsgSize)),
 	}
-	
+
 	successConn := 0
 	for i := 0; i < effectivePoolSize; i++ {
 		conn, err := grpc.Dial(gi.Clients[i], opts...)
@@ -86,7 +86,7 @@ func (gi *GeoRasterGRPC) Run() {
 	}
 
 	if successConn == 0 {
-		gi.Error <- fmt.Errorf("All gRPC servers offline") 
+		gi.Error <- fmt.Errorf("All gRPC servers offline")
 		return
 	}
 
@@ -133,7 +133,7 @@ func (gi *GeoRasterGRPC) Run() {
 
 	timeoutCtx, cancel := context.WithTimeout(gi.Context, time.Duration(g0.Timeout)*time.Second)
 	defer cancel()
-	cLimiter := NewConcLimiter(g0.GrpcConcLimit*len(connPool))
+	cLimiter := NewConcLimiter(g0.GrpcConcLimit * len(connPool))
 	for i := 1; i < len(grans); i++ {
 		gran := grans[i]
 		select {
@@ -153,7 +153,7 @@ func (gi *GeoRasterGRPC) Run() {
 			cLimiter.Increase()
 			go func(g *GeoTileGranule, conc *ConcLimiter, iTile int) {
 				defer conc.Decrease()
-				r, err := getRpcRaster(gi.Context, g, connPool[iTile % effectivePoolSize])
+				r, err := getRpcRaster(gi.Context, g, connPool[iTile%effectivePoolSize])
 				if err != nil {
 					gi.Error <- err
 					r = &pb.Result{Raster: &pb.Raster{Data: make([]uint8, g.Width*g.Height), RasterType: "Byte", NoData: -1.}}
