@@ -20,6 +20,7 @@ type ConfigPayLoad struct {
 	ZoomLimit       float64
 	PolygonSegments int
 	Timeout         int
+	GrpcConcLimit   int
 }
 
 type GeoTileRequest struct {

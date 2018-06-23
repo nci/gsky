@@ -91,12 +91,6 @@ func init() {
 
 }
 
-// LoadBalance is a mocked version of the real load balancer sitting
-// in front to the service
-func LoadBalance(servers []string) string {
-	return servers[rand.Intn(len(servers))]
-}
-
 func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, reqURL string, w http.ResponseWriter) {
 
 	if params.Request == nil {
@@ -210,6 +204,7 @@ func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r
 			ZoomLimit:       conf.Layers[idx].ZoomLimit,
 			PolygonSegments: conf.Layers[idx].WmsPolygonSegments,
 			Timeout:         conf.Layers[idx].WmsTimeout,
+			GrpcConcLimit:   conf.Layers[idx].GrpcWmsConcPerNode,
 		},
 			Collection: conf.Layers[idx].DataSource,
 			CRS:        *params.CRS,
@@ -223,7 +218,7 @@ func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r
 		ctx, ctxCancel := context.WithCancel(ctx)
 		defer ctxCancel()
 		errChan := make(chan error)
-		tp := proc.InitTilePipeline(ctx, conf.ServiceConfig.MASAddress, LoadBalance(conf.ServiceConfig.WorkerNodes), conf.Layers[idx].MaxGrpcRecvMsgSize, errChan)
+		tp := proc.InitTilePipeline(ctx, conf.ServiceConfig.MASAddress, conf.ServiceConfig.WorkerNodes, conf.Layers[idx].MaxGrpcRecvMsgSize, errChan)
 		select {
 		case res := <-tp.Process(geoReq):
 			scaleParams := utils.ScaleParams{Offset: geoReq.ScaleParams.Offset,
@@ -385,6 +380,7 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 			ZoomLimit:       conf.Layers[idx].ZoomLimit,
 			PolygonSegments: conf.Layers[idx].WcsPolygonSegments,
 			Timeout:         conf.Layers[idx].WcsTimeout,
+			GrpcConcLimit:   conf.Layers[idx].GrpcWcsConcPerNode,
 		},
 			Collection: conf.Layers[idx].DataSource,
 			CRS:        *params.CRS,
@@ -406,7 +402,7 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 		ctx, ctxCancel := context.WithCancel(ctx)
 		defer ctxCancel()
 		errChan := make(chan error)
-		tp := proc.InitTilePipeline(ctx, conf.ServiceConfig.MASAddress, LoadBalance(conf.ServiceConfig.WorkerNodes), conf.Layers[idx].MaxGrpcRecvMsgSize, errChan)
+		tp := proc.InitTilePipeline(ctx, conf.ServiceConfig.MASAddress, conf.ServiceConfig.WorkerNodes, conf.Layers[idx].MaxGrpcRecvMsgSize, errChan)
 
 		select {
 		case res := <-tp.Process(geoReq):
