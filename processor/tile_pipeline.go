@@ -25,20 +25,6 @@ func InitTilePipeline(ctx context.Context, masAddr string, rpcAddr []string, max
 }
 
 func (dp *TilePipeline) Process(geoReq *GeoTileRequest) chan []utils.Raster {
-	// We can actually simplify this piece of code as GeoProcessor only takes a single request right now.
-	// but we will leave it for now in case we need to handle multile time points for WCS.
-	// In the case of WCS with multiple time points, we will create one request per time point
-	// which will require looping through the input channel as the GeoProcessor currently does.
-	/*
-		p := NewGeoProcessor(dp.Context, dp.MASAddress, dp.RPCAddress, dp.MaxGrpcRecvMsgSize, dp.Error)
-
-		p.In <- geoReq
-		close(p.In)
-
-		go p.Run()
-		return p.Out
-	*/
-
 	grpcTiler := NewRasterGRPC(dp.Context, dp.RPCAddress, dp.MaxGrpcRecvMsgSize, dp.Error)
 
 	i := NewTileIndexer(dp.Context, dp.MASAddress, dp.Error)
