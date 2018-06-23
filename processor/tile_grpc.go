@@ -66,26 +66,25 @@ func (gi *GeoRasterGRPC) Run() {
 	} else if effectivePoolSize > len(gi.Clients) {
 		effectivePoolSize = len(gi.Clients)
 	}
-	connPool := make([]*grpc.ClientConn, effectivePoolSize)
 
 	opts := []grpc.DialOption{
 		grpc.WithInsecure(),
 		grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(gi.MaxGrpcRecvMsgSize)),
 	}
 
-	successConn := 0
+	var connPool []*grpc.ClientConn
 	for i := 0; i < effectivePoolSize; i++ {
 		conn, err := grpc.Dial(gi.Clients[i], opts...)
 		if err != nil {
 			log.Printf("gRPC connection problem: %v", err)
+			continue
 		}
 		defer conn.Close()
 
-		connPool[i] = conn
-		successConn += 1
+		connPool = append(connPool, conn)
 	}
 
-	if successConn == 0 {
+	if len(connPool) == 0 {
 		gi.Error <- fmt.Errorf("All gRPC servers offline")
 		return
 	}
@@ -153,7 +152,7 @@ func (gi *GeoRasterGRPC) Run() {
 			cLimiter.Increase()
 			go func(g *GeoTileGranule, conc *ConcLimiter, iTile int) {
 				defer conc.Decrease()
-				r, err := getRpcRaster(gi.Context, g, connPool[iTile%effectivePoolSize])
+				r, err := getRpcRaster(gi.Context, g, connPool[iTile%len(connPool)])
 				if err != nil {
 					gi.Error <- err
 					r = &pb.Result{Raster: &pb.Raster{Data: make([]uint8, g.Width*g.Height), RasterType: "Byte", NoData: -1.}}
