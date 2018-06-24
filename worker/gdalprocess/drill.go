@@ -19,7 +19,7 @@ import (
 
 	"encoding/json"
 
-	geo "bitbucket.org/monkeyforecaster/geometry"
+	geo "github.com/nci/geometry"
 	pb "github.com/nci/gsky/worker/gdalservice"
 )
 
