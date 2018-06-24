@@ -15,7 +15,7 @@ import (
 	"regexp"
 	"strings"
 
-	geo "bitbucket.org/monkeyforecaster/geometry"
+	geo "github.com/nci/geometry"
 )
 
 type Data struct {
