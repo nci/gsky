@@ -1,12 +1,11 @@
 package main
 
 import (
+	extr "./extractor"
 	"bufio"
 	"encoding/json"
 	"log"
 	"os"
-
-	extr "github.com/nci/gsky/crawl/extractor"
 )
 
 func ensure(err error) {

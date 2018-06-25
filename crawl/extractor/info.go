@@ -5,7 +5,7 @@ package extractor
 // #include "gdal.h"
 // #include "ogr_srs_api.h" /* for SRS calls */
 // #include "cpl_string.h"
-// #cgo pkg-config: gdal
+// #cgo LDFLAGS: -lgdal
 //char *getProj4(char *projWKT)
 //{
 //	char *pszProj4;
@@ -38,6 +38,11 @@ import (
 func init() {
 	C.GDALAllRegister()
 }
+
+var GDALTypes map[C.GDALDataType]string = map[C.GDALDataType]string{0: "Unkown", 1: "Byte", 2: "UInt16", 3: "Int16",
+	4: "UInt32", 5: "Int32", 6: "Float32", 7: "Float64",
+	8: "CInt16", 9: "CInt32", 10: "CFloat32", 11: "CFloat64",
+	12: "TypeCount"}
 
 var dateFormats []string = []string{"2006-01-02 15:04:05.0", "2006-1-2 15:4:5"}
 var durationUnits map[string]time.Duration = map[string]time.Duration{"seconds": time.Second, "hours": time.Hour, "days": time.Hour * 24}
@@ -190,7 +195,7 @@ func getDataSetInfo(filename string, dsName *C.char, driverName string) (*GeoMet
 	return &GeoMetaData{
 		DataSetName:  datasetName,
 		NameSpace:    nameSpace,
-		Type:         C.GoString(C.GDALGetDataTypeName(C.GDALGetRasterDataType(hBand))),
+		Type:         GDALTypes[C.GDALGetRasterDataType(hBand)],
 		RasterCount:  int32(C.GDALGetRasterCount(hSubdataset)),
 		TimeStamps:   times,
 		Heights:      ncLevels,
@@ -273,6 +278,19 @@ func parseTime(nameFields map[string]string) time.Time {
 	return time.Time{}
 }
 
+/*
+func goStrings(argc C.int, argv **C.char) []string {
+
+	length := int(argc)
+	tmpslice := (*[1 << 30]*C.char)(unsafe.Pointer(argv))[:length:length]
+	gostrings := make([]string, length)
+	for i, s := range tmpslice {
+		gostrings[i] = C.GoString(s)
+	}
+	return gostrings
+}
+*/
+
 func getDate(inDate string) (time.Time, error) {
 	for _, dateFormat := range dateFormats {
 		if t, err := time.Parse(dateFormat, inDate); err == nil {
@@ -298,6 +316,7 @@ func getNCTime(sdsName string, hSubdataset C.GDALDatasetH) ([]string, error) {
 	if len(timeUnitsWords) == 3 {
 		timeUnitsWords = append(timeUnitsWords, "00:00:00.0")
 	}
+	//timeUnitsSlice := strings.Split(timeUnits, "since")
 	stepUnit := durationUnits[strings.Trim(timeUnitsWords[0], " ")]
 	startDate, err := getDate(strings.Join(timeUnitsWords[2:], " "))
 	if err != nil {
