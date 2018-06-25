@@ -17,16 +17,15 @@ const SizeofInt16 = 2
 const SizeofFloat32 = 4
 
 type RasterMerger struct {
-	In    chan *FlexRaster
+	In    chan []*FlexRaster
 	Out   chan []utils.Raster
 	Error chan error
 }
 
 func NewRasterMerger(errChan chan error) *RasterMerger {
 	return &RasterMerger{
-		In:  make(chan *FlexRaster, 100),
-		Out: make(chan []utils.Raster, 100),
-
+		In:    make(chan []*FlexRaster, 100),
+		Out:   make(chan []utils.Raster, 100),
 		Error: errChan,
 	}
 }
@@ -186,15 +185,14 @@ func initNoDataSlice(rType string, noDataValue float64, size int) []uint8 {
 
 }
 
-func ProcessRasterStack(rasterStack map[int64][]*FlexRaster, maskMap map[int64][]bool) (canvasMap map[string]*FlexRaster, err error) {
-	canvasMap = map[string]*FlexRaster{}
-
+func ProcessRasterStack(rasterStack map[int64][]*FlexRaster, maskMap map[int64][]bool, canvasMap map[string]*FlexRaster) (map[string]*FlexRaster, error) {
 	var keys []int64
 	for k := range rasterStack {
 		keys = append(keys, k)
 	}
 	sort.Slice(keys, func(i, j int) bool { return keys[i] > keys[j] })
 
+	var err error
 	for _, geoStamp := range keys {
 		for _, r := range rasterStack[geoStamp] {
 			if _, ok := canvasMap[r.NameSpace]; !ok {
@@ -209,10 +207,15 @@ func ProcessRasterStack(rasterStack map[int64][]*FlexRaster, maskMap map[int64][
 			} else {
 				err = MergeMaskedRaster(r, canvasMap, make([]bool, r.Height*r.Width))
 			}
+
+			if err != nil {
+				return canvasMap, err
+
+			}
 		}
 		delete(rasterStack, geoStamp)
 	}
-	return
+	return canvasMap, nil
 }
 
 func ComputeMask(mask *utils.Mask, data []byte, rType string) (out []bool, err error) {
@@ -321,37 +324,44 @@ func ComputeMask(mask *utils.Mask, data []byte, rType string) (out []bool, err e
 	return
 }
 
-func (enc *RasterMerger) Run() {
+func (enc *RasterMerger) Run(polyLimiter *ConcLimiter) {
 	defer close(enc.Out)
-	maskMap := map[int64][]bool{}
-	rasterStack := map[int64][]*FlexRaster{}
 
-	for r := range enc.In {
-		h := fnv.New32a()
-		h.Write([]byte(r.Polygon))
-		geoStamp := r.TimeStamp.UnixNano() + int64(h.Sum32())
+	canvasMap := map[string]*FlexRaster{}
+	for inRasters := range enc.In {
+		maskMap := map[int64][]bool{}
+		rasterStack := map[int64][]*FlexRaster{}
 
-		// Raster namespace is identified as Mask
-		if r.Mask != nil && r.Mask.ID == r.NameSpace {
-			mask, err := ComputeMask(r.Mask, r.Data, r.Type)
-			if err != nil {
-				enc.Error <- err
-				return
+		for _, r := range inRasters {
+			h := fnv.New32a()
+			h.Write([]byte(r.Polygon))
+			geoStamp := r.TimeStamp.UnixNano() + int64(h.Sum32())
+
+			// Raster namespace is identified as Mask
+			if r.Mask != nil && r.Mask.ID == r.NameSpace {
+				mask, err := ComputeMask(r.Mask, r.Data, r.Type)
+				if err != nil {
+					enc.Error <- err
+					return
+				}
+				maskMap[geoStamp] = mask
+				if !r.Mask.Inclusive {
+					continue
+				}
+
 			}
-			maskMap[geoStamp] = mask
-			if !r.Mask.Inclusive {
-				continue
-			}
 
+			rasterStack[geoStamp] = append(rasterStack[geoStamp], r)
 		}
 
-		rasterStack[geoStamp] = append(rasterStack[geoStamp], r)
-	}
+		tmpMap, err := ProcessRasterStack(rasterStack, maskMap, canvasMap)
+		if err != nil {
+			enc.Error <- err
+			return
+		}
+		canvasMap = tmpMap
 
-	canvasMap, err := ProcessRasterStack(rasterStack, maskMap)
-	if err != nil {
-		enc.Error <- err
-		return
+		polyLimiter.Decrease()
 	}
 
 	if len(canvasMap) == 2 && canvasMap["Nadir_Reflectance_Band1"].Type == "Int16" {

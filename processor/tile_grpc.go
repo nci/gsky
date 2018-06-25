@@ -4,7 +4,10 @@ import (
 	"fmt"
 	"log"
 	"math"
+	"runtime"
+	"sort"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/nci/go.procmeminfo"
@@ -16,26 +19,28 @@ import (
 const ReservedMemorySize = 1.5 * 1024 * 1024 * 1024
 
 type GeoRasterGRPC struct {
-	Context            context.Context
-	In                 chan *GeoTileGranule
-	Out                chan *FlexRaster
-	Error              chan error
-	Clients            []string
-	MaxGrpcRecvMsgSize int
+	Context               context.Context
+	In                    chan *GeoTileGranule
+	Out                   chan []*FlexRaster
+	Error                 chan error
+	Clients               []string
+	MaxGrpcRecvMsgSize    int
+	PolygonShardConcLimit int
 }
 
-func NewRasterGRPC(ctx context.Context, serverAddress []string, maxGrpcRecvMsgSize int, errChan chan error) *GeoRasterGRPC {
+func NewRasterGRPC(ctx context.Context, serverAddress []string, maxGrpcRecvMsgSize int, polygonShardConcLimit int, errChan chan error) *GeoRasterGRPC {
 	return &GeoRasterGRPC{
-		Context:            ctx,
-		In:                 make(chan *GeoTileGranule, 100),
-		Out:                make(chan *FlexRaster, 100),
-		Error:              errChan,
-		Clients:            serverAddress,
-		MaxGrpcRecvMsgSize: maxGrpcRecvMsgSize,
+		Context:               ctx,
+		In:                    make(chan *GeoTileGranule, 100),
+		Out:                   make(chan []*FlexRaster, 100),
+		Error:                 errChan,
+		Clients:               serverAddress,
+		MaxGrpcRecvMsgSize:    maxGrpcRecvMsgSize,
+		PolygonShardConcLimit: polygonShardConcLimit,
 	}
 }
 
-func (gi *GeoRasterGRPC) Run() {
+func (gi *GeoRasterGRPC) Run(polyLimiter *ConcLimiter) {
 	defer close(gi.Out)
 
 	var grans []*GeoTileGranule
@@ -43,7 +48,8 @@ func (gi *GeoRasterGRPC) Run() {
 	imageSize := 0
 	for gran := range gi.In {
 		if gran.Path == "NULL" {
-			gi.Out <- &FlexRaster{ConfigPayLoad: gran.ConfigPayLoad, Data: make([]uint8, gran.Width*gran.Height), Height: gran.Height, Width: gran.Width, OffX: gran.OffX, OffY: gran.OffY, Type: gran.RasterType, NoData: 0.0, NameSpace: gran.NameSpace, TimeStamp: gran.TimeStamp, Polygon: gran.Polygon}
+			polyLimiter.Increase()
+			gi.Out <- []*FlexRaster{&FlexRaster{ConfigPayLoad: gran.ConfigPayLoad, Data: make([]uint8, gran.Width*gran.Height), Height: gran.Height, Width: gran.Width, OffX: gran.OffX, OffY: gran.OffY, Type: gran.RasterType, NoData: 0.0, NameSpace: gran.NameSpace, TimeStamp: gran.TimeStamp, Polygon: gran.Polygon}}
 			continue
 		} else {
 			grans = append(grans, gran)
@@ -95,9 +101,10 @@ func (gi *GeoRasterGRPC) Run() {
 	// bound calcuations
 	r0, err := getRpcRaster(gi.Context, g0, connPool[0])
 	if err != nil {
+		polyLimiter.Increase()
 		gi.Error <- err
 		r0 = &pb.Result{Raster: &pb.Raster{Data: make([]uint8, g0.Width*g0.Height), RasterType: "Byte", NoData: -1.}}
-		gi.Out <- &FlexRaster{ConfigPayLoad: g0.ConfigPayLoad, Data: r0.Raster.Data, Height: g0.Height, Width: g0.Width, OffX: g0.OffX, OffY: g0.OffY, Type: r0.Raster.RasterType, NoData: r0.Raster.NoData, NameSpace: g0.NameSpace, TimeStamp: g0.TimeStamp, Polygon: g0.Polygon}
+		gi.Out <- []*FlexRaster{&FlexRaster{ConfigPayLoad: g0.ConfigPayLoad, Data: r0.Raster.Data, Height: g0.Height, Width: g0.Width, OffX: g0.OffX, OffY: g0.OffY, Type: r0.Raster.RasterType, NoData: r0.Raster.NoData, NameSpace: g0.NameSpace, TimeStamp: g0.TimeStamp, Polygon: g0.Polygon}}
 		return
 	}
 
@@ -106,14 +113,61 @@ func (gi *GeoRasterGRPC) Run() {
 		gi.Error <- err
 		return
 	}
-	requestedSize := imageSize * dataSize * len(grans)
+
+	// We divide the GeoTileGranules (i.e. inputs) into shards whose key is the
+	// corresponding polygon string.
+	// Once we obtain all the gPRC output results for a particular shard, this shard
+	// will be sent asynchronously to the merger algorithm and then become ready for GC.
+	// Comments:
+	// 1) This algorithm is a streaming processing model that allows us to process the
+	// volume of data beyond the size of physical server memory.
+	// We also allow processing shards concurrently so that the theoretical performance
+	// of our streaming processing model is at least no worse than batch processing model.
+	// In practice, we often observe better performance with the streaming processing
+	// model for two reasons: a) the concurrency among polygon shards b) interleave merger
+	// computation with gRPC IO.
+	// 2) The concurrency of shards is controled by PolygonShardConcLimit
+	// A typical range of value between 5 to 10 scales well for
+	// both small and large requests.
+	// By varying this shard concurrency value, we can trade off space and time.
+	gransByPolygon := make(map[string][]*GeoTileGranule)
+	for i := 1; i < len(grans); i++ {
+		gran := grans[i]
+		gransByPolygon[gran.Polygon] = append(gransByPolygon[gran.Polygon], gran)
+	}
 
 	meminfo := procmeminfo.MemInfo{}
 	err = meminfo.Update()
 
 	if err == nil {
+		// We figure the sizes of each shard and then sort them in descending order.
+		// We then compute the total size of the top PolygonShardConcLimit shards.
+		// If the total size of the top shards is below memory threshold, we are good to go.
+		shardSizes := make([]int, len(gransByPolygon))
+		iShard := 0
+		for _, polyGran := range gransByPolygon {
+			shardSizes[iShard] = imageSize * dataSize * len(polyGran)
+			iShard += 1
+		}
+
+		sort.Slice(shardSizes, func(i, j int) bool { return shardSizes[i] > shardSizes[j] })
+
+		effectiveLen := gi.PolygonShardConcLimit
+		if len(shardSizes) < effectiveLen {
+			effectiveLen = len(shardSizes)
+		}
+
+		requestedSize := 0
+		for i := 0; i < effectiveLen; i++ {
+			requestedSize += shardSizes[i]
+		}
+
 		freeMem := int(meminfo.Available())
-		if freeMem-requestedSize <= ReservedMemorySize {
+		var mem runtime.MemStats
+		runtime.ReadMemStats(&mem)
+		availableMem := freeMem + int(mem.HeapIdle)
+
+		if availableMem-requestedSize <= ReservedMemorySize {
 			log.Printf("Out of memory, freeMem:%v, requested:%v", freeMem, requestedSize)
 			gi.Error <- fmt.Errorf("Server resources exhausted")
 			return
@@ -127,41 +181,74 @@ func (gi *GeoRasterGRPC) Run() {
 		log.Printf("meminfo error: %v", err)
 	}
 
+	polyLimiter.Increase()
 	// We first send out the raster we used to figure out data type
-	gi.Out <- &FlexRaster{ConfigPayLoad: g0.ConfigPayLoad, Data: r0.Raster.Data, Height: g0.Height, Width: g0.Width, OffX: g0.OffX, OffY: g0.OffY, Type: r0.Raster.RasterType, NoData: r0.Raster.NoData, NameSpace: g0.NameSpace, TimeStamp: g0.TimeStamp, Polygon: g0.Polygon}
+	gi.Out <- []*FlexRaster{&FlexRaster{ConfigPayLoad: g0.ConfigPayLoad, Data: r0.Raster.Data, Height: g0.Height, Width: g0.Width, OffX: g0.OffX, OffY: g0.OffY, Type: r0.Raster.RasterType, NoData: r0.Raster.NoData, NameSpace: g0.NameSpace, TimeStamp: g0.TimeStamp, Polygon: g0.Polygon}}
 
 	timeoutCtx, cancel := context.WithTimeout(gi.Context, time.Duration(g0.Timeout)*time.Second)
 	defer cancel()
 	cLimiter := NewConcLimiter(g0.GrpcConcLimit * len(connPool))
-	for i := 1; i < len(grans); i++ {
-		gran := grans[i]
-		select {
-		case <-gi.Context.Done():
-			gi.Error <- fmt.Errorf("Tile gRPC context has been cancel: %v", gi.Context.Err())
-			return
-		case <-timeoutCtx.Done():
-			log.Printf("tile grpc timed out, threshold:%v seconds", g0.Timeout)
-			gi.Error <- fmt.Errorf("Processing timed out")
-			return
-		default:
-			if gran.Path == "NULL" {
-				gi.Out <- &FlexRaster{ConfigPayLoad: gran.ConfigPayLoad, Data: make([]uint8, gran.Width*gran.Height), Height: gran.Height, Width: gran.Width, OffX: gran.OffX, OffY: gran.OffY, Type: gran.RasterType, NoData: 0.0, NameSpace: gran.NameSpace, TimeStamp: gran.TimeStamp, Polygon: gran.Polygon}
-				continue
+
+	var wg sync.WaitGroup
+	wg.Add(len(gransByPolygon))
+
+	granCounter := 0
+	for _, polyGrans := range gransByPolygon {
+		polyLimiter.Increase()
+		go func(polyGrans []*GeoTileGranule, granCounter int) {
+			defer wg.Done()
+			outChan := make(chan *FlexRaster, len(polyGrans))
+			defer close(outChan)
+
+			for iGran := range polyGrans {
+				gran := polyGrans[iGran]
+				select {
+				case <-gi.Context.Done():
+					gi.Error <- fmt.Errorf("Tile gRPC context has been cancel: %v", gi.Context.Err())
+					return
+				case <-timeoutCtx.Done():
+					log.Printf("tile grpc timed out, threshold:%v seconds", g0.Timeout)
+					gi.Error <- fmt.Errorf("Processing timed out")
+					return
+				default:
+					if gran.Path == "NULL" {
+						outChan <- &FlexRaster{ConfigPayLoad: gran.ConfigPayLoad, Data: make([]uint8, gran.Width*gran.Height), Height: gran.Height, Width: gran.Width, OffX: gran.OffX, OffY: gran.OffY, Type: gran.RasterType, NoData: 0.0, NameSpace: gran.NameSpace, TimeStamp: gran.TimeStamp, Polygon: gran.Polygon}
+						continue
+					}
+
+					cLimiter.Increase()
+					go func(g *GeoTileGranule, iTile int, gCnt int) {
+						defer cLimiter.Decrease()
+						r, err := getRpcRaster(gi.Context, g, connPool[gCnt%len(connPool)])
+						if err != nil {
+							gi.Error <- err
+							r = &pb.Result{Raster: &pb.Raster{Data: make([]uint8, g.Width*g.Height), RasterType: "Byte", NoData: -1.}}
+						}
+						outChan <- &FlexRaster{ConfigPayLoad: g.ConfigPayLoad, Data: r.Raster.Data, Height: g.Height, Width: g.Width, OffX: g.OffX, OffY: g.OffY, Type: r.Raster.RasterType, NoData: r.Raster.NoData, NameSpace: g.NameSpace, TimeStamp: g.TimeStamp, Polygon: g.Polygon}
+					}(gran, iGran, granCounter+iGran)
+				}
+
 			}
 
-			cLimiter.Increase()
-			go func(g *GeoTileGranule, conc *ConcLimiter, iTile int) {
-				defer conc.Decrease()
-				r, err := getRpcRaster(gi.Context, g, connPool[iTile%len(connPool)])
-				if err != nil {
-					gi.Error <- err
-					r = &pb.Result{Raster: &pb.Raster{Data: make([]uint8, g.Width*g.Height), RasterType: "Byte", NoData: -1.}}
+			outRasters := make([]*FlexRaster, len(polyGrans))
+			iOut := 0
+			for o := range outChan {
+				outRasters[iOut] = o
+				iOut += 1
+
+				if iOut == len(polyGrans) {
+					gi.Out <- outRasters
+					break
 				}
-				gi.Out <- &FlexRaster{ConfigPayLoad: g.ConfigPayLoad, Data: r.Raster.Data, Height: g.Height, Width: g.Width, OffX: g.OffX, OffY: g.OffY, Type: r.Raster.RasterType, NoData: r.Raster.NoData, NameSpace: g.NameSpace, TimeStamp: g.TimeStamp, Polygon: g.Polygon}
-			}(gran, cLimiter, i)
-		}
+			}
+
+		}(polyGrans, granCounter)
+
+		granCounter += len(polyGrans)
+
 	}
-	cLimiter.Wait()
+
+	wg.Wait()
 }
 
 func getDataSize(dataType string) (int, error) {
