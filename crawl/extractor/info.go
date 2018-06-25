@@ -190,7 +190,7 @@ func getDataSetInfo(filename string, dsName *C.char, driverName string) (*GeoMet
 	return &GeoMetaData{
 		DataSetName:  datasetName,
 		NameSpace:    nameSpace,
-		Type:         C.GoString(C.GDALGetDataTypeName(C.GDALGetRasterDataType(hBand))),
+		Type:         GDALTypes[C.GDALGetRasterDataType(hBand)],
 		RasterCount:  int32(C.GDALGetRasterCount(hSubdataset)),
 		TimeStamps:   times,
 		Heights:      ncLevels,
