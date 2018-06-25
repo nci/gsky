@@ -123,8 +123,8 @@ func (gi *GeoRasterGRPC) Run(polyLimiter *ConcLimiter) {
 	// volume of data beyond the size of physical server memory.
 	// We also allow processing shards concurrently so that the theoretical performance
 	// of our streaming processing model is at least no worse than batch processing model.
-	// In practice, we often observe better performance with the streaming processing model
-	// for two reasons: a) the concurrency among polygon shards b) interleave merger
+	// In practice, we often observe better performance with the streaming processing
+	// model for two reasons: a) the concurrency among polygon shards b) interleave merger
 	// computation with gRPC IO.
 	// 2) The concurrency of shards is controled by PolygonShardConcLimit
 	// A typical range of value between 5 to 10 scales well for
@@ -141,7 +141,7 @@ func (gi *GeoRasterGRPC) Run(polyLimiter *ConcLimiter) {
 
 	if err == nil {
 		// We figure the sizes of each shard and then sort them in descending order.
-		// We then compute the total size of the top DefaultPolyShardConcLimit shards.
+		// We then compute the total size of the top PolygonShardConcLimit shards.
 		// If the total size of the top shards is below memory threshold, we are good to go.
 		shardSizes := make([]int, len(gransByPolygon))
 		iShard := 0
