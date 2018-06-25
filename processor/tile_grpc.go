@@ -126,10 +126,10 @@ func (gi *GeoRasterGRPC) Run(polyLimiter *ConcLimiter) {
 	// In practice, we often observe better performance with streaming processing model
 	// for two reasons: a) the concurrency among polygon shards b) interleave merger
 	// computation with gRPC IO.
-	// 3) The concurrency of shards is controled by PolygonShardConcLimit
+	// 2) The concurrency of shards is controled by PolygonShardConcLimit
 	// A typical range of value between 5 to 10 scales well for
 	// both small and large requests.
-	// By varing this shard concurrency value, we can trade off space and time.
+	// By varying this shard concurrency value, we can trade off space and time.
 	gransByPolygon := make(map[string][]*GeoTileGranule)
 	for i := 1; i < len(grans); i++ {
 		gran := grans[i]
