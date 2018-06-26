@@ -264,14 +264,19 @@ func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r
 		idx, err := utils.GetLayerIndex(params, conf)
 		if err != nil {
 			Error.Printf("%s\n", err)
-			utils.ExecuteWriteTemplateFile(w, params.Layers[0],
-				utils.DataDir+"/templates/WMS_ServiceException.tpl")
+			if len(params.Layers) > 0 {
+				utils.ExecuteWriteTemplateFile(w, params.Layers[0],
+					utils.DataDir+"/templates/WMS_ServiceException.tpl")
+			} else {
+				http.Error(w, err.Error(), 400)
+			}
 			return
 		}
 
 		b, err := ioutil.ReadFile(conf.Layers[idx].LegendPath)
 		if err != nil {
-			http.Error(w, err.Error(), 500)
+			Error.Printf("Error reading legend image: %v, %v\n", conf.Layers[idx].LegendPath, err)
+			http.Error(w, "Legend graphics not found", 500)
 			return
 		}
 		w.Write(b)
