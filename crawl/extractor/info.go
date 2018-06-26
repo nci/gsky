@@ -36,6 +36,11 @@ import (
 )
 
 func init() {
+	// By default, gdalinfo automatically saves an auxiliary xml file under the
+	// same folder of the data file. This is problematic for us as the data files
+	// we want to crawl are often owned by someone else.
+	C.CPLSetConfigOption(C.CString("GDAL_PAM_ENABLED"), C.CString("NO"))
+
 	C.GDALAllRegister()
 }
 
