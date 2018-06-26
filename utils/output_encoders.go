@@ -217,7 +217,6 @@ func EncodeGdal(format string, rs []Raster, geot []float64, epsg int) ([]byte, e
 		return []byte{}, fmt.Errorf("Unsupported encoding format: %v", format)
 	}
 
-	// NULL pointer is used to terminate the point array by gdal
 	driverOptions = append(driverOptions, nil)
 
 	w, h, rType, err := ValidateRasterSlice(rs)
