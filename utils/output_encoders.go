@@ -194,6 +194,11 @@ func ValidateRasterSlice(rs []Raster) (int, int, string, error) {
 			err = fmt.Errorf("Raster type not implemented")
 		}
 	}
+
+	if width <= 0 || height <= 0 {
+		err = fmt.Errorf("data unavailable")
+	}
+
 	return width, height, rasterType, err
 }
 
@@ -217,11 +222,12 @@ func EncodeGdal(format string, rs []Raster, geot []float64, epsg int) ([]byte, e
 		return []byte{}, fmt.Errorf("Unsupported encoding format: %v", format)
 	}
 
+	// NULL pointer is used to terminate the point array by gdal
 	driverOptions = append(driverOptions, nil)
 
 	w, h, rType, err := ValidateRasterSlice(rs)
 	if err != nil {
-		return []byte{}, fmt.Errorf("Error validating raster %v", err)
+		return []byte{}, fmt.Errorf("Error validating raster: %v", err)
 	}
 
 	tempFileHandle, err := ioutil.TempFile("", "raster_")
