@@ -36,6 +36,7 @@ import (
 )
 
 func init() {
+	C.CPLSetConfigOption(C.CString("GDAL_PAM_ENABLED"), C.CString("NO"))
 	C.GDALAllRegister()
 }
 
