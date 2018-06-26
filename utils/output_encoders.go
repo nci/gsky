@@ -204,14 +204,20 @@ var GDALTypes = map[string]C.GDALDataType{"Unkown": 0, "Byte": 1, "UInt16": 2, "
 
 func EncodeGdal(format string, rs []Raster, geot []float64, epsg int) ([]byte, error) {
 	var driverName string
+	var driverOptions []*C.char
 	switch strings.ToLower(format) {
 	case "geotiff":
 		driverName = "GTiff"
+		driverOptions = append(driverOptions, C.CString("COMPRESS=LZW"))
 	case "netcdf":
 		driverName = "netCDF"
+		driverOptions = append(driverOptions, C.CString("COMPRESS=DEFLATE"))
+		driverOptions = append(driverOptions, C.CString("ZLEVEL=6"))
 	default:
 		return []byte{}, fmt.Errorf("Unsupported encoding format: %v", format)
 	}
+
+	driverOptions = append(driverOptions, nil)
 
 	w, h, rType, err := ValidateRasterSlice(rs)
 	if err != nil {
@@ -231,7 +237,7 @@ func EncodeGdal(format string, rs []Raster, geot []float64, epsg int) ([]byte, e
 	var driverNameC = C.CString(driverName)
 	hDriver := C.GDALGetDriverByName(driverNameC)
 
-	hDstDS := C.GDALCreate(hDriver, C.CString(tempFile), C.int(w), C.int(h), C.int(len(rs)), GDALTypes[rType], nil)
+	hDstDS := C.GDALCreate(hDriver, C.CString(tempFile), C.int(w), C.int(h), C.int(len(rs)), GDALTypes[rType], &driverOptions[0])
 	if hDstDS == nil {
 		return []byte{}, fmt.Errorf("Error creating raster")
 	}
