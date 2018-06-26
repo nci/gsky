@@ -36,5 +36,6 @@ install:
 script:
   - cd $TRAVIS_BUILD_DIR/mas/db && psql -f schema.sql -U postgres
   - go tool vet $TRAVIS_BUILD_DIR
+  - gofmt -d $TRAVIS_BUILD_DIR
   # Ensure that gofmt -d produces zero diff output
   - test -z "$(gofmt -d $TRAVIS_BUILD_DIR)"
