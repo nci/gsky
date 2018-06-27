@@ -18,11 +18,11 @@
 		<ows:ProviderName>Australian National Computational Infrastructure.</ows:ProviderName>
 		<ows:ProviderSite xlink:href="http://www.nci.org.au"/>
 		<ows:ServiceContact>
-			<ows:IndividualName>Pablo Rozas Larraondo</ows:IndividualName>
-			<ows:PositionName>High Performance Data Analyst</ows:PositionName>
+			<ows:IndividualName>GSKY Developers</ows:IndividualName>
+			<ows:PositionName>Data Service Innovation</ows:PositionName>
 			<ows:ContactInfo>
 				<ows:Phone>
-					<ows:Voice>+61 (02) 61253211</ows:Voice>
+					<ows:Voice>+61 (0)2 6125 3211</ows:Voice>
 				</ows:Phone>
 				<ows:Address>
 					<ows:DeliveryPoint>Building 143, Corner of Ward Road and Garran Road, Ward Rd, Acton ACT 2601</ows:DeliveryPoint>
@@ -30,7 +30,7 @@
 					<ows:AdministrativeArea>ACT</ows:AdministrativeArea>
 					<ows:PostalCode>2601</ows:PostalCode>
 					<ows:Country>Australia</ows:Country>
-					<ows:ElectronicMailAddress>pablo.larraondo@anu.edu.au</ows:ElectronicMailAddress>
+					<ows:ElectronicMailAddress>help@nci.org.au</ows:ElectronicMailAddress>
 				</ows:Address>
 			</ows:ContactInfo>
 		</ows:ServiceContact>
