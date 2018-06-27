@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"log"
 	"os"
+	"strconv"
 
 	extr "github.com/nci/gsky/crawl/extractor"
 )
@@ -15,9 +16,11 @@ func ensure(err error) {
 	}
 }
 
+const DefaultConcLimit = 4
+
 func main() {
 
-	if len(os.Args) != 2 {
+	if len(os.Args) < 2 {
 		log.Fatal("Please provide a path to a file or '-' for reading from stdin")
 	}
 
@@ -29,7 +32,18 @@ func main() {
 		path = scanner.Text()
 	}
 
-	geoFile, err := extr.ExtractGDALInfo(path)
+	concLimit := DefaultConcLimit
+	if len(os.Args) > 2 {
+		cLimit, err := strconv.ParseInt(os.Args[2], 10, 0)
+		ensure(err)
+
+		if cLimit <= 0 {
+			cLimit = DefaultConcLimit
+		}
+		concLimit = int(cLimit)
+	}
+
+	geoFile, err := extr.ExtractGDALInfo(path, concLimit)
 	ensure(err)
 
 	out, err := json.Marshal(&geoFile)
