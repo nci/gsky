@@ -27,21 +27,26 @@ import (
 	"fmt"
 	"log"
 	"math"
+	"os"
 	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 	"unsafe"
 )
+
+var LogErr *log.Logger
 
 func init() {
 	// By default, gdalinfo automatically saves an auxiliary xml file under the
 	// same folder of the data file. This is problematic for us as the data files
 	// we want to crawl are often owned by someone else.
 	C.CPLSetConfigOption(C.CString("GDAL_PAM_ENABLED"), C.CString("NO"))
-
 	C.GDALAllRegister()
+
+	LogErr = log.New(os.Stderr, "Crawler: ", log.Ldate|log.Ltime|log.Lshortfile)
 }
 
 var dateFormats []string = []string{"2006-01-02 15:04:05.0", "2006-1-2 15:4:5"}
@@ -52,7 +57,7 @@ var CncDimTimeValues *C.char = C.CString("NETCDF_DIM_time_VALUES")
 var CncDimLevelValues *C.char = C.CString("NETCDF_DIM_lev_VALUES")
 var CncVarname *C.char = C.CString("NETCDF_VARNAME")
 
-func ExtractGDALInfo(path string) (*GeoFile, error) {
+func ExtractGDALInfo(path string, concLimit int) (*GeoFile, error) {
 	cPath := C.CString(path)
 	defer C.free(unsafe.Pointer(cPath))
 	hDataset := C.GDALOpen(cPath, C.GA_ReadOnly)
@@ -75,18 +80,44 @@ func ExtractGDALInfo(path string) (*GeoFile, error) {
 		// There are no subdatasets
 		dsInfo, err := getDataSetInfo(path, cPath, shortName)
 		if err != nil {
+			LogErr.Printf("%v", err)
 			return &GeoFile{}, fmt.Errorf("%v", err)
 		}
 		datasets = append(datasets, dsInfo)
 
 	} else {
 		// There are subdatasets
+		tmpDatasets := make([]*GeoMetaData, int(nsubds))
+
+		var wg sync.WaitGroup
+		wg.Add(int(nsubds))
+
+		if concLimit > int(nsubds) {
+			concLimit = int(nsubds)
+		}
+		concPool := make(chan int, concLimit)
 		for i := C.int(1); i <= nsubds; i++ {
-			subDSId := C.CString(fmt.Sprintf("SUBDATASET_%d_NAME", i))
-			pszSubdatasetName := C.CSLFetchNameValue(metadata, subDSId)
-			dsInfo, err := getDataSetInfo(path, pszSubdatasetName, shortName)
-			if err == nil {
-				datasets = append(datasets, dsInfo)
+			concPool <- 1
+			go func(ds []*GeoMetaData, isub int) {
+				defer wg.Done()
+				subDSId := C.CString(fmt.Sprintf("SUBDATASET_%d_NAME", isub))
+				pszSubdatasetName := C.CSLFetchNameValue(metadata, subDSId)
+				dsInfo, err := getDataSetInfo(path, pszSubdatasetName, shortName)
+
+				<-concPool
+				if err == nil {
+					ds[isub-1] = dsInfo
+				} else {
+					LogErr.Printf("%v", err)
+				}
+			}(tmpDatasets, int(i))
+		}
+
+		wg.Wait()
+
+		for _, ds := range tmpDatasets {
+			if ds != nil {
+				datasets = append(datasets, ds)
 			}
 		}
 	}
