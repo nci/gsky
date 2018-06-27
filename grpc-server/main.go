@@ -3,13 +3,15 @@ package main
 import (
 	"flag"
 	"fmt"
-	pb "github.com/nci/gsky/worker/gdalservice"
 	"log"
 	"net"
 
+	pb "github.com/nci/gsky/worker/gdalservice"
+
+	_ "net/http/pprof"
+
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
-	_ "net/http/pprof"
 	//"time"
 	"net/http"
 	"os"

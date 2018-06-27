@@ -2,13 +2,14 @@ package processor
 
 import (
 	"fmt"
-	"github.com/nci/gsky/utils"
 	"hash/fnv"
 	"reflect"
 	"sort"
 	"strconv"
 	"time"
 	"unsafe"
+
+	"github.com/nci/gsky/utils"
 )
 
 const SizeofUint16 = 2

@@ -1,8 +1,9 @@
 package processor
 
 import (
-	"github.com/nci/gsky/utils"
 	"time"
+
+	"github.com/nci/gsky/utils"
 )
 
 type ScaleParams struct {

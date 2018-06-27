@@ -38,8 +38,9 @@ import (
 	"log"
 	"unsafe"
 
-	pb "github.com/nci/gsky/worker/gdalservice"
 	"reflect"
+
+	pb "github.com/nci/gsky/worker/gdalservice"
 )
 
 const SizeofUint16 = 2

@@ -1,7 +1,6 @@
 package processor
 
 import (
-	geo "bitbucket.org/monkeyforecaster/geometry"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -11,6 +10,8 @@ import (
 	"net/url"
 	"strings"
 	"time"
+
+	geo "bitbucket.org/monkeyforecaster/geometry"
 )
 
 // string used to format Go ISO times

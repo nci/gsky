@@ -1,9 +1,10 @@
 package processor
 
 import (
-	pb "github.com/nci/gsky/worker/gdalservice"
 	"image"
 	"time"
+
+	pb "github.com/nci/gsky/worker/gdalservice"
 )
 
 type GeoDrillRequest struct {

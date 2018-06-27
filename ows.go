@@ -31,8 +31,9 @@ import (
 	proc "github.com/nci/gsky/processor"
 	"github.com/nci/gsky/utils"
 
-	geo "bitbucket.org/monkeyforecaster/geometry"
 	_ "net/http/pprof"
+
+	geo "bitbucket.org/monkeyforecaster/geometry"
 )
 
 // Global variable to hold the values specified
