@@ -120,7 +120,6 @@ func ExtractGDALInfo(path string, concLimit int) (*GeoFile, error) {
 				datasets = append(datasets, ds)
 			}
 		}
-
 	}
 
 	return &GeoFile{FileName: path, Driver: shortName, DataSets: datasets}, nil
