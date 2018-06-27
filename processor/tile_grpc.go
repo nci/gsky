@@ -57,7 +57,7 @@ func (gi *GeoRasterGRPC) Run(polyLimiter *ConcLimiter) {
 				imageSize = gran.Height * gran.Width
 			}
 
-			i += 1
+			i++
 		}
 	}
 
@@ -99,7 +99,7 @@ func (gi *GeoRasterGRPC) Run(polyLimiter *ConcLimiter) {
 	// the data type of the raster but returned from the grpc worker
 	// We need the data type to dertermine the byte size for memory
 	// bound calcuations
-	r0, err := getRpcRaster(gi.Context, g0, connPool[0])
+	r0, err := getRPCRaster(gi.Context, g0, connPool[0])
 	if err != nil {
 		polyLimiter.Increase()
 		gi.Error <- err
@@ -147,7 +147,7 @@ func (gi *GeoRasterGRPC) Run(polyLimiter *ConcLimiter) {
 		iShard := 0
 		for _, polyGran := range gransByPolygon {
 			shardSizes[iShard] = imageSize * dataSize * len(polyGran)
-			iShard += 1
+			iShard++
 		}
 
 		sort.Slice(shardSizes, func(i, j int) bool { return shardSizes[i] > shardSizes[j] })
@@ -219,7 +219,7 @@ func (gi *GeoRasterGRPC) Run(polyLimiter *ConcLimiter) {
 					cLimiter.Increase()
 					go func(g *GeoTileGranule, iTile int, gCnt int) {
 						defer cLimiter.Decrease()
-						r, err := getRpcRaster(gi.Context, g, connPool[gCnt%len(connPool)])
+						r, err := getRPCRaster(gi.Context, g, connPool[gCnt%len(connPool)])
 						if err != nil {
 							gi.Error <- err
 							r = &pb.Result{Raster: &pb.Raster{Data: make([]uint8, g.Width*g.Height), RasterType: "Byte", NoData: -1.}}
@@ -234,7 +234,7 @@ func (gi *GeoRasterGRPC) Run(polyLimiter *ConcLimiter) {
 			iOut := 0
 			for o := range outChan {
 				outRasters[iOut] = o
-				iOut += 1
+				iOut++
 
 				if iOut == len(polyGrans) {
 					gi.Out <- outRasters
@@ -267,7 +267,7 @@ func getDataSize(dataType string) (int, error) {
 	}
 }
 
-func getRpcRaster(ctx context.Context, g *GeoTileGranule, conn *grpc.ClientConn) (*pb.Result, error) {
+func getRPCRaster(ctx context.Context, g *GeoTileGranule, conn *grpc.ClientConn) (*pb.Result, error) {
 	c := pb.NewGDALClient(conn)
 	band, err := getBand(g.TimeStamps, g.TimeStamp)
 	epsg, err := extractEPSGCode(g.CRS)
