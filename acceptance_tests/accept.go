@@ -4,13 +4,14 @@ import (
 	"bufio"
 	"flag"
 	"fmt"
-	proc "github.com/nci/gsky/processor"
-	"golang.org/x/crypto/ssh/terminal"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
 	"time"
+
+	proc "github.com/nci/gsky/processor"
+	"golang.org/x/crypto/ssh/terminal"
 )
 
 var wmsCaps = "http://%s/ows?service=WMS&version=1.3.0&request=GetCapabilities"

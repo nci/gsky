@@ -14,9 +14,10 @@ import (
 
 	"bufio"
 	"bytes"
-	"github.com/golang/protobuf/proto"
 	"io"
 	"log"
+
+	"github.com/golang/protobuf/proto"
 )
 
 type ErrorMsg struct {

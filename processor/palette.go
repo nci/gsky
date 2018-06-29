@@ -1,8 +1,9 @@
 package processor
 
 import (
-	"github.com/nci/gsky/utils"
 	"image/color"
+
+	"github.com/nci/gsky/utils"
 )
 
 // InterpolateUint8 interpolates the value of a

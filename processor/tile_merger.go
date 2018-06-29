@@ -2,13 +2,14 @@ package processor
 
 import (
 	"fmt"
-	"github.com/nci/gsky/utils"
 	"hash/fnv"
 	"reflect"
 	"sort"
 	"strconv"
 	"time"
 	"unsafe"
+
+	"github.com/nci/gsky/utils"
 )
 
 const SizeofUint16 = 2
@@ -385,7 +386,8 @@ func (enc *RasterMerger) Run() {
 		DataBytes := *(*[]uint8)(unsafe.Pointer(&dataBytesHdr))
 
 		canvas := canvasMap["Nadir_Reflectance_Band1"]
-		config := ConfigPayLoad{[]string{"NDVI"}, canvas.ScaleParams, canvas.Palette, canvas.Mask, canvas.ZoomLimit}
+		config := ConfigPayLoad{NameSpaces: []string{"NDVI"}, ScaleParams: canvas.ScaleParams,
+			Palette: canvas.Palette, Mask: canvas.Mask, ZoomLimit: canvas.ZoomLimit}
 		canvasMap["NDVI"] = &FlexRaster{ConfigPayLoad: config, NoData: 0, Data: DataBytes, Type: "Float32",
 			Height: canvas.Height, Width: canvas.Width, OffX: canvas.OffX, OffY: canvas.OffY,
 			NameSpace: "NDVI"}
