@@ -4,7 +4,7 @@ here="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 shard=$1
 gpath=$2
 
-(cd "$here" && runuser postgres -c 'psql -v ON_ERROR_STOP=1 -A -t -q -d mas' <<EOD
+(cd "$here" && psql -v ON_ERROR_STOP=1 -A -t -q -d mas <<EOD
 
 set role mas;
 create schema if not exists ${shard};
