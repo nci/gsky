@@ -51,10 +51,10 @@ func handler(response http.ResponseWriter, request *http.Request) {
 	}
 
 	query := request.URL.Query()
+	var payload string
+	var err error
 
 	if _, ok := query["intersects"]; ok {
-
-		var payload string
 
 		// Use Postgres prepared statements and placeholders for input checks.
 		// The nullif() noise is to coerce Go's empty string zero values for
@@ -62,7 +62,7 @@ func handler(response http.ResponseWriter, request *http.Request) {
 		// The string_to_array() call will return null in the case of a null
 		// argument, rather than array[] or array[null].
 
-		err := db.QueryRow(
+		err = db.QueryRow(
 			`select mas_intersects(
 				nullif($1,'')::text,
 				nullif($2,'')::text,
@@ -85,22 +85,37 @@ func handler(response http.ResponseWriter, request *http.Request) {
 			request.FormValue("metadata"),
 		).Scan(&payload)
 
-		if err != nil {
-			httpJSONError(response, err, 400)
-			return
-		}
+	} else if _, ok := query["timestamps"]; ok {
+		err = db.QueryRow(
+			`select mas_timestamps(
+				nullif($1,'')::text,
+				nullif($2,'')::timestamptz,
+				nullif($3,'')::timestamptz,
+				string_to_array(nullif($4,''), ',')
+			) as json`,
+			request.URL.Path,
+			request.FormValue("time"),
+			request.FormValue("until"),
+			request.FormValue("namespace"),
+		).Scan(&payload)
 
-		response.Write([]byte(payload))
-
-		if mc != nil {
-			// don't care about errors; memcache may not necessarily retain this anyway
-			mc.Set(&memcache.Item{Key: hash, Value: []byte(payload)})
-		}
-
+	} else {
+		httpJSONError(response, errors.New("unknown operation; currently supported: ?intersects, ?timestamps"), 400)
 		return
 	}
 
-	httpJSONError(response, errors.New("unknown operation; currently supported: ?intersects"), 400)
+	if err != nil {
+		httpJSONError(response, err, 400)
+		return
+	}
+
+	response.Write([]byte(payload))
+
+	if mc != nil {
+		// don't care about errors; memcache may not necessarily retain this anyway
+		mc.Set(&memcache.Item{Key: hash, Value: []byte(payload)})
+	}
+
 }
 
 func main() {

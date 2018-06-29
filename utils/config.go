@@ -6,9 +6,11 @@ import (
 	"image/color"
 	"io/ioutil"
 	"log"
+	"net/http"
 	"os"
 	"os/signal"
 	"path/filepath"
+	"strings"
 	"syscall"
 	"time"
 )
@@ -226,6 +228,58 @@ func GenerateDatesRegular(start, end time.Time, stepMins time.Duration) []string
 	return dates
 }
 
+func GenerateDatesMas(start, end string, masAddress string, collection string, namespaces []string) []string {
+	emptyDates := []string{}
+
+	start = strings.TrimSpace(start)
+	if len(start) > 0 {
+		_, err := time.Parse(ISOFormat, start)
+		if err != nil {
+			log.Printf("start date parsing error: %v", err)
+			return emptyDates
+		}
+	}
+
+	end = strings.TrimSpace(end)
+	if len(end) > 0 {
+		_, err := time.Parse(ISOFormat, end)
+		if err != nil {
+			log.Printf("end date parsing error: %v", err)
+			return emptyDates
+		}
+	}
+
+	ns := strings.Join(namespaces, ",")
+	url := strings.Replace(fmt.Sprintf("http://%s%s?timestamps&time=%s&since=%s&namespace=%s", masAddress, collection, start, end, ns), " ", "%20", -1)
+	log.Printf("config querying MAS for timestamps: %v", url)
+
+	resp, err := http.Get(url)
+	if err != nil {
+		log.Printf("MAS http error: %v,%v", url, err)
+		return emptyDates
+	}
+	defer resp.Body.Close()
+
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		log.Printf("MAS http error: %v,%v", url, err)
+		return emptyDates
+	}
+
+	type MasTimestamps struct {
+		Timestamps []string `json:"timestamps"`
+	}
+
+	var timestamps MasTimestamps
+	err = json.Unmarshal(body, &timestamps)
+	if err != nil {
+		log.Printf("MAS json response error: %v", err)
+		return emptyDates
+	}
+
+	return timestamps.Timestamps
+}
+
 func GenerateDates(name string, start, end time.Time, stepMins time.Duration) []string {
 	dateGen := make(map[string]func(time.Time, time.Time, time.Duration) []string)
 	dateGen["aux"] = GenerateDatesAux
@@ -304,10 +358,22 @@ func (config *Config) LoadConfigFile(configFile string) error {
 		return fmt.Errorf("Error at JSON parsing config document: %s. Error: %v", configFile, err)
 	}
 	for i, layer := range config.Layers {
-		start, _ := time.Parse(ISOFormat, layer.StartISODate)
-		end, _ := time.Parse(ISOFormat, layer.EndISODate)
-		step := time.Minute * time.Duration(60*24*layer.StepDays+60*layer.StepHours+layer.StepMinutes)
-		config.Layers[i].Dates = GenerateDates(layer.TimeGen, start, end, step)
+		if strings.TrimSpace(strings.ToLower(layer.TimeGen)) == "mas" {
+			config.Layers[i].Dates = GenerateDatesMas(layer.StartISODate, layer.EndISODate, config.ServiceConfig.MASAddress, config.Layers[i].DataSource, config.Layers[i].RGBProducts)
+		} else {
+			start, errStart := time.Parse(ISOFormat, layer.StartISODate)
+			if errStart != nil {
+				log.Printf("start date parsing error: %v", errStart)
+			}
+
+			end, errEnd := time.Parse(ISOFormat, layer.EndISODate)
+			if errEnd != nil {
+				log.Printf("end date parsing error: %v", errEnd)
+			}
+
+			step := time.Minute * time.Duration(60*24*layer.StepDays+60*layer.StepHours+layer.StepMinutes)
+			config.Layers[i].Dates = GenerateDates(layer.TimeGen, start, end, step)
+		}
 		config.Layers[i].OWSHostname = config.ServiceConfig.OWSHostname
 
 		if config.Layers[i].MaxGrpcRecvMsgSize <= DefaultRecvMsgSize {
