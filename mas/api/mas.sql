@@ -448,3 +448,69 @@ create or replace function mas_intersects(
   end
 $$;
 
+-- Find all the time stamps overlapping with a given time range
+-- The time stamps are filtered by gpath, namespace
+
+create or replace function mas_timestamps(
+  gpath      text,        -- file path to search
+  time_a     timestamptz, -- time range low
+  time_b     timestamptz, -- time range high
+  namespace  text[]       -- the variable name
+)
+  returns jsonb language plpgsql as $$
+  declare
+    result     jsonb;
+
+  begin
+
+    if gpath is null then
+      raise exception 'invalid search path';
+    end if;
+
+    -- By default, we filter out all the future dates
+    if time_b is null then
+      time_b := (select now());
+      raise notice 'aa %', time_b;
+    end if;
+
+    perform mas_reset();
+    perform mas_view(gpath);
+
+    result := jsonb_build_object('timestamps', coalesce((
+
+      -- We perform two-stage time range filtering here:
+      -- Stage 1: We restrive all the distinct po_stamp tuples that fall into the
+      --   time_a and time_b range. Doing so dramatically reduces the computation
+      --   of distinct unnest(po_stamps) at the downstream of the query.
+      --   If we naively run distinct unnest(po_stamps) directly, we can observe
+      --   orders of magnitude of slowdown.
+      -- Stage 2: We unnest po_stamps tuples from stage 1 and refine the time range
+      --   filtering on a per row basis to form the final result set.
+
+      with stamps_tuple as (
+        select distinct po_stamps as po_stamps
+        from paths pa
+        inner join polygons po
+          on po.po_hash = pa.pa_hash
+        where path_hash(gpath) = any(pa.pa_parents)
+        and po_name = any(namespace)
+        and (time_a is null or po_stamps >= array[time_a])
+        and po_stamps <= array[time_b]
+      ),
+      stamps as (
+        select distinct unnest(po_stamps)::timestamptz at time zone 'UTC' as po_stamps
+        from stamps_tuple
+        order by po_stamps
+      )
+      select jsonb_agg( to_char(po_stamps, 'YYYY-MM-DD"T"HH24:MI:SS".000Z"')  )
+      from stamps
+      where (time_a is null or po_stamps >= time_a)
+      and po_stamps <= time_b
+
+     ), '[]'::jsonb));
+
+     perform mas_reset();
+     return result;
+
+  end
+$$;
