@@ -7,7 +7,7 @@ gpath=$2
 (cd "$here" && psql -v ON_ERROR_STOP=1 -A -t -q -d mas <<EOD
 select true from ${shard}.paths limit 1;
 EOD
-) && echo "Shard '${shard}' existed. Skipping shard creation." && exit 1
+) && echo "Shard '${shard}' existed. Skipping shard creation." >&2 && exit 1
 
 (cd "$here" && psql -v ON_ERROR_STOP=1 -A -t -q -d mas <<EOD
 
