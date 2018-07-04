@@ -2,7 +2,7 @@ GSKY High Performance Crawler
 =============================
 Inputs
 ------
-The inputs to the crawler are passed via environment variables. Such a design choice is to facilitate running the crawler as batch processing jobs in an HPC environment. One example is the PBSPro HPC environment at NCI.
+The main script to run to crawl data files is `crawl_pipeline.sh`. The inputs to the crawler are passed via environment variables. Such a design choice is to facilitate running the crawler as batch processing jobs in an HPC environment. One example is the PBSPro HPC environment at NCI.
 1. `$CRAWL_FILE_LIST`: A list of files to crawl
 2. `$CRAWL_DIR`: Instead of a user-supplied crawl file list, one can specify a root directory to crawl recursively.
 3. `$CRAWL_PATTERN`: The pattern to match the files to be crawled. The pattrn syntax is the same as the one used by the `find` command. The default value is `*.nc` to crawl netCDF files.
