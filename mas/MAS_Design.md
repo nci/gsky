@@ -168,6 +168,7 @@ Indexes:
 ```
 
 ## GSKY metadata
+
 The GSKY metadata JSON is used to generate a `polygons` materialized view across all files, with indexes for PostGIS and general access via the API (notice the JSON field extraction within the sub-query).
 
 ```sql
@@ -242,6 +243,7 @@ create materialized view polygons as
 ```
 
 ## Other possible metadata records
+
 For example, it is also possible to have POSIX metadata records:
 
 ```sql

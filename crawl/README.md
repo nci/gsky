@@ -1,31 +1,42 @@
 GSKY High Performance Crawler
 =============================
+
 Inputs
 ------
+
 The main script to run to crawl data files is `crawl_pipeline.sh`. The inputs to the crawler are passed via environment variables. Such a design choice is to facilitate running the crawler as batch processing jobs in an HPC environment. One example is the PBSPro HPC environment at NCI.
 1. `$CRAWL_FILE_LIST`: A list of files to crawl
+
 2. `$CRAWL_DIR`: Instead of a user-supplied crawl file list, one can specify a root directory to crawl recursively.
+
 3. `$CRAWL_PATTERN`: The pattern to match the files to be crawled. The pattrn syntax is the same as the one used by the `find` command. The default value is `*.nc` to crawl netCDF files.
+
 4. `$CRAW_PARAMS`: These are additonal parameters for the `find` command. For exmple, one can specify `-mtime 1` to look for the modified files within last 24 hours. The default value is empty string.
-5. `$CRAWL_CONC_LIMIT`: The number of crawler processes run in parrallel. The default value is 16. 
+
+5. `$CRAWL_CONC_LIMIT`: The number of crawler processes run in parrallel. The default value is 16.
 
 Outputs
 -------
+
 The crawler outputs a gzip compressed tsv file with extension of .tsv.gz. Each line consists of three fields as follows:
+
 ```
 | field | description |
 |---|---|
 | full path | /g/data3/fr5/HLTC/COMPOSITE_HIGH_12_145.93_-16.43_19950101_20170101_PER_20.nc |
 | metadata type | gdal |
-| JSON blob | {"filename":"/g/data3/fr5/HLTC/COMPOSITE_HIGH_12_145.93_-16.43_19950101_20170101_PER_20.nc","file_type":"netCDF","geo_metadata":[....]} | 
+| JSON blob | {"filename":"/g/data3/fr5/HLTC/COMPOSITE_HIGH_12_145.93_-16.43_19950101_20170101_PER_20.nc","file_type":"netCDF","geo_metadata":[....]} |
 ```
 
 ### Notes:
+
 * metadata type is just tag. If the metadata is intended for GSKY, the tag is gdal
+
 * The JSON blob can be of any structure and depth. MAS uses Postgres JSON functions to extract fields, generating materialized views for the RESTful API.
 
 A full example
 --------------
+
 File to be crawled: `/g/data3/fr5/HLTC/COMPOSITE_HIGH_12_145.93_-16.43_19950101_20170101_PER_20.nc`
 
 ```json

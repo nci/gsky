@@ -1,3 +1,4 @@
+#!/bin/bash
 set -u
 set -e
 which concurrent
@@ -75,7 +76,7 @@ assert_gpath () {
 	return $1
 }
 
-if [ -z $gpath ]
+if [ -z "$gpath" ]
 then
 	gpath=$(get_gpath "$craw_file")
 	assert_gpath $?
@@ -105,7 +106,7 @@ export PGPORT=${PGPORT:-5432}
 echo "INFO: pg_user=$PGUSER pg_host=$PGHOST pg_port=$PGPORT gpath=$gpath"
 
 here="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-(cd $here && bash shard_create.sh ${shard} ${gpath})
+(cd "$here" && bash shard_create.sh "${shard}" "${gpath}")
 
 ret_code=$?
 if [ $ret_code -ne 0 ] && [ $ret_code -ne 1 ]
@@ -128,13 +129,7 @@ do
 	abs_filepath=$(readlink -f "$crawl_file")
 	echo "INFO: ingesting $abs_filepath"
 
-	(cd $here && zcat "${abs_filepath}" | bash shard_ingest.sh ${shard})
+	(cd "$here" && zcat "${abs_filepath}" | bash shard_ingest.sh "${shard}")
 done
 
-(cd $here && bash shard_refresh.sh ${shard})
-
-
-
-
-
-
+(cd "$here" && bash shard_refresh.sh "${shard}")
