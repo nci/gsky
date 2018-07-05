@@ -32,6 +32,6 @@ function teardown() {
 }
 
 @test "ows trailing slash test" {
-    run curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/ows
-    [ "$output" != "301" ]
+    run wget -O /dev/null --max-redirect 0 http://localhost:8080/ows
+    [ "$status" -eq 0 ]
 }
