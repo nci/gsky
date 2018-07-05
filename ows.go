@@ -1,18 +1,16 @@
 package main
 
-/* wms is a web server implementing the WMS protocol
-   to serve maps. This server is intended to be consumed
-   directly by users and exposes a series of functionalities
-   through the GetCapabilities.xml document.
-   Configuration of the server is specified at the config.json
+/* ows is a web server implementing the WMS, WCS and WPS protocols
+   to serve geospatial data. This server is intended to be
+   consumed directly by users and exposes a series of
+   functionalities through the GetCapabilities.xml document.
+   Configuration of the server is specified in the config.json
    file where features such as layers or color scales can be
    defined.
    This server depends on two other services to operate: the
    index server which registers the files involved in one operation
    and the warp server which performs the actual rendering of
-   a tile.
-   Most of the functionality for this service is contained in the
-   utils/wms.go file */
+   a tile. */
 
 import (
 	"context"
