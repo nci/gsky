@@ -1,6 +1,6 @@
 # GSKY configuration file description
 
-GSKY can currently provide WMS and WPS services (as defined by the
+GSKY can currently provide WMS, WCS and WPS services (as defined by the
 Open Geosaptial Consortium or OGC). The GSKY configuration file is a
 JSON document (with the filename `config.json`). It specifies the
 datasets and configuration parameters that GSKY needs to expose the
@@ -8,7 +8,7 @@ data layers and services.
 
 This document describes the structure and contents of the
 configuration file.  New datasets can be added to this file so that
-GSKY can expose new layers or services.
+GSKY can expose new layers and services.
 
 ## Configuration file high level structure
 
@@ -59,15 +59,11 @@ parameters used to describe the layer in the WMS GetCapabilities
 response. There are different modes for exposing WMS layers which
 require specific fields in the document, but the following document
 contains the list of common parameters that need to be defined for any
-layer. WCS shares the same processing pipeline as WMS does. Therefore,
-WCS inherits all the WMS layer configurations.
+layer. The WCS services provided by GSKY shares the same processing
+pipeline as WMS does. Therefore, WCS inherits all the WMS layer
+configurations.
 
-GSKY currently supports two different modes of exposing WMS layers.
-
-### Single band WMS (Colour palette)
-
-In the case where a single band needs to be exposed, a colour palette
-needs to be defined in order to define the mapping between values and
+A skeleton of the configuration of a WMS layer is as follows:
 
 ```
 {  
@@ -142,15 +138,17 @@ select min(po_min_stamp), max(po_max_stamp) from polygons where po_hash in (sele
   `start_isodate` until `end_isodate` is reached.
 
 * `rgb_products`: List of the bands used to compose the
-  image. Currently GSKY implements the case of having either 1 or 3
-  bands specified on this field. These names map to the concept of
-  `namespace`s on the MAS API.
+  image. These names map to the concept of `namespace`s on the MAS API.
+  Currently GSKY implements the case of having either 1 or 3 bands
+  specified on this field. Details of band rendering please refer to
+  the `Colour Palette` section.
 
 * `offset_value`,`clip_value`,`scale_value`: These values are
   used to scale the dynamic range of the pixels in the collection to
   the `[0-255]` range used to render PNG or JPG images. This process
   and the relationship between the values is described in the next
-  paragraph.
+  paragraph. Details please refer to the `Scaling of the pixel values`
+  section.
 
 * `legend_path`: Path to an image containing the legend for this
   layer. This file will be returned when a WMS GetLegend request is
@@ -163,7 +161,38 @@ select min(po_min_stamp), max(po_max_stamp) from polygons where po_hash in (sele
 * `mask`: The band used to mask out the original data entries. Details
   please refer to the `Applying masks to data bands` section
 
-Scaling of the pixel values in a collection:
+### Colour palette
+
+GSKY currently supports two modes of rendering tiles: RGB composites
+and single band. If the `rgb_products` field contains three bands,
+each of these bands is mapped into the red, green and blue channels of
+the image respectively to generate a colour image (e.g. a PNG image).
+
+If only one band is specified in the list an extra field needs to be
+added to the JSON document to define the colour palette used to render
+the image:
+
+```
+"palette": {
+    "colours": [
+        { "R": 215, "G": 25, "B": 28, "A": 255 },
+        ...
+        { "R": 255, "G": 255, "B": 191, "A": 255 },
+    ],
+    "interpolate": true
+}
+```
+
+* `colours`: Contains a list of n (minimum of 3) RGB + Alpha colours
+  used to define the colour ramp.
+
+* `interpolate`: There are two different modes for defining the colour
+  palettes. `"interpolate": true` defines an array of 256 colours
+  evenly interpolating through the provided list of colours.
+  `"interpolate": false` defines fixed colours within ranges of the
+  [0-255] space using all the colours specified in the colours list.
+
+### Scaling of the pixel values
 
 In order to scale values to within the [0-255] range, three parameters
 can be defined: `offset_value`, `clip_value` and
@@ -177,36 +206,7 @@ maximum pixel values on a raster. This tool is useful to figure out
 the appropriate values of the scale parameters when a new collection
 needs to be exposed by GSKY.
 
-GSKY currently supports two modes of rendering tiles: RGB composites
-and single band. If the `rgb_products` field contains three bands,
-each of these bands is mapped into the red, green and blue channels of
-the image respectively to generate a colour image.
-
-If only one band is specified in the list an extra field needs to be
-added to the JSON document to define the colour palette used to render
-the image:
-
-```
-"palette": {
-      "colours": [  
-         { "R": 215, "G": 25, "B": 28, "A": 255 },
-         ...
-         { "R": 255, "G": 255, "B": 191, "A": 255 },
-      ],
-      "interpolate": true
-   }
-```
-
-* `colours`: Contains a list of n (minimum of 3) RGB + Alpha colours
-  used to define the colour ramp.
-
-* `interpolate`: There are two different modes for defining the colour
-  palettes. `"interpolate": true` defines an array of 256 colours
-  evenly interpolating through the provided list of colours.
-  `"interpolate": false` defines fixed colours within ranges of the
-  [0-255] space using all the colours specified in the colours list.
-
-Applying masks to data bands:
+### Applying masks to data bands
 
 * `id`: Name of the band used as masks.
 
@@ -221,7 +221,7 @@ Applying masks to data bands:
   The `value` field alone is able to model logical conjunction
   cases.(i.e. `IF a AND b AND c THEN ...`). This field, however, will
   not be able to model a combination of logical conjunction and
-  disjunction cases. (i.e.`IF a AND b OR c AND d THEN ...). To model
+  disjunction cases. (i.e.`IF a AND b OR c AND d THEN ...`). To model
   such cases, one will use the `bit_tests` field.
 
 * `bit_tests`: An array of 01 binary strings. Each integer in the
@@ -245,4 +245,3 @@ An example using the `bit_tests` field is as follows:
   ]
 }
 ```
-
