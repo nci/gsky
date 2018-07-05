@@ -647,6 +647,7 @@ func main() {
 
 	fs := http.FileServer(http.Dir("static"))
 	http.Handle("/", fs)
+	http.HandleFunc("/ows", owsHandler)
 	http.HandleFunc("/ows/", owsHandler)
 	Info.Printf("GSKY is ready")
 	log.Fatal(http.ListenAndServe(fmt.Sprintf("0.0.0.0:%d", *port), nil))
