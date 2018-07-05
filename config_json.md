@@ -83,6 +83,14 @@ A skeleton of the configuration of a WMS layer is as follows:
    "scale_value": float64,
    "legend_path": "path to image with legend",
    "zoom_limit": float64,
+   "palette": {
+      "colours": [
+         { "R": 215, "G": 25, "B": 28, "A": 255 },
+         ...
+         { "R": 255, "G": 255, "B": 191, "A": 255 },
+      ],
+      "interpolate": true
+   },
    "mask": {
       "id": "Name of the band used as mask",
       "data_source": "/path/to/mask_data",
@@ -163,6 +171,9 @@ select min(po_min_stamp), max(po_max_stamp) from polygons where po_hash in (sele
   level that can be served. It uses meters/pixel -in the case of CRS
   expressed in meters-, to set this limitation.
 
+* `palette`: Colour palette to render colour image for single-banded data
+  Details please refer to the `Colour palette` section.
+
 * `mask`: The band used to mask out the original data entries. Details
   please refer to the `Applying masks to data bands` section
 
@@ -179,12 +190,12 @@ the image:
 
 ```
 "palette": {
-    "colours": [
-        { "R": 215, "G": 25, "B": 28, "A": 255 },
-        ...
-        { "R": 255, "G": 255, "B": 191, "A": 255 },
-    ],
-    "interpolate": true
+   "colours": [
+      { "R": 215, "G": 25, "B": 28, "A": 255 },
+      ...
+      { "R": 255, "G": 255, "B": 191, "A": 255 },
+  ],
+  "interpolate": true
 }
 ```
 
