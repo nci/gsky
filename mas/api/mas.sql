@@ -316,7 +316,9 @@ create or replace function mas_intersects(
   time_b     timestamptz, -- time range high
   namespace  text[], -- for NetCDF, the variable name
   resolution numeric, -- pixel resolution
-  raw_metadata text -- gdal, pdal
+  raw_metadata text, -- gdal, pdal
+  identity_tol float8, -- distance tolerance considered as same point
+  dp_tol       float -- distance tolerance for Douglas-Peucker algorithm
 )
   returns jsonb language plpgsql as $$
   declare
@@ -352,13 +354,30 @@ create or replace function mas_intersects(
       raise exception 'unknown SRS';
     end if;
 
+    if identity_tol is null then
+      identity_tol := -1.0
+    end if
+
+    if dp_tol is null then
+      dp_tol := -1.0
+    end if
+
     -- supplied WKT in wgs84
-    mask := ST_SplitDatelineWGS84(
-      ST_Transform(
-        ST_GeomFromText(wkt, srid),
-        4326
-      )
-    );
+    if identity_tol >= 0 and dp_tol >= 0 then 
+      mask := ST_SplitDatelineWGS84(ST_Simplify(ST_RemoveRepeatedPoints(
+        ST_Transform(
+          ST_GeomFromText(wkt, srid),
+          4326
+        ), identity_tol), dp_tol)
+      );
+    else
+      mask := ST_SplitDatelineWGS84(
+        ST_Transform(
+          ST_GeomFromText(wkt, srid),
+          4326
+        )
+      );
+    end if;
 
     if mask is null then
       raise exception 'invalid WKT';

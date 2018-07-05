@@ -102,6 +102,8 @@ type Process struct {
 	MaxArea     float64    `json:"max_area"`
 	LiteralData []LitData  `json:"literal_data"`
 	ComplexData []CompData `json:"complex_data"`
+	IdentityTol float64    `json:"identity_tol"`
+	DpTol       float64    `json:"dp_tol"`
 }
 
 // LitData contains the description of a variable used to compute a
@@ -415,6 +417,17 @@ func (config *Config) LoadConfigFile(configFile string) error {
 		if layer.Palette != nil && layer.Palette.Colours != nil && len(layer.Palette.Colours) < 3 {
 			return fmt.Errorf("The colour palette must contain at least 2 colours.")
 		}
+	}
+
+	for i, proc := range config.Processes {
+		if proc.IdentityTol <= 0 {
+			config.Processes[i].IdentityTol = -1.0
+		}
+
+		if proc.DpTol <= 0 {
+			config.Processes[i].DpTol = -1.0
+		}
+
 	}
 	return nil
 }

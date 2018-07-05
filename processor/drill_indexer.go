@@ -22,20 +22,24 @@ type FileList struct {
 }
 
 type DrillIndexer struct {
-	Context    context.Context
-	In         chan *GeoDrillRequest
-	Out        chan *GeoDrillGranule
-	Error      chan error
-	APIAddress string
+	Context     context.Context
+	In          chan *GeoDrillRequest
+	Out         chan *GeoDrillGranule
+	Error       chan error
+	APIAddress  string
+	IdentityTol float64
+	DpTol       float64
 }
 
-func NewDrillIndexer(ctx context.Context, apiAddr string, errChan chan error) *DrillIndexer {
+func NewDrillIndexer(ctx context.Context, apiAddr string, identityTol float64, dpTol float64, errChan chan error) *DrillIndexer {
 	return &DrillIndexer{
-		Context:    ctx,
-		In:         make(chan *GeoDrillRequest, 100),
-		Out:        make(chan *GeoDrillGranule, 100),
-		Error:      errChan,
-		APIAddress: apiAddr,
+		Context:     ctx,
+		In:          make(chan *GeoDrillRequest, 100),
+		Out:         make(chan *GeoDrillGranule, 100),
+		Error:       errChan,
+		APIAddress:  apiAddr,
+		IdentityTol: identityTol,
+		DpTol:       dpTol,
 	}
 }
 
@@ -51,7 +55,7 @@ func (p *DrillIndexer) Run() {
 
 		start := time.Now()
 		for _, nameSpace := range geoReq.NameSpaces {
-			reqURL := strings.Replace(fmt.Sprintf("http://%s%s?intersects&metadata=gdal&time=%s&until=%s&srs=%s&namespace=%s", p.APIAddress, geoReq.Collection, geoReq.StartTime.Format(ISOFormat), geoReq.EndTime.Format(ISOFormat), geoReq.CRS, nameSpace), " ", "%20", -1)
+			reqURL := strings.Replace(fmt.Sprintf("http://%s%s?intersects&metadata=gdal&time=%s&until=%s&srs=%s&namespace=%s&identitytol=%f&dptol=%f", p.APIAddress, geoReq.Collection, geoReq.StartTime.Format(ISOFormat), geoReq.EndTime.Format(ISOFormat), geoReq.CRS, nameSpace, p.IdentityTol, p.DpTol), " ", "%20", -1)
 			featWKT := feat.Geometry.MarshalWKT()
 			resp, err := http.PostForm(reqURL, url.Values{"wkt": {featWKT}})
 			if err != nil {
