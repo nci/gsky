@@ -93,7 +93,7 @@ Overview of the Servers
 
 GSKY mainly consists of three servers working together to deliver services. The main server (`ows.go`) is the front-end server that takes WMS/WCS/WPS HTTP requests as inputs. The main server talks to the MAS Restful API server (`mas/api/api.go`) for the data files that intersect with the polygon bounding box in the WMS/WCS/WPS requests. With those data files, the main server talks to the RPC worker nodes (`grpc-server/main.go`) for compute and IO intensive tasks and then sends the results back to the client side.
 
-How To Start the Server
+How To Start the Servers
 -----------------------
 
 - Start the MAS Restful API server: `/opt/gsky/sbin/masapi -port 8888`
