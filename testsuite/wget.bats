@@ -30,3 +30,8 @@ function teardown() {
     [ "$status" -eq 0 ]
     [[ "$output" =~ a\ distributed\ geospatial\ data\ server ]]
 }
+
+@test "ows trailing slash test" {
+    run curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/ows
+    [ "$output" != "301" ]
+}
