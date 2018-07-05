@@ -56,12 +56,11 @@ This document contains three keys at the top level:
 A WMS layer is defined using a JSON document specifying values used
 internally by GSKY to locate and process the data as well as
 parameters used to describe the layer in the WMS GetCapabilities
-response. There are different modes for exposing WMS layers which
-require specific fields in the document, but the following document
-contains the list of common parameters that need to be defined for any
-layer. The WCS services provided by GSKY shares the same processing
-pipeline as WMS does. Therefore, WCS inherits all the WMS layer
-configurations.
+response. The WCS services provided by GSKY shares a major portion
+of the processing pipeline as WMS does. Therefore, WCS inherits all
+the WMS layer configurations. WCS, however, delivers raw data to the
+client side. Thus the `offset_value`, `clip_value`, `scale_value`
+and `colour palette` fields are not used by WCS.
 
 A skeleton of the configuration of a WMS layer is as follows:
 
@@ -77,7 +76,7 @@ A skeleton of the configuration of a WMS layer is as follows:
    "step_hours": int,
    "step_minutes": int,
    "accum": [true, false],
-   "time_generator": ["regular", "mcd43", "chirps20", "monthly", "yearly"],
+   "time_generator": ["regular", "mcd43", "chirps20", "monthly", "yearly", "mas"],
    "rgb_products": [],
    "offset_value": float64,
    "clip_value": float64,
@@ -135,20 +134,26 @@ select min(po_min_stamp), max(po_max_stamp) from polygons where po_hash in (sele
 * `time_generator`: This field specifies the method for generating
   the dates as exposed on the <time> field associated with the
   layer. The value `regular` adds the temporal step cumulatively to
-  `start_isodate` until `end_isodate` is reached.
+  `start_isodate` until `end_isodate` is reached. If `time_generator`
+  is set to `mas`, GSKY will attempt to pull timestamps from MAS. In
+  this case, both `start_isodate` and `end_isodate` are optional.
+  If they are set, GSKY will ask MAS to return all timestamps within
+  the defined range. If `end_isodate` is not set, MAS will return
+  timestamps before `now()`.
 
-* `rgb_products`: List of the bands used to compose the
-  image. These names map to the concept of `namespace`s on the MAS API.
-  Currently GSKY implements the case of having either 1 or 3 bands
-  specified on this field. Details of band rendering please refer to
-  the `Colour Palette` section.
+* `rgb_products`: List of the bands used to compose the image.
+  These names map to the concept of `namespace`s on the MAS API.
+  For WMS layers, currently GSKY implements the case of having either
+  1 or 3 bands specified on this field. Details of band rendering
+  please refer to the `Colour Palette` section. For WCS layers,
+  `rgb_products` can have any number of bands.
 
 * `offset_value`,`clip_value`,`scale_value`: These values are
   used to scale the dynamic range of the pixels in the collection to
   the `[0-255]` range used to render PNG or JPG images. This process
   and the relationship between the values is described in the next
   paragraph. Details please refer to the `Scaling of the pixel values`
-  section.
+  section. Note: These fields are not applicable to WCS.
 
 * `legend_path`: Path to an image containing the legend for this
   layer. This file will be returned when a WMS GetLegend request is
@@ -194,8 +199,9 @@ the image:
 
 ### Scaling of the pixel values
 
-In order to scale values to within the [0-255] range, three parameters
-can be defined: `offset_value`, `clip_value` and
+For WMS layers, GSKY has options to scale pixel values before rendering
+them into colour images. In order to scale values to within the [0-255]
+range, three parameters can be defined: `offset_value`, `clip_value` and
 `scale_value`. These three fields are applied to each pixel as in
 the following formula:
 
@@ -224,7 +230,7 @@ needs to be exposed by GSKY.
   disjunction cases. (i.e.`IF a AND b OR c AND d THEN ...`). To model
   such cases, one will use the `bit_tests` field.
 
-* `bit_tests`: An array of 01 binary strings. Each integer in the
+* `bit_tests`: An array of 01 binary strings. Each string in the
   `bit_tests` array will be `and` tested against the mask data band
   entry-wise. If any of the integer in the `bit_tests` array results in
   non-negative `and` test, the corresponding original data entry will be
