@@ -324,6 +324,7 @@ create or replace function mas_intersects(
   declare
 
     srid       integer; -- spatial_ref_sys.srid
+    in_geom    geometry; -- temp variable for supplied WKT geometry
     mask       geometry; -- supplied WKT geometry
     segmask    geometry; -- supplied WKT geometry, segmented
 
@@ -354,6 +355,11 @@ create or replace function mas_intersects(
       raise exception 'unknown SRS';
     end if;
 
+    in_geom := ST_GeomFromText(wkt, srid);
+    if is_geom is null then
+      raise exception 'invalid wkt from user inputs';
+    end if;
+
     if identity_tol is null then
       identity_tol := -1.0
     end if
@@ -363,19 +369,13 @@ create or replace function mas_intersects(
     end if
 
     -- supplied WKT in wgs84
-    if identity_tol >= 0 and dp_tol >= 0 then 
+    if ST_NPoints(in_geom) > 100 and identity_tol >= 0 and dp_tol >= 0 then
       mask := ST_SplitDatelineWGS84(ST_Simplify(ST_RemoveRepeatedPoints(
-        ST_Transform(
-          ST_GeomFromText(wkt, srid),
-          4326
-        ), identity_tol), dp_tol)
+        ST_Transform(in_geom, 4326), identity_tol), dp_tol)
       );
     else
       mask := ST_SplitDatelineWGS84(
-        ST_Transform(
-          ST_GeomFromText(wkt, srid),
-          4326
-        )
+        ST_Transform(in_geom, 4326)
       );
     end if;
 
