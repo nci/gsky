@@ -65,6 +65,11 @@ func TestGenerateDatesMas(t *testing.T) {
 			t.Errorf("Empty end date test failed. Expecting some outputs, but got empty ouputs")
 		}
 
+		res = GenerateDatesMas("", "", masAddress, collection, []string{})
+		if len(res) == 0 {
+			t.Errorf("Empty namespace test failed. Expecting some outputs, but got empty ouputs")
+		}
+
 		for _, ts := range res {
 			_, err := time.Parse(ISOFormat, ts)
 			if err != nil {
