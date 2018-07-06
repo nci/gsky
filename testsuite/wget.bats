@@ -30,3 +30,8 @@ function teardown() {
     [ "$status" -eq 0 ]
     [[ "$output" =~ a\ distributed\ geospatial\ data\ server ]]
 }
+
+@test "ows trailing slash test" {
+    run wget -O /dev/null --max-redirect 0 http://localhost:8080/ows
+    [ "$status" -eq 0 ]
+}

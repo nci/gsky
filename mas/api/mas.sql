@@ -512,7 +512,7 @@ create or replace function mas_timestamps(
         inner join polygons po
           on po.po_hash = pa.pa_hash
         where path_hash(gpath) = any(pa.pa_parents)
-        and po_name = any(namespace)
+        and (namespace is null or po_name = any(namespace))
         and (time_a is null or po_stamps >= array[time_a])
         and po_stamps <= array[time_b]
       ),
