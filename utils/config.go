@@ -250,7 +250,7 @@ func GenerateDatesMas(start, end string, masAddress string, collection string, n
 	}
 
 	ns := strings.Join(namespaces, ",")
-	url := strings.Replace(fmt.Sprintf("http://%s%s?timestamps&time=%s&since=%s&namespace=%s", masAddress, collection, start, end, ns), " ", "%20", -1)
+	url := strings.Replace(fmt.Sprintf("http://%s%s?timestamps&time=%s&until=%s&namespace=%s", masAddress, collection, start, end, ns), " ", "%20", -1)
 	log.Printf("config querying MAS for timestamps: %v", url)
 
 	resp, err := http.Get(url)
