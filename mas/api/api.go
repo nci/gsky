@@ -73,7 +73,7 @@ func handler(response http.ResponseWriter, request *http.Request) {
 				string_to_array(nullif($7,''), ','),
 				nullif($8,'')::numeric,
 				nullif($9,'')::text,
-        nullif($10,'')::float8,
+				nullif($10,'')::float8,
 				nullif($11,'')::float
 			) as json`,
 			request.URL.Path,

@@ -47,7 +47,6 @@ func (p *DrillIndexer) Run() {
 	defer close(p.Out)
 	for geoReq := range p.In {
 		var feat geo.Feature
-
 		err := json.Unmarshal([]byte(geoReq.Geometry), &feat)
 		if err != nil {
 			p.Error <- fmt.Errorf("Problem unmarshalling GeoJSON object: %v", geoReq.Geometry)
