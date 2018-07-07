@@ -3,7 +3,6 @@ package processor
 import (
 	"fmt"
 	"log"
-	"math/rand"
 	"time"
 
 	pb "github.com/nci/gsky/worker/gdalservice"
@@ -32,9 +31,17 @@ func NewDrillGRPC(ctx context.Context, serverAddress []string, errChan chan erro
 func (gi *GeoDrillGRPC) Run() {
 	defer close(gi.Out)
 
+	const DefaultWpsRecvMsgSize = 100 * 1024 * 1024
+	const DefaultWpsConcLimit = 16
+
+	opts := []grpc.DialOption{
+		grpc.WithInsecure(),
+		grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(DefaultWpsRecvMsgSize)),
+	}
+
 	conns := make([]*grpc.ClientConn, len(gi.Clients))
 	for i, client := range gi.Clients {
-		conn, err := grpc.Dial(client, grpc.WithInsecure())
+		conn, err := grpc.Dial(client, opts...)
 		if err != nil {
 			log.Fatalf("gRPC connection problem: %v", err)
 		}
@@ -42,7 +49,7 @@ func (gi *GeoDrillGRPC) Run() {
 		conns[i] = conn
 	}
 
-	cLimiter := NewConcLimiter(16)
+	cLimiter := NewConcLimiter(DefaultWpsConcLimit * len(conns))
 	start := time.Now()
 	i := 0
 	for gran := range gi.In {
@@ -53,9 +60,9 @@ func (gi *GeoDrillGRPC) Run() {
 			return
 		default:
 			cLimiter.Increase()
-			go func(g *GeoDrillGranule, conc *ConcLimiter) {
+			go func(g *GeoDrillGranule, conc *ConcLimiter, iTile int) {
 				defer conc.Decrease()
-				c := pb.NewGDALClient(conns[rand.Intn(len(conns))])
+				c := pb.NewGDALClient(conns[iTile%len(conns)])
 				bands, err := getBands(g.TimeStamps)
 				epsg, err := extractEPSGCode(g.CRS)
 				granule := &pb.GeoRPCGranule{Path: g.Path, EPSG: int32(epsg), Geometry: g.Geometry, Bands: bands}
@@ -66,7 +73,7 @@ func (gi *GeoDrillGRPC) Run() {
 					return
 				}
 				gi.Out <- &DrillResult{NameSpace: g.NameSpace, Data: r.TimeSeries, Dates: g.TimeStamps}
-			}(gran, cLimiter)
+			}(gran, cLimiter, i)
 		}
 	}
 	cLimiter.Wait()
