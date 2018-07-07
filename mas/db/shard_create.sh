@@ -7,6 +7,14 @@ gpath=$2
 (cd "$here" && psql -v ON_ERROR_STOP=1 -A -t -q -d mas <<EOD
 select true from ${shard}.paths limit 1;
 EOD
+) && ret=$(cd "$here" && psql -v ON_ERROR_STOP=1 -A -t -q -d mas <<EOD
+select 1 from public.shards where sh_code = '${shard}' and sh_path = '${gpath}' limit 1;
+EOD
+) && [ -z "$ret" ] && echo "Shard '${shard}' existed with different gpath." >&2 && exit 2
+
+(cd "$here" && psql -v ON_ERROR_STOP=1 -A -t -q -d mas <<EOD
+select true from ${shard}.paths limit 1;
+EOD
 ) && echo "Shard '${shard}' existed. Skipping shard creation." >&2 && exit 1
 
 (cd "$here" && psql -v ON_ERROR_STOP=1 -A -t -q -d mas <<EOD
