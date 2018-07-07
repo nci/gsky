@@ -492,6 +492,8 @@ func serveWPS(ctx context.Context, params utils.WPSParams, conf *utils.Config, r
 			return
 		}
 
+		process := conf.Processes[0]
+
 		var feat []byte
 		geom := params.FeatCol.Features[0].Geometry
 		switch geom := geom.(type) {
@@ -517,14 +519,14 @@ func serveWPS(ctx context.Context, params utils.WPSParams, conf *utils.Config, r
 		year, month, day := time.Now().Date()
 		geoReq1 := proc.GeoDrillRequest{Geometry: string(feat),
 			CRS:        "EPSG:4326",
-			Collection: conf.Processes[0].Paths[0],
+			Collection: process.Paths[0],
 			NameSpaces: []string{"phot_veg", "nphot_veg", "bare_soil"},
 			StartTime:  time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC),
 			EndTime:    time.Date(year, month, day, 0, 0, 0, 0, time.UTC),
 		}
 		geoReq2 := proc.GeoDrillRequest{Geometry: string(feat),
 			CRS:        "EPSG:4326",
-			Collection: conf.Processes[0].Paths[1],
+			Collection: process.Paths[1],
 			NameSpaces: []string{""},
 			StartTime:  time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC),
 			EndTime:    time.Date(year, month, day, 0, 0, 0, 0, time.UTC),
@@ -539,9 +541,9 @@ func serveWPS(ctx context.Context, params utils.WPSParams, conf *utils.Config, r
 		errChan := make(chan error)
 
 		suffix := fmt.Sprintf("_%04d", rand.Intn(1000))
-		dp1 := proc.InitDrillPipeline(ctx, conf.ServiceConfig.MASAddress, conf.ServiceConfig.WorkerNodes, errChan)
+		dp1 := proc.InitDrillPipeline(ctx, conf.ServiceConfig.MASAddress, conf.ServiceConfig.WorkerNodes, process.IdentityTol, process.DpTol, errChan)
 		proc1 := dp1.Process(geoReq1, suffix)
-		dp2 := proc.InitDrillPipeline(ctx, conf.ServiceConfig.MASAddress, conf.ServiceConfig.WorkerNodes, errChan)
+		dp2 := proc.InitDrillPipeline(ctx, conf.ServiceConfig.MASAddress, conf.ServiceConfig.WorkerNodes, process.IdentityTol, process.DpTol, errChan)
 		proc2 := dp2.Process(geoReq2, suffix)
 
 		for _, proc := range []chan string{proc1, proc2} {
