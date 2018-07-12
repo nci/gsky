@@ -30,11 +30,11 @@ func TestGenerateDatesMas(t *testing.T) {
 		t.Errorf("MAS connection test failed. Expecting empty output, actual: %v", res)
 	}
 
-	test_url := strings.Replace(fmt.Sprintf("http://%s%s?timestamps&time=%s&since=%s&namespace=%s", masAddress, collection, "", "", namespaces), " ", "%20", -1)
-	_, err := http.Get(test_url)
-	mas_online := err == nil
+	testURL := strings.Replace(fmt.Sprintf("http://%s%s?timestamps&time=%s&since=%s&namespace=%s", masAddress, collection, "", "", namespaces), " ", "%20", -1)
+	_, err := http.Get(testURL)
+	masOnline := err == nil
 
-	if mas_online {
+	if masOnline {
 		res = GenerateDatesMas("2015-01-02T00:00:00.000Z", "2015-01-01T00:00:00.000Z", masAddress, "no_collection", namespaces)
 		if len(res) != 0 {
 			t.Errorf("Collection test failed. Expecting empty output, actual: %v", res)
