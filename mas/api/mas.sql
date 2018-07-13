@@ -361,12 +361,12 @@ create or replace function mas_intersects(
     end if;
 
     if identity_tol is null then
-      identity_tol := -1.0
-    end if
+      identity_tol := -1.0;
+    end if;
 
     if dp_tol is null then
-      dp_tol := -1.0
-    end if
+      dp_tol := -1.0;
+    end if;
 
     -- supplied WKT in wgs84
     if ST_NPoints(in_geom) > 100 and identity_tol >= 0 and dp_tol >= 0 then
