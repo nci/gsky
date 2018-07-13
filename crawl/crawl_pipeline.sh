@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 which concurrent
-which crawl
+which gsky-crawl
 set +e
 
 conc_limit=${CRAWL_CONC_LIMIT:-16}
