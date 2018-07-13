@@ -10,7 +10,8 @@ import (
 	"io"
 	"log"
 	"os"
-	"utils"
+
+	"github.com/nci/gsky/utils"
 )
 
 type PNGEncoder struct {

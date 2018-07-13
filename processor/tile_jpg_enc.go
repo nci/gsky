@@ -9,7 +9,8 @@ import (
 	"io"
 	"os"
 	"time"
-	"utils"
+
+	"github.com/nci/gsky/utils"
 )
 
 type JPGEncoder struct {
