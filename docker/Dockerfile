@@ -21,15 +21,23 @@ RUN ./build_postgis.sh
 COPY ./build_gsky.sh /
 RUN ./build_gsky.sh
 
+COPY ./mas.sql /gsky/share/mas/api/mas.sql
 COPY ./setup_mas.sh /
 RUN ./setup_mas.sh
 
 ARG sample_data_dir=./sample_data
-ADD "$sample_data_dir" /gdata
-COPY $sample_data_dir"/config.json /gsky/etc/
+ADD "${sample_data_dir}" /gdata
+
+ARG sample_config_dir=./sample_config
+COPY "${sample_config_dir}/config.json" /gsky/etc/
 
 COPY ./ingest_sample_data.sh /
 RUN ./ingest_sample_data.sh
 
+COPY ./setup_terriajs.sh /
+RUN ./setup_terriajs.sh
+
+EXPOSE 8080
+
 COPY ./gsky_entry_point.sh /
-RUN ./gsky_entry_point.sh
+ENTRYPOINT ./gsky_entry_point.sh

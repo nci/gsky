@@ -15,7 +15,7 @@ go get github.com/nci/gsky
 rm -rf $GOPATH/src/github.com/nci/gsky
 git clone https://github.com/edisonguo/gsky-1.git $GOPATH/src/github.com/nci/gsky
 cd $GOPATH/src/github.com/nci/gsky
-git checkout fix_crawler_build
+git checkout fix_build_codebase_inconsistencies
 
 mkdir /gsky
 ./configure --prefix=/gsky --bindir=/gsky/bin --sbindir=/gsky/bin --libexecdir=/gsky/bin
