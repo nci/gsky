@@ -356,7 +356,7 @@ create or replace function mas_intersects(
     end if;
 
     in_geom := ST_GeomFromText(wkt, srid);
-    if is_geom is null then
+    if in_geom is null then
       raise exception 'invalid wkt from user inputs';
     end if;
 
