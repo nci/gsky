@@ -2,14 +2,14 @@ package processor
 
 import (
 	"bytes"
+	"fmt"
 	"image"
 	"image/color"
 	"image/jpeg"
 	"io"
 	"os"
-	//"time"
-	"fmt"
 	"time"
+	"utils"
 )
 
 type JPGEncoder struct {
@@ -45,7 +45,7 @@ func (enc *JPGEncoder) Run() {
 	case 1:
 		buf := new(bytes.Buffer)
 		if nameSpaces[0] == "OutOfZoom" {
-			f, _ := os.Open("zoom.png")
+			f, _ := os.Open(utils.EtcDir + "/zoom.png")
 			io.Copy(buf, f)
 			enc.Out <- buf.Bytes()
 		}
