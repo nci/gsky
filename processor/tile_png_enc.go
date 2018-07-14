@@ -2,15 +2,16 @@ package processor
 
 import (
 	"bytes"
+	"fmt"
 	"image"
 	"image/color"
+	"image/draw"
 	"image/png"
 	"io"
-	"os"
-	//"time"
-	"fmt"
-	"image/draw"
 	"log"
+	"os"
+
+	"github.com/nci/gsky/utils"
 )
 
 type PNGEncoder struct {
@@ -62,7 +63,7 @@ func (enc *PNGEncoder) Run() {
 	case 1:
 		buf := new(bytes.Buffer)
 		if nameSpaces[0] == "OutOfZoom" {
-			f, err := os.Open("zoom.png")
+			f, err := os.Open(utils.DataDir + "/zoom.png")
 			if err != nil {
 				enc.Error <- fmt.Errorf("missing zoom.png")
 				enc.Out <- nil
@@ -134,7 +135,7 @@ func (enc *PNGEncoder) Run() {
 	default:
 		log.Printf("Cannot encode other than 1 or 3 namespaces into a PNG. Received %d namespaces: %v\n", len(nameSpaces), nameSpaces)
 		buf := new(bytes.Buffer)
-		f, err := os.Open("data_unavailable.png")
+		f, err := os.Open(utils.DataDir + "/data_unavailable.png")
 		if err != nil {
 			enc.Error <- fmt.Errorf("missing data_unavailable.png")
 			enc.Out <- nil
