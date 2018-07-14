@@ -28,14 +28,14 @@ Build Arguments
 Published Ports
 ---------------
 
-The `Dockerfile` publishes port 8080 and 8888 for GSKY ows and MAS api services.
+The `Dockerfile` publishes port 8080 and 8888 for GSKY ows and MAS API services.
 To access these ports from the host OS, one needs to use the `-p` option for
 `docker run`. For example, `docker run --rm -it -p 8080:8080 <GSKY image>`
 
 TerriaJS
 --------
 
-The `Dockerfile` also bundles TerriaJS `https://github.com/TerriaJS/terriajs`
+The `Dockerfile` also bundles TerriaJS https://github.com/TerriaJS/terriajs
 for the purpose of visually demostrating GSKY WMS services. To access TerriaJS
 from your web browser, please do `docker run --rm -it -p 8080:8080 <GSKY image>`
 to bring up a GSKY container. Then TerriaJS can be accessed from
