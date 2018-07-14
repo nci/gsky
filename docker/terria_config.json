@@ -1,31 +1,31 @@
 {
-    initializationUrls: [
+    "initializationUrls": [
         "terria"
     ],
-    parameters: {
-        bingMapsKey: "AkaOmRFtjAb71cXgLwAGtLbj2RpkPKtVqAIroFQsocfurCBILxIeAWPkil7hhRy_",
-        googleUrlShortenerKey: null,
-        googleAnalyticsKey: null,
-        googleAnalyticsOptions: null,
+    "parameters": {
+        "bingMapsKey": "AkaOmRFtjAb71cXgLwAGtLbj2RpkPKtVqAIroFQsocfurCBILxIeAWPkil7hhRy_",
+        "googleUrlShortenerKey": null,
+        "googleAnalyticsKey": null,
+        "googleAnalyticsOptions": null,
 
-        autoPlay: false,
+        "autoPlay": false,
         
-        developerAttribution: {
-            text: "National Computational Infrastructure (NCI)",
-            link: "https://github.com/nci/gsky"
+        "developerAttribution": {
+            "text": "National Computational Infrastructure (NCI)",
+            "link": "https://github.com/nci/gsky"
         },
-        appName: "Terria Map - GSKY Docker",
+        "appName": "Terria Map - GSKY Docker",
 
-        brandBarElements: [
+        "brandBarElements": [
             "",
-            "<a target=\"_blank\" href=\"http://www.nci.org.au\"><img src=\"../img/logo.svg\" title=\"GSKY Docker\" /></a>",
+            "<a target=\"_blank\" href=\"https://github.com/nci/gsky\"><img src=\"../img/logo.svg\" title=\"GSKY Docker\" /></a>",
             ""
         ],
 
-        supportEmail: "help@nci.org.au",
-        feedbackUrl: "https://github.com/nci/gsky/issues",
+        "supportEmail": "help@nci.org.au",
+        "feedbackUrl": "https://github.com/nci/gsky/issues",
 
-        mobileDefaultViewerMode: "2d",
-        experimentalFeatures: true
+        "mobileDefaultViewerMode": "2d",
+        "experimentalFeatures": true
     }
 }
