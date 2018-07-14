@@ -1,3 +1,4 @@
+#!/bin/bash
 set -xeu
 
 export PATH="/gsky/bin:/gsky/share/mas:$PATH"

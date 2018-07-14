@@ -1,3 +1,4 @@
+#!/bin/bash
 set -xeu
 
 apt-get update && apt-get install -y --no-install-recommends python2.7
@@ -9,7 +10,7 @@ mkdir -p /home/dummy_user
 chown dummy_user:dummy_user /home/dummy_user
 
 su dummy_user <<'EOF'
-set -xe
+set -xeu
 cd /home/dummy_user
 
 vnode=8.11.3
@@ -25,7 +26,8 @@ npm run gulp release
 EOF
 
 chown -R root:root /home/dummy_user/TerriaMap/wwwroot
+mkdir -p /gsky/share/gsky/static
 cp -r /home/dummy_user/TerriaMap/wwwroot /gsky/share/gsky/static/terria
 
-rm -rf /home/dummy_user
+#userdel also performs rm -rf /home/dummy_user
 userdel -r dummy_user

@@ -1,12 +1,13 @@
-set -eu
-
-#export PATH=/usr/local/pgsql/bin:$PATH
-#export LD_LIBRARY_PATH=/usr/local/pgsql/lib
+#!/bin/bash
+set -xeu
 
 v=2.4.4
+(set -xeu
 wget -q https://download.osgeo.org/postgis/source/postgis-${v}.tar.gz
 tar -xf postgis-${v}.tar.gz
 cd postgis-${v}
 make -j4
 make install
-cd ..
+)
+rm -rf postgis-${v}
+rm -f postgis-${v}.tar.gz

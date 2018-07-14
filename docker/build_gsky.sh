@@ -1,5 +1,7 @@
 #!/bin/bash
-set -eu
+set -xeu
+DEFAULT_GSKY_REPO='https://github.com/nci/gsky.git'
+gsky_repo="${1:-$DEFAULT_GSKY_REPO}"
 
 export C_INCLUDE_PATH=$(nc-config --includedir)
 
@@ -11,13 +13,21 @@ export GOROOT=/go
 export GOPATH=/gopath
 export PATH="$PATH:$GOROOT/bin"
 
+(set -xeu
 go get github.com/nci/gsky
-rm -rf $GOPATH/src/github.com/nci/gsky
-git clone https://github.com/edisonguo/gsky-1.git $GOPATH/src/github.com/nci/gsky
-cd $GOPATH/src/github.com/nci/gsky
-git checkout fix_build_codebase_inconsistencies
+if [ "$gsky_repo" != "$DEFAULT_GSKY_REPO" ]
+then
+  rm -rf $GOPATH/src/github.com/nci/gsky
+  git clone $gsky_repo $GOPATH/src/github.com/nci/gsky
+fi
 
-mkdir /gsky
+cd $GOPATH/src/github.com/nci/gsky
+
+mkdir -p /gsky
 ./configure --prefix=/gsky --bindir=/gsky/bin --sbindir=/gsky/bin --libexecdir=/gsky/bin
 make all
 make install
+)
+
+rm -f go.tar.gz
+rm -rf gopath
