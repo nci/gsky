@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 which concurrent
-which crawl
+which gsky-crawl
 set +e
 
 conc_limit=${CRAWL_CONC_LIMIT:-16}
@@ -52,7 +52,7 @@ echo "INFO: crawl output file: $crawl_file"
 gdal_json() {
 	src_file="$1"
 
-	json=$(crawl $src_file)
+	json=$(gsky-crawl $src_file)
 	echo -e "$src_file\tgdal\t$json"
 }
 

@@ -8,7 +8,7 @@ func assert(t *testing.T, out *ByteRaster, expected *ByteRaster, err error) {
 	if err != nil {
 		t.Errorf("byte raster test failed,  %v", err)
 	}
-	for i, _ := range out.Data {
+	for i := range out.Data {
 		if out.Data[i] != expected.Data[i] {
 			t.Errorf("byte raster test failed, expecting %v, actual %v", expected.Data, out.Data)
 		}
