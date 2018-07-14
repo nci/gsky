@@ -183,7 +183,7 @@ func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r
 
 		xRes := (params.BBox[2] - params.BBox[0]) / float64(*params.Width)
 		if conf.Layers[idx].ZoomLimit != 0.0 && xRes > conf.Layers[idx].ZoomLimit {
-			out, err := utils.GetEmptyTile(utils.EtcDir+"/zoom.png", *params.Height, *params.Width)
+			out, err := utils.GetEmptyTile(utils.DataDir+"/zoom.png", *params.Height, *params.Width)
 			if err != nil {
 				Info.Printf("Error in the utils.GetEmptyTile(zoom.png): %v\n", err)
 				http.Error(w, err.Error(), 500)
@@ -233,7 +233,7 @@ func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r
 			}
 
 			if norm[0].Width == 0 || norm[0].Height == 0 {
-				out, err := utils.GetEmptyTile(utils.EtcDir+"/data_unavailable.png", *params.Height, *params.Width)
+				out, err := utils.GetEmptyTile(utils.DataDir+"/data_unavailable.png", *params.Height, *params.Width)
 				if err != nil {
 					Info.Printf("Error in the utils.GetEmptyTile(data_unavailable.png): %v\n", err)
 					http.Error(w, err.Error(), 500)

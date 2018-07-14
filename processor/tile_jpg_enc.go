@@ -46,7 +46,7 @@ func (enc *JPGEncoder) Run() {
 	case 1:
 		buf := new(bytes.Buffer)
 		if nameSpaces[0] == "OutOfZoom" {
-			f, _ := os.Open(utils.EtcDir + "/zoom.png")
+			f, _ := os.Open(utils.DataDir + "/zoom.png")
 			io.Copy(buf, f)
 			enc.Out <- buf.Bytes()
 		}
