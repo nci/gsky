@@ -48,6 +48,7 @@ install:
 	for f in $(srcdir)/templates/* ; do install -m 644 $$f $(datarootdir)/gsky/templates ; done
 	cp -rp $(srcdir)/static/* $(datarootdir)/gsky/static
 	for f in $(srcdir)/mas/db/*.sql ; do install -m 644 $$f $(datarootdir)/mas ; done
+	for f in $(srcdir)/mas/api/*.sql ; do install -m 644 $$f $(datarootdir)/mas ; done
 	for f in $(srcdir)/mas/db/*.sh ; do install -m 755 $$f $(datarootdir)/mas ; done
 
 clean: pkg-config
