@@ -59,6 +59,7 @@ func init() {
 	Info = log.New(os.Stdout, "OWS: ", log.Ldate|log.Ltime|log.Lshortfile)
 
 	filePaths := []string{
+		utils.DataDir + "/static/index.html",
 		utils.DataDir + "/templates/WMS_GetCapabilities.tpl",
 		utils.DataDir + "/templates/WMS_DescribeLayer.tpl",
 		utils.DataDir + "/templates/WMS_ServiceException.tpl",
@@ -182,7 +183,7 @@ func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r
 
 		xRes := (params.BBox[2] - params.BBox[0]) / float64(*params.Width)
 		if conf.Layers[idx].ZoomLimit != 0.0 && xRes > conf.Layers[idx].ZoomLimit {
-			out, err := utils.GetEmptyTile("zoom.png", *params.Height, *params.Width)
+			out, err := utils.GetEmptyTile(utils.DataDir+"/zoom.png", *params.Height, *params.Width)
 			if err != nil {
 				Info.Printf("Error in the utils.GetEmptyTile(zoom.png): %v\n", err)
 				http.Error(w, err.Error(), 500)
@@ -232,7 +233,7 @@ func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r
 			}
 
 			if norm[0].Width == 0 || norm[0].Height == 0 {
-				out, err := utils.GetEmptyTile("data_unavailable.png", *params.Height, *params.Width)
+				out, err := utils.GetEmptyTile(utils.DataDir+"/data_unavailable.png", *params.Height, *params.Width)
 				if err != nil {
 					Info.Printf("Error in the utils.GetEmptyTile(data_unavailable.png): %v\n", err)
 					http.Error(w, err.Error(), 500)
@@ -645,7 +646,7 @@ func owsHandler(w http.ResponseWriter, r *http.Request) {
 func main() {
 	flag.Parse()
 
-	fs := http.FileServer(http.Dir("static"))
+	fs := http.FileServer(http.Dir(utils.DataDir + "/static"))
 	http.Handle("/", fs)
 	http.HandleFunc("/ows", owsHandler)
 	http.HandleFunc("/ows/", owsHandler)
