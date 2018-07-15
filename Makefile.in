@@ -47,7 +47,7 @@ install:
 	install -m 644 $(srcdir)/data_unavailable.png $(datarootdir)
 	for f in $(srcdir)/templates/* ; do install -m 644 $$f $(datarootdir)/gsky/templates ; done
 	cp -rp $(srcdir)/static/* $(datarootdir)/gsky/static
-	for f in $(srcdir)/mas/db/*.sql ; do install -m 644 $$f $(datarootdir)/mas ; done
+	for f in $(srcdir)/mas/db/*.sql $(srcdir)/mas/api/*.sql ; do install -m 644 $$f $(datarootdir)/mas ; done
 	for f in $(srcdir)/mas/db/*.sh ; do install -m 755 $$f $(datarootdir)/mas ; done
 	install -m 755 $(srcdir)/crawl/crawl_pipeline.sh $(sbindir)/gsky-crawl_pipeline.sh
 
