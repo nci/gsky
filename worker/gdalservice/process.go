@@ -1,16 +1,15 @@
 package gdalservice
 
 import (
-	"context"
-	//"log"
 	"fmt"
+	"io/ioutil"
 	"math/rand"
 	"net"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strconv"
-	"time"
+	"syscall"
 
 	"bufio"
 	"bytes"
@@ -26,29 +25,6 @@ type ErrorMsg struct {
 	Error   error
 }
 
-func createUniqueFilename(dir string) (string, error) {
-	var filename string
-	var err error
-
-	if dir == "" {
-		dir, err = os.Getwd()
-		if err != nil {
-			return filename, fmt.Errorf("Could not get the current working directory %v", err)
-		}
-	}
-
-	if _, err := os.Stat(dir); os.IsNotExist(err) {
-		return filename, fmt.Errorf("The provided directory does not exist %v", err)
-	}
-
-	for {
-		filename = filepath.Join(dir, strconv.FormatUint(rand.Uint64(), 16))
-		if _, err := os.Stat(filename); os.IsNotExist(err) {
-			return filename, nil
-		}
-	}
-}
-
 type Task struct {
 	Payload *GeoRPCGranule
 	Resp    chan *Result
@@ -56,32 +32,33 @@ type Task struct {
 }
 
 type Process struct {
-	Context        context.Context
-	CancelFunc     context.CancelFunc
 	TaskQueue      chan *Task
+	TempFile       string
 	Address        string
 	Cmd            *exec.Cmd
 	CombinedOutput io.ReadCloser
 	ErrorMsg       chan *ErrorMsg
 }
 
-func NewProcess(ctx context.Context, tQueue chan *Task, binary string, errChan chan *ErrorMsg, debug bool) *Process {
+func NewProcess(tQueue chan *Task, binary string, errChan chan *ErrorMsg, debug bool) *Process {
 
-	newCtx, cancel := context.WithCancel(ctx)
-	addr, err := createUniqueFilename("/tmp")
+	// we need to keep the temp file existing to prevent race condition
+	// for creating unix socket for new processes
+	tmpFile, err := ioutil.TempFile("", "gsky_rpc_")
 	if err != nil {
 		panic(err)
 	}
-	if _, err := os.Stat(addr); !os.IsNotExist(err) {
-		os.Remove(addr)
-	}
+	tmpFile.Close()
+	tmpFileName := tmpFile.Name()
+	addr := tmpFileName + "_socket"
 
 	debugArg := ""
 	if debug {
 		debugArg = "-debug"
 	}
 
-	cmd := exec.CommandContext(newCtx, binary, "-sock", addr, debugArg)
+	cmd := exec.Command(binary, "-sock", addr, debugArg)
+	cmd.SysProcAttr = &syscall.SysProcAttr{Pdeathsig: syscall.SIGKILL}
 	combinedOutput, err := cmd.StderrPipe()
 	if err != nil {
 		combinedOutput = nil
@@ -90,42 +67,23 @@ func NewProcess(ctx context.Context, tQueue chan *Task, binary string, errChan c
 		cmd.Stdout = cmd.Stderr
 	}
 
-	return &Process{newCtx, cancel, tQueue, addr, cmd, combinedOutput, errChan}
+	return &Process{tQueue, addr, tmpFileName, cmd, combinedOutput, errChan}
 }
 
-func (p *Process) waitReady() error {
-	timer := time.NewTimer(time.Millisecond * 200)
-	ready := make(chan struct{})
-
-	go func(signal chan struct{}) {
-		for {
-			time.Sleep(time.Millisecond * 20)
-			if _, err := os.Stat(p.Address); err == nil {
-				signal <- struct{}{}
-				return
-
-			}
-		}
-	}(ready)
-
-	select {
-	case <-ready:
-		return nil
-	case <-timer.C:
-		return fmt.Errorf("Address file creation timed out")
-	}
-}
-
-func (p *Process) Start() {
+func (p *Process) Start() error {
 	err := p.Cmd.Start()
 	if err != nil {
-		p.ErrorMsg <- &ErrorMsg{p.Address, true, err}
-		return
+		os.Remove(p.TempFile)
+		p.ErrorMsg <- &ErrorMsg{p.Address, false, fmt.Errorf("Failed to start process: %v", err)}
+		return err
 	}
 
 	log.Println("Process running with PID", p.Cmd.Process.Pid)
 
 	go func() {
+		defer os.Remove(p.TempFile)
+		defer os.Remove(p.Address)
+
 		for task := range p.TaskQueue {
 
 			conn, err := net.DialUnix("unix", nil, &net.UnixAddr{Name: p.Address, Net: "unix"})
@@ -171,6 +129,9 @@ func (p *Process) Start() {
 	}()
 
 	go func() {
+		defer os.Remove(p.TempFile)
+		defer os.Remove(p.Address)
+
 		// relay subprocess stderr and stdout to our stdout, with pid
 		if p.CombinedOutput != nil {
 			reader := bufio.NewReader(p.CombinedOutput)
@@ -186,25 +147,10 @@ func (p *Process) Start() {
 
 		err = p.Cmd.Wait()
 		if err != nil {
-			p.ErrorMsg <- &ErrorMsg{p.Address, false, fmt.Errorf("Failed to execute sub-process")}
-			return
-		}
-		err = os.Remove(p.Address)
-		if err != nil {
-			p.ErrorMsg <- &ErrorMsg{p.Address, false, fmt.Errorf("Couldn't delete unix connection file")}
-			return
+			p.ErrorMsg <- &ErrorMsg{p.Address, true, fmt.Errorf("Process exited: %v", err)}
 		}
 
-		select {
-		case <-p.Context.Done():
-			p.ErrorMsg <- &ErrorMsg{p.Address, false, p.Context.Err()}
-		default:
-			p.ErrorMsg <- &ErrorMsg{p.Address, true, fmt.Errorf("Process finished unexpectedly")}
-		}
 	}()
-}
 
-func (p *Process) Cancel() {
-	p.CancelFunc()
-	time.Sleep(100 * time.Millisecond)
+	return nil
 }

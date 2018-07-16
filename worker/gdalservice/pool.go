@@ -1,7 +1,6 @@
 package gdalservice
 
 import (
-	"context"
 	"fmt"
 	"log"
 )
@@ -22,14 +21,18 @@ func (p *ProcessPool) AddQueue(task *Task) {
 	p.TaskQueue <- task
 }
 
-func (p *ProcessPool) AddProcess(debug bool) {
+func (p *ProcessPool) CreateProcess(executable string, debug bool) (*Process, error) {
 
-	proc := NewProcess(context.Background(), p.TaskQueue, LibexecDir+"/gsky-gdal-process", p.ErrorMsg, debug)
-	proc.Start()
-	p.Pool = append(p.Pool, proc)
+	if len(executable) == 0 {
+		executable = LibexecDir + "/gsky-gdal-process"
+	}
+	proc := NewProcess(p.TaskQueue, executable, p.ErrorMsg, debug)
+	err := proc.Start()
+
+	return proc, err
 }
 
-func CreateProcessPool(n int, debug bool) *ProcessPool {
+func CreateProcessPool(n int, executable string, debug bool) (*ProcessPool, error) {
 
 	p := &ProcessPool{[]*Process{}, make(chan *Task, 400), make(chan *ErrorMsg)}
 
@@ -37,20 +40,32 @@ func CreateProcessPool(n int, debug bool) *ProcessPool {
 		for {
 			select {
 			case err := <-p.ErrorMsg:
-				log.Println("Process needs to be restarted?", err)
+				if err.Replace {
+					log.Printf("Process: %v, %v, restarting...", err.Address, err.Error)
+					for ip, proc := range p.Pool {
+						if err.Address == proc.Address {
+							p.Pool[ip] = nil
+							proc, err := p.CreateProcess(executable, debug)
+							if err == nil {
+								p.Pool[ip] = proc
+							}
+							break
+						}
+					}
+				} else {
+					log.Printf("Process: %v, %v", err.Address, err.Error)
+				}
 			}
 		}
 	}()
 
 	for i := 0; i < n; i++ {
-		p.AddProcess(debug)
+		proc, err := p.CreateProcess(executable, debug)
+		if err != nil {
+			return nil, err
+		}
+		p.Pool = append(p.Pool, proc)
 	}
 
-	return p
-}
-
-func (p *ProcessPool) DeleteProcessPool() {
-	for _, proc := range p.Pool {
-		proc.Cancel()
-	}
+	return p, nil
 }

@@ -12,12 +12,9 @@ import (
 
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
-	//"time"
-	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 )
 
 type server struct {
@@ -49,14 +46,15 @@ func (s *server) Process(ctx context.Context, in *pb.GeoRPCGranule) (*pb.Result,
 func main() {
 	port := flag.Int("p", 6000, "gRPC server listening port.")
 	poolSize := flag.Int("n", 8, "Maximum number of requests handled concurrently.")
+	executable := flag.String("exec", "", "Executable filepath")
 	debug := flag.Bool("debug", false, "verbose logging")
 	flag.Parse()
 
-	go func() {
-		log.Println(http.ListenAndServe("localhost:6060", nil))
-	}()
-
-	p := pb.CreateProcessPool(*poolSize, *debug)
+	p, err := pb.CreateProcessPool(*poolSize, *executable, *debug)
+	if err != nil {
+		log.Printf("Failed to create process pool: %v", err)
+		os.Exit(2)
+	}
 
 	signals := make(chan os.Signal, 1)
 	signal.Notify(signals, syscall.SIGTERM, syscall.SIGINT)
@@ -64,8 +62,11 @@ func main() {
 		for {
 			select {
 			case <-signals:
-				p.DeleteProcessPool()
-				time.Sleep(1 * time.Second)
+				for _, proc := range p.Pool {
+					os.Remove(proc.TempFile)
+					os.Remove(proc.Address)
+				}
+
 				os.Exit(1)
 			}
 		}
