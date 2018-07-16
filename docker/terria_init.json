@@ -1,0 +1,36 @@
+{
+  "homeCamera": {
+    "north": -8,
+    "east": 158,
+    "south": -45,
+    "west": 109
+  },
+  "baseMapName": "Bing Maps Roads",
+  "viewerMode": "2d",
+  "catalog": [
+    {
+      "name": "GSKY Sample Datasets",
+      "type": "group",
+      "preserveOrder": true,
+      "isOpen": true,
+      "items": [
+        {
+          "name": "Geoglam monthly total cover",
+          "type": "wms",
+          "opacity": 1,
+          "isShown": true,
+          "url": "http://127.0.0.1:8080/ows/",
+          "layers": "geoglam:c6:monthly_total_cover"
+        },
+
+        {
+          "name": "Geoglam monthly fractional cover",
+          "type": "wms",
+          "opacity": 1,
+          "url": "http://127.0.0.1:8080/ows/",
+          "layers": "geoglam:c6:monthly_frac_cover"
+        }
+      ]
+    }
+  ]
+}
