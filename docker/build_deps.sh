@@ -8,7 +8,7 @@ v=9c
 wget -q http://www.ijg.org/files/jpegsrc.v${v}.tar.gz
 tar -xf jpegsrc.v${v}.tar.gz
 cd jpeg-${v}
-./configure --prefix=$prefix
+./configure --prefix="$prefix"
 make -j4
 make install
 )
@@ -22,7 +22,7 @@ tar -xf openjpeg-v${v}.tar.gz
 cd openjpeg-${v}
 mkdir build
 cd build
-cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$prefix
+cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="$prefix"
 make -j4
 make install
 )
@@ -35,7 +35,7 @@ wget -q http://download.osgeo.org/geos/geos-${v}.tar.bz2
 bunzip2 geos-${v}.tar.bz2
 tar -xf  geos-${v}.tar
 cd geos-${v}
-./configure --prefix=$prefix
+./configure --prefix="$prefix"
 make -j4
 make install
 )
@@ -50,7 +50,7 @@ tar -xf proj-${v}.tar.gz
 wget -q http://download.osgeo.org/proj/proj-datumgrid-${vd}.zip
 unzip proj-datumgrid-${vd}.zip -d proj-${v}/nad/
 cd proj-${v}
-./configure --prefix=$prefix
+./configure --prefix="$prefix"
 make -j4
 make install
 )
@@ -61,7 +61,7 @@ v=1.2.8
 (set -xeu
 wget -q ftp://ftp.unidata.ucar.edu/pub/netcdf/netcdf-4/zlib-${v}.tar.gz
 tar -xf zlib-${v}.tar.gz && cd zlib-${v}
-./configure --prefix=$prefix
+./configure --prefix="$prefix"
 make -j4
 make install
 )
@@ -73,7 +73,7 @@ v=4.2.13
 wget -q https://support.hdfgroup.org/ftp/HDF/HDF_Current/src/hdf-${v}.tar.gz
 tar -xf hdf-${v}.tar.gz
 cd hdf-${v}
-./configure --enable-shared --disable-fortran --prefix=$prefix
+./configure --enable-shared --disable-fortran --prefix="$prefix"
 make -j4
 make install
 )
@@ -84,8 +84,7 @@ v=1.8.13
 (set -xeu
 wget -q ftp://ftp.unidata.ucar.edu/pub/netcdf/netcdf-4/hdf5-${v}.tar.gz
 tar -xf hdf5-${v}.tar.gz && cd hdf5-${v}
-prefix=/usr
-./configure --enable-shared --enable-hl --prefix=$prefix
+./configure --enable-shared --enable-hl --prefix="$prefix"
 make -j4
 make install
 )
@@ -96,8 +95,7 @@ v=4.1.3
 (set -xeu
 wget -q http://www.unidata.ucar.edu/downloads/netcdf/ftp/netcdf-${v}.tar.gz
 tar -xf netcdf-${v}.tar.gz && cd netcdf-${v}
-prefix=/usr
-./configure --enable-netcdf-4 --enable-shared --enable-dap --prefix=$prefix
+./configure --enable-netcdf-4 --enable-shared --enable-dap --prefix="$prefix"
 make -j4
 make install
 )
@@ -109,7 +107,7 @@ v=2.9.8
 wget -q ftp://xmlsoft.org/libxml2/libxml2-${v}.tar.gz
 tar -xf libxml2-${v}.tar.gz
 cd libxml2-${v}
-./configure --prefix=$prefix
+./configure --prefix="$prefix"
 make -j4
 make install
 )
@@ -121,7 +119,7 @@ v=0.13.1
 wget -q https://s3.amazonaws.com/json-c_releases/releases/json-c-${v}.tar.gz
 tar -xf json-c-${v}.tar.gz
 cd json-c-${v}
-./configure --prefix=$prefix
+./configure --prefix="$prefix"
 make -j4
 make install
 )

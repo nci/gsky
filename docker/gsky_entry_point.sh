@@ -16,7 +16,7 @@ su -p -c "pg_ctl -w start" -l "$PGUSER"
 mkdir -p /var/run/postgresql
 ln -s /tmp/.s.PGSQL.5432 /var/run/postgresql/.s.PGSQL.5432 
 
-./gsky/bin/masapi -port $masapi_port -pool 2 2>&1 > masapi_output.log &
+./gsky/bin/masapi -port $masapi_port -pool 2 > masapi_output.log 2>&1 &
 
 n_cores=$(grep '^cpu\s*cores' /proc/cpuinfo|uniq|awk '{print $4}')
 if [[ ! "$n_cores" =~ ^[0-9]+$ ]]
@@ -28,7 +28,7 @@ then
   n_cores=1
 fi
 
-./gsky/bin/gsky-rpc -p $rpc_port -n $n_cores 2>&1 > rpc_output.log &
+./gsky/bin/gsky-rpc -p $rpc_port -n $n_cores > rpc_output.log 2>&1 &
 ./gsky/bin/gsky-ows -p $ows_port &
 
 set +x

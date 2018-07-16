@@ -32,11 +32,20 @@ The `Dockerfile` publishes port 8080 and 8888 for GSKY ows and MAS API services.
 To access these ports from the host OS, one needs to use the `-p` option for
 `docker run`. For example, `docker run --rm -it -p 8080:8080 <GSKY image>`
 
+Sample Data
+-----------
+
+The sample data were taken from a subset of Geoglam Fractional Cover
+http://www.geo-rapp.org/rapp-monitor/, which covers the entire Australia. The
+sample data consist of 16 data files whose total size is about 311MB.
+
 TerriaJS
 --------
 
 The `Dockerfile` also bundles TerriaJS https://github.com/TerriaJS/terriajs
-for the purpose of visually demostrating GSKY WMS services. To access TerriaJS
-from your web browser, please do `docker run --rm -it -p 8080:8080 <GSKY image>`
-to bring up a GSKY container. Then TerriaJS can be accessed from
-`http://127.0.0.1/terria` from your web browser.
+for the purpose of visually demostrating GSKY WMS services on the sample data. 
+To access TerriaJS from your web browser, please do the following:
+
+1. Run `docker run --rm -it -p 8080:8080 <GSKY image>` to bring up a GSKY container.
+
+2. TerriaJS can be accessed from `http://127.0.0.1/terria` from your web browser.
