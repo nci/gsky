@@ -20,6 +20,7 @@ import (
 var (
 	db       *sql.DB
 	mc       *memcache.Client
+	dbHost   = flag.String("dbhost", "/var/run/postgresq", "dbhost")
 	dbName   = flag.String("database", "mas", "database name")
 	dbUser   = flag.String("user", "api", "database user name")
 	dbPool   = flag.Int("pool", 8, "database pool size")
@@ -126,18 +127,24 @@ func main() {
 
 	flag.Parse()
 
-	log.Printf("dbUser %s dbName %s dbPool %d httpPort %d", *dbUser, *dbName, *dbPool, *httpPort)
+	log.Printf("dbHost %s dbUser %s dbName %s dbPool %d httpPort %d", *dbHost, *dbUser, *dbName, *dbPool, *httpPort)
 
-	dbinfo := fmt.Sprintf("user=%s host=/var/run/postgresql dbname=%s sslmode=disable", *dbUser, *dbName)
+	dbinfo := fmt.Sprintf("user=%s host=%s dbname=%s sslmode=disable", *dbUser, *dbHost, *dbName)
 
 	var err error
 	db, err = sql.Open("postgres", dbinfo)
-
 	if err != nil {
 		panic(err)
 	}
-
 	defer db.Close()
+
+	// sql.Open() does lazy evaluation. Here we do some simple
+	// test to assert if connection is okay.
+	var payload string
+	err = db.QueryRow("select true").Scan(&payload)
+	if err != nil {
+		panic(err)
+	}
 
 	db.SetMaxIdleConns(*dbPool)
 	db.SetMaxOpenConns(*dbLimit)
