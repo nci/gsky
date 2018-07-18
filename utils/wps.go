@@ -135,3 +135,16 @@ func GetArea(wgs84Poly geo.Geometry) float64 {
 	C.OGR_G_AssignSpatialReference(hPt, selSRS)
 	return float64(C.OGR_G_Area(hPt))
 }
+
+func GetProcessIndex(params WPSParams, config *Config) (int, error) {
+	if params.Identifier != nil {
+		for i := range config.Processes {
+			if config.Processes[i].Identifier == *params.Identifier {
+				return i, nil
+			}
+		}
+		return -1, fmt.Errorf("%s not found in config processes", *params.Identifier)
+	}
+	return -1, fmt.Errorf("WPS request doesn't specify a process")
+}
+

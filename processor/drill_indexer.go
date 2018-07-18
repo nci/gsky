@@ -55,7 +55,11 @@ func (p *DrillIndexer) Run() {
 
 		namespaces := strings.Join(geoReq.NameSpaces, ",")
 		start := time.Now()
-		reqURL := strings.Replace(fmt.Sprintf("http://%s%s?intersects&metadata=gdal&time=%s&until=%s&srs=%s&namespace=%s&identitytol=%f&dptol=%f", p.APIAddress, geoReq.Collection, geoReq.StartTime.Format(ISOFormat), geoReq.EndTime.Format(ISOFormat), geoReq.CRS, namespaces, p.IdentityTol, p.DpTol), " ", "%20", -1)
+		startTimeStr := ""
+		if !time.Time.IsZero(geoReq.StartTime) {
+			startTimeStr = geoReq.StartTime.Format(ISOFormat)
+		}
+		reqURL := strings.Replace(fmt.Sprintf("http://%s%s?intersects&metadata=gdal&time=%s&until=%s&srs=%s&namespace=%s&identitytol=%f&dptol=%f", p.APIAddress, geoReq.Collection, startTimeStr, geoReq.EndTime.Format(ISOFormat), geoReq.CRS, namespaces, p.IdentityTol, p.DpTol), " ", "%20", -1)
 		featWKT := feat.Geometry.MarshalWKT()
 		resp, err := http.PostForm(reqURL, url.Values{"wkt": {featWKT}})
 		if err != nil {
