@@ -147,4 +147,3 @@ func GetProcessIndex(params WPSParams, config *Config) (int, error) {
 	}
 	return -1, fmt.Errorf("WPS request doesn't specify a process")
 }
-

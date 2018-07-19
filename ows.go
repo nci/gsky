@@ -545,7 +545,7 @@ func serveWPS(ctx context.Context, params utils.WPSParams, conf *utils.Config, r
 
 			endDateTime := time.Now().UTC()
 			endDateTimeStr := strings.TrimSpace(dataSource.EndISODate)
-			if len(endDateTimeStr) > 0 {
+			if len(endDateTimeStr) > 0 && strings.ToLower(endDateTimeStr) != "now" {
 				dt, errEnd := time.Parse(utils.ISOFormat, endDateTimeStr)
 				if errEnd != nil {
 					log.Printf("WPS: Failed to parse end date '%s' into ISO format with error: %v, defaulting to now()", endDateTimeStr, errEnd)

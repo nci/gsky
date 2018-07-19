@@ -97,7 +97,7 @@ type Layer struct {
 // Process contains all the details that a WPS needs
 // to be published and processed
 type Process struct {
-	DataSources []Layer  `json:"data_sources"`
+	DataSources []Layer    `json:"data_sources"`
 	Identifier  string     `json:"identifier"`
 	Title       string     `json:"title"`
 	Abstract    string     `json:"abstract"`
