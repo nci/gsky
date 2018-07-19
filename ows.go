@@ -478,6 +478,19 @@ func serveWPS(ctx context.Context, params utils.WPSParams, conf *utils.Config, r
 			}
 		}
 	case "Execute":
+		idx, err := utils.GetProcessIndex(params, conf)
+		if err != nil {
+			Error.Printf("Requested process not found: %v, %v\n", err, reqURL)
+			http.Error(w, fmt.Sprintf("%v: %s", err, reqURL), 400)
+			return
+		}
+		process := conf.Processes[idx]
+		if len(process.DataSources) == 0 {
+			Error.Printf("No data source specified")
+			http.Error(w, "No data source specified", 500)
+			return
+		}
+
 		if len(params.FeatCol.Features) == 0 {
 			err := utils.ExecuteWriteTemplateFile(w, "Request doesn't contain any Feature.",
 				utils.DataDir+"/templates/WPS_Exception.tpl")
@@ -488,13 +501,6 @@ func serveWPS(ctx context.Context, params utils.WPSParams, conf *utils.Config, r
 
 		}
 
-		if len(conf.Processes) != 1 || len(conf.Processes[0].Paths) != 2 {
-			http.Error(w, `Request cannot be processed. Error detected in the contents of the "processes" object on config file.`, 400)
-			return
-		}
-
-		process := conf.Processes[0]
-
 		var feat []byte
 		geom := params.FeatCol.Features[0].Geometry
 		switch geom := geom.(type) {
@@ -504,8 +510,8 @@ func serveWPS(ctx context.Context, params utils.WPSParams, conf *utils.Config, r
 
 		case *geo.Polygon, *geo.MultiPolygon:
 			area := utils.GetArea(geom)
-			log.Println("yes, it's a polygon with area", area)
-			if area == 0.0 || area > conf.Processes[0].MaxArea {
+			log.Println("Requested polygon has an area of", area)
+			if area == 0.0 || area > process.MaxArea {
 				Info.Printf("The requested area %.02f, is too large.\n", area)
 				http.Error(w, "The requested area is too large. Please try with a smaller one.", 400)
 				return
@@ -517,56 +523,63 @@ func serveWPS(ctx context.Context, params utils.WPSParams, conf *utils.Config, r
 			return
 		}
 
-		year, month, day := time.Now().Date()
-		geoReq1 := proc.GeoDrillRequest{Geometry: string(feat),
-			CRS:        "EPSG:4326",
-			Collection: process.Paths[0],
-			NameSpaces: []string{"phot_veg", "nphot_veg", "bare_soil"},
-			StartTime:  time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC),
-			EndTime:    time.Date(year, month, day, 0, 0, 0, 0, time.UTC),
-		}
-		geoReq2 := proc.GeoDrillRequest{Geometry: string(feat),
-			CRS:        "EPSG:4326",
-			Collection: process.Paths[1],
-			NameSpaces: []string{""},
-			StartTime:  time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC),
-			EndTime:    time.Date(year, month, day, 0, 0, 0, 0, time.UTC),
-		}
-
-		fmt.Println(geoReq1, geoReq2)
-
-		// This is not concurrent as in the previous version
 		var result string
 		ctx, ctxCancel := context.WithCancel(ctx)
 		defer ctxCancel()
 		errChan := make(chan error)
-
 		suffix := fmt.Sprintf("_%04d", rand.Intn(1000))
-		dp1 := proc.InitDrillPipeline(ctx, conf.ServiceConfig.MASAddress, conf.ServiceConfig.WorkerNodes, process.IdentityTol, process.DpTol, errChan)
-		proc1 := dp1.Process(geoReq1, suffix)
-		dp2 := proc.InitDrillPipeline(ctx, conf.ServiceConfig.MASAddress, conf.ServiceConfig.WorkerNodes, process.IdentityTol, process.DpTol, errChan)
-		proc2 := dp2.Process(geoReq2, suffix)
 
-		for _, proc := range []chan string{proc1, proc2} {
+		for ids, dataSource := range process.DataSources {
+			log.Printf("WPS: Processing '%v' (%d of %d)", dataSource.DataSource, ids+1, len(process.DataSources))
+
+			startDateTime := time.Time{}
+			startDateTimeStr := strings.TrimSpace(dataSource.StartISODate)
+			if len(startDateTimeStr) > 0 {
+				st, errStart := time.Parse(utils.ISOFormat, startDateTimeStr)
+				if errStart != nil {
+					log.Printf("WPS: Failed to parse start date '%v' into ISO format with error: %v, defaulting to no start date", startDateTimeStr, errStart)
+				} else {
+					startDateTime = st
+				}
+			}
+
+			endDateTime := time.Now().UTC()
+			endDateTimeStr := strings.TrimSpace(dataSource.EndISODate)
+			if len(endDateTimeStr) > 0 && strings.ToLower(endDateTimeStr) != "now" {
+				dt, errEnd := time.Parse(utils.ISOFormat, endDateTimeStr)
+				if errEnd != nil {
+					log.Printf("WPS: Failed to parse end date '%s' into ISO format with error: %v, defaulting to now()", endDateTimeStr, errEnd)
+				} else {
+					endDateTime = dt
+				}
+			}
+
+			geoReq := proc.GeoDrillRequest{Geometry: string(feat),
+				CRS:        "EPSG:4326",
+				Collection: dataSource.DataSource,
+				NameSpaces: dataSource.RGBProducts,
+				StartTime:  startDateTime,
+				EndTime:    endDateTime,
+			}
+
+			dp := proc.InitDrillPipeline(ctx, conf.ServiceConfig.MASAddress, conf.ServiceConfig.WorkerNodes, process.IdentityTol, process.DpTol, errChan)
+			proc := dp.Process(geoReq, suffix, dataSource.MetadataURL, dataSource.BandEval)
+
 			select {
 			case res := <-proc:
 				result += res
 			case err := <-errChan:
 				Info.Printf("Error in the pipeline: %v\n", err)
-				ctxCancel()
 				http.Error(w, err.Error(), 500)
 				return
 			case <-ctx.Done():
 				Error.Printf("Context cancelled with message: %v\n", ctx.Err())
-				ctxCancel()
 				http.Error(w, ctx.Err().Error(), 500)
 				return
 			}
 		}
-		ctxCancel()
 
-		err := utils.ExecuteWriteTemplateFile(w, result,
-			utils.DataDir+"/templates/WPS_Execute.tpl")
+		err = utils.ExecuteWriteTemplateFile(w, result, utils.DataDir+"/templates/WPS_Execute.tpl")
 		if err != nil {
 			http.Error(w, err.Error(), 500)
 		}

@@ -90,12 +90,14 @@ type Layer struct {
 	GrpcWcsConcPerNode       int      `json:"grpc_wcs_conc_per_node"`
 	WmsPolygonShardConcLimit int      `json:"wms_polygon_shard_conc_limit"`
 	WcsPolygonShardConcLimit int      `json:"wcs_polygon_shard_conc_limit"`
+	BandEval                 []string `json:"band_eval"`
+	BandEvalProducts         []string `json:"band_eval_products"`
 }
 
 // Process contains all the details that a WPS needs
 // to be published and processed
 type Process struct {
-	Paths       []string   `json:"paths"`
+	DataSources []Layer    `json:"data_sources"`
 	Identifier  string     `json:"identifier"`
 	Title       string     `json:"title"`
 	Abstract    string     `json:"abstract"`
@@ -427,7 +429,6 @@ func (config *Config) LoadConfigFile(configFile string) error {
 		if proc.DpTol <= 0 {
 			config.Processes[i].DpTol = -1.0
 		}
-
 	}
 	return nil
 }

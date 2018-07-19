@@ -43,6 +43,8 @@ func NewDrillIndexer(ctx context.Context, apiAddr string, identityTol float64, d
 	}
 }
 
+const DefaultMaxLogLength = 3000
+
 func (p *DrillIndexer) Run() {
 	defer close(p.Out)
 	for geoReq := range p.In {
@@ -55,9 +57,22 @@ func (p *DrillIndexer) Run() {
 
 		namespaces := strings.Join(geoReq.NameSpaces, ",")
 		start := time.Now()
-		reqURL := strings.Replace(fmt.Sprintf("http://%s%s?intersects&metadata=gdal&time=%s&until=%s&srs=%s&namespace=%s&identitytol=%f&dptol=%f", p.APIAddress, geoReq.Collection, geoReq.StartTime.Format(ISOFormat), geoReq.EndTime.Format(ISOFormat), geoReq.CRS, namespaces, p.IdentityTol, p.DpTol), " ", "%20", -1)
+		startTimeStr := ""
+		if !time.Time.IsZero(geoReq.StartTime) {
+			startTimeStr = geoReq.StartTime.Format(ISOFormat)
+		}
+		reqURL := strings.Replace(fmt.Sprintf("http://%s%s?intersects&metadata=gdal&time=%s&until=%s&srs=%s&namespace=%s&identitytol=%f&dptol=%f", p.APIAddress, geoReq.Collection, startTimeStr, geoReq.EndTime.Format(ISOFormat), geoReq.CRS, namespaces, p.IdentityTol, p.DpTol), " ", "%20", -1)
 		featWKT := feat.Geometry.MarshalWKT()
-		resp, err := http.PostForm(reqURL, url.Values{"wkt": {featWKT}})
+		postBody := url.Values{"wkt": {featWKT}}
+
+		postBodyStr := fmt.Sprintf("%v", postBody)
+		maxLogLen := DefaultMaxLogLength
+		if len(postBodyStr) < DefaultMaxLogLength {
+			maxLogLen = len(postBodyStr)
+		}
+		log.Printf("mas_url:%s\tpost_body:%s", reqURL, postBodyStr[:maxLogLen])
+
+		resp, err := http.PostForm(reqURL, postBody)
 		if err != nil {
 			p.Error <- fmt.Errorf("POST request to %s failed. Error: %v", reqURL, err)
 			continue

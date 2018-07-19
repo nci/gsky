@@ -1,10 +1,13 @@
 package processor
 
 import (
+	"bytes"
 	"fmt"
 	"math"
 	"sort"
 
+	goeval "github.com/Knetic/govaluate"
+	"github.com/nci/gsky/utils"
 	pb "github.com/nci/gsky/worker/gdalservice"
 )
 
@@ -22,7 +25,7 @@ func NewDrillMerger(errChan chan error) *DrillMerger {
 	}
 }
 
-func (dm *DrillMerger) Run(suffix string) {
+func (dm *DrillMerger) Run(suffix string, templateFileName string, bandEval []string) {
 	defer close(dm.Out)
 	results := make(map[string]map[string][]*pb.TimeSeries)
 	namespaces := []string{}
@@ -43,7 +46,7 @@ func (dm *DrillMerger) Run(suffix string) {
 		}
 	}
 	if len(results) == 0 {
-		dm.Error <- fmt.Errorf("Merger hasn't received any result")
+		dm.Error <- fmt.Errorf("WPS: Merger hasn't received any result")
 		return
 	}
 
@@ -52,87 +55,111 @@ func (dm *DrillMerger) Run(suffix string) {
 		dates = append(dates, ts)
 	}
 	sort.Strings(dates)
-	out := `<wps:Output>`
 
-	switch len(namespaces) {
-	case 1:
-		out += `<ows:Identifier>precipitation</ows:Identifier>
-<ows:Title>Accumulated Precipitation</ows:Title>
-<ows:Abstract>Time series data for location.</ows:Abstract>
-<wps:Data>
-<wps:ComplexData mimeType="application/vnd.terriajs.catalog-member+json" schema="https://tools.ietf.org/html/rfc7159">
-<![CDATA[{ "data": "date,Prec\n`
+	varRefs := [][]string{}
+	expressions := make([]*goeval.EvaluableExpression, len(bandEval))
 
-		for _, key := range dates {
-			values := map[string]float64{}
-			for _, ns := range namespaces {
-				total := 0.0
-				count := 0
-				for _, data := range results[ns][key] {
-					if !math.IsNaN(data.Value) {
-						total += data.Value * float64(data.Count)
-						count += int(data.Count)
-					}
-				}
-				if !math.IsNaN(total) && count > 0 {
-					values[ns] = total / float64(count)
-				}
-			}
-			out += fmt.Sprintf("%s,", key)
-			if val, ok := values[""]; ok {
-				out += fmt.Sprintf("%f", val)
-			}
-			out += ",\\n"
+	for iExpr := range bandEval {
+		expr, expErr := goeval.NewEvaluableExpression(bandEval[iExpr])
+		if expErr != nil {
+			dm.Error <- fmt.Errorf("WPS: Experession parsing error: %v", expErr)
+			return
 		}
-		out += fmt.Sprintf(`", "isEnabled": true, "type": "csv", "name": "Precipitation%s", "tableStyle": { "columns": { "Prec": { "units": "mm", "chartLineColor": "#72ecfa", "yAxisMin": 0, "active": true } } } }]]>`, suffix)
-	case 3:
-		out += `<ows:Identifier>veg_cover</ows:Identifier>
-<ows:Title>Vegetation Cover</ows:Title>
-<ows:Abstract>Time series data for location.</ows:Abstract>
-<wps:Data>
-<wps:ComplexData mimeType="application/vnd.terriajs.catalog-member+json" schema="https://tools.ietf.org/html/rfc7159">
-<![CDATA[{ "data": "date,PV,NPV,BS,Total\n`
-		for _, key := range dates {
-			values := map[string]float64{}
-			for _, ns := range namespaces {
-				total := 0.0
-				count := 0
-				for _, data := range results[ns][key] {
-					if !math.IsNaN(data.Value) {
-						total += data.Value * float64(data.Count)
-						count += int(data.Count)
-					}
+
+		expressions[iExpr] = expr
+
+		variables := []string{}
+		for iToken, token := range expr.Tokens() {
+			if token.Kind == goeval.VARIABLE {
+				varName, ok := token.Value.(string)
+				if !ok {
+					dm.Error <- fmt.Errorf("WPS: Expression token name failed to cast to string %d", iToken)
+					return
 				}
-				if !math.IsNaN(total) && count > 0 {
-					values[ns] = total / float64(count)
+
+				_, varFound := results[varName]
+				if !varFound {
+					dm.Error <- fmt.Errorf("WPS: undefined variable '%s' in '%s'. All variables: %v", varName, bandEval[iExpr], namespaces)
+					return
 				}
+
+				variables = append(variables, varName)
 			}
-			out += fmt.Sprintf("%s,", key)
-			tc := 0.0
-			if val, ok := values["phot_veg"]; ok {
-				out += fmt.Sprintf("%f", val)
-				tc += val
-			}
-			out += ","
-			if val, ok := values["nphot_veg"]; ok {
-				out += fmt.Sprintf("%f", val)
-				tc += val
-			}
-			out += ","
-			if val, ok := values["bare_soil"]; ok {
-				out += fmt.Sprintf("%f", val)
-			}
-			out += ","
-			if tc != 0.0 {
-				out += fmt.Sprintf("%f", tc)
-			}
-			out += "\\n"
 		}
-		out += fmt.Sprintf(`", "isEnabled": true, "type": "csv", "name": "Veg. Frac.%s", "tableStyle": { "columns": { "NPV": { "units": "%%", "chartLineColor": "#0070c0", "yAxisMin": 0, "yAxisMax": 100, "active": true }, "PV": { "units": "%%", "chartLineColor": "#00b050", "yAxisMin": 0, "yAxisMax": 100, "active": true }, "BS": { "units": "%%", "chartLineColor": "#FF0000", "yAxisMin": 0, "yAxisMax": 100,  "active": true }, "Total": { "units": "%%", "chartLineColor": "#FFFFFF", "yAxisMin": 0, "yAxisMax": 100,  "active": true } } } }]]>`, suffix)
+
+		varRefs = append(varRefs, variables)
 	}
-	out += `</wps:ComplexData>
-</wps:Data>
-</wps:Output>`
 
-	dm.Out <- out
+	csv := bytes.NewBufferString("")
+	for _, key := range dates {
+		values := map[string]float64{}
+		for _, ns := range namespaces {
+			total := 0.0
+			count := 0
+			for _, data := range results[ns][key] {
+				if !math.IsNaN(data.Value) {
+					total += data.Value * float64(data.Count)
+					count += int(data.Count)
+				}
+			}
+			if !math.IsNaN(total) && count > 0 {
+				values[ns] = total / float64(count)
+			}
+		}
+
+		fmt.Fprintf(csv, "%s", key)
+
+		for _, ns := range namespaces {
+			fmt.Fprint(csv, ",")
+			if val, ok := values[ns]; ok {
+				fmt.Fprintf(csv, "%f", val)
+			}
+		}
+
+		for iv, variables := range varRefs {
+			noData := false
+			for _, variable := range variables {
+				if _, ok := values[variable]; !ok {
+					noData = true
+					break
+				}
+			}
+
+			fmt.Fprint(csv, ",")
+
+			if noData {
+				continue
+			}
+
+			parameters := make(map[string]interface{}, len(variables))
+			for _, variable := range variables {
+				parameters[variable] = values[variable]
+			}
+
+			result, err := expressions[iv].Evaluate(parameters)
+			if err != nil {
+				dm.Error <- fmt.Errorf("WPS: Eval '%v' error: %v", bandEval[iv], err)
+				return
+			}
+
+			val, ok := result.(float64)
+			if !ok {
+				dm.Error <- fmt.Errorf("WPS: Failed to cast eval results '%v' to float64, %v", val, bandEval[iv])
+				return
+			}
+
+			fmt.Fprintf(csv, "%f", val)
+		}
+
+		fmt.Fprint(csv, "\\n")
+
+	}
+
+	out := bytes.NewBufferString("")
+	err := utils.ExecuteWriteTemplateFile(out, csv, templateFileName)
+	if err != nil {
+		dm.Error <- fmt.Errorf("WPS: output template error: %v", err)
+		return
+	}
+	dm.Out <- fmt.Sprintf(out.String(), suffix)
 }
