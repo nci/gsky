@@ -527,9 +527,10 @@ func serveWPS(ctx context.Context, params utils.WPSParams, conf *utils.Config, r
 		ctx, ctxCancel := context.WithCancel(ctx)
 		defer ctxCancel()
 		errChan := make(chan error)
+		suffix := fmt.Sprintf("_%04d", rand.Intn(1000))
 
 		for ids, dataSource := range process.DataSources {
-			log.Printf("WPS: Processing '%v' (%d of %d done)", dataSource.DataSource, ids, len(process.DataSources))
+			log.Printf("WPS: Processing '%v' (%d of %d)", dataSource.DataSource, ids+1, len(process.DataSources))
 
 			startDateTime := time.Time{}
 			startDateTimeStr := strings.TrimSpace(dataSource.StartISODate)
@@ -561,9 +562,8 @@ func serveWPS(ctx context.Context, params utils.WPSParams, conf *utils.Config, r
 				EndTime:    endDateTime,
 			}
 
-			suffix := fmt.Sprintf("_%04d", rand.Intn(1000))
 			dp := proc.InitDrillPipeline(ctx, conf.ServiceConfig.MASAddress, conf.ServiceConfig.WorkerNodes, process.IdentityTol, process.DpTol, errChan)
-			proc := dp.Process(geoReq, suffix)
+			proc := dp.Process(geoReq, suffix, dataSource.MetadataURL, dataSource.BandEval)
 
 			select {
 			case res := <-proc:

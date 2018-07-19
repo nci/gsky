@@ -90,6 +90,8 @@ type Layer struct {
 	GrpcWcsConcPerNode       int      `json:"grpc_wcs_conc_per_node"`
 	WmsPolygonShardConcLimit int      `json:"wms_polygon_shard_conc_limit"`
 	WcsPolygonShardConcLimit int      `json:"wcs_polygon_shard_conc_limit"`
+	BandEval                 []string `json:"band_eval"`
+	BandEvalProducts         []string `json:"band_eval_products"`
 }
 
 // Process contains all the details that a WPS needs

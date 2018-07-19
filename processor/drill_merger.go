@@ -4,8 +4,11 @@ import (
 	"fmt"
 	"math"
 	"sort"
+	"bytes"
 
+	"github.com/nci/gsky/utils"
 	pb "github.com/nci/gsky/worker/gdalservice"
+	goeval "github.com/Knetic/govaluate"
 )
 
 type DrillMerger struct {
@@ -22,7 +25,7 @@ func NewDrillMerger(errChan chan error) *DrillMerger {
 	}
 }
 
-func (dm *DrillMerger) Run(suffix string) {
+func (dm *DrillMerger) Run(suffix string, templateFileName string, bandEval []string) {
 	defer close(dm.Out)
 	results := make(map[string]map[string][]*pb.TimeSeries)
 	namespaces := []string{}
@@ -52,6 +55,107 @@ func (dm *DrillMerger) Run(suffix string) {
 		dates = append(dates, ts)
 	}
 	sort.Strings(dates)
+
+	varRefs := [][]string{}
+	expressions := make([]*goeval.EvaluableExpression, len(bandEval))
+
+	for iExpr := range bandEval {
+		expr, expErr := goeval.NewEvaluableExpression(bandEval[iExpr])
+		if expErr != nil {
+			dm.Error <- fmt.Errorf("eval experession error: %v", expErr)
+			return
+		}
+
+		expressions[iExpr] = expr
+
+		variables := []string{}
+		for iToken, token := range expr.Tokens() {
+			if token.Kind == goeval.VARIABLE {
+				varName, ok := token.Value.(string)
+				if !ok {
+					dm.Error <- fmt.Errorf("eval parsing error at expression: %d", iToken)
+					return
+				}	
+				variables = append(variables, varName)
+			}
+		}
+
+		varRefs = append(varRefs, variables)
+	}
+
+	csv := bytes.NewBufferString("") 	
+	for _, key := range dates {
+		values := map[string]float64{}
+		for _, ns := range namespaces {
+			total := 0.0
+			count := 0
+			for _, data := range results[ns][key] {
+				if !math.IsNaN(data.Value) {
+					total += data.Value * float64(data.Count)
+					count += int(data.Count)
+				}
+			}
+			if !math.IsNaN(total) && count > 0 {
+				values[ns] = total / float64(count)
+			}
+		}
+
+		fmt.Fprintf(csv, "%s", key)
+
+		for _, ns := range namespaces {
+			fmt.Fprint(csv, ",")
+			if val, ok := values[ns]; ok {
+				fmt.Fprintf(csv, "%f", val)
+			}
+		}
+
+		for iv, variables := range varRefs {
+			noData := false
+			for _, variable := range variables {
+				if _, ok := values[variable]; !ok {
+					noData = true
+					break
+				}
+			}
+
+			fmt.Fprint(csv, ",")
+
+			if noData {
+				continue
+			}
+
+			parameters := make(map[string]interface{}, len(variables))	
+			for _, variable := range variables {
+				parameters[variable] = values[variable]
+			}
+
+			result, err := expressions[iv].Evaluate(parameters)
+			if err != nil {
+				dm.Error <- fmt.Errorf("eval '%v' error: %v", bandEval[iv], err)
+				return
+			}
+
+			val, ok := result.(float64)
+			if !ok {
+				dm.Error <- fmt.Errorf("Failed to cast eval results '%v' to float64, %v", val, bandEval[iv])
+				return
+			}
+
+			fmt.Fprintf(csv, "%f", val)
+		}
+
+		fmt.Fprint(csv, "\\n")
+
+	}
+
+	out := bytes.NewBufferString("") 
+	err := utils.ExecuteWriteTemplateFile(out, csv.String(), templateFileName)
+	if err != nil {
+		dm.Error <- fmt.Errorf("drill merger error: %v", err)
+		return
+	}
+	dm.Out <- fmt.Sprintf(out.String(), suffix)
+	/*
 	out := `<wps:Output>`
 
 	switch len(namespaces) {
@@ -135,4 +239,5 @@ func (dm *DrillMerger) Run(suffix string) {
 </wps:Output>`
 
 	dm.Out <- out
+	*/
 }
