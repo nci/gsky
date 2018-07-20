@@ -91,7 +91,7 @@ type Layer struct {
 	WmsPolygonShardConcLimit int      `json:"wms_polygon_shard_conc_limit"`
 	WcsPolygonShardConcLimit int      `json:"wcs_polygon_shard_conc_limit"`
 	BandEval                 []string `json:"band_eval"`
-	BandEvalProducts         []string `json:"band_eval_products"`
+	BandStrides              int      `json:"band_strides"`
 }
 
 // Process contains all the details that a WPS needs

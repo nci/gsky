@@ -25,15 +25,23 @@ func NewDrillMerger(errChan chan error) *DrillMerger {
 	}
 }
 
-func (dm *DrillMerger) Run(suffix string, templateFileName string, bandEval []string) {
+func (dm *DrillMerger) Run(suffix string, namespaces []string, templateFileName string, bandEval []string) {
 	defer close(dm.Out)
 	results := make(map[string]map[string][]*pb.TimeSeries)
-	namespaces := []string{}
 
 	for drillRes := range dm.In {
 		if _, ok := results[drillRes.NameSpace]; !ok {
 			results[drillRes.NameSpace] = make(map[string][]*pb.TimeSeries)
-			namespaces = append(namespaces, drillRes.NameSpace)
+			nsFound := false
+			for _, ns := range namespaces {
+				if ns == drillRes.NameSpace {
+					nsFound = true
+					break
+				}
+			}
+			if !nsFound {
+				namespaces = append(namespaces, drillRes.NameSpace)
+			}
 		}
 
 		for i, date := range drillRes.Dates {

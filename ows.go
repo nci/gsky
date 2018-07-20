@@ -55,6 +55,8 @@ var (
 // required files are in place  and sets Config struct.
 // This is the first function to be called in main.
 func init() {
+	rand.Seed(time.Now().UnixNano())
+
 	Error = log.New(os.Stderr, "OWS: ", log.Ldate|log.Ltime|log.Lshortfile)
 	Info = log.New(os.Stdout, "OWS: ", log.Ldate|log.Ltime|log.Lshortfile)
 
@@ -563,7 +565,11 @@ func serveWPS(ctx context.Context, params utils.WPSParams, conf *utils.Config, r
 			}
 
 			dp := proc.InitDrillPipeline(ctx, conf.ServiceConfig.MASAddress, conf.ServiceConfig.WorkerNodes, process.IdentityTol, process.DpTol, errChan)
-			proc := dp.Process(geoReq, suffix, dataSource.MetadataURL, dataSource.BandEval)
+
+			if dataSource.BandStrides <= 0 {
+				dataSource.BandStrides = 1
+			}
+			proc := dp.Process(geoReq, suffix, dataSource.MetadataURL, dataSource.BandEval, dataSource.BandStrides)
 
 			select {
 			case res := <-proc:

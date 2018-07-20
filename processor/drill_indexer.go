@@ -85,6 +85,8 @@ func (p *DrillIndexer) Run() {
 			continue
 		}
 
+		log.Println("Indexer Time Total", time.Since(start))
+
 		var metadata MetadataResponse
 		err = json.Unmarshal(body, &metadata)
 		if err != nil {
@@ -101,6 +103,5 @@ func (p *DrillIndexer) Run() {
 				p.Out <- &GeoDrillGranule{ds.DSName, ds.NameSpace, ds.ArrayType, ds.TimeStamps, geoReq.Geometry, geoReq.CRS}
 			}
 		}
-		log.Println("Indexer Time Total", time.Since(start))
 	}
 }
