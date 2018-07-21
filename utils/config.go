@@ -271,6 +271,7 @@ func GenerateDatesMas(start, end string, masAddress string, collection string, n
 	}
 
 	type MasTimestamps struct {
+		Error      string   `json:"error"`
 		Timestamps []string `json:"timestamps"`
 	}
 
@@ -280,6 +281,13 @@ func GenerateDatesMas(start, end string, masAddress string, collection string, n
 		log.Printf("MAS json response error: %v", err)
 		return emptyDates
 	}
+
+	if len(timestamps.Error) > 0 {
+		log.Printf("MAS returned error: %v", timestamps.Error)
+		return emptyDates
+	}
+
+	log.Printf("MAS returned %v timestamps", len(timestamps.Timestamps))
 
 	return timestamps.Timestamps
 }

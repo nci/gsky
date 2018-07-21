@@ -31,19 +31,17 @@ func (dp *DrillPipeline) Process(geoReq GeoDrillRequest, suffix string, template
 		dp.Error <- fmt.Errorf("Couldn't instantiate RPCDriller %s/n", dp.RPCAddrs)
 	}
 
-	splt := NewTimeSplitter(-1, dp.Error)
-	go func() {
-		splt.In <- &geoReq
-		close(splt.In)
-	}()
 	i := NewDrillIndexer(dp.Context, dp.APIAddr, dp.IdentityTol, dp.DpTol, dp.Error)
+	go func() {
+		i.In <- &geoReq
+		close(i.In)
+	}()
+
 	dm := NewDrillMerger(dp.Error)
 
-	i.In = splt.Out
 	grpcDriller.In = i.Out
 	dm.In = grpcDriller.Out
 
-	go splt.Run()
 	go i.Run()
 	go grpcDriller.Run(bandStrides)
 	go dm.Run(suffix, geoReq.NameSpaces, templateFileName, bandEval)

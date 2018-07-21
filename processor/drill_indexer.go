@@ -85,13 +85,20 @@ func (p *DrillIndexer) Run() {
 			continue
 		}
 
-		log.Println("Indexer Time Total", time.Since(start))
+		indexTime := time.Since(start)
 
 		var metadata MetadataResponse
 		err = json.Unmarshal(body, &metadata)
 		if err != nil {
 			fmt.Println(string(body))
 			p.Error <- fmt.Errorf("Problem parsing JSON response from %s. Error: %v", reqURL, err)
+			continue
+		}
+
+		log.Printf("Indexer time: %v, gdal subdatasets: %v", indexTime, len(metadata.GDALDatasets))
+		if len(metadata.Error) > 0 {
+			fmt.Printf("Indexer returned error: %v", string(body))
+			p.Error <- fmt.Errorf("Indexer returned error: %v", metadata.Error)
 			continue
 		}
 
