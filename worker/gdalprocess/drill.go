@@ -237,7 +237,7 @@ func envelopePolygon(hDS C.GDALDatasetH) C.OGRGeometryH {
 
 	var hGeom C.OGRGeometryH
 	hSRS := C.OSRNewSpatialReference(C.GDALGetProjectionRef(hDS))
-	defer C.OSRDestroySpatialReference(hSRS)
+	defer C.OSRRelease(hSRS)
 	_ = C.OGR_G_CreateFromWkt(&ppszData, hSRS, &hGeom)
 
 	return hGeom
