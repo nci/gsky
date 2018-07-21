@@ -29,6 +29,20 @@
           "opacity": 1,
           "url": "http://127.0.0.1:8080/ows/",
           "layers": "geoglam:c6:monthly_frac_cover"
+        },
+
+        {
+          "name": "Geoglam polygon drill",
+          "type": "wps",
+          "url": "http://127.0.0.1:8080/ows/",
+          "identifier": "geometryDrill",
+          "inputs": [
+            {
+              "id": "PolygonGeometry",
+              "type": "polygon",
+              "name": "Polygon"
+            }
+          ]
         }
       ]
     }
