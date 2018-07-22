@@ -35,14 +35,7 @@
           "name": "Geoglam polygon drill",
           "type": "wps",
           "url": "http://127.0.0.1:8080/ows/",
-          "identifier": "geometryDrill",
-          "inputs": [
-            {
-              "id": "PolygonGeometry",
-              "type": "polygon",
-              "name": "Polygon"
-            }
-          ]
+          "identifier": "geometryDrill"
         }
       ]
     }
