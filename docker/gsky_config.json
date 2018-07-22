@@ -76,7 +76,7 @@
           "title":"Geometry",
           "abstract":"",
           "mime_type":"application/vnd.geo+json",
-          "schema":"http://geojson.org/geojson-spec.html"
+          "schema":"http://geojson.org/geojson-spec.html#polygon"
         }
       ]
     }
