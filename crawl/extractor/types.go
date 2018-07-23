@@ -25,6 +25,7 @@ type GeoMetaData struct {
 	Max          float64     `json:"max"`
 	Mean         float64     `json:"mean"`
 	StdDev       float64     `json:"stddev"`
+	NoData       float64     `json:"nodata"`
 }
 
 type GeoFile struct {
