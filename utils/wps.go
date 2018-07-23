@@ -28,7 +28,7 @@ type Input struct {
 }
 
 type DataInputs struct {
-	Input Input
+	Input []Input
 }
 
 type Execute struct {
@@ -42,23 +42,42 @@ func ParsePost(rc io.ReadCloser) (map[string][]string, error) {
 	buf := new(bytes.Buffer)
 	buf.ReadFrom(rc)
 	rc.Close()
-	var e Execute
-	err := xml.Unmarshal(buf.Bytes(), &e)
+	var exec Execute
+	err := xml.Unmarshal(buf.Bytes(), &exec)
 	if err != nil {
 		return map[string][]string{}, err
 	}
 
-	return map[string][]string{"datainputs": []string{fmt.Sprintf(`geometry=%s`, e.DataInputs.Input.Data.ComplexData)}, "status": []string{"true"}, "service": []string{e.Service}, "request": []string{"Execute"}, "version": []string{e.Version}, "identifier": []string{e.Identifier}}, nil
+	parsedBody := map[string][]string{"status": []string{"true"},
+		"service":    []string{exec.Service},
+		"request":    []string{"Execute"},
+		"version":    []string{exec.Version},
+		"identifier": []string{exec.Identifier}}
+
+	for _, input := range exec.DataInputs.Input {
+		inputId := strings.ToLower(strings.TrimSpace(input.Identifier))
+		if inputId == "start_datetime" {
+			parsedBody["start_datetime"] = []string{input.Data.ComplexData}
+		} else if inputId == "end_datetime" {
+			parsedBody["end_datetime"] = []string{input.Data.ComplexData}
+		} else if inputId == "geometry" {
+			parsedBody["geometry"] = []string{fmt.Sprintf(`geometry=%s`, input.Data.ComplexData)}
+		}
+	}
+
+	return parsedBody, nil
 }
 
 // WPSParams contains the serialised version
 // of the parameters contained in a WPS request.
 type WPSParams struct {
-	Service    *string               `json:"service"`
-	Request    *string               `json:"request"`
-	Identifier *string               `json:"identifier"`
-	Product    *string               `json:"product"`
-	FeatCol    geo.FeatureCollection `json:"feature_collection"`
+	Service       *string               `json:"service"`
+	Request       *string               `json:"request"`
+	Identifier    *string               `json:"identifier"`
+	StartDateTime *string               `json:"start_datetime"`
+	EndDateTime   *string               `json:"end_datetime"`
+	Product       *string               `json:"product"`
+	FeatCol       geo.FeatureCollection `json:"feature_collection"`
 }
 
 // WPSRegexMap maps WPS request parameters to
@@ -70,7 +89,7 @@ type WPSParams struct {
 // --- also validates correct values.
 var WPSRegexpMap = map[string]string{"service": `^WPS$`,
 	"request": `^GetCapabilities$|^DescribeProcess$|^Execute$`,
-	"time":    `^\d{4}-(?:1[0-2]|0[1-9])-(?:3[01]|0[1-9]|[12][0-9])T[0-2]\d:[0-5]\d:[0-5]\d\.\d+Z$`}
+	"time":    `^\d{4}-(?:1[0-2]|0[1-9])-(?:3[01]|0[1-9]|[12][0-9])T[0-2]\d:[0-5]\d$`}
 
 func CompileWPSRegexMap() map[string]*regexp.Regexp {
 	REMap := make(map[string]*regexp.Regexp)
@@ -79,6 +98,32 @@ func CompileWPSRegexMap() map[string]*regexp.Regexp {
 	}
 
 	return REMap
+}
+
+func extractDateTime(timeObjStr string) (string, error) {
+	var timeObj interface{}
+	err := json.Unmarshal([]byte(timeObjStr), &timeObj)
+	if err != nil {
+		return "", err
+	}
+	prop, propOk := timeObj.(map[string]interface{})["properties"]
+	if !propOk {
+		return "", fmt.Errorf("'properties' attribute not found")
+	}
+	timestamp, tsOk := prop.(map[string]interface{})["timestamp"]
+	if !tsOk {
+		return "", fmt.Errorf("'timestamp' attribute not found")
+	}
+	datetime, dtOk := timestamp.(map[string]interface{})["date-time"]
+	if !dtOk {
+		return "", fmt.Errorf("'date-time' attribute not found")
+	}
+	datetimeStr, dtOk := datetime.(string)
+	if !dtOk {
+		return "", fmt.Errorf("failed to cast date-time into string")
+	}
+
+	return strings.TrimSpace(datetimeStr), nil
 }
 
 // WPSParamsChecker checks and marshals the content
@@ -92,6 +137,8 @@ func WPSParamsChecker(params map[string][]string, compREMap map[string]*regexp.R
 		if compREMap["service"].MatchString(service[0]) {
 			jsonFields = append(jsonFields, fmt.Sprintf(`"service":"%s"`, service[0]))
 		}
+	} else {
+		jsonFields = append(jsonFields, fmt.Sprintf(`"service":""`))
 	}
 
 	if request, requestOK := params["request"]; requestOK {
@@ -100,13 +147,47 @@ func WPSParamsChecker(params map[string][]string, compREMap map[string]*regexp.R
 		} else {
 			return WPSParams{}, fmt.Errorf("%s is not a valid WPS request", request[0])
 		}
+	} else {
+		return WPSParams{}, fmt.Errorf("WPS 'request' not found")
 	}
 
 	if id, idOK := params["identifier"]; idOK {
 		jsonFields = append(jsonFields, fmt.Sprintf(`"identifier":"%s"`, id[0]))
+	} else {
+		jsonFields = append(jsonFields, fmt.Sprintf(`"identifier":""`))
 	}
 
-	if inputs, inputsOK := params["datainputs"]; inputsOK {
+	if startTime, startTimeOK := params["start_datetime"]; startTimeOK {
+		timeStr, err := extractDateTime(startTime[0])
+		if err != nil {
+			return WPSParams{}, fmt.Errorf("Invalid start datetime: %v", startTime[0])
+		}
+
+		if compREMap["time"].MatchString(timeStr) {
+			jsonFields = append(jsonFields, fmt.Sprintf(`"start_datetime":"%s"`, timeStr+":00.000Z"))
+		} else {
+			return WPSParams{}, fmt.Errorf("Invalid start datetime format: %v", timeStr)
+		}
+	} else {
+		jsonFields = append(jsonFields, fmt.Sprintf(`"start_datetime":"%s"`, ""))
+	}
+
+	if endTime, endTimeOK := params["end_datetime"]; endTimeOK {
+		timeStr, err := extractDateTime(endTime[0])
+		if err != nil {
+			return WPSParams{}, fmt.Errorf("Invalid end datetime: %v", endTime[0])
+		}
+
+		if compREMap["time"].MatchString(timeStr) {
+			jsonFields = append(jsonFields, fmt.Sprintf(`"end_datetime":"%s"`, timeStr+":00.000Z"))
+		} else {
+			return WPSParams{}, fmt.Errorf("Invalid end datetime format: %v", timeStr)
+		}
+	} else {
+		jsonFields = append(jsonFields, fmt.Sprintf(`"end_datetime":""`))
+	}
+
+	if inputs, inputsOK := params["geometry"]; inputsOK {
 		rawInputs := strings.Split(inputs[0], ";")
 		if len(rawInputs) > 1 {
 			prod := strings.Split(rawInputs[0], "=")

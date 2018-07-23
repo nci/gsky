@@ -463,7 +463,7 @@ func serveWPS(ctx context.Context, params utils.WPSParams, conf *utils.Config, r
 
 	switch *params.Request {
 	case "GetCapabilities":
-		err := utils.ExecuteWriteTemplateFile(w, conf.Processes,
+		err := utils.ExecuteWriteTemplateFile(w, conf,
 			utils.DataDir+"/templates/WPS_GetCapabilities.tpl")
 		if err != nil {
 			http.Error(w, err.Error(), 500)
@@ -535,24 +535,42 @@ func serveWPS(ctx context.Context, params utils.WPSParams, conf *utils.Config, r
 			log.Printf("WPS: Processing '%v' (%d of %d)", dataSource.DataSource, ids+1, len(process.DataSources))
 
 			startDateTime := time.Time{}
-			startDateTimeStr := strings.TrimSpace(dataSource.StartISODate)
-			if len(startDateTimeStr) > 0 {
-				st, errStart := time.Parse(utils.ISOFormat, startDateTimeStr)
-				if errStart != nil {
-					log.Printf("WPS: Failed to parse start date '%v' into ISO format with error: %v, defaulting to no start date", startDateTimeStr, errStart)
-				} else {
-					startDateTime = st
+			stStartInput, errStartInput := time.Parse(utils.ISOFormat, *params.StartDateTime)
+			if errStartInput != nil {
+				if len(*params.StartDateTime) > 0 {
+					log.Printf("WPS: invalid input start date '%v' with error '%v'", *params.StartDateTime, errStartInput)
 				}
+				startDateTimeStr := strings.TrimSpace(dataSource.StartISODate)
+				if len(startDateTimeStr) > 0 {
+					st, errStart := time.Parse(utils.ISOFormat, startDateTimeStr)
+					if errStart != nil {
+						log.Printf("WPS: Failed to parse start date '%v' into ISO format with error: %v, defaulting to no start date", startDateTimeStr, errStart)
+					} else {
+						startDateTime = st
+					}
+				}
+			} else {
+				startDateTime = stStartInput
 			}
 
 			endDateTime := time.Now().UTC()
-			endDateTimeStr := strings.TrimSpace(dataSource.EndISODate)
-			if len(endDateTimeStr) > 0 && strings.ToLower(endDateTimeStr) != "now" {
-				dt, errEnd := time.Parse(utils.ISOFormat, endDateTimeStr)
-				if errEnd != nil {
-					log.Printf("WPS: Failed to parse end date '%s' into ISO format with error: %v, defaulting to now()", endDateTimeStr, errEnd)
-				} else {
-					endDateTime = dt
+			stEndInput, errEndInput := time.Parse(utils.ISOFormat, *params.EndDateTime)
+			if errEndInput != nil {
+				if len(*params.EndDateTime) > 0 {
+					log.Printf("WPS: invalid input end date '%v' with error '%v'", *params.EndDateTime, errEndInput)
+				}
+				endDateTimeStr := strings.TrimSpace(dataSource.EndISODate)
+				if len(endDateTimeStr) > 0 && strings.ToLower(endDateTimeStr) != "now" {
+					dt, errEnd := time.Parse(utils.ISOFormat, endDateTimeStr)
+					if errEnd != nil {
+						log.Printf("WPS: Failed to parse end date '%s' into ISO format with error: %v, defaulting to now()", endDateTimeStr, errEnd)
+					} else {
+						endDateTime = dt
+					}
+				}
+			} else {
+				if !time.Time.IsZero(stEndInput) {
+					endDateTime = stEndInput
 				}
 			}
 
@@ -659,6 +677,7 @@ func owsHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, fmt.Sprintf("Invalid dataset namespace: %v\n", namespace), 404)
 		return
 	}
+	config.ServiceConfig.NameSpace = namespace
 	generalHandler(config, w, r)
 }
 
