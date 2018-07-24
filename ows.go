@@ -39,10 +39,8 @@ import (
 var configMap map[string]*utils.Config
 
 var (
-	port            = flag.Int("p", 8080, "Server listening port.")
-	serverDataDir   = flag.String("data_dir", utils.DataDir, "Server data directory.")
-	serverConfigDir = flag.String("conf_dir", utils.EtcDir, "Server config directory.")
-	validateConfig  = flag.Bool("check_conf", false, "Validate server config files.")
+	port           = flag.Int("p", 8080, "Server listening port.")
+	validateConfig = flag.Bool("check_conf", false, "Validate server config files.")
 )
 
 var reWMSMap map[string]*regexp.Regexp
@@ -62,9 +60,6 @@ func init() {
 	Info = log.New(os.Stdout, "OWS: ", log.Ldate|log.Ltime|log.Lshortfile)
 
 	flag.Parse()
-
-	utils.DataDir = *serverDataDir
-	utils.EtcDir = *serverConfigDir
 
 	filePaths := []string{
 		utils.DataDir + "/static/index.html",
