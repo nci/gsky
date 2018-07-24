@@ -39,7 +39,8 @@ import (
 var configMap map[string]*utils.Config
 
 var (
-	port = flag.Int("p", 8080, "Server listening port.")
+	port           = flag.Int("p", 8080, "Server listening port.")
+	validateConfig = flag.Bool("check_conf", false, "Validate server config files.")
 )
 
 var reWMSMap map[string]*regexp.Regexp
@@ -57,6 +58,8 @@ var (
 func init() {
 	Error = log.New(os.Stderr, "OWS: ", log.Ldate|log.Ltime|log.Lshortfile)
 	Info = log.New(os.Stdout, "OWS: ", log.Ldate|log.Ltime|log.Lshortfile)
+
+	flag.Parse()
 
 	filePaths := []string{
 		utils.DataDir + "/static/index.html",
@@ -80,6 +83,11 @@ func init() {
 		Error.Printf("Error in loading config files: %v\n", err)
 		panic(err)
 	}
+
+	if *validateConfig {
+		os.Exit(0)
+	}
+
 	configMap = confMap
 
 	utils.WatchConfig(Info, Error, &configMap)
@@ -644,8 +652,6 @@ func owsHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-	flag.Parse()
-
 	fs := http.FileServer(http.Dir(utils.DataDir + "/static"))
 	http.Handle("/", fs)
 	http.HandleFunc("/ows", owsHandler)
