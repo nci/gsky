@@ -220,11 +220,13 @@ func getDataSetInfo(filename string, dsName *C.char, driverName string) (*GeoMet
 	geot := (*[6]float64)(unsafe.Pointer(&dArr))[:]
 	polyWkt := getGeometryWKT(geot, int(C.GDALGetRasterXSize(hSubdataset)), int(C.GDALGetRasterYSize(hSubdataset)))
 
+	noData := C.GDALGetRasterNoDataValue(hBand, nil)
+
 	stats := [4]C.double{} // min, max, mean, stddev
 	cErr := C.GDALGetRasterStatistics(hBand, C.int(0), C.int(1), &stats[0], &stats[1], &stats[2], &stats[3])
 	if cErr != C.CE_None {
 		for i := 0; i < len(stats); i++ {
-			stats[i] = C.double(0)
+			stats[i] = noData
 		}
 	}
 
@@ -246,6 +248,7 @@ func getDataSetInfo(filename string, dsName *C.char, driverName string) (*GeoMet
 		Max:          float64(stats[1]),
 		Mean:         float64(stats[2]),
 		StdDev:       float64(stats[3]),
+		NoData:       float64(noData),
 	}, nil
 }
 
