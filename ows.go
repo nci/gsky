@@ -670,6 +670,7 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 						http.Error(w, err.Error(), 500)
 						return
 					}
+					os.Remove(workerTempFileName)
 					nWorkerDone++
 
 					if *verbose {
