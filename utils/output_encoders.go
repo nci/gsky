@@ -230,7 +230,7 @@ func GetDriverNameFromFormat(format string) (string, error) {
 	return driverName, nil
 }
 
-func EncodeGdalOpen(format string, geot []float64, epsg int, rs []Raster, width int, height int, bands int) (C.GDALDatasetH, string, error) {
+func EncodeGdalOpen(tempDir string, format string, geot []float64, epsg int, rs []Raster, width int, height int, bands int) (C.GDALDatasetH, string, error) {
 	_, _, rType, err := ValidateRasterSlice(rs)
 	if err != nil {
 		return nil, "", fmt.Errorf("Error validating raster: %v", err)
@@ -245,6 +245,7 @@ func EncodeGdalOpen(format string, geot []float64, epsg int, rs []Raster, width 
 	switch strings.ToLower(format) {
 	case "geotiff":
 		driverOptions = append(driverOptions, C.CString("COMPRESS=LZW"))
+		driverOptions = append(driverOptions, C.CString("TILED=YES"))
 	case "netcdf":
 		driverOptions = append(driverOptions, C.CString("COMPRESS=DEFLATE"))
 		driverOptions = append(driverOptions, C.CString("ZLEVEL=6"))
@@ -263,7 +264,7 @@ func EncodeGdalOpen(format string, geot []float64, epsg int, rs []Raster, width 
 	var driverNameC = C.CString(driverName)
 	hDriver := C.GDALGetDriverByName(driverNameC)
 
-	tempFileHandle, err := ioutil.TempFile("", "raster_")
+	tempFileHandle, err := ioutil.TempFile(tempDir, "raster_")
 	if err != nil {
 		return nil, "", fmt.Errorf("failed to create raster temp file: %v\n", err)
 	}
@@ -347,6 +348,57 @@ func EncodeGdal(hDstDS C.GDALDatasetH, rs []Raster, xOff int, yOff int) error {
 
 }
 
+func EncodeGdalMerge(hDstDS C.GDALDatasetH, format string, workerTempFileName string, widthList []int, heightList []int, xOffList []int, yOffList []int) error {
+	driverName, err := GetDriverNameFromFormat(format)
+	if err != nil {
+		return err
+	}
+
+	tempFileC := C.CString(workerTempFileName)
+	defer C.free(unsafe.Pointer(tempFileC))
+
+	driverList := []*C.char{C.CString(driverName)}
+	defer C.free(unsafe.Pointer(driverList[0]))
+
+	hSrcDS := C.GDALOpenEx(tempFileC, C.GDAL_OF_UPDATE, &driverList[0], nil, nil)
+	if hSrcDS == nil {
+		return fmt.Errorf("Failed to reopen existing dataset: %v", workerTempFileName)
+	}
+	defer C.GDALClose(hSrcDS)
+
+	nBands := int(C.GDALGetRasterCount(hDstDS))
+	for ib := 0; ib < nBands; ib++ {
+		hSrcBand := C.GDALGetRasterBand(hSrcDS, C.int(ib+1))
+		hDstBand := C.GDALGetRasterBand(hDstDS, C.int(ib+1))
+		dataType := C.GDALGetRasterDataType(hSrcBand)
+		dataSize := int(C.GDALGetDataTypeSizeBytes(dataType))
+		if dataSize == 0 {
+			return fmt.Errorf("GDAL data type not implemented")
+		}
+
+		for iOff := 0; iOff < len(xOffList); iOff++ {
+			width := widthList[iOff]
+			height := heightList[iOff]
+			xOff := xOffList[iOff]
+			yOff := yOffList[iOff]
+
+			dataBuf := make([]uint8, dataSize*width*height)
+			gerr := C.GDALRasterIO(hSrcBand, C.GF_Read, C.int(xOff), C.int(yOff), C.int(width), C.int(height), unsafe.Pointer(&dataBuf[0]), C.int(width), C.int(height), dataType, 0, 0)
+			if gerr != 0 {
+				return fmt.Errorf("Error reading raster band: %d, xOff: %d, yOff:%d", ib, xOff, yOff)
+			}
+
+			gerr = C.GDALRasterIO(hDstBand, C.GF_Write, C.int(xOff), C.int(yOff), C.int(width), C.int(height), unsafe.Pointer(&dataBuf[0]), C.int(width), C.int(height), dataType, 0, 0)
+			if gerr != 0 {
+				return fmt.Errorf("Error writing raster band: %d, xOff: %d, yOff:%d", ib, xOff, yOff)
+			}
+		}
+
+	}
+
+	return nil
+}
+
 func EncodeGdalFlush(hDstDS C.GDALDatasetH, tempFile string, format string) (C.GDALDatasetH, error) {
 	driverName, err := GetDriverNameFromFormat(format)
 	if err != nil {
@@ -363,7 +415,7 @@ func EncodeGdalFlush(hDstDS C.GDALDatasetH, tempFile string, format string) (C.G
 
 	newhDS := C.GDALOpenEx(tempFileC, C.GDAL_OF_UPDATE, &driverList[0], nil, nil)
 
-	if hDstDS == nil {
+	if newhDS == nil {
 		return nil, fmt.Errorf("Failed to reopen existing dataset: %v", tempFile)
 	}
 

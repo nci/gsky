@@ -23,9 +23,11 @@ var DataDir = "."
 const ReservedMemorySize = 1.5 * 1024 * 1024 * 1024
 
 type ServiceConfig struct {
-	OWSHostname string   `json:"ows_hostname"`
-	MASAddress  string   `json:"mas_address"`
-	WorkerNodes []string `json:"worker_nodes"`
+	OWSHostname     string   `json:"ows_hostname"`
+	MASAddress      string   `json:"mas_address"`
+	WorkerNodes     []string `json:"worker_nodes"`
+	OWSClusterNodes []string `json:"ows_cluster_nodes"`
+	TempDir         string   `json:"temp_dir"`
 }
 
 // CacheLevel contains the source files of one layer as well as the
@@ -394,6 +396,17 @@ func (config *Config) LoadConfigFile(configFile string) error {
 	if err != nil {
 		return fmt.Errorf("Error at JSON parsing config document: %v", err)
 	}
+
+	if len(config.ServiceConfig.TempDir) > 0 {
+		if _, err := os.Stat(config.ServiceConfig.TempDir); os.IsNotExist(err) {
+			log.Printf("Creating temp directory: %v", config.ServiceConfig.TempDir)
+			err := os.MkdirAll(config.ServiceConfig.TempDir, os.ModePerm)
+			if err != nil {
+				return fmt.Errorf("error creating temp directory: %v", err)
+			}
+		}
+	}
+
 	for i, layer := range config.Layers {
 		if strings.TrimSpace(strings.ToLower(layer.TimeGen)) == "mas" {
 			config.Layers[i].Dates = GenerateDatesMas(layer.StartISODate, layer.EndISODate, config.ServiceConfig.MASAddress, config.Layers[i].DataSource, config.Layers[i].RGBProducts)
