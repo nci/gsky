@@ -23,7 +23,8 @@ var DataDir = "."
 const ReservedMemorySize = 1.5 * 1024 * 1024 * 1024
 
 type ServiceConfig struct {
-	OWSHostname string   `json:"ows_hostname"`
+	OWSHostname string `json:"ows_hostname"`
+	NameSpace   string
 	MASAddress  string   `json:"mas_address"`
 	WorkerNodes []string `json:"worker_nodes"`
 }
@@ -91,12 +92,14 @@ type Layer struct {
 	GrpcWcsConcPerNode       int      `json:"grpc_wcs_conc_per_node"`
 	WmsPolygonShardConcLimit int      `json:"wms_polygon_shard_conc_limit"`
 	WcsPolygonShardConcLimit int      `json:"wcs_polygon_shard_conc_limit"`
+	BandEval                 []string `json:"band_eval"`
+	BandStrides              int      `json:"band_strides"`
 }
 
 // Process contains all the details that a WPS needs
 // to be published and processed
 type Process struct {
-	Paths       []string   `json:"paths"`
+	DataSources []Layer    `json:"data_sources"`
 	Identifier  string     `json:"identifier"`
 	Title       string     `json:"title"`
 	Abstract    string     `json:"abstract"`
@@ -116,6 +119,7 @@ type LitData struct {
 	DataType      string   `json:"data_type"`
 	DataTypeRef   string   `json:"data_type_ref"`
 	AllowedValues []string `json:"allowed_values"`
+	MinOccurs     string   `json:"min_occurs"`
 }
 
 // CompData contains the description of a variable used to compute a
@@ -127,6 +131,7 @@ type CompData struct {
 	MimeType   string `json:"mime_type"`
 	Encoding   string `json:"encoding"`
 	Schema     string `json:"schema"`
+	MinOccurs  string `json:"min_occurs"`
 }
 
 // Config is the struct representing the configuration
@@ -270,6 +275,7 @@ func GenerateDatesMas(start, end string, masAddress string, collection string, n
 	}
 
 	type MasTimestamps struct {
+		Error      string   `json:"error"`
 		Timestamps []string `json:"timestamps"`
 	}
 
@@ -279,6 +285,13 @@ func GenerateDatesMas(start, end string, masAddress string, collection string, n
 		log.Printf("MAS json response error: %v", err)
 		return emptyDates
 	}
+
+	if len(timestamps.Error) > 0 {
+		log.Printf("MAS returned error: %v", timestamps.Error)
+		return emptyDates
+	}
+
+	log.Printf("MAS returned %v timestamps", len(timestamps.Timestamps))
 
 	return timestamps.Timestamps
 }
@@ -462,7 +475,6 @@ func (config *Config) LoadConfigFile(configFile string) error {
 		if proc.DpTol <= 0 {
 			config.Processes[i].DpTol = -1.0
 		}
-
 	}
 	return nil
 }

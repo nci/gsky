@@ -6,7 +6,7 @@
 	<ows:Metadata xlink:title="TimeSeries Extractor"/>
 	<DataInputs>
 		{{ range $index, $value := .LiteralData }}
-		<Input minOccurs="1" maxOccurs="1">
+		<Input minOccurs="{{ .MinOccurs }}" maxOccurs="1">
 			<ows:Identifier>{{ .Identifier }}</ows:Identifier>
 			<ows:Title>{{ .Title }}</ows:Title>
 			<ows:Abstract>{{ .Abstract }}</ows:Abstract>
@@ -21,7 +21,7 @@
 		</Input>
 		{{ end }}
 		{{ range $index, $value := .ComplexData }}
-		<Input minOccurs="1" maxOccurs="1">
+		<Input minOccurs="{{ .MinOccurs }}" maxOccurs="1">
 			<ows:Identifier>{{ .Identifier }}</ows:Identifier>
 			<ows:Title>{{ .Title }}</ows:Title>
 			<ows:Abstract>{{ .Abstract }}</ows:Abstract>
