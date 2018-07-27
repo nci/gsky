@@ -385,6 +385,11 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 		checkpointThreshold := 300
 		minTilesPerWorker := 5
 
+		wcsWorkerNodes := conf.ServiceConfig.OWSClusterNodes
+		workerTileRequests := [][]*proc.GeoTileRequest{}
+
+		_, isWorker := query["wbbox"]
+
 		getGeoTileRequest := func(width int, height int, bbox []float64, offX int, offY int) *proc.GeoTileRequest {
 			geoReq := &proc.GeoTileRequest{ConfigPayLoad: proc.ConfigPayLoad{NameSpaces: conf.Layers[idx].RGBProducts,
 				Mask:    conf.Layers[idx].Mask,
@@ -393,7 +398,7 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 					Scale: conf.Layers[idx].ScaleValue,
 					Clip:  conf.Layers[idx].ClipValue,
 				},
-				ZoomLimit:       conf.Layers[idx].ZoomLimit,
+				ZoomLimit:       0.0,
 				PolygonSegments: conf.Layers[idx].WcsPolygonSegments,
 				Timeout:         conf.Layers[idx].WcsTimeout,
 				GrpcConcLimit:   conf.Layers[idx].GrpcWcsConcPerNode,
@@ -412,10 +417,87 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 			return geoReq
 		}
 
-		wcsWorkerNodes := conf.ServiceConfig.OWSClusterNodes
-		workerTileRequests := [][]*proc.GeoTileRequest{}
+		ctx, ctxCancel := context.WithCancel(ctx)
+		defer ctxCancel()
+		errChan := make(chan error)
 
-		_, isWorker := query["wbbox"]
+		epsg, err := utils.ExtractEPSGCode(*params.CRS)
+		if err != nil {
+			http.Error(w, fmt.Sprintf("Invalid CRS code", *params.CRS), 400)
+			return
+		}
+
+		if *params.Width <= 0 || *params.Height <= 0 {
+			if isWorker {
+				msg := "WCS: worker width or height negative"
+				Info.Printf(msg)
+				http.Error(w, msg, 500)
+				return
+			}
+
+			indexer := proc.NewTileIndexer(ctx, conf.ServiceConfig.MASAddress, errChan)
+			go func() {
+				geoReq := getGeoTileRequest(0, 0, params.BBox, 0, 0)
+				indexer.In <- geoReq
+				close(indexer.In)
+			}()
+
+			go indexer.Run()
+			maxWidth := -1
+			maxHeight := -1
+			for res := range indexer.Out {
+				select {
+				case err := <-errChan:
+					Info.Printf("WCS: indexer error: %v\n", err)
+					http.Error(w, err.Error(), 500)
+					return
+				case <-ctx.Done():
+					Error.Printf("Indexer context cancelled with message: %v\n", ctx.Err())
+					http.Error(w, ctx.Err().Error(), 500)
+					return
+				default:
+					width, height, err := utils.EncodeGdalSuggestOutput(res.Path, epsg, params.BBox)
+					if err != nil {
+						errMsg := fmt.Sprintf("WCS: Gdal failed to suggest output extent: %v", err)
+						Info.Printf(errMsg, err)
+						http.Error(w, errMsg, 500)
+						return
+					}
+
+					if width > maxWidth {
+						maxWidth = width
+					}
+
+					if height > maxHeight {
+						maxHeight = height
+					}
+
+				}
+
+			}
+
+			Info.Printf("WCS: Output image size: width=%v, height=%v", maxWidth, maxHeight)
+			if maxWidth > 0 && maxHeight > 0 {
+				*params.Width = maxWidth
+				*params.Height = maxHeight
+
+				rex := regexp.MustCompile(`(?i)&width\s*=\s*[-+]?[0-9]+`)
+				reqURL = rex.ReplaceAllString(reqURL, ``)
+
+				rex = regexp.MustCompile(`(?i)&height\s*=\s*[-+]?[0-9]+`)
+				reqURL = rex.ReplaceAllString(reqURL, ``)
+
+				reqURL += fmt.Sprintf("&width=%d&height=%d", maxWidth, maxHeight)
+
+			} else {
+				errMsg := "WCS: failed to compute output extent"
+				Info.Printf(errMsg, err)
+				http.Error(w, errMsg, 500)
+				return
+			}
+
+		}
+
 		if !isWorker {
 			if *params.Width > maxXTileSize || *params.Height > maxYTileSize {
 				tmpTileRequests := []*proc.GeoTileRequest{}
@@ -504,21 +586,9 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 			workerTileRequests = append(workerTileRequests, tmpTileRequests)
 		}
 
-		geot := utils.BBox2Geot(*params.Width, *params.Height, params.BBox)
-		// TODO do this conversion here and pass the int to the pipeline
-		epsg, err := utils.ExtractEPSGCode(workerTileRequests[0][0].CRS)
-		if err != nil {
-			http.Error(w, fmt.Sprintf("Request %s should contain valid 'width' and 'height' parameters.", reqURL), 400)
-			return
-		}
-
 		hDstDS := utils.GetDummyGDALDatasetH()
 		var tempFile string
 		isInit := true
-
-		ctx, ctxCancel := context.WithCancel(ctx)
-		defer ctxCancel()
-		errChan := make(chan error)
 
 		tempFileGeoReq := make(map[string][]*proc.GeoTileRequest)
 
@@ -588,6 +658,8 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 
 			}
 		}
+
+		geot := utils.BBox2Geot(*params.Width, *params.Height, params.BBox)
 
 		driverFormat := *params.Format
 		if isWorker {

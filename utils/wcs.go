@@ -37,8 +37,8 @@ var WCSRegexpMap = map[string]string{"service": `^WCS$`,
 	"crs":      `^(?i)(?:[A-Z]+):(?:[0-9]+)$`,
 	"bbox":     `^[-+]?[0-9]*\.?[0-9]*([eE][-+]?[0-9]+)?(,[-+]?[0-9]*\.?[0-9]*([eE][-+]?[0-9]+)?){3}$`,
 	"time":     `^\d{4}-(?:1[0-2]|0[1-9])-(?:3[01]|0[1-9]|[12][0-9])T[0-2]\d:[0-5]\d:[0-5]\d(\.\d+)?Z$`,
-	"width":    `^[0-9]+$`,
-	"height":   `^[0-9]+$`,
+	"width":    `^[-+]?[0-9]+$`,
+	"height":   `^[-+]?[0-9]+$`,
 	"format":   `^(?i)(GeoTIFF|NetCDF)$`}
 
 func CompileWCSRegexMap() map[string]*regexp.Regexp {

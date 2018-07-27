@@ -1,6 +1,7 @@
 package utils
 
 // #include "gdal.h"
+// #include "gdalwarper.h"
 // #include "ogr_srs_api.h"
 // #cgo pkg-config: gdal
 import "C"
@@ -11,6 +12,7 @@ import (
 	"image"
 	"image/png"
 	"io/ioutil"
+	"math"
 	"os"
 	"strconv"
 	"strings"
@@ -230,6 +232,53 @@ func GetDriverNameFromFormat(format string) (string, error) {
 	return driverName, nil
 }
 
+func EncodeGdalSuggestOutput(srcDsFileName string, epsg int, bbox []float64) (int, int, error) {
+	srcFileC := C.CString(srcDsFileName)
+	defer C.free(unsafe.Pointer(srcFileC))
+
+	C.GDALAllRegister()
+	hSrcDS := C.GDALOpenEx(srcFileC, C.GDAL_OF_READONLY|C.GDAL_OF_VERBOSE_ERROR, nil, nil, nil)
+	if hSrcDS == nil {
+		return -1, -1, fmt.Errorf("Failed to open existing dataset: %v", srcDsFileName)
+	}
+	defer C.GDALClose(hSrcDS)
+
+	hSRS := C.OSRNewSpatialReference(nil)
+	defer C.OSRDestroySpatialReference(hSRS)
+	C.OSRImportFromEPSG(hSRS, C.int(epsg))
+	var projWKT *C.char
+	defer C.free(unsafe.Pointer(projWKT))
+	C.OSRExportToWkt(hSRS, &projWKT)
+
+	hTransformArg := C.GDALCreateGenImgProjTransformer(hSrcDS, nil, nil, projWKT, C.int(0), C.double(0), C.int(0))
+	if hTransformArg == nil {
+		return -1, -1, fmt.Errorf("GDALCreateGenImgProjTransformer() failed")
+	}
+	defer C.GDALDestroyGenImgProjTransformer(hTransformArg)
+
+	psInfo := (*C.GDALTransformerInfo)(hTransformArg)
+
+	var padfGeoTransformOut [6]C.double
+	var pnPixels, pnLines C.int
+	gerr := C.GDALSuggestedWarpOutput(hSrcDS, psInfo.pfnTransform, hTransformArg, &padfGeoTransformOut[0], &pnPixels, &pnLines)
+	if gerr != 0 {
+		return -1, -1, fmt.Errorf("GDALSuggestedWarpOutput() failed")
+	}
+
+	xRes := float64(padfGeoTransformOut[1])
+	yRes := float64(math.Abs(float64(padfGeoTransformOut[5])))
+
+	xMin := bbox[0]
+	yMin := bbox[1]
+	xMax := bbox[2]
+	yMax := bbox[3]
+
+	nPixels := int((xMax - xMin + xRes/2.0) / xRes)
+	nLines := int((yMax - yMin + yRes/2.0) / yRes)
+
+	return nPixels, nLines, nil
+}
+
 func EncodeGdalOpen(tempDir string, format string, geot []float64, epsg int, rs []Raster, width int, height int, bands int) (C.GDALDatasetH, string, error) {
 	_, _, rType, err := ValidateRasterSlice(rs)
 	if err != nil {
@@ -246,6 +295,8 @@ func EncodeGdalOpen(tempDir string, format string, geot []float64, epsg int, rs 
 	case "geotiff":
 		driverOptions = append(driverOptions, C.CString("COMPRESS=LZW"))
 		driverOptions = append(driverOptions, C.CString("TILED=YES"))
+		driverOptions = append(driverOptions, C.CString("BLOCKXSIZE=1024"))
+		driverOptions = append(driverOptions, C.CString("BLOCKXSIZE=1024"))
 	case "netcdf":
 		driverOptions = append(driverOptions, C.CString("COMPRESS=DEFLATE"))
 		driverOptions = append(driverOptions, C.CString("ZLEVEL=6"))
@@ -360,7 +411,7 @@ func EncodeGdalMerge(hDstDS C.GDALDatasetH, format string, workerTempFileName st
 	driverList := []*C.char{C.CString(driverName)}
 	defer C.free(unsafe.Pointer(driverList[0]))
 
-	hSrcDS := C.GDALOpenEx(tempFileC, C.GDAL_OF_UPDATE, &driverList[0], nil, nil)
+	hSrcDS := C.GDALOpenEx(tempFileC, C.GDAL_OF_READONLY, &driverList[0], nil, nil)
 	if hSrcDS == nil {
 		return fmt.Errorf("Failed to reopen existing dataset: %v", workerTempFileName)
 	}
