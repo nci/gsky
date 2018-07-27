@@ -11,13 +11,12 @@ import (
 
 	_ "net/http/pprof"
 
-	"golang.org/x/net/context"
-	"google.golang.org/grpc"
 	"os"
 	"os/signal"
 	"syscall"
 
-	"github.com/kavu/go_reuseport"
+	"golang.org/x/net/context"
+	"google.golang.org/grpc"
 )
 
 type server struct {
