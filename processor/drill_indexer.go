@@ -43,6 +43,8 @@ func NewDrillIndexer(ctx context.Context, apiAddr string, identityTol float64, d
 	}
 }
 
+const DefaultMaxLogLength = 3000
+
 func (p *DrillIndexer) Run() {
 	defer close(p.Out)
 	for geoReq := range p.In {
@@ -55,9 +57,22 @@ func (p *DrillIndexer) Run() {
 
 		namespaces := strings.Join(geoReq.NameSpaces, ",")
 		start := time.Now()
-		reqURL := strings.Replace(fmt.Sprintf("http://%s%s?intersects&metadata=gdal&time=%s&until=%s&srs=%s&namespace=%s&identitytol=%f&dptol=%f", p.APIAddress, geoReq.Collection, geoReq.StartTime.Format(ISOFormat), geoReq.EndTime.Format(ISOFormat), geoReq.CRS, namespaces, p.IdentityTol, p.DpTol), " ", "%20", -1)
+		startTimeStr := ""
+		if !time.Time.IsZero(geoReq.StartTime) {
+			startTimeStr = geoReq.StartTime.Format(ISOFormat)
+		}
+		reqURL := strings.Replace(fmt.Sprintf("http://%s%s?intersects&metadata=gdal&time=%s&until=%s&srs=%s&namespace=%s&identitytol=%f&dptol=%f", p.APIAddress, geoReq.Collection, startTimeStr, geoReq.EndTime.Format(ISOFormat), geoReq.CRS, namespaces, p.IdentityTol, p.DpTol), " ", "%20", -1)
 		featWKT := feat.Geometry.MarshalWKT()
-		resp, err := http.PostForm(reqURL, url.Values{"wkt": {featWKT}})
+		postBody := url.Values{"wkt": {featWKT}}
+
+		postBodyStr := fmt.Sprintf("%v", postBody)
+		maxLogLen := DefaultMaxLogLength
+		if len(postBodyStr) < DefaultMaxLogLength {
+			maxLogLen = len(postBodyStr)
+		}
+		log.Printf("mas_url:%s\tpost_body:%s", reqURL, postBodyStr[:maxLogLen])
+
+		resp, err := http.PostForm(reqURL, postBody)
 		if err != nil {
 			p.Error <- fmt.Errorf("POST request to %s failed. Error: %v", reqURL, err)
 			continue
@@ -70,11 +85,20 @@ func (p *DrillIndexer) Run() {
 			continue
 		}
 
+		indexTime := time.Since(start)
+
 		var metadata MetadataResponse
 		err = json.Unmarshal(body, &metadata)
 		if err != nil {
 			fmt.Println(string(body))
 			p.Error <- fmt.Errorf("Problem parsing JSON response from %s. Error: %v", reqURL, err)
+			continue
+		}
+
+		log.Printf("Indexer time: %v, gdal subdatasets: %v", indexTime, len(metadata.GDALDatasets))
+		if len(metadata.Error) > 0 {
+			fmt.Printf("Indexer returned error: %v", string(body))
+			p.Error <- fmt.Errorf("Indexer returned error: %v", metadata.Error)
 			continue
 		}
 
@@ -86,6 +110,5 @@ func (p *DrillIndexer) Run() {
 				p.Out <- &GeoDrillGranule{ds.DSName, ds.NameSpace, ds.ArrayType, ds.TimeStamps, geoReq.Geometry, geoReq.CRS}
 			}
 		}
-		log.Println("Indexer Time Total", time.Since(start))
 	}
 }
