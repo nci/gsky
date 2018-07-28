@@ -21,6 +21,7 @@ type GDALDataset struct {
 }
 
 type MetadataResponse struct {
+	Error        string        `json:"error"`
 	Files        []string      `json:"files"`
 	GDALDatasets []GDALDataset `json:"gdal"`
 }
@@ -129,6 +130,10 @@ func URLIndexGet(ctx context.Context, url string, geoReq *GeoTileRequest, errCha
 
 	switch len(metadata.GDALDatasets) {
 	case 0:
+		if len(metadata.Error) > 0 {
+			log.Printf("Indexer returned error: %v", string(body))
+			errChan <- fmt.Errorf("Indexer returned error: %v", metadata.Error)
+		}
 		out <- &GeoTileGranule{ConfigPayLoad: ConfigPayLoad{NameSpaces: []string{"EmptyTile"}, ScaleParams: geoReq.ScaleParams, Palette: geoReq.Palette}, Path: "NULL", NameSpace: "EmptyTile", RasterType: "Byte", TimeStamps: nil, TimeStamp: *geoReq.StartTime, BBox: geoReq.BBox, Height: geoReq.Height, Width: geoReq.Width, OffX: geoReq.OffX, OffY: geoReq.OffY, CRS: geoReq.CRS}
 	default:
 		for _, ds := range metadata.GDALDatasets {

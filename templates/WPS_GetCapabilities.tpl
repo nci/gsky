@@ -39,27 +39,27 @@
 		<ows:Operation name="GetCapabilities">
 			<ows:DCP>
 				<ows:HTTP>
-					<ows:Get xlink:href="http://130.56.242.20/ows?"/>
+					<ows:Get xlink:href="http://{{ .ServiceConfig.OWSHostname }}/ows/{{ .ServiceConfig.NameSpace }}"/>
 				</ows:HTTP>
 			</ows:DCP>
 		</ows:Operation>
 		<ows:Operation name="DescribeProcess">
 			<ows:DCP>
 				<ows:HTTP>
-					<ows:Get xlink:href="http://130.56.242.20/ows?"/>
+					<ows:Get xlink:href="http://{{ .ServiceConfig.OWSHostname }}/ows/{{ .ServiceConfig.NameSpace }}"/>
 				</ows:HTTP>
 			</ows:DCP>
 		</ows:Operation>
 		<ows:Operation name="Execute">
 			<ows:DCP>
 				<ows:HTTP>
-					<ows:Get xlink:href="http://130.56.242.20/ows?"/>
+					<ows:Get xlink:href="http://{{ .ServiceConfig.OWSHostname }}/ows/{{ .ServiceConfig.NameSpace }}"/>
 				</ows:HTTP>
 			</ows:DCP>
 		</ows:Operation>
 	</ows:OperationsMetadata>
 	<wps:ProcessOfferings>
-		{{ range $index, $value := . }}
+		{{ range $index, $value := .Processes }}
 		<wps:Process wps:processVersion="1.0.0">
 			<ows:Identifier>{{ .Identifier }}</ows:Identifier>
 			<ows:Title>{{ .Title }}</ows:Title>

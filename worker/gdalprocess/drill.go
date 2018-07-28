@@ -75,62 +75,87 @@ func DrillDataset(in *pb.GeoRPCGranule) *pb.Result {
 
 	C.OGR_G_AssignSpatialReference(geom, selSRS)
 
-	return readData(ds, in.Bands, geom)
+	return readData(ds, in.Bands, geom, int(in.BandStrides))
 }
 
-func readData(ds C.GDALDatasetH, bands []int32, geom C.OGRGeometryH) *pb.Result {
+func readData(ds C.GDALDatasetH, bands []int32, geom C.OGRGeometryH, bandStrides int) *pb.Result {
 	avgs := []*pb.TimeSeries{}
 
 	dsDscr := getDrillFileDescriptor(ds, geom)
 
-	for _, band := range bands {
-		bandH := C.GDALGetRasterBand(ds, C.int(band))
-		dType := C.GDALGetRasterDataType(bandH)
+	// it is safe to assume all data bands have same data type and nodata value
+	bandH := C.GDALGetRasterBand(ds, C.int(1))
+	dType := C.GDALGetRasterDataType(bandH)
 
-		dSize := C.GDALGetDataTypeSizeBytes(dType)
-		if dSize == 0 {
-			err := fmt.Errorf("GDAL data type not implemented")
-			return &pb.Result{Error: err.Error()}
+	dSize := C.GDALGetDataTypeSizeBytes(dType)
+	if dSize == 0 {
+		err := fmt.Errorf("GDAL data type not implemented")
+		return &pb.Result{Error: err.Error()}
+	}
+
+	nodata := float32(C.GDALGetRasterNoDataValue(bandH, nil))
+
+	// If we have a lot of bands, one may want to seek an approximate algorithm
+	// to speed up the computation especially the RasterIO operation.
+	// The approximate algorithm implemented here is linear interpolation between
+	// the points in between the range with size specified by bandStrides.
+	// For example, if bandStrides is 3. We then proceed as follows:
+	// 1) Load band 1 and compute average for band 1 (i.e. avg1)
+	// 2) Load band 3 and compute average for band 3 (i.e. avg3)
+	// 3) Linearly interpolate avg2 using avg1 and avg3
+	for ibBgn := 0; ibBgn < len(bands); ibBgn += bandStrides {
+		ibEnd := ibBgn + bandStrides
+		if ibEnd > len(bands) {
+			ibEnd = len(bands)
 		}
 
-		sum := float64(0)
-		total := int32(0)
-		switch GDALTypes[dType] {
-		case "Byte":
-			canvas := make([]uint8, dsDscr.CountX*dsDscr.CountY*int32(dSize))
-			C.GDALRasterIO(bandH, C.GF_Read, C.int(dsDscr.OffX), C.int(dsDscr.OffY), C.int(dsDscr.CountX), C.int(dsDscr.CountY), unsafe.Pointer(&canvas[0]), C.int(dsDscr.CountX), C.int(dsDscr.CountY), C.GDT_Byte, 0, 0)
+		bandsRead := []int32{bands[ibBgn], bands[ibEnd-1]}
+		if bandStrides == 1 {
+			bandsRead = bandsRead[:1]
+		}
 
-			nodata := uint8(C.GDALGetRasterNoDataValue(bandH, nil))
-			for i := 0; i < len(canvas); i++ {
-				if dsDscr.Mask.Pix[i] == 255 && canvas[i] != nodata {
-					sum += float64(canvas[i])
+		effectiveNBands := len(bandsRead)
+
+		dataBuf := make([]float32, dsDscr.CountX*dsDscr.CountY*int32(effectiveNBands))
+		C.GDALDatasetRasterIO(ds, C.GF_Read, C.int(dsDscr.OffX), C.int(dsDscr.OffY), C.int(dsDscr.CountX), C.int(dsDscr.CountY), unsafe.Pointer(&dataBuf[0]), C.int(dsDscr.CountX), C.int(dsDscr.CountY), C.GDT_Float32, C.int(effectiveNBands), (*C.int)(unsafe.Pointer(&bandsRead[0])), 0, 0, 0)
+
+		boundAvgs := make([]*pb.TimeSeries, effectiveNBands)
+		bandSize := int(dsDscr.CountX * dsDscr.CountY)
+		for iBand := 0; iBand < effectiveNBands; iBand++ {
+			bandOffset := iBand * bandSize
+
+			sum := float32(0)
+			total := int32(0)
+
+			for i := 0; i < bandSize; i++ {
+				if dsDscr.Mask.Pix[i] == 255 && dataBuf[i+bandOffset] != nodata {
+					sum += dataBuf[i+bandOffset]
 					total++
 				}
 			}
 
-		case "Float32":
-			canvas := make([]float32, dsDscr.CountX*dsDscr.CountY)
-			C.GDALRasterIO(bandH, C.GF_Read, C.int(dsDscr.OffX), C.int(dsDscr.OffY), C.int(dsDscr.CountX), C.int(dsDscr.CountY), unsafe.Pointer(&canvas[0]), C.int(dsDscr.CountX), C.int(dsDscr.CountY), C.GDT_Float32, 0, 0)
-
-			nodata := float32(C.GDALGetRasterNoDataValue(bandH, nil))
-			for i := 0; i < len(canvas); i++ {
-				if dsDscr.Mask.Pix[i] == 255 && canvas[i] != nodata {
-					sum += float64(canvas[i])
-					total++
-				}
+			if total > 0 {
+				boundAvgs[iBand] = &pb.TimeSeries{Value: float64(sum / float32(total)), Count: total}
+			} else {
+				boundAvgs[iBand] = &pb.TimeSeries{Value: 0, Count: 0}
 			}
-
-		default:
-			msg := fmt.Sprintf("Data Type not implemented %d", dType)
-			log.Println(msg)
-			return &pb.Result{Error: msg}
 		}
 
-		if total > 0 {
-			avgs = append(avgs, &pb.TimeSeries{Value: sum / float64(total), Count: total})
-		} else {
-			avgs = append(avgs, &pb.TimeSeries{Value: 0, Count: 0})
+		avgs = append(avgs, boundAvgs[0])
+
+		if bandStrides > 2 {
+			beta := (boundAvgs[1].Value - boundAvgs[0].Value) / float64(bandStrides-1)
+			count := math.Round(float64(boundAvgs[0].Count+boundAvgs[1].Count) / float64(2))
+			for ip := 1; ip < bandStrides-1; ip++ {
+				val := boundAvgs[0].Value + float64(ip)*beta
+				avgs = append(avgs, &pb.TimeSeries{Value: val, Count: int32(count)})
+			}
 		}
+
+		if len(boundAvgs) > 1 {
+			avgs = append(avgs, boundAvgs[1])
+		}
+
 	}
 
 	return &pb.Result{TimeSeries: avgs, Error: "OK"}
@@ -212,8 +237,7 @@ func envelopePolygon(hDS C.GDALDatasetH) C.OGRGeometryH {
 
 	var hGeom C.OGRGeometryH
 	hSRS := C.OSRNewSpatialReference(C.GDALGetProjectionRef(hDS))
-	// TODO - Cannot dealocate SRS - program breaks
-	//defer C.OSRDestroySpatialReference(hSRS)
+	defer C.OSRRelease(hSRS)
 	_ = C.OGR_G_CreateFromWkt(&ppszData, hSRS, &hGeom)
 
 	return hGeom
