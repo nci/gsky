@@ -437,46 +437,51 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 				return
 			}
 
-			indexer := proc.NewTileIndexer(ctx, conf.ServiceConfig.MASAddress, errChan)
-			go func() {
-				geoReq := getGeoTileRequest(0, 0, params.BBox, 0, 0)
-				indexer.In <- geoReq
-				close(indexer.In)
-			}()
+			/*
+				indexer := proc.NewTileIndexer(ctx, conf.ServiceConfig.MASAddress, errChan)
+				go func() {
+					geoReq := getGeoTileRequest(0, 0, params.BBox, 0, 0)
+					indexer.In <- geoReq
+					close(indexer.In)
+				}()
 
-			go indexer.Run()
-			maxWidth := -1
-			maxHeight := -1
-			for res := range indexer.Out {
-				select {
-				case err := <-errChan:
-					Info.Printf("WCS: indexer error: %v\n", err)
-					http.Error(w, err.Error(), 500)
-					return
-				case <-ctx.Done():
-					Error.Printf("Indexer context cancelled with message: %v\n", ctx.Err())
-					http.Error(w, ctx.Err().Error(), 500)
-					return
-				default:
-					width, height, err := utils.EncodeGdalSuggestOutput(res.Path, epsg, params.BBox)
-					if err != nil {
-						errMsg := fmt.Sprintf("WCS: Gdal failed to suggest output extent: %v", err)
-						Info.Printf(errMsg, err)
-						http.Error(w, errMsg, 500)
+				go indexer.Run()
+				maxWidth := -1
+				maxHeight := -1
+				for res := range indexer.Out {
+					select {
+					case err := <-errChan:
+						Info.Printf("WCS: indexer error: %v\n", err)
+						http.Error(w, err.Error(), 500)
 						return
-					}
+					case <-ctx.Done():
+						Error.Printf("Indexer context cancelled with message: %v\n", ctx.Err())
+						http.Error(w, ctx.Err().Error(), 500)
+						return
+					default:
+						width, height, err := utils.EncodeGdalSuggestOutput(res.Path, epsg, params.BBox)
+						if err != nil {
+							errMsg := fmt.Sprintf("WCS: Gdal failed to suggest output extent: %v", err)
+							Info.Printf(errMsg, err)
+							http.Error(w, errMsg, 500)
+							return
+						}
 
-					if width > maxWidth {
-						maxWidth = width
-					}
+						if width > maxWidth {
+							maxWidth = width
+						}
 
-					if height > maxHeight {
-						maxHeight = height
+						if height > maxHeight {
+							maxHeight = height
+						}
+
 					}
 
 				}
+			*/
 
-			}
+			geoReq := getGeoTileRequest(0, 0, params.BBox, 0, 0)
+			maxWidth, maxHeight, err := proc.ComputeReprojectionExtent(ctx, geoReq, conf.ServiceConfig.MASAddress, conf.ServiceConfig.WorkerNodes, epsg, params.BBox)
 
 			Info.Printf("WCS: Output image size: width=%v, height=%v", maxWidth, maxHeight)
 			if maxWidth > 0 && maxHeight > 0 {

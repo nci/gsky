@@ -68,6 +68,8 @@ func GdalBuiltinProcess(input *pb.GeoRPCGranule, debug bool) *pb.Result {
 		out = ExtractGDALInfo(input)
 	} else if input.Geot == nil {
 		out = DrillDataset(input)
+	} else if input.Geometry == "<geometry_extent>" {
+		out = ComputeReprojectExtent(input)
 	} else {
 		out = WarpRaster(input, debug)
 	}
