@@ -15,6 +15,7 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/kavu/go_reuseport"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 )
