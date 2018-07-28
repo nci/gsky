@@ -504,8 +504,8 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 				xRes := (params.BBox[2] - params.BBox[0]) / float64(*params.Width)
 				yRes := (params.BBox[3] - params.BBox[1]) / float64(*params.Height)
 
-				for x := 0; x < *params.Width; x += maxXTileSize {
-					for y := 0; y < *params.Height; y += maxYTileSize {
+				for y := 0; y < *params.Height; y += maxYTileSize {
+					for x := 0; x < *params.Width; x += maxXTileSize {
 						yMin := params.BBox[1] + float64(y)*yRes
 						yMax := math.Min(params.BBox[1]+float64(y+maxYTileSize)*yRes, params.BBox[3])
 						xMin := params.BBox[0] + float64(x)*xRes
@@ -587,13 +587,13 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 		}
 
 		hDstDS := utils.GetDummyGDALDatasetH()
-		var tempFile string
+		var masterTempFile string
 		isInit := true
 
 		tempFileGeoReq := make(map[string][]*proc.GeoTileRequest)
 
 		workerErrChan := make(chan error)
-		workerDoneChan := make(chan string)
+		workerDoneChan := make(chan string, len(workerTileRequests)-1)
 
 		if !isWorker && len(workerTileRequests) > 1 {
 			for iw := 1; iw < len(workerTileRequests); iw++ {
@@ -606,7 +606,7 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 				}
 
 				if *verbose {
-					Info.Printf("WCS worker (%v of %v): %v\n", iw, len(workerTileRequests), queryUrl)
+					Info.Printf("WCS worker (%v of %v): %v\n", iw, len(workerTileRequests)-1, queryUrl)
 				}
 
 				trans := &http.Transport{}
@@ -649,13 +649,13 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 
 					_, err = io.Copy(tempFileHandle, resp.Body)
 					if err != nil {
+						tempFileHandle.Close()
 						workerErrChan <- fmt.Errorf("WCS: worker error in io.Copy(): %v", err)
 						return
 					}
 
 					workerDoneChan <- tempFileName
 				}(req, trans, tempFileHandle.Name())
-
 			}
 		}
 
@@ -675,8 +675,8 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 			select {
 			case res := <-tp.Process(geoReq):
 				if isInit {
-					hDstDS, tempFile, err = utils.EncodeGdalOpen(conf.ServiceConfig.TempDir, driverFormat, geot, epsg, res, *params.Width, *params.Height, len(conf.Layers[idx].RGBProducts))
-					defer os.Remove(tempFile)
+					hDstDS, masterTempFile, err = utils.EncodeGdalOpen(conf.ServiceConfig.TempDir, driverFormat, geot, epsg, res, *params.Width, *params.Height, len(conf.Layers[idx].RGBProducts))
+					defer os.Remove(masterTempFile)
 					if err != nil {
 						errMsg := fmt.Sprintf("EncodeGdalOpen() failed: %v", err)
 						Info.Printf(errMsg)
@@ -708,7 +708,7 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 			}
 
 			if (ir+1)%checkpointThreshold == 0 {
-				hDstDS, err = utils.EncodeGdalFlush(hDstDS, tempFile, driverFormat)
+				hDstDS, err = utils.EncodeGdalFlush(hDstDS, masterTempFile, driverFormat)
 				if err != nil {
 					Info.Printf("Error in the pipeline: %v\n", err)
 					http.Error(w, err.Error(), 500)
@@ -735,6 +735,10 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 						height[ig] = geoReq.Height
 					}
 
+					var t0 time.Time
+					if *verbose {
+						t0 = time.Now()
+					}
 					err := utils.EncodeGdalMerge(hDstDS, "geotiff", workerTempFileName, width, height, offX, offY)
 					if err != nil {
 						utils.EncodeGdalClose(hDstDS)
@@ -746,7 +750,8 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 					nWorkerDone++
 
 					if *verbose {
-						Info.Printf("WCS: worker done (%v of %v)", nWorkerDone, len(workerTileRequests)-1)
+						t1 := time.Since(t0)
+						Info.Printf("WCS: merge %v to %v done (%v of %v), time: %v", workerTempFileName, masterTempFile, nWorkerDone, len(workerTileRequests)-1, t1)
 					}
 
 					if nWorkerDone == len(workerTileRequests)-1 {
@@ -791,7 +796,7 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 		w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%s.%s.%s", fileNameCoverages, fileNameDateTime, fileExt))
 		w.Header().Set("Content-Type", contentType)
 
-		fileHandle, err := os.Open(tempFile)
+		fileHandle, err := os.Open(masterTempFile)
 		if err != nil {
 			errMsg := fmt.Sprintf("Error opening raster file: %v", err)
 			Info.Printf(errMsg)

@@ -427,11 +427,25 @@ func EncodeGdalMerge(hDstDS C.GDALDatasetH, format string, workerTempFileName st
 			return fmt.Errorf("GDAL data type not implemented")
 		}
 
-		for iOff := 0; iOff < len(xOffList); iOff++ {
-			width := widthList[iOff]
-			height := heightList[iOff]
-			xOff := xOffList[iOff]
-			yOff := yOffList[iOff]
+		iBgn := 0
+		for iBgn < len(xOffList) {
+			xOff := xOffList[iBgn]
+			yOff := yOffList[iBgn]
+			width := widthList[iBgn]
+			height := heightList[iBgn]
+
+			iOff := iBgn + 1
+			for ; iOff < iBgn+32 && iOff < len(xOffList); iOff++ {
+				if heightList[iOff] != height {
+					break
+				}
+
+				if yOffList[iOff] != yOff {
+					break
+				}
+
+				width += widthList[iOff]
+			}
 
 			dataBuf := make([]uint8, dataSize*width*height)
 			gerr := C.GDALRasterIO(hSrcBand, C.GF_Read, C.int(xOff), C.int(yOff), C.int(width), C.int(height), unsafe.Pointer(&dataBuf[0]), C.int(width), C.int(height), dataType, 0, 0)
@@ -443,6 +457,8 @@ func EncodeGdalMerge(hDstDS C.GDALDatasetH, format string, workerTempFileName st
 			if gerr != 0 {
 				return fmt.Errorf("Error writing raster band: %d, xOff: %d, yOff:%d", ib, xOff, yOff)
 			}
+
+			iBgn = iOff
 		}
 
 	}
