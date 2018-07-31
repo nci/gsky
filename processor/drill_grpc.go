@@ -3,6 +3,7 @@ package processor
 import (
 	"fmt"
 	"log"
+	"math/rand"
 	"time"
 
 	pb "github.com/nci/gsky/worker/gdalservice"
@@ -39,17 +40,23 @@ func (gi *GeoDrillGRPC) Run(bandStrides int) {
 		grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(DefaultWpsRecvMsgSize)),
 	}
 
-	conns := make([]*grpc.ClientConn, len(gi.Clients))
-	for i, client := range gi.Clients {
-		conn, err := grpc.Dial(client, opts...)
-		if err != nil {
-			log.Fatalf("gRPC connection problem: %v", err)
+	// By design, our gRPC workers have set the SO_REUSEPORT flag for sockets.
+	// This means that we need to explicitly establish a pool of connections
+	// to each worker and let the Linux kernel do connection load balancing.
+	conns := make([]*grpc.ClientConn, len(gi.Clients)*DefaultWpsConcLimit)
+	for ic := 0; ic < DefaultWpsConcLimit; ic++ {
+		for i, client := range gi.Clients {
+			conn, err := grpc.Dial(client, opts...)
+			if err != nil {
+				log.Fatalf("gRPC connection problem: %v", err)
+			}
+			defer conn.Close()
+			conns[ic*len(gi.Clients)+i] = conn
 		}
-		defer conn.Close()
-		conns[i] = conn
 	}
 
-	cLimiter := NewConcLimiter(DefaultWpsConcLimit * len(conns))
+	workerStart := rand.Intn(len(conns))
+	cLimiter := NewConcLimiter(DefaultWpsConcLimit * len(gi.Clients))
 	start := time.Now()
 	i := 0
 	for gran := range gi.In {
@@ -62,7 +69,7 @@ func (gi *GeoDrillGRPC) Run(bandStrides int) {
 			cLimiter.Increase()
 			go func(g *GeoDrillGranule, conc *ConcLimiter, iTile int) {
 				defer conc.Decrease()
-				c := pb.NewGDALClient(conns[iTile%len(conns)])
+				c := pb.NewGDALClient(conns[(iTile+workerStart)%len(conns)])
 				bands, err := getBands(g.TimeStamps)
 				epsg, err := extractEPSGCode(g.CRS)
 

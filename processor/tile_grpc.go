@@ -3,7 +3,7 @@ package processor
 import (
 	"fmt"
 	"log"
-	"math"
+	"math/rand"
 	"runtime"
 	"sort"
 	"strconv"
@@ -66,28 +66,26 @@ func (gi *GeoRasterGRPC) Run(polyLimiter *ConcLimiter) {
 	}
 
 	g0 := grans[0]
-	effectivePoolSize := int(math.Ceil(float64(len(grans)) / float64(g0.GrpcConcLimit)))
-	if effectivePoolSize < 1 {
-		effectivePoolSize = 1
-	} else if effectivePoolSize > len(gi.Clients) {
-		effectivePoolSize = len(gi.Clients)
-	}
-
 	opts := []grpc.DialOption{
 		grpc.WithInsecure(),
 		grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(gi.MaxGrpcRecvMsgSize)),
 	}
 
+	// By design, our gRPC workers have set the SO_REUSEPORT flag for sockets.
+	// This means that we need to explicitly establish a pool of connections
+	// to each worker and let the Linux kernel do connection load balancing.
 	var connPool []*grpc.ClientConn
-	for i := 0; i < effectivePoolSize; i++ {
-		conn, err := grpc.Dial(gi.Clients[i], opts...)
-		if err != nil {
-			log.Printf("gRPC connection problem: %v", err)
-			continue
-		}
-		defer conn.Close()
+	for ic := 0; ic < g0.GrpcConcLimit; ic++ {
+		for i := 0; i < len(gi.Clients); i++ {
+			conn, err := grpc.Dial(gi.Clients[i], opts...)
+			if err != nil {
+				log.Printf("gRPC connection problem: %v", err)
+				continue
+			}
+			defer conn.Close()
 
-		connPool = append(connPool, conn)
+			connPool = append(connPool, conn)
+		}
 	}
 
 	if len(connPool) == 0 {
@@ -187,11 +185,12 @@ func (gi *GeoRasterGRPC) Run(polyLimiter *ConcLimiter) {
 
 	timeoutCtx, cancel := context.WithTimeout(gi.Context, time.Duration(g0.Timeout)*time.Second)
 	defer cancel()
-	cLimiter := NewConcLimiter(g0.GrpcConcLimit * len(connPool))
+	cLimiter := NewConcLimiter(g0.GrpcConcLimit * len(gi.Clients))
 
 	var wg sync.WaitGroup
 	wg.Add(len(gransByPolygon))
 
+	workerStart := rand.Intn(len(connPool))
 	granCounter := 0
 	for _, polyGrans := range gransByPolygon {
 		polyLimiter.Increase()
@@ -219,7 +218,7 @@ func (gi *GeoRasterGRPC) Run(polyLimiter *ConcLimiter) {
 					cLimiter.Increase()
 					go func(g *GeoTileGranule, iTile int, gCnt int) {
 						defer cLimiter.Decrease()
-						r, err := getRPCRaster(gi.Context, g, connPool[gCnt%len(connPool)])
+						r, err := getRPCRaster(gi.Context, g, connPool[(gCnt+workerStart)%len(connPool)])
 						if err != nil {
 							gi.Error <- err
 							r = &pb.Result{Raster: &pb.Raster{Data: make([]uint8, g.Width*g.Height), RasterType: "Byte", NoData: -1.}}
