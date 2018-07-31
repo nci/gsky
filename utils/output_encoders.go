@@ -7,12 +7,12 @@ package utils
 import "C"
 
 import (
+	"context"
 	"bytes"
 	"fmt"
 	"image"
 	"image/png"
 	"io/ioutil"
-	"math"
 	"os"
 	"strconv"
 	"strings"
@@ -232,54 +232,7 @@ func GetDriverNameFromFormat(format string) (string, error) {
 	return driverName, nil
 }
 
-func EncodeGdalSuggestOutput(srcDsFileName string, epsg int, bbox []float64) (int, int, error) {
-	srcFileC := C.CString(srcDsFileName)
-	defer C.free(unsafe.Pointer(srcFileC))
-
-	C.GDALAllRegister()
-	hSrcDS := C.GDALOpenEx(srcFileC, C.GDAL_OF_READONLY|C.GDAL_OF_VERBOSE_ERROR, nil, nil, nil)
-	if hSrcDS == nil {
-		return -1, -1, fmt.Errorf("Failed to open existing dataset: %v", srcDsFileName)
-	}
-	defer C.GDALClose(hSrcDS)
-
-	hSRS := C.OSRNewSpatialReference(nil)
-	defer C.OSRDestroySpatialReference(hSRS)
-	C.OSRImportFromEPSG(hSRS, C.int(epsg))
-	var projWKT *C.char
-	defer C.free(unsafe.Pointer(projWKT))
-	C.OSRExportToWkt(hSRS, &projWKT)
-
-	hTransformArg := C.GDALCreateGenImgProjTransformer(hSrcDS, nil, nil, projWKT, C.int(0), C.double(0), C.int(0))
-	if hTransformArg == nil {
-		return -1, -1, fmt.Errorf("GDALCreateGenImgProjTransformer() failed")
-	}
-	defer C.GDALDestroyGenImgProjTransformer(hTransformArg)
-
-	psInfo := (*C.GDALTransformerInfo)(hTransformArg)
-
-	var padfGeoTransformOut [6]C.double
-	var pnPixels, pnLines C.int
-	gerr := C.GDALSuggestedWarpOutput(hSrcDS, psInfo.pfnTransform, hTransformArg, &padfGeoTransformOut[0], &pnPixels, &pnLines)
-	if gerr != 0 {
-		return -1, -1, fmt.Errorf("GDALSuggestedWarpOutput() failed")
-	}
-
-	xRes := float64(padfGeoTransformOut[1])
-	yRes := float64(math.Abs(float64(padfGeoTransformOut[5])))
-
-	xMin := bbox[0]
-	yMin := bbox[1]
-	xMax := bbox[2]
-	yMax := bbox[3]
-
-	nPixels := int((xMax - xMin + xRes/2.0) / xRes)
-	nLines := int((yMax - yMin + yRes/2.0) / yRes)
-
-	return nPixels, nLines, nil
-}
-
-func EncodeGdalOpen(tempDir string, format string, geot []float64, epsg int, rs []Raster, width int, height int, bands int) (C.GDALDatasetH, string, error) {
+func EncodeGdalOpen(tempDir string, blockXSize int, blockYSize int, format string, geot []float64, epsg int, rs []Raster, width int, height int, bands int) (C.GDALDatasetH, string, error) {
 	_, _, rType, err := ValidateRasterSlice(rs)
 	if err != nil {
 		return nil, "", fmt.Errorf("Error validating raster: %v", err)
@@ -293,10 +246,12 @@ func EncodeGdalOpen(tempDir string, format string, geot []float64, epsg int, rs 
 	var driverOptions []*C.char
 	switch strings.ToLower(format) {
 	case "geotiff":
-		driverOptions = append(driverOptions, C.CString("COMPRESS=LZW"))
+		driverOptions = append(driverOptions, C.CString("COMPRESS=PACKBITS"))
 		driverOptions = append(driverOptions, C.CString("TILED=YES"))
-		driverOptions = append(driverOptions, C.CString("BLOCKXSIZE=1024"))
-		driverOptions = append(driverOptions, C.CString("BLOCKXSIZE=1024"))
+		driverOptions = append(driverOptions, C.CString("BIGTIFF=YES"))
+		driverOptions = append(driverOptions, C.CString("INTERLEAVE=BAND"))
+		driverOptions = append(driverOptions, C.CString(fmt.Sprintf("BLOCKXSIZE=%d", blockXSize)))
+		driverOptions = append(driverOptions, C.CString(fmt.Sprintf("BLOCKYSIZE=%d", blockYSize)))
 	case "netcdf":
 		driverOptions = append(driverOptions, C.CString("COMPRESS=DEFLATE"))
 		driverOptions = append(driverOptions, C.CString("ZLEVEL=6"))
@@ -399,7 +354,7 @@ func EncodeGdal(hDstDS C.GDALDatasetH, rs []Raster, xOff int, yOff int) error {
 
 }
 
-func EncodeGdalMerge(hDstDS C.GDALDatasetH, format string, workerTempFileName string, widthList []int, heightList []int, xOffList []int, yOffList []int) error {
+func EncodeGdalMerge(ctx context.Context, hDstDS C.GDALDatasetH, format string, workerTempFileName string, widthList []int, heightList []int, xOffList []int, yOffList []int) error {
 	driverName, err := GetDriverNameFromFormat(format)
 	if err != nil {
 		return err
@@ -447,18 +402,23 @@ func EncodeGdalMerge(hDstDS C.GDALDatasetH, format string, workerTempFileName st
 				width += widthList[iOff]
 			}
 
-			dataBuf := make([]uint8, dataSize*width*height)
-			gerr := C.GDALRasterIO(hSrcBand, C.GF_Read, C.int(xOff), C.int(yOff), C.int(width), C.int(height), unsafe.Pointer(&dataBuf[0]), C.int(width), C.int(height), dataType, 0, 0)
-			if gerr != 0 {
-				return fmt.Errorf("Error reading raster band: %d, xOff: %d, yOff:%d", ib, xOff, yOff)
-			}
+			select {
+			case <-ctx.Done():
+				return fmt.Errorf("EncodeGdalMerge context canceled: %v", ctx.Err())
+			default:
+				dataBuf := make([]uint8, dataSize*width*height)
+				gerr := C.GDALRasterIO(hSrcBand, C.GF_Read, C.int(xOff), C.int(yOff), C.int(width), C.int(height), unsafe.Pointer(&dataBuf[0]), C.int(width), C.int(height), dataType, 0, 0)
+				if gerr != 0 {
+					return fmt.Errorf("Error reading raster band: %d, xOff: %d, yOff:%d", ib, xOff, yOff)
+				}
 
-			gerr = C.GDALRasterIO(hDstBand, C.GF_Write, C.int(xOff), C.int(yOff), C.int(width), C.int(height), unsafe.Pointer(&dataBuf[0]), C.int(width), C.int(height), dataType, 0, 0)
-			if gerr != 0 {
-				return fmt.Errorf("Error writing raster band: %d, xOff: %d, yOff:%d", ib, xOff, yOff)
-			}
+				gerr = C.GDALRasterIO(hDstBand, C.GF_Write, C.int(xOff), C.int(yOff), C.int(width), C.int(height), unsafe.Pointer(&dataBuf[0]), C.int(width), C.int(height), dataType, 0, 0)
+				if gerr != 0 {
+					return fmt.Errorf("Error writing raster band: %d, xOff: %d, yOff:%d", ib, xOff, yOff)
+				}
 
-			iBgn = iOff
+				iBgn = iOff
+			}
 		}
 
 	}

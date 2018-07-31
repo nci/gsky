@@ -23,6 +23,7 @@ import (
 	"math"
 	"math/rand"
 	"net/http"
+	"net/url"
 	"os"
 	"regexp"
 	"runtime"
@@ -387,7 +388,7 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 		checkpointThreshold := 300
 		minTilesPerWorker := 5
 
-		wcsWorkerNodes := conf.ServiceConfig.OWSClusterNodes
+		var wcsWorkerNodes []string
 		workerTileRequests := [][]*proc.GeoTileRequest{}
 
 		_, isWorker := query["wbbox"]
@@ -438,8 +439,7 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 			}
 
 			geoReq := getGeoTileRequest(0, 0, params.BBox, 0, 0)
-			maxWidth, maxHeight, err := proc.ComputeReprojectionExtent(ctx, geoReq, conf.ServiceConfig.MASAddress, conf.ServiceConfig.WorkerNodes, epsg, params.BBox)
-
+			maxWidth, maxHeight, err := proc.ComputeReprojectionExtent(ctx, geoReq, conf.ServiceConfig.MASAddress, conf.ServiceConfig.WorkerNodes, epsg, params.BBox, *verbose)
 			Info.Printf("WCS: Output image size: width=%v, height=%v", maxWidth, maxHeight)
 			if maxWidth > 0 && maxHeight > 0 {
 				*params.Width = maxWidth
@@ -452,7 +452,6 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 				reqURL = rex.ReplaceAllString(reqURL, ``)
 
 				reqURL += fmt.Sprintf("&width=%d&height=%d", maxWidth, maxHeight)
-
 			} else {
 				errMsg := "WCS: failed to compute output extent"
 				Info.Printf(errMsg, err)
@@ -481,6 +480,24 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 						geoReq := getGeoTileRequest(tileXSize, tileYSize, []float64{xMin, yMin, xMax, yMax}, x, *params.Height-y-tileYSize)
 						tmpTileRequests = append(tmpTileRequests, geoReq)
 					}
+				}
+
+				for iw, worker := range conf.ServiceConfig.OWSClusterNodes {
+					parsedUrl, err := url.Parse(worker)
+					if err != nil {
+						if *verbose {
+							Info.Printf("WCS: invalid worker hostname %v, (%v of %v)\n", worker, iw, len(conf.ServiceConfig.OWSClusterNodes))
+						}
+						continue
+					}
+
+					if parsedUrl.Host == conf.ServiceConfig.OWSHostname {
+						if *verbose {
+							Info.Printf("WCS: skipping worker whose hostname == OWSHostName %v, (%v of %v)\n", worker, iw, len(conf.ServiceConfig.OWSClusterNodes))
+						}
+						continue
+					}
+					wcsWorkerNodes = append(wcsWorkerNodes, worker)
 				}
 
 				nWorkers := len(wcsWorkerNodes) + 1
@@ -552,7 +569,6 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 
 		hDstDS := utils.GetDummyGDALDatasetH()
 		var masterTempFile string
-		isInit := true
 
 		tempFileGeoReq := make(map[string][]*proc.GeoTileRequest)
 
@@ -561,7 +577,8 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 
 		if !isWorker && len(workerTileRequests) > 1 {
 			for iw := 1; iw < len(workerTileRequests); iw++ {
-				queryUrl := wcsWorkerNodes[iw-1] + reqURL
+				workerHostName := wcsWorkerNodes[iw-1]
+				queryUrl := workerHostName + reqURL
 				for _, geoReq := range workerTileRequests[iw] {
 					paramStr := fmt.Sprintf("&wbbox=%f,%f,%f,%f&wwidth=%d&wheight=%d&woffx=%d&woffy=%d",
 						geoReq.BBox[0], geoReq.BBox[1], geoReq.BBox[2], geoReq.BBox[3], geoReq.Width, geoReq.Height, geoReq.OffX, geoReq.OffY)
@@ -630,6 +647,8 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 			driverFormat = "geotiff"
 		}
 
+		isInit := false
+
 		tp := proc.InitTilePipeline(ctx, conf.ServiceConfig.MASAddress, conf.ServiceConfig.WorkerNodes, conf.Layers[idx].MaxGrpcRecvMsgSize, conf.Layers[idx].WcsPolygonShardConcLimit, errChan)
 		for ir, geoReq := range workerTileRequests[0] {
 			if *verbose {
@@ -638,8 +657,8 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 
 			select {
 			case res := <-tp.Process(geoReq):
-				if isInit {
-					hDstDS, masterTempFile, err = utils.EncodeGdalOpen(conf.ServiceConfig.TempDir, driverFormat, geot, epsg, res, *params.Width, *params.Height, len(conf.Layers[idx].RGBProducts))
+				if !isInit {
+					hDstDS, masterTempFile, err = utils.EncodeGdalOpen(conf.ServiceConfig.TempDir, 1024, 256, driverFormat, geot, epsg, res, *params.Width, *params.Height, len(conf.Layers[idx].RGBProducts))
 					defer os.Remove(masterTempFile)
 					if err != nil {
 						errMsg := fmt.Sprintf("EncodeGdalOpen() failed: %v", err)
@@ -647,7 +666,7 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 						http.Error(w, errMsg, 500)
 						return
 					}
-					isInit = false
+					isInit = true
 				}
 
 				err := utils.EncodeGdal(hDstDS, res, geoReq.OffX, geoReq.OffY)
@@ -703,7 +722,7 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 					if *verbose {
 						t0 = time.Now()
 					}
-					err := utils.EncodeGdalMerge(hDstDS, "geotiff", workerTempFileName, width, height, offX, offY)
+					err := utils.EncodeGdalMerge(ctx, hDstDS, "geotiff", workerTempFileName, width, height, offX, offY)
 					if err != nil {
 						utils.EncodeGdalClose(hDstDS)
 						Info.Printf("%v\n", err)
