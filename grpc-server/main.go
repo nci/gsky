@@ -4,24 +4,24 @@ import (
 	"flag"
 	"fmt"
 	"log"
-	"net"
+	"runtime"
 
+	pp "github.com/nci/gsky/worker/gdalprocess"
 	pb "github.com/nci/gsky/worker/gdalservice"
 
 	_ "net/http/pprof"
 
-	"golang.org/x/net/context"
-	"google.golang.org/grpc"
-	//"time"
-	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
+
+	"github.com/kavu/go_reuseport"
+	"golang.org/x/net/context"
+	"google.golang.org/grpc"
 )
 
 type server struct {
-	Pool *pb.ProcessPool
+	Pool *pp.ProcessPool
 }
 
 func (s *server) Process(ctx context.Context, in *pb.GeoRPCGranule) (*pb.Result, error) {
@@ -30,7 +30,7 @@ func (s *server) Process(ctx context.Context, in *pb.GeoRPCGranule) (*pb.Result,
 	errChan := make(chan error)
 	defer close(errChan)
 
-	s.Pool.AddQueue(&pb.Task{Payload: in, Resp: rChan, Error: errChan})
+	s.Pool.AddQueue(&pp.Task{Payload: in, Resp: rChan, Error: errChan})
 
 	select {
 	case out, ok := <-rChan:
@@ -48,36 +48,65 @@ func (s *server) Process(ctx context.Context, in *pb.GeoRPCGranule) (*pb.Result,
 
 func main() {
 	port := flag.Int("p", 6000, "gRPC server listening port.")
-	poolSize := flag.Int("n", 8, "Maximum number of requests handled concurrently.")
+	poolSize := flag.Int("n", runtime.NumCPU(), "Maximum number of requests handled concurrently.")
+	executable := flag.String("exec", "", "Executable filepath")
 	debug := flag.Bool("debug", false, "verbose logging")
 	flag.Parse()
 
-	go func() {
-		log.Println(http.ListenAndServe("localhost:6060", nil))
-	}()
-
-	p := pb.CreateProcessPool(*poolSize, *debug)
-
-	signals := make(chan os.Signal, 1)
-	signal.Notify(signals, syscall.SIGTERM, syscall.SIGINT)
-	go func() {
-		for {
-			select {
-			case <-signals:
-				p.DeleteProcessPool()
-				time.Sleep(1 * time.Second)
-				os.Exit(1)
-			}
+	var procPool *pp.ProcessPool
+	if *executable != pp.BuiltinProcessExec {
+		psize := *poolSize
+		// avoid double counting self as one of workers
+		if len(*executable) == 0 {
+			psize--
 		}
-	}()
+		if psize < 0 {
+			psize = 0
+		}
+		tmpProcPool, err := pp.CreateProcessPool(psize, *executable, *port, *debug)
+		if err != nil {
+			log.Printf("Failed to create process pool: %v", err)
+			os.Exit(2)
+		}
+		procPool = tmpProcPool
+
+		signals := make(chan os.Signal, 1)
+		signal.Notify(signals, syscall.SIGTERM, syscall.SIGINT)
+		go func() {
+			for {
+				select {
+				case <-signals:
+					for _, proc := range procPool.Pool {
+						proc.RemoveTempFiles()
+					}
+
+					os.Exit(1)
+				}
+			}
+		}()
+	} else {
+		procPool = &pp.ProcessPool{[]*pp.Process{}, make(chan *pp.Task, 400), make(chan *pp.ErrorMsg)}
+	}
+
+	useBuiltinProcess := len(*executable) == 0 || *executable == pp.BuiltinProcessExec
+	if useBuiltinProcess {
+		pp.RegisterGDALDrivers()
+		go func() {
+			for task := range procPool.TaskQueue {
+				out := pp.GdalBuiltinProcess(task.Payload, *debug)
+				task.Resp <- out
+			}
+		}()
+	}
 
 	s := grpc.NewServer()
-	pb.RegisterGDALServer(s, &server{Pool: p})
+	pb.RegisterGDALServer(s, &server{Pool: procPool})
 
-	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", *port))
+	lis, err := reuseport.Listen("tcp", fmt.Sprintf(":%d", *port))
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)
 	}
+	defer lis.Close()
 
 	if err := s.Serve(lis); err != nil {
 		log.Fatalf("failed to serve: %v", err)

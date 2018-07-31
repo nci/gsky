@@ -49,6 +49,9 @@ RUN rm /gsky/share/gsky/static/terria/init/*.json
 COPY terria_init.json /gsky/share/gsky/static/terria/init/terria.json
 COPY terria_config.json /gsky/share/gsky/static/terria/config.json
 
+COPY ./wps_payload.xml /
+COPY ./demo_wps_request.sh /
+
 EXPOSE 8080
 EXPOSE 8888
 

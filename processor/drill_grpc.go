@@ -28,7 +28,7 @@ func NewDrillGRPC(ctx context.Context, serverAddress []string, errChan chan erro
 	}
 }
 
-func (gi *GeoDrillGRPC) Run() {
+func (gi *GeoDrillGRPC) Run(bandStrides int) {
 	defer close(gi.Out)
 
 	const DefaultWpsRecvMsgSize = 100 * 1024 * 1024
@@ -65,7 +65,8 @@ func (gi *GeoDrillGRPC) Run() {
 				c := pb.NewGDALClient(conns[iTile%len(conns)])
 				bands, err := getBands(g.TimeStamps)
 				epsg, err := extractEPSGCode(g.CRS)
-				granule := &pb.GeoRPCGranule{Path: g.Path, EPSG: int32(epsg), Geometry: g.Geometry, Bands: bands}
+
+				granule := &pb.GeoRPCGranule{Path: g.Path, EPSG: int32(epsg), Geometry: g.Geometry, Bands: bands, BandStrides: int32(bandStrides)}
 				r, err := c.Process(gi.Context, granule)
 				if err != nil {
 					gi.Error <- err
