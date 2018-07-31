@@ -66,7 +66,7 @@ func NewProcess(tQueue chan *Task, binary string, port int, errChan chan *ErrorM
 		}
 		tmpFile.Close()
 		tmpFileName := tmpFile.Name()
-		addr := tmpFileName + "_socket"
+		addr = tmpFileName + "_socket"
 
 		cmd = exec.Command(binary, "-sock", addr, debugArg)
 	}
