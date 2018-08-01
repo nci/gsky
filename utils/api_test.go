@@ -81,3 +81,31 @@ func TestGenerateDatesMas(t *testing.T) {
 	}
 
 }
+
+func TestGetLayerDates(t *testing.T) {
+	config := &Config{}
+
+	config.Layers = append(config.Layers, Layer{StartISODate: "", EndISODate: "", TimeGen: "yearly"})
+	config.GetLayerDates(0)
+	if len(config.Layers[0].Dates) > 0 {
+		t.Errorf("Invalid date string but got successfully converted: %v\n", config.Layers[0].Dates)
+	}
+
+	config.Layers[0] = Layer{StartISODate: "2015-01-01T00:00:00.000Z", EndISODate: "", TimeGen: "yearly"}
+	config.GetLayerDates(0)
+	if len(config.Layers[0].Dates) > 0 {
+		t.Errorf("Invalid date string but got successfully converted: %v\n", config.Layers[0].Dates)
+	}
+
+	config.Layers[0] = Layer{StartISODate: "2015-01-01T00:00:00.000Z", EndISODate: "2018-01-01T00:00:00.000Z", TimeGen: "yearly"}
+	config.GetLayerDates(0)
+	if len(config.Layers[0].Dates) != 3 {
+		t.Errorf("Failed to generate dates: %v\n", config.Layers[0].Dates)
+	}
+
+	config.Layers[0] = Layer{StartISODate: "2015-01-01T00:00:00.000Z", EndISODate: "now", TimeGen: "yearly"}
+	config.GetLayerDates(0)
+	if len(config.Layers[0].Dates) == 0 {
+		t.Errorf("Failed to parse now() as end date: %#v\n", config.Layers[0])
+	}
+}
