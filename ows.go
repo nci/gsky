@@ -507,13 +507,9 @@ func serveWPS(ctx context.Context, params utils.WPSParams, conf *utils.Config, r
 		}
 
 		if len(params.FeatCol.Features) == 0 {
-			err := utils.ExecuteWriteTemplateFile(w, "Request doesn't contain any Feature.",
-				utils.DataDir+"/templates/WPS_Exception.tpl")
-			if err != nil {
-				http.Error(w, err.Error(), 500)
-			}
+			Info.Printf("The request does not contain the 'feature' property.\n")
+			http.Error(w, "The request does not contain the 'feature' property", 400)
 			return
-
 		}
 
 		var feat []byte
