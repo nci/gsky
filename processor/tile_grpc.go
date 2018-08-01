@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"math"
+	"math/rand"
 	"runtime"
 	"sort"
 	"strconv"
@@ -192,6 +193,7 @@ func (gi *GeoRasterGRPC) Run(polyLimiter *ConcLimiter) {
 	var wg sync.WaitGroup
 	wg.Add(len(gransByPolygon))
 
+	workerStart := rand.Intn(len(connPool))
 	granCounter := 0
 	for _, polyGrans := range gransByPolygon {
 		polyLimiter.Increase()
@@ -219,7 +221,7 @@ func (gi *GeoRasterGRPC) Run(polyLimiter *ConcLimiter) {
 					cLimiter.Increase()
 					go func(g *GeoTileGranule, iTile int, gCnt int) {
 						defer cLimiter.Decrease()
-						r, err := getRPCRaster(gi.Context, g, connPool[gCnt%len(connPool)])
+						r, err := getRPCRaster(gi.Context, g, connPool[(gCnt+workerStart)%len(connPool)])
 						if err != nil {
 							gi.Error <- err
 							r = &pb.Result{Raster: &pb.Raster{Data: make([]uint8, g.Width*g.Height), RasterType: "Byte", NoData: -1.}}
