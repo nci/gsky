@@ -3,6 +3,7 @@ package processor
 import (
 	"fmt"
 	"log"
+	"math"
 	"math/rand"
 	"runtime"
 	"sort"
@@ -66,26 +67,28 @@ func (gi *GeoRasterGRPC) Run(polyLimiter *ConcLimiter) {
 	}
 
 	g0 := grans[0]
+	effectivePoolSize := int(math.Ceil(float64(len(grans)) / float64(g0.GrpcConcLimit)))
+	if effectivePoolSize < 1 {
+		effectivePoolSize = 1
+	} else if effectivePoolSize > len(gi.Clients) {
+		effectivePoolSize = len(gi.Clients)
+	}
+
 	opts := []grpc.DialOption{
 		grpc.WithInsecure(),
 		grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(gi.MaxGrpcRecvMsgSize)),
 	}
 
-	// By design, our gRPC workers have set the SO_REUSEPORT flag for sockets.
-	// This means that we need to explicitly establish a pool of connections
-	// to each worker and let the Linux kernel do connection load balancing.
 	var connPool []*grpc.ClientConn
-	for ic := 0; ic < g0.GrpcConcLimit; ic++ {
-		for i := 0; i < len(gi.Clients); i++ {
-			conn, err := grpc.Dial(gi.Clients[i], opts...)
-			if err != nil {
-				log.Printf("gRPC connection problem: %v", err)
-				continue
-			}
-			defer conn.Close()
-
-			connPool = append(connPool, conn)
+	for i := 0; i < effectivePoolSize; i++ {
+		conn, err := grpc.Dial(gi.Clients[i], opts...)
+		if err != nil {
+			log.Printf("gRPC connection problem: %v", err)
+			continue
 		}
+		defer conn.Close()
+
+		connPool = append(connPool, conn)
 	}
 
 	if len(connPool) == 0 {
@@ -185,7 +188,7 @@ func (gi *GeoRasterGRPC) Run(polyLimiter *ConcLimiter) {
 
 	timeoutCtx, cancel := context.WithTimeout(gi.Context, time.Duration(g0.Timeout)*time.Second)
 	defer cancel()
-	cLimiter := NewConcLimiter(g0.GrpcConcLimit * len(gi.Clients))
+	cLimiter := NewConcLimiter(g0.GrpcConcLimit * len(connPool))
 
 	var wg sync.WaitGroup
 	wg.Add(len(gransByPolygon))

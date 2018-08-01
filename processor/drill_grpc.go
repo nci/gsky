@@ -40,24 +40,19 @@ func (gi *GeoDrillGRPC) Run(bandStrides int) {
 		grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(DefaultWpsRecvMsgSize)),
 	}
 
-	// By design, our gRPC workers have set the SO_REUSEPORT flag for sockets.
-	// This means that we need to explicitly establish a pool of connections
-	// to each worker and let the Linux kernel do connection load balancing.
-	conns := make([]*grpc.ClientConn, len(gi.Clients)*DefaultWpsConcLimit)
-	for ic := 0; ic < DefaultWpsConcLimit; ic++ {
-		for i, client := range gi.Clients {
-			conn, err := grpc.Dial(client, opts...)
-			if err != nil {
-				log.Fatalf("gRPC connection problem: %v", err)
-			}
-			defer conn.Close()
-			conns[ic*len(gi.Clients)+i] = conn
+	conns := make([]*grpc.ClientConn, len(gi.Clients))
+	for i, client := range gi.Clients {
+		conn, err := grpc.Dial(client, opts...)
+		if err != nil {
+			log.Fatalf("gRPC connection problem: %v", err)
 		}
+		defer conn.Close()
+		conns[i] = conn
 	}
 
-	workerStart := rand.Intn(len(conns))
-	cLimiter := NewConcLimiter(DefaultWpsConcLimit * len(gi.Clients))
+	cLimiter := NewConcLimiter(DefaultWpsConcLimit * len(conns))
 	start := time.Now()
+	workerStart := rand.Intn(len(conns))
 	i := 0
 	for gran := range gi.In {
 		i++
