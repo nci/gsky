@@ -38,38 +38,23 @@ type Process struct {
 	ErrorMsg       chan *ErrorMsg
 }
 
-const BuiltinProcessExec = "<builtin>"
-
 func NewProcess(tQueue chan *Task, binary string, port int, errChan chan *ErrorMsg, debug bool) *Process {
-
-	useBuiltinProcess := len(binary) == 0
-
-	var addr string
-	var tmpFileName string
-	var cmd *exec.Cmd
-
 	debugArg := ""
 	if debug {
 		debugArg = "-debug"
 	}
 
-	if useBuiltinProcess {
-		addr = BuiltinProcessExec
-		tmpFileName = BuiltinProcessExec
-		cmd = exec.Command(os.Args[0], "-p", fmt.Sprintf("%d", port), "-exec", BuiltinProcessExec, "-n", "0", debugArg)
-	} else {
-		// we need to keep the temp file existing to prevent race condition
-		// for creating unix socket for new processes
-		tmpFile, err := ioutil.TempFile("", "gsky_rpc_")
-		if err != nil {
-			panic(err)
-		}
-		tmpFile.Close()
-		tmpFileName := tmpFile.Name()
-		addr := tmpFileName + "_socket"
-
-		cmd = exec.Command(binary, "-sock", addr, debugArg)
+	// we need to keep the temp file existing to prevent race condition
+	// for creating unix socket for new processes
+	tmpFile, err := ioutil.TempFile("", "gsky_rpc_")
+	if err != nil {
+		panic(err)
 	}
+	tmpFile.Close()
+	tmpFileName := tmpFile.Name()
+	addr := tmpFileName + "_socket"
+
+	cmd := exec.Command(binary, "-sock", addr, debugArg)
 
 	cmd.SysProcAttr = &syscall.SysProcAttr{Pdeathsig: syscall.SIGKILL}
 	combinedOutput, err := cmd.StderrPipe()
@@ -93,54 +78,52 @@ func (p *Process) Start() error {
 
 	log.Println("Process running with PID", p.Cmd.Process.Pid)
 
-	if p.Address != BuiltinProcessExec {
-		go func() {
-			defer p.RemoveTempFiles()
+	go func() {
+		defer p.RemoveTempFiles()
 
-			for task := range p.TaskQueue {
-				conn, err := net.DialUnix("unix", nil, &net.UnixAddr{Name: p.Address, Net: "unix"})
-				if err != nil {
-					syscall.Kill(p.Cmd.Process.Pid, syscall.SIGKILL)
-					task.Error <- fmt.Errorf("dial failed: %v", err)
-					p.ErrorMsg <- &ErrorMsg{p.Address, true, err}
-					break
-				}
-
-				inb, err := proto.Marshal(task.Payload)
-				if err != nil {
-					conn.Close()
-					task.Error <- fmt.Errorf("encode failed: %v", err)
-					continue
-				}
-
-				n, err := conn.Write(inb)
-				if err != nil {
-					conn.Close()
-					task.Error <- fmt.Errorf("error writing %d bytes of data: %v", n, err)
-					continue
-				}
-				conn.CloseWrite()
-
-				var buf bytes.Buffer
-				nr, err := io.Copy(&buf, conn)
-				if err != nil {
-					conn.Close()
-					task.Error <- fmt.Errorf("error reading %d bytes of data: %v", nr, err)
-					continue
-				}
-				conn.Close()
-
-				out := new(pb.Result)
-				err = proto.Unmarshal(buf.Bytes(), out)
-				if err != nil {
-					task.Error <- fmt.Errorf("error decoding data: %v", err)
-					continue
-				}
-
-				task.Resp <- out
+		for task := range p.TaskQueue {
+			conn, err := net.DialUnix("unix", nil, &net.UnixAddr{Name: p.Address, Net: "unix"})
+			if err != nil {
+				syscall.Kill(p.Cmd.Process.Pid, syscall.SIGKILL)
+				task.Error <- fmt.Errorf("dial failed: %v", err)
+				p.ErrorMsg <- &ErrorMsg{p.Address, false, err}
+				break
 			}
-		}()
-	}
+
+			inb, err := proto.Marshal(task.Payload)
+			if err != nil {
+				conn.Close()
+				task.Error <- fmt.Errorf("encode failed: %v", err)
+				continue
+			}
+
+			n, err := conn.Write(inb)
+			if err != nil {
+				conn.Close()
+				task.Error <- fmt.Errorf("error writing %d bytes of data: %v", n, err)
+				continue
+			}
+			conn.CloseWrite()
+
+			var buf bytes.Buffer
+			nr, err := io.Copy(&buf, conn)
+			if err != nil {
+				conn.Close()
+				task.Error <- fmt.Errorf("error reading %d bytes of data: %v", nr, err)
+				continue
+			}
+			conn.Close()
+
+			out := new(pb.Result)
+			err = proto.Unmarshal(buf.Bytes(), out)
+			if err != nil {
+				task.Error <- fmt.Errorf("error decoding data: %v", err)
+				continue
+			}
+
+			task.Resp <- out
+		}
+	}()
 
 	go func() {
 		defer p.RemoveTempFiles()
@@ -169,8 +152,6 @@ func (p *Process) Start() error {
 }
 
 func (p *Process) RemoveTempFiles() {
-	if p.Address != BuiltinProcessExec {
-		os.Remove(p.TempFile)
-		os.Remove(p.Address)
-	}
+	os.Remove(p.TempFile)
+	os.Remove(p.Address)
 }
