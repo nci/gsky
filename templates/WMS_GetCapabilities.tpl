@@ -8,7 +8,7 @@
 			<Keyword>WMS</Keyword>
 			<Keyword>GSKY</Keyword>
 		</KeywordList>
-		<OnlineResource xlink:type="simple" xlink:href="http://{{ .ServiceConfig.OWSHostname }}"/>
+		<OnlineResource xlink:type="simple" xlink:href="http://{{ .ServiceConfig.OWSHostname }}/ows/{{ .ServiceConfig.NameSpace }}" />
 		<ContactInformation>
 		    <ContactPersonPrimary>
 		        <ContactOrganization>National Computational Infrastructure</ContactOrganization>
@@ -33,7 +33,7 @@
 				<DCPType>
 				  <HTTP>
 				    <Get>
-				      <OnlineResource xlink:type="simple" xlink:href="http://{{ .ServiceConfig.OWSHostname }}/ows?SERVICE=WMS&amp;"/>
+				      <OnlineResource xlink:type="simple" xlink:href="http://{{ .ServiceConfig.OWSHostname }}/ows/{{ .ServiceConfig.NameSpace }}?SERVICE=WMS&amp;"/>
 				    </Get>
 				  </HTTP>
 				</DCPType>
@@ -43,7 +43,7 @@
 				<DCPType>
 				  <HTTP>
 				    <Get>
-				      <OnlineResource xlink:type="simple" xlink:href="http://{{ .ServiceConfig.OWSHostname }}/ows?SERVICE=WMS&amp;"/>
+				      <OnlineResource xlink:type="simple" xlink:href="http://{{ .ServiceConfig.OWSHostname }}/ows/{{ .ServiceConfig.NameSpace }}?SERVICE=WMS&amp;"/>
 				    </Get>
 				  </HTTP>
 				</DCPType>
@@ -59,7 +59,7 @@
 				<DCPType>
 				  <HTTP>
 				    <Get>
-				      <OnlineResource xlink:type="simple" xlink:href="http://{{ .ServiceConfig.OWSHostname }}/ows?SERVICE=WMS&amp;"/>
+				      <OnlineResource xlink:type="simple" xlink:href="http://{{ .ServiceConfig.OWSHostname }}/ows/{{ .ServiceConfig.NameSpace }}?SERVICE=WMS&amp;"/>
 				    </Get>
 				  </HTTP>
 				</DCPType>
