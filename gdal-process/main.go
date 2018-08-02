@@ -57,6 +57,8 @@ func dataHandler(conn net.Conn, debug bool) {
 		out = gp.ExtractGDALInfo(in)
 	} else if in.Geot == nil {
 		out = gp.DrillDataset(in)
+	} else if in.Geometry == "<geometry_extent>" {
+		out = gp.ComputeReprojectExtent(in)
 	} else {
 		out = gp.WarpRaster(in, debug)
 	}

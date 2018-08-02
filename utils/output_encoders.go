@@ -1,7 +1,6 @@
 package utils
 
 // #include "gdal.h"
-// #include "gdalwarper.h"
 // #include "ogr_srs_api.h"
 // #cgo pkg-config: gdal
 import "C"
