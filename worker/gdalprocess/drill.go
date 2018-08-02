@@ -285,6 +285,12 @@ func getDrillFileDescriptor(ds C.GDALDatasetH, g C.OGRGeometryH) DrillFileDescri
 	if countY == 0 {
 		countY++
 	}
+	if offsetX < 0 {
+		offsetX = 0
+	}
+	if offsetY < 0 {
+		offsetY = 0
+	}
 
 	mask, _ := createMask(ds, gCopy, offsetX, offsetY, countX, countY)
 

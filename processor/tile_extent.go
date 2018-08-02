@@ -43,19 +43,17 @@ func ComputeReprojectionExtent(ctx context.Context, geoReq *GeoTileRequest, masA
 	}
 
 	var conns []*grpc.ClientConn
-	for ic := 0; ic < DefaultConcLimit; ic++ {
-		for _, worker := range workerNodes {
-			conn, err := grpc.Dial(worker, opts...)
-			if err != nil {
-				log.Printf("gRPC connection problem: %v", err)
-				continue
-			}
-			defer conn.Close()
-			conns = append(conns, conn)
+	for _, worker := range workerNodes {
+		conn, err := grpc.Dial(worker, opts...)
+		if err != nil {
+			log.Printf("gRPC connection problem: %v", err)
+			continue
 		}
+		defer conn.Close()
+		conns = append(conns, conn)
 	}
 
-	cLimiter := NewConcLimiter(DefaultConcLimit * len(workerNodes))
+	cLimiter := NewConcLimiter(DefaultConcLimit * len(conns))
 	type OutputSize struct {
 		Width  int
 		Height int

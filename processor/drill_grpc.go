@@ -3,6 +3,7 @@ package processor
 import (
 	"fmt"
 	"log"
+	"math/rand"
 	"time"
 
 	pb "github.com/nci/gsky/worker/gdalservice"
@@ -51,6 +52,7 @@ func (gi *GeoDrillGRPC) Run(bandStrides int) {
 
 	cLimiter := NewConcLimiter(DefaultWpsConcLimit * len(conns))
 	start := time.Now()
+	workerStart := rand.Intn(len(conns))
 	i := 0
 	for gran := range gi.In {
 		i++
@@ -62,7 +64,7 @@ func (gi *GeoDrillGRPC) Run(bandStrides int) {
 			cLimiter.Increase()
 			go func(g *GeoDrillGranule, conc *ConcLimiter, iTile int) {
 				defer conc.Decrease()
-				c := pb.NewGDALClient(conns[iTile%len(conns)])
+				c := pb.NewGDALClient(conns[(iTile+workerStart)%len(conns)])
 				bands, err := getBands(g.TimeStamps)
 				epsg, err := extractEPSGCode(g.CRS)
 

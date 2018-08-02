@@ -43,9 +43,11 @@ import (
 var configMap map[string]*utils.Config
 
 var (
-	port           = flag.Int("p", 8080, "Server listening port.")
-	validateConfig = flag.Bool("check_conf", false, "Validate server config files.")
-	verbose        = flag.Bool("v", false, "Verbose mode for more server outputs.")
+	port            = flag.Int("p", 8080, "Server listening port.")
+	serverDataDir   = flag.String("data_dir", utils.DataDir, "Server data directory.")
+	serverConfigDir = flag.String("conf_dir", utils.EtcDir, "Server config directory.")
+	validateConfig  = flag.Bool("check_conf", false, "Validate server config files.")
+	verbose         = flag.Bool("v", false, "Verbose mode for more server outputs.")
 )
 
 var reWMSMap map[string]*regexp.Regexp
@@ -67,6 +69,9 @@ func init() {
 	Info = log.New(os.Stdout, "OWS: ", log.Ldate|log.Ltime|log.Lshortfile)
 
 	flag.Parse()
+
+	utils.DataDir = *serverDataDir
+	utils.EtcDir = *serverConfigDir
 
 	filePaths := []string{
 		utils.DataDir + "/static/index.html",
@@ -853,13 +858,9 @@ func serveWPS(ctx context.Context, params utils.WPSParams, conf *utils.Config, r
 		}
 
 		if len(params.FeatCol.Features) == 0 {
-			err := utils.ExecuteWriteTemplateFile(w, "Request doesn't contain any Feature.",
-				utils.DataDir+"/templates/WPS_Exception.tpl")
-			if err != nil {
-				http.Error(w, err.Error(), 500)
-			}
+			Info.Printf("The request does not contain the 'feature' property.\n")
+			http.Error(w, "The request does not contain the 'feature' property", 400)
 			return
-
 		}
 
 		var feat []byte
