@@ -396,6 +396,33 @@ const DefaultGrpcWcsConcPerNode = 16
 const DefaultWmsPolygonShardConcLimit = 5
 const DefaultWcsPolygonShardConcLimit = 10
 
+// Load dates for the ith layer
+func (config *Config) GetLayerDates(iLayer int) {
+	layer := config.Layers[iLayer]
+	if strings.TrimSpace(strings.ToLower(layer.TimeGen)) == "mas" {
+		config.Layers[iLayer].Dates = GenerateDatesMas(layer.StartISODate, layer.EndISODate, config.ServiceConfig.MASAddress, layer.DataSource, layer.RGBProducts)
+	} else {
+		start, errStart := time.Parse(ISOFormat, layer.StartISODate)
+		if errStart != nil {
+			log.Printf("start date parsing error: %v", errStart)
+		}
+
+		end, errEnd := time.Parse(ISOFormat, layer.EndISODate)
+		if errEnd != nil {
+			if strings.TrimSpace(strings.ToLower(layer.EndISODate)) == "now" {
+				end = time.Now().UTC()
+				log.Printf("end date is set to now(): %v", end)
+			} else {
+				log.Printf("end date parsing error: %v", errEnd)
+			}
+		}
+
+		step := time.Minute * time.Duration(60*24*layer.StepDays+60*layer.StepHours+layer.StepMinutes)
+		config.Layers[iLayer].Dates = GenerateDates(layer.TimeGen, start, end, step)
+	}
+
+}
+
 // LoadConfigFile marshalls the config.json document returning an
 // instance of a Config variable containing all the values
 func (config *Config) LoadConfigFile(configFile string) error {
@@ -421,22 +448,7 @@ func (config *Config) LoadConfigFile(configFile string) error {
 	}
 
 	for i, layer := range config.Layers {
-		if strings.TrimSpace(strings.ToLower(layer.TimeGen)) == "mas" {
-			config.Layers[i].Dates = GenerateDatesMas(layer.StartISODate, layer.EndISODate, config.ServiceConfig.MASAddress, config.Layers[i].DataSource, config.Layers[i].RGBProducts)
-		} else {
-			start, errStart := time.Parse(ISOFormat, layer.StartISODate)
-			if errStart != nil {
-				log.Printf("start date parsing error: %v", errStart)
-			}
-
-			end, errEnd := time.Parse(ISOFormat, layer.EndISODate)
-			if errEnd != nil {
-				log.Printf("end date parsing error: %v", errEnd)
-			}
-
-			step := time.Minute * time.Duration(60*24*layer.StepDays+60*layer.StepHours+layer.StepMinutes)
-			config.Layers[i].Dates = GenerateDates(layer.TimeGen, start, end, step)
-		}
+		config.GetLayerDates(i)
 		config.Layers[i].OWSHostname = config.ServiceConfig.OWSHostname
 
 		if config.Layers[i].MaxGrpcRecvMsgSize <= DefaultRecvMsgSize {

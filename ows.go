@@ -124,6 +124,10 @@ func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r
 			return
 		}
 
+		for iLayer := range conf.Layers {
+			conf.GetLayerDates(iLayer)
+		}
+
 		err := utils.ExecuteWriteTemplateFile(w, conf,
 			utils.DataDir+"/templates/WMS_GetCapabilities.tpl")
 		if err != nil {
@@ -318,10 +322,10 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 			return
 		}
 
-		// TODO this might be solved copying the Layer slice
 		newConf := *conf
 		newConf.Layers = make([]utils.Layer, len(newConf.Layers))
 		for i, layer := range conf.Layers {
+			conf.GetLayerDates(i)
 			newConf.Layers[i] = layer
 			newConf.Layers[i].Dates = []string{newConf.Layers[i].Dates[0], newConf.Layers[i].Dates[len(newConf.Layers[i].Dates)-1]}
 		}
