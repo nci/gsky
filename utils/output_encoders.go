@@ -6,8 +6,8 @@ package utils
 import "C"
 
 import (
-	"context"
 	"bytes"
+	"context"
 	"fmt"
 	"image"
 	"image/png"

@@ -23,8 +23,8 @@ var DataDir = "."
 const ReservedMemorySize = 1.5 * 1024 * 1024 * 1024
 
 type ServiceConfig struct {
-	OWSHostname     string   `json:"ows_hostname"`
-	NameSpace   string
+	OWSHostname     string `json:"ows_hostname"`
+	NameSpace       string
 	MASAddress      string   `json:"mas_address"`
 	WorkerNodes     []string `json:"worker_nodes"`
 	OWSClusterNodes []string `json:"ows_cluster_nodes"`
