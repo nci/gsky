@@ -19,8 +19,6 @@ import (
 	"github.com/kavu/go_reuseport"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
-
-	"github.com/kavu/go_reuseport"
 )
 
 type server struct {
