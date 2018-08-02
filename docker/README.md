@@ -48,4 +48,4 @@ To access TerriaJS from your web browser, please do the following:
 
 1. Run `docker run --rm -it -p 8080:8080 <GSKY image>` to bring up a GSKY container.
 
-2. TerriaJS can be accessed from `http://127.0.0.1/terria` from your web browser.
+2. TerriaJS can be accessed from `http://127.0.0.1:8080/terria` from your web browser.
