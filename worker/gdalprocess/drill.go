@@ -93,6 +93,10 @@ func readData(ds C.GDALDatasetH, bands []int32, geom C.OGRGeometryH, bandStrides
 		return &pb.Result{Error: err.Error()}
 	}
 
+	if bandStrides <= 0 {
+		bandStrides = 1
+	}
+
 	nodata := float32(C.GDALGetRasterNoDataValue(bandH, nil))
 
 	// If we have a lot of bands, one may want to seek an approximate algorithm
