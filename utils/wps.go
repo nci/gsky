@@ -55,12 +55,12 @@ func ParsePost(rc io.ReadCloser) (map[string][]string, error) {
 		"identifier": []string{exec.Identifier}}
 
 	for _, input := range exec.DataInputs.Input {
-		inputId := strings.ToLower(strings.TrimSpace(input.Identifier))
-		if inputId == "start_datetime" {
+		inputID := strings.ToLower(strings.TrimSpace(input.Identifier))
+		if inputID == "start_datetime" {
 			parsedBody["start_datetime"] = []string{input.Data.ComplexData}
-		} else if inputId == "end_datetime" {
+		} else if inputID == "end_datetime" {
 			parsedBody["end_datetime"] = []string{input.Data.ComplexData}
-		} else if inputId == "geometry" {
+		} else if inputID == "geometry" {
 			parsedBody["geometry"] = []string{fmt.Sprintf(`geometry=%s`, input.Data.ComplexData)}
 		}
 	}

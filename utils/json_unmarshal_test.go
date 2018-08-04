@@ -6,7 +6,7 @@ import (
 )
 
 func testUnmarshal(t *testing.T) {
-	type TestJson struct {
+	type TestJSON struct {
 		Field1 string  `json:"field1"`
 		Field2 int     `json:"field2"`
 		Field3 float64 `json:"field3"`
@@ -14,18 +14,18 @@ func testUnmarshal(t *testing.T) {
 
 	jsonStr := []byte(`{ "field1": "test", "field2": 123, "field3": 12.3 }`)
 
-	var testJson1 TestJson
-	json.Unmarshal(jsonStr, &testJson1)
+	var testJSON1 TestJSON
+	json.Unmarshal(jsonStr, &testJSON1)
 
-	var testJson2 TestJson
-	Unmarshal(jsonStr, &testJson2)
+	var testJSON2 TestJSON
+	Unmarshal(jsonStr, &testJSON2)
 
-	if testJson1 != testJson2 {
-		t.Errorf("testJson1 and testJson2 are not equal: %v, %v", testJson1, testJson2)
+	if testJSON1 != testJSON2 {
+		t.Errorf("testJSON1 and testJSON2 are not equal: %v, %v", testJSON1, testJSON2)
 	}
 
 	jsonStr = []byte(`{ "field1": "test", "field2": 123, "field3: 12.3 }`)
-	err := Unmarshal(jsonStr, &testJson2)
+	err := Unmarshal(jsonStr, &testJSON2)
 	if err == nil {
 		t.Errorf("invalid json does not return parsing error %v", jsonStr)
 	}
