@@ -14,7 +14,7 @@ import (
 	geo "github.com/nci/geometry"
 )
 
-// string used to format Go ISO times
+// ISOFormat is the string used to format Go ISO times
 const ISOFormat = "2006-01-02T15:04:05.000Z"
 
 type FileList struct {

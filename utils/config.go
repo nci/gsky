@@ -144,7 +144,7 @@ type Config struct {
 	Processes     []Process     `json:"processes"`
 }
 
-// string used to format Go ISO times
+// ISOFormat is the string used to format Go ISO times
 const ISOFormat = "2006-01-02T15:04:05.000Z"
 
 func GenerateDatesAux(start, end time.Time, stepMins time.Duration) []string {
@@ -346,9 +346,9 @@ func LoadAllConfigFiles(rootDir string) (map[string]*Config, error) {
 	return configMap, err
 }
 
-//https://github.com/hashicorp/packer/blob/master/common/json/unmarshal.go
 // Unmarshal is wrapper around json.Unmarshal that returns user-friendly
 // errors when there are syntax errors.
+// https://github.com/hashicorp/packer/blob/master/common/json/unmarshal.go
 func Unmarshal(data []byte, i interface{}) error {
 	err := json.Unmarshal(data, i)
 	if err != nil {
@@ -394,7 +394,7 @@ const DefaultGrpcWcsConcPerNode = 16
 const DefaultWmsPolygonShardConcLimit = 5
 const DefaultWcsPolygonShardConcLimit = 10
 
-// Load dates for the ith layer
+// GetLayerDates loads dates for the ith layer
 func (config *Config) GetLayerDates(iLayer int) {
 	layer := config.Layers[iLayer]
 	if strings.TrimSpace(strings.ToLower(layer.TimeGen)) == "mas" {
