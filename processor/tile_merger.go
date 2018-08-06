@@ -423,28 +423,28 @@ func (enc *RasterMerger) Run(polyLimiter *ConcLimiter) {
 		switch canvas.Type {
 		case "Byte":
 			out[i] = &utils.ByteRaster{NoData: canvas.NoData, Data: canvas.Data,
-				Width: canvas.Width, Height: canvas.Height}
+				Width: canvas.Width, Height: canvas.Height, NameSpace: ns}
 
 		case "UInt16":
 			headr.Len /= SizeofUint16
 			headr.Cap /= SizeofUint16
 			data := *(*[]uint16)(unsafe.Pointer(&headr))
 			out[i] = &utils.UInt16Raster{NoData: canvas.NoData, Data: data,
-				Width: canvas.Width, Height: canvas.Height}
+				Width: canvas.Width, Height: canvas.Height, NameSpace: ns}
 
 		case "Int16":
 			headr.Len /= SizeofInt16
 			headr.Cap /= SizeofInt16
 			data := *(*[]int16)(unsafe.Pointer(&headr))
 			out[i] = &utils.Int16Raster{NoData: canvas.NoData, Data: data,
-				Width: canvas.Width, Height: canvas.Height}
+				Width: canvas.Width, Height: canvas.Height, NameSpace: ns}
 
 		case "Float32":
 			headr.Len /= SizeofFloat32
 			headr.Cap /= SizeofFloat32
 			data := *(*[]float32)(unsafe.Pointer(&headr))
 			out[i] = &utils.Float32Raster{NoData: canvas.NoData, Data: data,
-				Width: canvas.Width, Height: canvas.Height}
+				Width: canvas.Width, Height: canvas.Height, NameSpace: ns}
 
 		default:
 			enc.Error <- fmt.Errorf("raster type %s not recognised", canvas.Type)

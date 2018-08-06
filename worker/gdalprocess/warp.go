@@ -36,6 +36,7 @@ import "C"
 import (
 	"fmt"
 	"log"
+	"math"
 	"unsafe"
 
 	"reflect"
@@ -97,6 +98,66 @@ func initNoDataSlice(rType string, noDataValue float64, ssize int32) []uint8 {
 		return []uint8{}
 	}
 
+}
+
+func ComputeReprojectExtent(in *pb.GeoRPCGranule) *pb.Result {
+	srcFileC := C.CString(in.Path)
+	defer C.free(unsafe.Pointer(srcFileC))
+
+	hSrcDS := C.GDALOpenEx(srcFileC, C.GDAL_OF_READONLY|C.GDAL_OF_VERBOSE_ERROR, nil, nil, nil)
+	if hSrcDS == nil {
+		return &pb.Result{Error: fmt.Sprintf("Failed to open existing dataset: %v", in.Path)}
+	}
+	defer C.GDALClose(hSrcDS)
+
+	hSRS := C.OSRNewSpatialReference(nil)
+	defer C.OSRDestroySpatialReference(hSRS)
+	C.OSRImportFromEPSG(hSRS, C.int(in.EPSG))
+	var projWKT *C.char
+	defer C.free(unsafe.Pointer(projWKT))
+	C.OSRExportToWkt(hSRS, &projWKT)
+
+	hTransformArg := C.GDALCreateGenImgProjTransformer(hSrcDS, nil, nil, projWKT, C.int(0), C.double(0), C.int(0))
+	if hTransformArg == nil {
+		return &pb.Result{Error: fmt.Sprintf("GDALCreateGenImgProjTransformer() failed")}
+	}
+	defer C.GDALDestroyGenImgProjTransformer(hTransformArg)
+
+	psInfo := (*C.GDALTransformerInfo)(hTransformArg)
+
+	var padfGeoTransformOut [6]C.double
+	var pnPixels, pnLines C.int
+	gerr := C.GDALSuggestedWarpOutput(hSrcDS, psInfo.pfnTransform, hTransformArg, &padfGeoTransformOut[0], &pnPixels, &pnLines)
+	if gerr != 0 {
+		return &pb.Result{Error: fmt.Sprintf("GDALSuggestedWarpOutput() failed")}
+	}
+
+	xRes := float64(padfGeoTransformOut[1])
+	yRes := float64(math.Abs(float64(padfGeoTransformOut[5])))
+
+	xMin := in.Geot[0]
+	yMin := in.Geot[1]
+	xMax := in.Geot[2]
+	yMax := in.Geot[3]
+
+	nPixels := int((xMax - xMin + xRes/2.0) / xRes)
+	nLines := int((yMax - yMin + yRes/2.0) / yRes)
+
+	out := make([]int, 2)
+	out[0] = nPixels
+	out[1] = nLines
+
+	header := *(*reflect.SliceHeader)(unsafe.Pointer(&out))
+	intSize := int(unsafe.Sizeof(int(0)))
+	header.Len *= intSize
+	header.Cap *= intSize
+	dBytes := *(*[]uint8)(unsafe.Pointer(&header))
+
+	dBytesCopy := make([]uint8, len(dBytes))
+	for i := 0; i < len(dBytes); i++ {
+		dBytesCopy[i] = dBytes[i]
+	}
+	return &pb.Result{Raster: &pb.Raster{Data: dBytesCopy, NoData: 0, RasterType: "Int"}, Error: "OK"}
 }
 
 func WarpRaster(in *pb.GeoRPCGranule, debug bool) *pb.Result {
