@@ -438,12 +438,10 @@ func (config *Config) LoadConfigFile(configFile string) error {
 	}
 
 	if len(config.ServiceConfig.TempDir) > 0 {
-		if _, err := os.Stat(config.ServiceConfig.TempDir); os.IsNotExist(err) {
-			log.Printf("Creating temp directory: %v", config.ServiceConfig.TempDir)
-			err := os.MkdirAll(config.ServiceConfig.TempDir, os.ModePerm)
-			if err != nil {
-				return fmt.Errorf("error creating temp directory: %v", err)
-			}
+		log.Printf("Creating temp directory: %v", config.ServiceConfig.TempDir)
+		err := os.MkdirAll(config.ServiceConfig.TempDir, os.ModePerm)
+		if err != nil {
+			return fmt.Errorf("error creating temp directory: %v", err)
 		}
 	}
 
