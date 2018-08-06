@@ -40,10 +40,10 @@ func scale(r Raster, params ScaleParams) (*ByteRaster, error) {
 				t.Data[i] = uint8(float32(value) * scale)
 			}
 		}
-		return &ByteRaster{t.Data, t.Height, t.Width, t.NoData}, nil
+		return &ByteRaster{t.NameSpace, t.Data, t.Height, t.Width, t.NoData}, nil
 
 	case *Int16Raster:
-		out := &ByteRaster{NoData: t.NoData, Data: make([]uint8, t.Height*t.Width), Width: t.Width, Height: t.Height}
+		out := &ByteRaster{NameSpace: t.NameSpace, NoData: t.NoData, Data: make([]uint8, t.Height*t.Width), Width: t.Width, Height: t.Height}
 		noData := int16(t.NoData)
 		offset := int16(params.Offset)
 		clip := int16(params.Clip)
@@ -64,7 +64,7 @@ func scale(r Raster, params ScaleParams) (*ByteRaster, error) {
 		return out, nil
 
 	case *UInt16Raster:
-		out := &ByteRaster{NoData: t.NoData, Data: make([]uint8, t.Height*t.Width), Width: t.Width, Height: t.Height}
+		out := &ByteRaster{NameSpace: t.NameSpace, NoData: t.NoData, Data: make([]uint8, t.Height*t.Width), Width: t.Width, Height: t.Height}
 		noData := uint16(t.NoData)
 		offset := uint16(params.Offset)
 		clip := uint16(params.Clip)
@@ -85,7 +85,7 @@ func scale(r Raster, params ScaleParams) (*ByteRaster, error) {
 		return out, nil
 
 	case *Float32Raster:
-		out := &ByteRaster{NoData: t.NoData, Data: make([]uint8, t.Height*t.Width), Width: t.Width, Height: t.Height}
+		out := &ByteRaster{NameSpace: t.NameSpace, NoData: t.NoData, Data: make([]uint8, t.Height*t.Width), Width: t.Width, Height: t.Height}
 		noData := float32(t.NoData)
 		offset := float32(params.Offset)
 		clip := float32(params.Clip)

@@ -17,12 +17,16 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"log"
+	"math"
 	"math/rand"
 	"net/http"
+	"net/url"
 	"os"
 	"regexp"
+	"runtime"
 	"strings"
 	"time"
 
@@ -43,6 +47,7 @@ var (
 	serverDataDir   = flag.String("data_dir", utils.DataDir, "Server data directory.")
 	serverConfigDir = flag.String("conf_dir", utils.EtcDir, "Server config directory.")
 	validateConfig  = flag.Bool("check_conf", false, "Validate server config files.")
+	verbose         = flag.Bool("v", false, "Verbose mode for more server outputs.")
 )
 
 var reWMSMap map[string]*regexp.Regexp
@@ -305,7 +310,7 @@ func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r
 
 }
 
-func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, reqURL string, w http.ResponseWriter) {
+func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, reqURL string, w http.ResponseWriter, query map[string][]string) {
 	if params.Request == nil {
 		http.Error(w, "Malformed WCS, a Request field needs to be specified", 400)
 	}
@@ -387,83 +392,429 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 			endTime = &eT
 		}
 
-		xRes := (params.BBox[2] - params.BBox[0]) / float64(*params.Width)
-		if conf.Layers[idx].ZoomLimit != 0.0 && xRes > conf.Layers[idx].ZoomLimit {
-			http.Error(w, err.Error(), 417)
-			return
-		}
+		maxXTileSize := 1024
+		maxYTileSize := 1024
+		checkpointThreshold := 300
+		minTilesPerWorker := 5
 
-		geoReq := &proc.GeoTileRequest{ConfigPayLoad: proc.ConfigPayLoad{NameSpaces: conf.Layers[idx].RGBProducts,
-			Mask:    conf.Layers[idx].Mask,
-			Palette: conf.Layers[idx].Palette,
-			ScaleParams: proc.ScaleParams{Offset: conf.Layers[idx].OffsetValue,
-				Scale: conf.Layers[idx].ScaleValue,
-				Clip:  conf.Layers[idx].ClipValue,
+		var wcsWorkerNodes []string
+		workerTileRequests := [][]*proc.GeoTileRequest{}
+
+		_, isWorker := query["wbbox"]
+
+		getGeoTileRequest := func(width int, height int, bbox []float64, offX int, offY int) *proc.GeoTileRequest {
+			geoReq := &proc.GeoTileRequest{ConfigPayLoad: proc.ConfigPayLoad{NameSpaces: conf.Layers[idx].RGBProducts,
+				Mask:    conf.Layers[idx].Mask,
+				Palette: conf.Layers[idx].Palette,
+				ScaleParams: proc.ScaleParams{Offset: conf.Layers[idx].OffsetValue,
+					Scale: conf.Layers[idx].ScaleValue,
+					Clip:  conf.Layers[idx].ClipValue,
+				},
+				ZoomLimit:       0.0,
+				PolygonSegments: conf.Layers[idx].WcsPolygonSegments,
+				Timeout:         conf.Layers[idx].WcsTimeout,
+				GrpcConcLimit:   conf.Layers[idx].GrpcWcsConcPerNode,
 			},
-			ZoomLimit:       conf.Layers[idx].ZoomLimit,
-			PolygonSegments: conf.Layers[idx].WcsPolygonSegments,
-			Timeout:         conf.Layers[idx].WcsTimeout,
-			GrpcConcLimit:   conf.Layers[idx].GrpcWcsConcPerNode,
-		},
-			Collection: conf.Layers[idx].DataSource,
-			CRS:        *params.CRS,
-			BBox:       params.BBox,
-			Height:     *params.Height,
-			Width:      *params.Width,
-			StartTime:  params.Time,
-			EndTime:    endTime,
-		}
+				Collection: conf.Layers[idx].DataSource,
+				CRS:        *params.CRS,
+				BBox:       bbox,
+				Height:     height,
+				Width:      width,
+				StartTime:  params.Time,
+				EndTime:    endTime,
+				OffX:       offX,
+				OffY:       offY,
+			}
 
-		geot := utils.BBox2Geot(geoReq.Width, geoReq.Height, geoReq.BBox)
-		// TODO do this conversion here and pass the int to the pipeline
-		epsg, err := utils.ExtractEPSGCode(geoReq.CRS)
-		if err != nil {
-			http.Error(w, fmt.Sprintf("Request %s should contain valid 'width' and 'height' parameters.", reqURL), 400)
-			return
+			return geoReq
 		}
 
 		ctx, ctxCancel := context.WithCancel(ctx)
 		defer ctxCancel()
 		errChan := make(chan error)
-		tp := proc.InitTilePipeline(ctx, conf.ServiceConfig.MASAddress, conf.ServiceConfig.WorkerNodes, conf.Layers[idx].MaxGrpcRecvMsgSize, conf.Layers[idx].WcsPolygonShardConcLimit, errChan)
 
-		select {
-		case res := <-tp.Process(geoReq):
-			out, err := utils.EncodeGdal(*params.Format, res, geot, epsg)
-			if err != nil {
-				Info.Printf("Error in the utils.EncodeGdal: %v\n", err)
-				http.Error(w, err.Error(), 500)
+		epsg, err := utils.ExtractEPSGCode(*params.CRS)
+		if err != nil {
+			http.Error(w, fmt.Sprintf("Invalid CRS code", *params.CRS), 400)
+			return
+		}
+
+		if *params.Width <= 0 || *params.Height <= 0 {
+			if isWorker {
+				msg := "WCS: worker width or height negative"
+				Info.Printf(msg)
+				http.Error(w, msg, 500)
 				return
 			}
 
-			fileExt := "wcs"
-			contentType := "application/wcs"
-			switch strings.ToLower(*params.Format) {
-			case "geotiff":
-				fileExt = "tiff"
-				contentType = "application/geotiff"
-			case "netcdf":
-				fileExt = "nc"
-				contentType = "application/netcdf"
+			geoReq := getGeoTileRequest(0, 0, params.BBox, 0, 0)
+			maxWidth, maxHeight, err := proc.ComputeReprojectionExtent(ctx, geoReq, conf.ServiceConfig.MASAddress, conf.ServiceConfig.WorkerNodes, epsg, params.BBox, *verbose)
+			Info.Printf("WCS: Output image size: width=%v, height=%v", maxWidth, maxHeight)
+			if maxWidth > 0 && maxHeight > 0 {
+				*params.Width = maxWidth
+				*params.Height = maxHeight
+
+				rex := regexp.MustCompile(`(?i)&width\s*=\s*[-+]?[0-9]+`)
+				reqURL = rex.ReplaceAllString(reqURL, ``)
+
+				rex = regexp.MustCompile(`(?i)&height\s*=\s*[-+]?[0-9]+`)
+				reqURL = rex.ReplaceAllString(reqURL, ``)
+
+				reqURL += fmt.Sprintf("&width=%d&height=%d", maxWidth, maxHeight)
+			} else {
+				errMsg := "WCS: failed to compute output extent"
+				Info.Printf(errMsg, err)
+				http.Error(w, errMsg, 500)
+				return
 			}
-			ISOFormat := "2006-01-02T15:04:05.000Z"
-			fileNameDateTime := params.Time.Format(ISOFormat)
 
-			var re = regexp.MustCompile(`[^a-zA-Z0-9\-_\s]`)
-			fileNameCoverages := re.ReplaceAllString(params.Coverages[0], `-`)
-
-			w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%s.%s.%s", fileNameCoverages, fileNameDateTime, fileExt))
-			w.Header().Set("Content-Type", contentType)
-			w.Header().Set("Content-Length", fmt.Sprintf("%d", len(out)))
-
-			w.Write(out)
-		case err := <-errChan:
-			Info.Printf("Error in the pipeline: %v\n", err)
-			http.Error(w, err.Error(), 500)
-		case <-ctx.Done():
-			Error.Printf("Context cancelled with message: %v\n", ctx.Err())
-			http.Error(w, ctx.Err().Error(), 500)
 		}
+
+		if !isWorker {
+			if *params.Width > maxXTileSize || *params.Height > maxYTileSize {
+				tmpTileRequests := []*proc.GeoTileRequest{}
+				xRes := (params.BBox[2] - params.BBox[0]) / float64(*params.Width)
+				yRes := (params.BBox[3] - params.BBox[1]) / float64(*params.Height)
+
+				for y := 0; y < *params.Height; y += maxYTileSize {
+					for x := 0; x < *params.Width; x += maxXTileSize {
+						yMin := params.BBox[1] + float64(y)*yRes
+						yMax := math.Min(params.BBox[1]+float64(y+maxYTileSize)*yRes, params.BBox[3])
+						xMin := params.BBox[0] + float64(x)*xRes
+						xMax := math.Min(params.BBox[0]+float64(x+maxXTileSize)*xRes, params.BBox[2])
+
+						tileXSize := int(.5 + (xMax-xMin)/xRes)
+						tileYSize := int(.5 + (yMax-yMin)/yRes)
+
+						geoReq := getGeoTileRequest(tileXSize, tileYSize, []float64{xMin, yMin, xMax, yMax}, x, *params.Height-y-tileYSize)
+						tmpTileRequests = append(tmpTileRequests, geoReq)
+					}
+				}
+
+				for iw, worker := range conf.ServiceConfig.OWSClusterNodes {
+					parsedUrl, err := url.Parse(worker)
+					if err != nil {
+						if *verbose {
+							Info.Printf("WCS: invalid worker hostname %v, (%v of %v)\n", worker, iw, len(conf.ServiceConfig.OWSClusterNodes))
+						}
+						continue
+					}
+
+					if parsedUrl.Host == conf.ServiceConfig.OWSHostname {
+						if *verbose {
+							Info.Printf("WCS: skipping worker whose hostname == OWSHostName %v, (%v of %v)\n", worker, iw, len(conf.ServiceConfig.OWSClusterNodes))
+						}
+						continue
+					}
+					wcsWorkerNodes = append(wcsWorkerNodes, worker)
+				}
+
+				nWorkers := len(wcsWorkerNodes) + 1
+				tilesPerWorker := int(math.Round(float64(len(tmpTileRequests)) / float64(nWorkers)))
+				if tilesPerWorker < minTilesPerWorker {
+					tilesPerWorker = minTilesPerWorker
+				}
+
+				isLastWorker := false
+				for i := 0; i < nWorkers; i++ {
+					iBgn := i * tilesPerWorker
+					iEnd := iBgn + tilesPerWorker
+					if iEnd > len(tmpTileRequests) {
+						iEnd = len(tmpTileRequests)
+						isLastWorker = true
+					}
+
+					workerTileRequests = append(workerTileRequests, tmpTileRequests[iBgn:iEnd])
+					if isLastWorker {
+						break
+					}
+				}
+
+			} else {
+				geoReq := getGeoTileRequest(*params.Width, *params.Height, params.BBox, 0, 0)
+				workerTileRequests = append(workerTileRequests, []*proc.GeoTileRequest{geoReq})
+			}
+		} else {
+			for _, qParams := range []string{"wwidth", "wheight", "woffx", "woffy"} {
+				if len(query[qParams]) != len(query["wbbox"]) {
+					http.Error(w, fmt.Sprintf("worker parameter %v has different length from wbbox: %v", qParams, reqURL), 400)
+					return
+				}
+			}
+
+			workerBbox := query["wbbox"]
+			workerWidth := query["wwidth"]
+			workerHeight := query["wheight"]
+			workerOffX := query["woffx"]
+			workerOffY := query["woffy"]
+
+			wParams := make(map[string][]string)
+			wParams["bbox"] = []string{""}
+			wParams["width"] = []string{""}
+			wParams["height"] = []string{""}
+			wParams["x"] = []string{""}
+			wParams["y"] = []string{""}
+
+			tmpTileRequests := []*proc.GeoTileRequest{}
+			for iw, bbox := range workerBbox {
+				wParams["bbox"][0] = bbox
+				wParams["width"][0] = workerWidth[iw]
+				wParams["height"][0] = workerHeight[iw]
+				wParams["x"][0] = workerOffX[iw]
+				wParams["y"][0] = workerOffY[iw]
+
+				workerParams, err := utils.WMSParamsChecker(wParams, reWMSMap)
+				if err != nil {
+					http.Error(w, fmt.Sprintf("worker parameter error: %v", err), 400)
+					return
+				}
+
+				geoReq := getGeoTileRequest(*workerParams.Width, *workerParams.Height, workerParams.BBox, *workerParams.X, *workerParams.Y)
+				tmpTileRequests = append(tmpTileRequests, geoReq)
+			}
+
+			workerTileRequests = append(workerTileRequests, tmpTileRequests)
+		}
+
+		hDstDS := utils.GetDummyGDALDatasetH()
+		var masterTempFile string
+
+		tempFileGeoReq := make(map[string][]*proc.GeoTileRequest)
+
+		workerErrChan := make(chan error)
+		workerDoneChan := make(chan string, len(workerTileRequests)-1)
+
+		if !isWorker && len(workerTileRequests) > 1 {
+			for iw := 1; iw < len(workerTileRequests); iw++ {
+				workerHostName := wcsWorkerNodes[iw-1]
+				queryUrl := workerHostName + reqURL
+				for _, geoReq := range workerTileRequests[iw] {
+					paramStr := fmt.Sprintf("&wbbox=%f,%f,%f,%f&wwidth=%d&wheight=%d&woffx=%d&woffy=%d",
+						geoReq.BBox[0], geoReq.BBox[1], geoReq.BBox[2], geoReq.BBox[3], geoReq.Width, geoReq.Height, geoReq.OffX, geoReq.OffY)
+
+					queryUrl += paramStr
+				}
+
+				if *verbose {
+					Info.Printf("WCS worker (%v of %v): %v\n", iw, len(workerTileRequests)-1, queryUrl)
+				}
+
+				trans := &http.Transport{}
+				req, err := http.NewRequest("GET", queryUrl, nil)
+				if err != nil {
+					errMsg := fmt.Sprintf("WCS: worker NewRequest error: %v", err)
+					Info.Printf(errMsg)
+					http.Error(w, errMsg, 500)
+					return
+				}
+				defer trans.CancelRequest(req)
+
+				tempFileHandle, err := ioutil.TempFile(conf.ServiceConfig.TempDir, "worker_raster_")
+				if err != nil {
+					errMsg := fmt.Sprintf("WCS: failed to create raster temp file for WCS worker: %v", err)
+					Info.Printf(errMsg)
+					http.Error(w, errMsg, 500)
+					return
+				}
+				tempFileHandle.Close()
+				defer os.Remove(tempFileHandle.Name())
+				tempFileGeoReq[tempFileHandle.Name()] = workerTileRequests[iw]
+
+				go func(req *http.Request, transport *http.Transport, tempFileName string) {
+					client := &http.Client{Transport: transport}
+
+					resp, err := client.Do(req)
+					if err != nil {
+						workerErrChan <- fmt.Errorf("WCS: worker error: %v", err)
+						return
+					}
+					defer resp.Body.Close()
+
+					tempFileHandle, err := os.Create(tempFileName)
+					if err != nil {
+						workerErrChan <- fmt.Errorf("failed to open raster temp file for WCS worker: %v\n", err)
+						return
+					}
+					defer tempFileHandle.Close()
+
+					_, err = io.Copy(tempFileHandle, resp.Body)
+					if err != nil {
+						tempFileHandle.Close()
+						workerErrChan <- fmt.Errorf("WCS: worker error in io.Copy(): %v", err)
+						return
+					}
+
+					workerDoneChan <- tempFileName
+				}(req, trans, tempFileHandle.Name())
+			}
+		}
+
+		geot := utils.BBox2Geot(*params.Width, *params.Height, params.BBox)
+
+		driverFormat := *params.Format
+		if isWorker {
+			driverFormat = "geotiff"
+		}
+
+		isInit := false
+
+		tp := proc.InitTilePipeline(ctx, conf.ServiceConfig.MASAddress, conf.ServiceConfig.WorkerNodes, conf.Layers[idx].MaxGrpcRecvMsgSize, conf.Layers[idx].WcsPolygonShardConcLimit, errChan)
+		for ir, geoReq := range workerTileRequests[0] {
+			if *verbose {
+				Info.Printf("WCS: processing tile (%d of %d): xOff:%v, yOff:%v, width:%v, height:%v", ir+1, len(workerTileRequests[0]), geoReq.OffX, geoReq.OffY, geoReq.Width, geoReq.Height)
+			}
+
+			select {
+			case res := <-tp.Process(geoReq):
+				if !isInit {
+					hDstDS, masterTempFile, err = utils.EncodeGdalOpen(conf.ServiceConfig.TempDir, 1024, 256, driverFormat, geot, epsg, res, *params.Width, *params.Height, len(conf.Layers[idx].RGBProducts))
+					defer os.Remove(masterTempFile)
+					if err != nil {
+						errMsg := fmt.Sprintf("EncodeGdalOpen() failed: %v", err)
+						Info.Printf(errMsg)
+						http.Error(w, errMsg, 500)
+						return
+					}
+					isInit = true
+				}
+
+				err := utils.EncodeGdal(hDstDS, res, geoReq.OffX, geoReq.OffY)
+				if err != nil {
+					Info.Printf("Error in the utils.EncodeGdal: %v\n", err)
+					http.Error(w, err.Error(), 500)
+					return
+				}
+
+			case err := <-errChan:
+				Info.Printf("WCS: error in the pipeline: %v\n", err)
+				http.Error(w, err.Error(), 500)
+				return
+			case err := <-workerErrChan:
+				Info.Printf("WCS worker error: %v\n", err)
+				http.Error(w, err.Error(), 500)
+				return
+			case <-ctx.Done():
+				Error.Printf("Context cancelled with message: %v\n", ctx.Err())
+				http.Error(w, ctx.Err().Error(), 500)
+				return
+			}
+
+			if (ir+1)%checkpointThreshold == 0 {
+				hDstDS, err = utils.EncodeGdalFlush(hDstDS, masterTempFile, driverFormat)
+				if err != nil {
+					Info.Printf("Error in the pipeline: %v\n", err)
+					http.Error(w, err.Error(), 500)
+				}
+				runtime.GC()
+			}
+		}
+
+		if !isWorker && len(workerTileRequests) > 1 {
+			nWorkerDone := 0
+			allWorkerDone := false
+			for {
+				select {
+				case workerTempFileName := <-workerDoneChan:
+					offX := make([]int, len(tempFileGeoReq[workerTempFileName]))
+					offY := make([]int, len(offX))
+					width := make([]int, len(offX))
+					height := make([]int, len(offX))
+
+					for ig, geoReq := range tempFileGeoReq[workerTempFileName] {
+						offX[ig] = geoReq.OffX
+						offY[ig] = geoReq.OffY
+						width[ig] = geoReq.Width
+						height[ig] = geoReq.Height
+					}
+
+					var t0 time.Time
+					if *verbose {
+						t0 = time.Now()
+					}
+					err := utils.EncodeGdalMerge(ctx, hDstDS, "geotiff", workerTempFileName, width, height, offX, offY)
+					if err != nil {
+						utils.EncodeGdalClose(hDstDS)
+						Info.Printf("%v\n", err)
+						http.Error(w, err.Error(), 500)
+						return
+					}
+					os.Remove(workerTempFileName)
+					nWorkerDone++
+
+					if *verbose {
+						t1 := time.Since(t0)
+						Info.Printf("WCS: merge %v to %v done (%v of %v), time: %v", workerTempFileName, masterTempFile, nWorkerDone, len(workerTileRequests)-1, t1)
+					}
+
+					if nWorkerDone == len(workerTileRequests)-1 {
+						allWorkerDone = true
+					}
+				case err := <-workerErrChan:
+					utils.EncodeGdalClose(hDstDS)
+					Info.Printf("%v\n", err)
+					http.Error(w, err.Error(), 500)
+					return
+				case <-ctx.Done():
+					utils.EncodeGdalClose(hDstDS)
+					Error.Printf("Context cancelled with message: %v\n", ctx.Err())
+					http.Error(w, ctx.Err().Error(), 500)
+					return
+				}
+
+				if allWorkerDone {
+					break
+				}
+			}
+		}
+
+		utils.EncodeGdalClose(hDstDS)
+
+		fileExt := "wcs"
+		contentType := "application/wcs"
+		switch strings.ToLower(*params.Format) {
+		case "geotiff":
+			fileExt = "tiff"
+			contentType = "application/geotiff"
+		case "netcdf":
+			fileExt = "nc"
+			contentType = "application/netcdf"
+		}
+		ISOFormat := "2006-01-02T15:04:05.000Z"
+		fileNameDateTime := params.Time.Format(ISOFormat)
+
+		var re = regexp.MustCompile(`[^a-zA-Z0-9\-_\s]`)
+		fileNameCoverages := re.ReplaceAllString(params.Coverages[0], `-`)
+
+		w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%s.%s.%s", fileNameCoverages, fileNameDateTime, fileExt))
+		w.Header().Set("Content-Type", contentType)
+
+		fileHandle, err := os.Open(masterTempFile)
+		if err != nil {
+			errMsg := fmt.Sprintf("Error opening raster file: %v", err)
+			Info.Printf(errMsg)
+			http.Error(w, errMsg, 500)
+		}
+		defer fileHandle.Close()
+
+		fileInfo, err := fileHandle.Stat()
+		if err != nil {
+			errMsg := fmt.Sprintf("file stat() failed: %v", err)
+			Info.Printf(errMsg)
+			http.Error(w, errMsg, 500)
+		}
+		w.Header().Set("Content-Length", fmt.Sprintf("%d", fileInfo.Size()))
+
+		bytesSent, err := io.Copy(w, fileHandle)
+		if err != nil {
+			errMsg := fmt.Sprintf("SendFile failed: %v", err)
+			Info.Printf(errMsg)
+			http.Error(w, errMsg, 500)
+		}
+
+		if *verbose {
+			Info.Printf("WCS: file_size:%v, bytes_sent:%v\n", fileInfo.Size(), bytesSent)
+		}
+
 		return
 
 	default:
@@ -665,7 +1016,7 @@ func generalHandler(conf *utils.Config, w http.ResponseWriter, r *http.Request) 
 			http.Error(w, fmt.Sprintf("Wrong WCS parameters on URL: %s", err), 400)
 			return
 		}
-		serveWCS(ctx, params, conf, r.URL.String(), w)
+		serveWCS(ctx, params, conf, r.URL.String(), w, query)
 	case "WPS":
 		params, err := utils.WPSParamsChecker(query, reWPSMap)
 		if err != nil {
