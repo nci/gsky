@@ -1,10 +1,11 @@
 package gdalprocess
 
 import (
-	"github.com/nci/gsky/utils"
-	pb "github.com/nci/gsky/worker/gdalservice"
 	"os"
 	"testing"
+
+	"github.com/nci/gsky/utils"
+	pb "github.com/nci/gsky/worker/gdalservice"
 )
 
 func TestComputeReprojectExtent(t *testing.T) {

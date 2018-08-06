@@ -2,11 +2,12 @@ package processor
 
 import (
 	"fmt"
-	"golang.org/x/net/context"
 	"net/http"
 	"strings"
 	"testing"
 	"time"
+
+	"golang.org/x/net/context"
 )
 
 func TestComputeReprojectionExtent(t *testing.T) {
