@@ -8,8 +8,8 @@ We choose to download the data files corresponding to the Australia region for y
 
 ## Step 1: Downloading sample data
 
-Users can download the data files either into the container filesystem or to the host filesystem. For this tutorial, we demonstrate how to download files to the host filesystem and ingest them into the container later.
-Before downloading them,  we first create a directory on the host filesystem that will store these files using the following command:
+Users can download the data files either into the container file system or to the host file system. For this tutorial, we demonstrate how to download files to the host file system and ingest them into the container later.
+Before downloading them,  we first create a directory on the host file system that will store these files using the following command:
 `demo@demo-pc:~$ mkdir docker_user_data && cd docker_user_data`
 
 Then we use the following bash script to download the data files.
@@ -34,7 +34,7 @@ wget $url/FC.v310.MCD43A4.h31v12.2018.006.nc
 wget $url/FC.v310.MCD43A4.h32v10.2018.006.nc
 ```
 
-## Step 2: Mapping `~/docker_user_data` from the host filesystem into container filesystem
+## Step 2: Mapping `~/docker_user_data` from the host file system into container file system
 
 This is a typical step of docker volume mapping. The data files will only be accessible from within the container after volume mapping. The following command maps host directory `/home/demo/docker_user_data` into container directory `/user_data`. Absolute path is required for volume mapping.
 
@@ -130,6 +130,6 @@ Thus the process id is 35. We then send the `SIGUP` signal to this process:
 
 `root@aa5d503869e6:/# kill -1 35`
 
-## Visualizing the new layer in TerriaJS
+## Visualising the new layer in TerriaJS
 
-To visualize the layer we just published, please go to `http://127.0.0.1:8080/terria` in your browser. Once the page is loaded, please click on `Add data` -> `My Data` -> `Add Web Data`. In the web data text box, please enter `http://127.0.0.1:8080/ows`. The new layer should appear in the layer list.
+To visualise the layer we just published, please go to `http://127.0.0.1:8080/terria` in your browser. Once the page is loaded, please click on `Add data` -> `My Data` -> `Add Web Data`. In the web data text box, please enter `http://127.0.0.1:8080/ows`. The new layer should appear in the layer list.
