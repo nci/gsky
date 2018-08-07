@@ -24,7 +24,7 @@ type WCSParams struct {
 	Format    *string    `json:"format,omitempty"`
 }
 
-// WCSRegexMap maps WCS request parameters to
+// WCSRegexpMap maps WCS request parameters to
 // regular expressions for doing validation
 // when parsing.
 // --- These regexp do not avoid every case of

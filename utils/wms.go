@@ -31,7 +31,7 @@ type WMSParams struct {
 	Version *string    `json:"version,omitempty"`
 }
 
-// WMSRegexMap maps WMS request parameters to
+// WMSRegexpMap maps WMS request parameters to
 // regular expressions for doing validation
 // when parsing.
 // --- These regexp do not avoid every case of

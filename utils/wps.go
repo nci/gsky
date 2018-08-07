@@ -80,7 +80,7 @@ type WPSParams struct {
 	FeatCol       geo.FeatureCollection `json:"feature_collection"`
 }
 
-// WPSRegexMap maps WPS request parameters to
+// WPSRegexpMap maps WPS request parameters to
 // regular expressions for doing validation
 // when parsing.
 // --- These regexp do not avoid every case of
