@@ -7,6 +7,7 @@ import (
 	"image/color"
 	"io/ioutil"
 	"log"
+	"math"
 	"net/http"
 	"os"
 	"os/signal"
@@ -238,7 +239,7 @@ func GenerateDatesRegular(start, end time.Time, stepMins time.Duration) []string
 	return dates
 }
 
-func GenerateDatesMas(start, end string, masAddress string, collection string, namespaces []string) []string {
+func GenerateDatesMas(start, end string, masAddress string, collection string, namespaces []string, stepMins time.Duration) []string {
 	emptyDates := []string{}
 
 	start = strings.TrimSpace(start)
@@ -294,6 +295,65 @@ func GenerateDatesMas(start, end string, masAddress string, collection string, n
 	}
 
 	log.Printf("MAS returned %v timestamps", len(timestamps.Timestamps))
+
+	if int64(stepMins) > 0 && len(timestamps.Timestamps) > 0 {
+		startDate, err := time.Parse(ISOFormat, timestamps.Timestamps[0])
+		if err != nil {
+			log.Printf("Error parsing MAS returned start date: %v", err)
+			return emptyDates
+		}
+		endDate, err := time.Parse(ISOFormat, timestamps.Timestamps[len(timestamps.Timestamps)-1])
+		if err != nil {
+			log.Printf("Error parsing MAS returned end date: %v", err)
+			return emptyDates
+		}
+
+		refDates := []time.Time{}
+		for startDate.Before(endDate) {
+			refDates = append(refDates, startDate)
+			startDate = startDate.Add(stepMins)
+		}
+		refDates = append(refDates, endDate)
+
+		aggregatedTimestamps := make([]string, len(refDates))
+
+		iBgn := 0
+		for iRef, refTs := range refDates {
+			ts0 := time.Time{}
+			for it := iBgn; it < len(timestamps.Timestamps); it++ {
+				tsStr := timestamps.Timestamps[it]
+				ts, err := time.Parse(ISOFormat, tsStr)
+				if err != nil {
+					log.Printf("Error parsing MAS returned date: %v", err)
+					return emptyDates
+				}
+
+				refDiff := int64(refTs.Sub(ts))
+				if refDiff == 0 {
+					aggregatedTimestamps[iRef] = tsStr
+					iBgn = it + 1
+					break
+				}
+
+				if refDiff < 0 {
+					if it > iBgn {
+						refDiff0 := refTs.Sub(ts0)
+						if math.Abs(float64(refDiff)) >= math.Abs(float64(refDiff0)) {
+							tsStr = timestamps.Timestamps[it-1]
+							iBgn = it
+						}
+					}
+					aggregatedTimestamps[iRef] = tsStr
+					break
+				}
+
+				ts0 = ts
+			}
+		}
+
+		log.Printf("Aggregated timestamps: %v, steps: %v", len(aggregatedTimestamps), stepMins)
+		return aggregatedTimestamps
+	}
 
 	return timestamps.Timestamps
 }
@@ -399,8 +459,9 @@ const DefaultWcsPolygonShardConcLimit = 10
 // GetLayerDates loads dates for the ith layer
 func (config *Config) GetLayerDates(iLayer int) {
 	layer := config.Layers[iLayer]
+	step := time.Minute * time.Duration(60*24*layer.StepDays+60*layer.StepHours+layer.StepMinutes)
 	if strings.TrimSpace(strings.ToLower(layer.TimeGen)) == "mas" {
-		config.Layers[iLayer].Dates = GenerateDatesMas(layer.StartISODate, layer.EndISODate, config.ServiceConfig.MASAddress, layer.DataSource, layer.RGBProducts)
+		config.Layers[iLayer].Dates = GenerateDatesMas(layer.StartISODate, layer.EndISODate, config.ServiceConfig.MASAddress, layer.DataSource, layer.RGBProducts, step)
 	} else {
 		start, errStart := time.Parse(ISOFormat, layer.StartISODate)
 		if errStart != nil {
@@ -417,8 +478,11 @@ func (config *Config) GetLayerDates(iLayer int) {
 			}
 		}
 
-		step := time.Minute * time.Duration(60*24*layer.StepDays+60*layer.StepHours+layer.StepMinutes)
-		config.Layers[iLayer].Dates = GenerateDates(layer.TimeGen, start, end, step)
+		if int64(step) > 0 {
+			config.Layers[iLayer].Dates = GenerateDates(layer.TimeGen, start, end, step)
+		} else {
+			log.Printf("Invalid time steps: %v", step)
+		}
 	}
 
 }
