@@ -14,7 +14,7 @@ Before downloading them,  we first create a directory on the host filesystem tha
 
 Then we use the following bash script to download the data files.
 
-```
+```bash
 #!/bin/bash
 url="http://dapcm00.nci.org.au/thredds/fileServer/tc43/modis-fc/v310/tiles/8-day/cover"
 wget $url/FC.v310.MCD43A4.h27v12.2018.006.nc
@@ -46,7 +46,7 @@ The rest of the steps of this tutorial need to be performed within the docker GS
 
 `demo@demo-pc:~$ docker ps`
 
-```
+```bash
 CONTAINER ID        IMAGE               COMMAND                   ......
 aa5d503869e6        gjmouse/gsky:v0     "/bin/sh -c ./gsky_e…"    ......
 ```
@@ -56,11 +56,11 @@ As can be seen, the GSKY container ID is `aa5d`. Next, we open the shell for thi
 `demo@demo-pc:~$ docker exec -it aa5d /bin/bash`
 `root@aa5d503869e6:/#`
 
-## Step 3: Crawling and ingesting the data files
+## Step 4: Crawling and ingesting the data files
 
-GSKY indexing service requires metadata of the data files. Thus we need to crawl the data files to extract metadata followed by ingesting the metadata into the database. We use the following script to do so. As mentioned above, this step also needs to be performed from within the container. 
+GSKY indexing service requires metadata of the data files. Thus we need to crawl the data files to extract metadata followed by ingesting the metadata into the database. We use the following script to do so. As mentioned above, this step also needs to be performed from within the container.
 
-```
+```bash
 #!/bin/bash
 set -xeu
 
@@ -91,7 +91,7 @@ crawl_job_id="${CRAWL_DIR//[\/]/_}"
 (cd /gsky/share/mas && ./ingest_pipeline.sh $crawl_job_id /crawl_outputs/${crawl_job_id}_gdal.tsv.gz)
 ```
 
-## Step 4: Publishing a new layer corresponding the sample data
+## Step 5: Publishing a new layer corresponding the sample data
 
 The definition of the data layers is in GSKY config file. We open GSKY config file:
 
@@ -99,7 +99,7 @@ The definition of the data layers is in GSKY config file. We open GSKY config fi
 
 The config file is a JSON file and the `layers` is an array of layer JSON object. We add the new layer JSON object into the `layers` array.
 
-```
+```json
    {
       "name":"geoglam:c6:frac_cover",
       "title":"geoglam fractional cover c6",
@@ -116,7 +116,7 @@ The config file is a JSON file and the `layers` is an array of layer JSON object
     },
 ```
 
-## Step 5: Reloading GSKY config file
+## Step 6: Reloading GSKY config file
 
 The final step is to instruct GSKY to reload the config file we just edited. To do so, we send a `SIGUP` signal to GSKY `ows` process. We first find the `ows` process id:
 
