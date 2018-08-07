@@ -121,7 +121,10 @@ The config file is a JSON file and the `layers` is an array of layer JSON object
 The final step is to instruct GSKY to reload the config file we just edited. To do so, we send a `SIGUP` signal to GSKY `ows` process. We first find the `ows` process id:
 
 `root@aa5d503869e6:/# ps a|grep ows`
-`35 pts/0    Sl+    0:07 ./gsky/bin/gsky-ows -p 8080`
+
+```bash
+35 pts/0    Sl+    0:07 ./gsky/bin/gsky-ows -p 8080
+```
 
 Thus the process id is 35. We then send the `SIGUP` signal to this process:
 
