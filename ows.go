@@ -170,12 +170,18 @@ func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r
 			return
 		}
 		if params.Time == nil {
-			currentTime, err := time.Parse(utils.ISOFormat, conf.Layers[idx].Dates[len(conf.Layers[idx].Dates)-1])
-			if err != nil {
-				http.Error(w, fmt.Sprintf("Cannot find a valid date to proceed with the request: %s", reqURL), 400)
-				return
+			if len(conf.Layers[idx].Dates) == 0 {
+				currentTime := time.Now().UTC()
+				params.Time = &currentTime
+				Info.Printf("Layer '%v' has empty timestamps", conf.Layers[idx].Name)
+			} else {
+				currentTime, err := time.Parse(utils.ISOFormat, conf.Layers[idx].Dates[len(conf.Layers[idx].Dates)-1])
+				if err != nil {
+					http.Error(w, fmt.Sprintf("Cannot find a valid date to proceed with the request: %s", reqURL), 400)
+					return
+				}
+				params.Time = &currentTime
 			}
-			params.Time = &currentTime
 		}
 		if params.CRS == nil {
 			http.Error(w, fmt.Sprintf("Request %s should contain a valid ISO 'crs/srs' parameter.", reqURL), 400)
@@ -361,12 +367,18 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 		}
 
 		if params.Time == nil {
-			currentTime, err := time.Parse(utils.ISOFormat, conf.Layers[idx].Dates[len(conf.Layers[idx].Dates)-1])
-			if err != nil {
-				http.Error(w, fmt.Sprintf("Cannot find a valid date to proceed with the request: %s", reqURL), 400)
-				return
+			if len(conf.Layers[idx].Dates) == 0 {
+				currentTime := time.Now().UTC()
+				params.Time = &currentTime
+				Info.Printf("Layer '%v' has empty timestamps", conf.Layers[idx].Name)
+			} else {
+				currentTime, err := time.Parse(utils.ISOFormat, conf.Layers[idx].Dates[len(conf.Layers[idx].Dates)-1])
+				if err != nil {
+					http.Error(w, fmt.Sprintf("Cannot find a valid date to proceed with the request: %s", reqURL), 400)
+					return
+				}
+				params.Time = &currentTime
 			}
-			params.Time = &currentTime
 		}
 		if params.CRS == nil {
 			http.Error(w, fmt.Sprintf("Request %s should contain a valid ISO 'crs/srs' parameter.", reqURL), 400)
