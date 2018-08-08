@@ -223,3 +223,24 @@ func ExecuteWriteTemplateFile(w io.Writer, data interface{}, filePath string) er
 
 	return nil
 }
+
+// Get current timestamp if time is not specified in the HTTP request
+func GetCurrentTimeStamp(timestamps []string) (*time.Time, error) {
+	var currentTime time.Time
+
+	// Empty timestamps often indicate something wrong with user data, GSKY config files,
+	// or both. We simply fill Now() to prevent the out-of-range index error for the Dates
+	// array. The implification of this is that users will get a blank image in the HTTP
+	// response instead of the 500 internal server error.
+	if len(timestamps) == 0 {
+		currentTime = time.Now().UTC()
+	} else {
+		tmpTime, err := time.Parse(ISOFormat, timestamps[len(timestamps)-1])
+		if err != nil {
+			return nil, fmt.Errorf("Cannot find a valid date to proceed with the request")
+		}
+		currentTime = tmpTime
+	}
+
+	return &currentTime, nil
+}
