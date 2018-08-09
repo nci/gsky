@@ -224,7 +224,8 @@ func ExecuteWriteTemplateFile(w io.Writer, data interface{}, filePath string) er
 	return nil
 }
 
-// Get current timestamp if time is not specified in the HTTP request
+// GetCurrentTimeStamp gets the current timestamp if time is not
+// specified in the HTTP request
 func GetCurrentTimeStamp(timestamps []string) (*time.Time, error) {
 	var currentTime time.Time
 
