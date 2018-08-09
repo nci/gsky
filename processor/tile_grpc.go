@@ -128,13 +128,35 @@ func (gi *GeoRasterGRPC) Run(polyLimiter *ConcLimiter) {
 	// model for two reasons: a) the concurrency among polygon shards b) interleave merger
 	// computation with gRPC IO.
 	// 2) The concurrency of shards is controled by PolygonShardConcLimit
-	// A typical range of value between 5 to 10 scales well for
-	// both small and large requests.
+	// A typical value of 2 scales well for both small and large requests.
 	// By varying this shard concurrency value, we can trade off space and time.
 	gransByPolygon := make(map[string][]*GeoTileGranule)
 	for i := 1; i < len(grans); i++ {
 		gran := grans[i]
 		gransByPolygon[gran.Polygon] = append(gransByPolygon[gran.Polygon], gran)
+	}
+
+	// We consolidate the shards such that each shard is not too small to spread across
+	// the number of gRPC workers
+	gransByShard := make([][]*GeoTileGranule, 0)
+
+	accumLen := 0
+	iShard := 0
+	for _, polyGran := range gransByPolygon {
+		if accumLen == 0 {
+			gransByShard = append(gransByShard, make([]*GeoTileGranule, 0))
+		}
+
+		for _, gran := range polyGran {
+			gransByShard[iShard] = append(gransByShard[iShard], gran)
+		}
+
+		accumLen += len(polyGran)
+		if accumLen >= g0.GrpcConcLimit*len(connPool) {
+			accumLen = 0
+			iShard++
+		}
+
 	}
 
 	meminfo := procmeminfo.MemInfo{}
@@ -144,9 +166,9 @@ func (gi *GeoRasterGRPC) Run(polyLimiter *ConcLimiter) {
 		// We figure the sizes of each shard and then sort them in descending order.
 		// We then compute the total size of the top PolygonShardConcLimit shards.
 		// If the total size of the top shards is below memory threshold, we are good to go.
-		shardSizes := make([]int, len(gransByPolygon))
+		shardSizes := make([]int, len(gransByShard))
 		iShard := 0
-		for _, polyGran := range gransByPolygon {
+		for _, polyGran := range gransByShard {
 			shardSizes[iShard] = imageSize * dataSize * len(polyGran)
 			iShard++
 		}
@@ -191,11 +213,11 @@ func (gi *GeoRasterGRPC) Run(polyLimiter *ConcLimiter) {
 	cLimiter := NewConcLimiter(g0.GrpcConcLimit * len(connPool))
 
 	var wg sync.WaitGroup
-	wg.Add(len(gransByPolygon))
+	wg.Add(len(gransByShard))
 
 	workerStart := rand.Intn(len(connPool))
 	granCounter := 0
-	for _, polyGrans := range gransByPolygon {
+	for _, polyGrans := range gransByShard {
 		polyLimiter.Increase()
 		go func(polyGrans []*GeoTileGranule, granCounter int) {
 			defer wg.Done()

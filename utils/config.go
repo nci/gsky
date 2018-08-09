@@ -453,8 +453,8 @@ const DefaultWcsTimeout = 30
 const DefaultGrpcWmsConcPerNode = 16
 const DefaultGrpcWcsConcPerNode = 16
 
-const DefaultWmsPolygonShardConcLimit = 5
-const DefaultWcsPolygonShardConcLimit = 10
+const DefaultWmsPolygonShardConcLimit = 2
+const DefaultWcsPolygonShardConcLimit = 2
 
 // GetLayerDates loads dates for the ith layer
 func (config *Config) GetLayerDates(iLayer int) {
