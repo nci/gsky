@@ -374,7 +374,7 @@ func GenerateDates(name string, start, end time.Time, stepMins time.Duration) []
 	return dateGen[name](start, end, stepMins)
 }
 
-func LoadAllConfigFiles(rootDir string) (map[string]*Config, error) {
+func LoadAllConfigFiles(rootDir string, verbose bool) (map[string]*Config, error) {
 	configMap := make(map[string]*Config)
 	err := filepath.Walk(rootDir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
@@ -386,7 +386,7 @@ func LoadAllConfigFiles(rootDir string) (map[string]*Config, error) {
 			log.Printf("Loading config file: %s under namespace: %s\n", path, relPath)
 
 			config := &Config{}
-			e := config.LoadConfigFile(path)
+			e := config.LoadConfigFile(path, verbose)
 			if e != nil {
 				return e
 			}
@@ -552,9 +552,13 @@ func LoadConfigFileTemplate(configFile string) ([]byte, error) {
 
 // LoadConfigFile marshalls the config.json document returning an
 // instance of a Config variable containing all the values
-func (config *Config) LoadConfigFile(configFile string) error {
+func (config *Config) LoadConfigFile(configFile string, verbose bool) error {
 	*config = Config{}
 	cfg, err := LoadConfigFileTemplate(configFile)
+	if verbose {
+		log.Printf("%v: %v", configFile, string(cfg))
+	}
+
 	if err != nil {
 		return fmt.Errorf("Error while reading config file: %s. Error: %v", configFile, err)
 	}
@@ -629,7 +633,7 @@ func (config *Config) LoadConfigFile(configFile string) error {
 	return nil
 }
 
-func WatchConfig(infoLog, errLog *log.Logger, configMap *map[string]*Config) {
+func WatchConfig(infoLog, errLog *log.Logger, configMap *map[string]*Config, verbose bool) {
 	// Catch SIGHUP to automatically reload cache
 	sighup := make(chan os.Signal, 1)
 	signal.Notify(sighup, syscall.SIGHUP)
@@ -638,7 +642,7 @@ func WatchConfig(infoLog, errLog *log.Logger, configMap *map[string]*Config) {
 			select {
 			case <-sighup:
 				infoLog.Println("Caught SIGHUP, reloading config...")
-				confMap, err := LoadAllConfigFiles(EtcDir)
+				confMap, err := LoadAllConfigFiles(EtcDir, verbose)
 				if err != nil {
 					errLog.Printf("Error in loading config files: %v\n", err)
 					return

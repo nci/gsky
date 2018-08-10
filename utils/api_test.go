@@ -188,13 +188,13 @@ text with tab	te	xt
 	defer os.Remove("/tmp/test_include")
 
 	config := &Config{}
-	err = config.LoadConfigFile("/tmp/gsky_config_not_found")
+	err = config.LoadConfigFile("/tmp/gsky_config_not_found", false)
 	if err == nil {
 		t.Errorf("failed to parse config file")
 		return
 	}
 
-	err = config.LoadConfigFile("/tmp/test_config")
+	err = config.LoadConfigFile("/tmp/test_config", false)
 	if err != nil {
 		t.Errorf("Failed to load config: %v", err)
 		return
