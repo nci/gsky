@@ -262,3 +262,57 @@ An example using the `bit_tests` field is as follows:
   ]
 }
 ```
+
+### Templated config files
+
+Although it is possible to publish all the layers within a single `config.json`
+file, it quickly becomes tedious because authoring the layers requires a lot of
+manual cut-and-paste of `title`, `abstract`, `colour table` etc despite many
+layers can share the common values of those. With templated config files, one
+may organise the layers of a dataset like program code. An example to illustrate
+the idea is as follows:
+
+```
+/<gsky config dir>
+config.json
+    /common
+         abstract.txt
+         colour_table.txt
+    layer1.json
+    layer2.json
+    layer3.json
+```
+
+* There is a main `config.json` which `include` each layer file (e.g. `layer1.json`).
+* Each layer file can also `include` the common artefacts such as `common/abstract.txt`
+  for their corresponding data fields.
+
+The underlying template engine GSKY uses is the Jet template engine. For the template
+expression syntax, please refer to https://github.com/CloudyKit/jet/wiki/3.-Jet-template-syntax
+
+### GSKY heredoc
+
+Often times it is essential to be able to author multiline strings especially for
+the `abstract` field of each layer. For example, one might want to include Markdown
+text in order to have rich content. GSKY supports `heredoc` facility to allow
+authoring multiline strings as shown below:
+
+```
+{
+  "layers": [
+     "name": "test layer"
+     "abstract":
+     $gdoc$
+
+## Dataset tile
+* dataset feature 1
+* dataset feature 2
+
+     $gdoc$
+  ]
+}
+```
+
+As can be seen from the above example, the text section enclosed by `$gdoc$` can
+span multiple lines. Internally, GSKY automatically escapes the text section into
+a valid single-line JSON string.
