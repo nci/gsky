@@ -2,7 +2,9 @@ package utils
 
 import (
 	"fmt"
+	"io/ioutil"
 	"net/http"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -139,4 +141,80 @@ func TestGetLayerDates(t *testing.T) {
 		t.Errorf("Failed to parse now() as end date: %#v\n", config.Layers[0])
 		return
 	}
+}
+
+func TestLoadConfigFileTemplate(t *testing.T) {
+	testInclude := `
+some text with newline
+{{ .["title"] }}
+double quotes" more quotes""
+back slashes \\more slashes
+text with tab	te	xt
+
+`
+
+	testConfig := `
+{
+  "layers":
+  [
+    {
+	  "name": $gdoc${{include "test_include" map("title", "some name") }}$gdoc$,
+	  "title": 
+	$gdoc$
+
+	{{include "/tmp/test_include" map("title", "some title") }}
+
+	$gdoc$
+    }
+  ]
+}
+`
+
+	expectedName := strings.Replace(testInclude, `{{ .["title"] }}`, "some name", -1)
+	expectedTitle := strings.Replace(testInclude, `{{ .["title"] }}`, "some title", -1)
+
+	err := ioutil.WriteFile("/tmp/test_config", []byte(testConfig), 0644)
+	if err != nil {
+		t.Errorf("Test setup failed: %v", err)
+		return
+	}
+	defer os.Remove("/tmp/test_config")
+
+	err = ioutil.WriteFile("/tmp/test_include", []byte(testInclude), 0644)
+	if err != nil {
+		t.Errorf("Test setup failed: %v", err)
+		return
+	}
+	defer os.Remove("/tmp/test_include")
+
+	config := &Config{}
+	err = config.LoadConfigFile("/tmp/gsky_config_not_found")
+	if err == nil {
+		t.Errorf("failed to parse config file")
+		return
+	}
+
+	err = config.LoadConfigFile("/tmp/test_config")
+	if err != nil {
+		t.Errorf("Failed to load config: %v", err)
+		return
+	}
+
+	if len(config.Layers) != 1 {
+		t.Errorf("Failed to parse layers: %v", config.Layers)
+		return
+	}
+
+	if config.Layers[0].Name != expectedName {
+		t.Errorf("Failed to parse included template for name: %v, expected: %v", config.Layers[0].Name, expectedName)
+		return
+	}
+
+	title := strings.TrimSpace(config.Layers[0].Title)
+	trimmedExpected := strings.TrimSpace(expectedTitle)
+	if title != trimmedExpected {
+		t.Errorf("Failed to parse included template for title: %v, expected: %v", title, trimmedExpected)
+		return
+	}
+
 }

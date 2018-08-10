@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"image/color"
+	"io"
 	"io/ioutil"
 	"log"
 	"math"
@@ -15,6 +16,8 @@ import (
 	"strings"
 	"syscall"
 	"time"
+
+	"github.com/CloudyKit/jet"
 )
 
 var LibexecDir = "."
@@ -487,11 +490,71 @@ func (config *Config) GetLayerDates(iLayer int) {
 
 }
 
+// LoadConfigFileTemplate parses the config as a Jet
+// template and escapes any GSKY here docs (i.e. $gdoc$)
+// into valid one-line JSON strings.
+func LoadConfigFileTemplate(configFile string) ([]byte, error) {
+	path := filepath.Dir(configFile)
+
+	view := jet.NewSet(jet.SafeWriter(func(w io.Writer, b []byte) {
+		w.Write(b)
+	}), path, "/")
+
+	template, err := view.GetTemplate(configFile)
+	if err != nil {
+		return nil, err
+	}
+
+	var resBuf bytes.Buffer
+	vars := make(jet.VarMap)
+	if err = template.Execute(&resBuf, vars, nil); err != nil {
+		return nil, err
+	}
+
+	gdocSym := `$gdoc$`
+
+	// JSON escape rules: https://www.freeformatter.com/json-escape.html
+	escapeRules := func(str string) string {
+		tokens := []string{"\b", "\f", "\n", "\r", "\t", `"`}
+		repl := []string{`\b`, `\f`, `\n`, `\r`, `\t`, `\"`}
+
+		str = strings.Replace(str, `\`, `\\`, -1)
+		for it, t := range tokens {
+			str = strings.Replace(str, t, repl[it], -1)
+		}
+		str = `"` + str + `"`
+		return str
+	}
+
+	rawStr := resBuf.String()
+	nHereDocs := strings.Count(rawStr, gdocSym)
+	if nHereDocs == 0 {
+		return []byte(rawStr), nil
+	}
+
+	if nHereDocs%2 != 0 {
+		return nil, fmt.Errorf("gdocs are not properly closed")
+	}
+
+	strParts := strings.Split(rawStr, gdocSym)
+
+	var escapedStr string
+	for ip, part := range strParts {
+		if ip%2 == 0 {
+			escapedStr += part
+		} else {
+			escapedStr += escapeRules(part)
+		}
+	}
+
+	return []byte(escapedStr), nil
+}
+
 // LoadConfigFile marshalls the config.json document returning an
 // instance of a Config variable containing all the values
 func (config *Config) LoadConfigFile(configFile string) error {
 	*config = Config{}
-	cfg, err := ioutil.ReadFile(configFile)
+	cfg, err := LoadConfigFileTemplate(configFile)
 	if err != nil {
 		return fmt.Errorf("Error while reading config file: %s. Error: %v", configFile, err)
 	}
