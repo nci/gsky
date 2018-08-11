@@ -435,7 +435,7 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 
 		epsg, err := utils.ExtractEPSGCode(*params.CRS)
 		if err != nil {
-			http.Error(w, fmt.Sprintf("Invalid CRS code", *params.CRS), 400)
+			http.Error(w, fmt.Sprintf("Invalid CRS code %s", *params.CRS), 400)
 			return
 		}
 
