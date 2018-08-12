@@ -1,8 +1,8 @@
 # GSKY configuration file description
 
-GSKY can currently provide WMS, WCS and WPS services (as defined by the
-Open Geosaptial Consortium or OGC). The GSKY configuration file is a
-JSON document (with the filename `config.json`). It specifies the
+GSKY can currently provide WMS, WCS and WPS services (as defined by
+the Open Geospatial Consortium or OGC). The GSKY configuration file is
+a JSON document (with the filename `config.json`). It specifies the
 datasets and configuration parameters that GSKY needs to expose the
 data layers and services.
 
