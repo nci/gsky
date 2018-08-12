@@ -90,7 +90,7 @@ func init() {
 		}
 	}
 
-	confMap, err := utils.LoadAllConfigFiles(utils.EtcDir)
+	confMap, err := utils.LoadAllConfigFiles(utils.EtcDir, *verbose)
 	if err != nil {
 		Error.Printf("Error in loading config files: %v\n", err)
 		panic(err)
@@ -102,7 +102,7 @@ func init() {
 
 	configMap = confMap
 
-	utils.WatchConfig(Info, Error, &configMap)
+	utils.WatchConfig(Info, Error, &configMap, *verbose)
 
 	reWMSMap = utils.CompileWMSRegexMap()
 	reWCSMap = utils.CompileWCSRegexMap()

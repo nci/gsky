@@ -15,7 +15,7 @@ GSKY can expose new layers and services.
 The configuration file is a JSON document with the following
 structure:
 
-```
+```json
 {  
    "service_config": {  
       "ows_hostname": "gsky.example.com",
@@ -64,11 +64,11 @@ and `colour palette` fields are not used by WCS.
 
 A skeleton of the configuration of a WMS layer is as follows:
 
-```
+```json
 {  
    "name": "Name of the layer",
-   "title": "Title of the layer (<title> in WMS GetCapabilities)",
-   "abstract": "Abstract of the layer (<abstract> in WMS GetCapabilities)",
+   "title": "Title of the layer (`<title>` in WMS GetCapabilities)",
+   "abstract": "Abstract of the layer (`<abstract>` in WMS GetCapabilities)",
    "data_source": "/path/to/data",
    "start_isodate": "YYYY-MM-DDTHH:MM:SS.000Z",
    "end_isodate": "YYYY-MM-DDTHH:MM:SS.000Z",
@@ -125,7 +125,7 @@ Description of each field:
   milliseconds precision. For example, to find the date ranges for a
   dataset using MAS:
 
-```
+```sql
 select min(po_min_stamp), max(po_max_stamp) from polygons where po_hash in (select pa_hash from paths where pa_parents @> array[md5('/g/data2/rs0/datacube/002/LS8_OLI_NBAR')::uuid]);
 ```
 
@@ -140,7 +140,7 @@ select min(po_min_stamp), max(po_max_stamp) from polygons where po_hash in (sele
   period of time.
 
 * `time_generator`: This field specifies the method for generating
-  the dates as exposed on the <time> field associated with the
+  the dates as exposed on the `<time>` field associated with the
   layer. The value `regular` adds the temporal step cumulatively to
   `start_isodate` until `end_isodate` is reached. If `time_generator`
   is set to `mas`, GSKY will attempt to pull timestamps from MAS. In
@@ -188,7 +188,7 @@ If only one band is specified in the list an extra field needs to be
 added to the JSON document to define the colour palette used to render
 the image:
 
-```
+```json
 "palette": {
    "colours": [
       { "R": 215, "G": 25, "B": 28, "A": 255 },
@@ -250,7 +250,7 @@ needs to be exposed by GSKY.
 
 An example using the `bit_tests` field is as follows:
 
-```
+```json
 "mask": {
   "id": "pixelquality",
   "data_source": "/g/data2/rs0/datacube/002/LS8_OLI_PQ",
@@ -262,3 +262,57 @@ An example using the `bit_tests` field is as follows:
   ]
 }
 ```
+
+### Templated config files
+
+Although it is possible to publish all the layers within a single `config.json`
+file, it quickly becomes tedious because authoring the layers requires a lot of
+manual cut-and-paste of `title`, `abstract`, `colour table` etc despite many
+layers can share the common values of those. With templated config files, one
+may organise the layers of a dataset like program code. An example to illustrate
+the idea is as follows:
+
+```bash
+/<gsky config dir>
+config.json
+    /common
+         abstract.txt
+         colour_table.txt
+    layer1.json
+    layer2.json
+    layer3.json
+```
+
+* There is a main `config.json` which `include` each layer file (e.g. `layer1.json`).
+* Each layer file can also `include` the common artefacts such as `common/abstract.txt`
+  for their corresponding data fields.
+
+The underlying template engine GSKY uses is the Jet template engine. For the template
+expression syntax, please refer to <https://github.com/CloudyKit/jet/wiki/3.-Jet-template-syntax>.
+
+### GSKY heredoc
+
+Often times it is essential to be able to author multiline strings especially for
+the `abstract` field of each layer. For example, one might want to include Markdown
+text in order to have rich content. GSKY supports `heredoc` facility to allow
+authoring multiline strings as shown below:
+
+```json
+{
+  "layers": [
+     "name": "test layer"
+     "abstract":
+     $gdoc$
+
+## Dataset tile
+* dataset feature 1
+* dataset feature 2
+
+     $gdoc$
+  ]
+}
+```
+
+As can be seen from the above example, the text section enclosed by `$gdoc$` can
+span multiple lines. Internally, GSKY automatically escapes the text section into
+a valid single-line JSON string.
