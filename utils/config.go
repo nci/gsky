@@ -166,6 +166,9 @@ func GenerateDatesAux(start, end time.Time, stepMins time.Duration) []string {
 // dates from its especification in the Config.Layer struct.
 func GenerateDatesMCD43A4(start, end time.Time, stepMins time.Duration) []string {
 	dates := []string{}
+	if int64(stepMins) <= 0 {
+		return dates
+	}
 	year := start.Year()
 	for start.Before(end) {
 		for start.Year() == year && start.Before(end) {
@@ -183,6 +186,9 @@ func GenerateDatesMCD43A4(start, end time.Time, stepMins time.Duration) []string
 
 func GenerateDatesGeoglam(start, end time.Time, stepMins time.Duration) []string {
 	dates := []string{}
+	if int64(stepMins) <= 0 {
+		return dates
+	}
 	year := start.Year()
 	for start.Before(end) {
 		for start.Year() == year && start.Before(end) {
@@ -235,6 +241,9 @@ func GenerateYearlyDates(start, end time.Time, stepMins time.Duration) []string 
 
 func GenerateDatesRegular(start, end time.Time, stepMins time.Duration) []string {
 	dates := []string{}
+	if int64(stepMins) <= 0 {
+		return dates
+	}
 	for start.Before(end) {
 		dates = append(dates, start.Format(ISOFormat))
 		start = start.Add(stepMins)
@@ -481,11 +490,7 @@ func (config *Config) GetLayerDates(iLayer int) {
 			}
 		}
 
-		if int64(step) > 0 {
-			config.Layers[iLayer].Dates = GenerateDates(layer.TimeGen, start, end, step)
-		} else {
-			log.Printf("Invalid time steps: %v", step)
-		}
+		config.Layers[iLayer].Dates = GenerateDates(layer.TimeGen, start, end, step)
 	}
 
 }
