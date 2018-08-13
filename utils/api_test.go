@@ -218,3 +218,38 @@ text with tab	te	xt
 	}
 
 }
+
+func TestGenerateDatesMCD43A4(t *testing.T) {
+	const ISOFormat = "2006-01-02T15:04:05.000Z"
+
+	start, _ := time.Parse(ISOFormat, "2001-01-02T00:00:00.000Z")
+	end, _ := time.Parse(ISOFormat, "2002-01-02T00:00:00.000Z")
+	step, _ := time.ParseDuration("0s")
+	timestamps := GenerateDatesMCD43A4(start, end, step)
+	if len(timestamps) > 0 {
+		t.Errorf("Failed to handle zero time step")
+		return
+	}
+
+	step, _ = time.ParseDuration("72h")
+	timestamps = GenerateDatesMCD43A4(start, end, step)
+	if len(timestamps) == 0 {
+		t.Errorf("Failed to handle non-zero time step, %v, %v, %v", start, end, step)
+		return
+	}
+}
+
+func TestGenerateDates(t *testing.T) {
+	const ISOFormat = "2006-01-02T15:04:05.000Z"
+
+	start, _ := time.Parse(ISOFormat, "2001-01-02T00:00:00.000Z")
+	end, _ := time.Parse(ISOFormat, "2002-01-02T00:00:00.000Z")
+	step, _ := time.ParseDuration("0s")
+
+	timestamps := GenerateDates("not_found", start, end, step)
+	if len(timestamps) > 0 {
+		t.Errorf("Non-existing timestamp generator successfully generates timestamps")
+		return
+	}
+
+}
