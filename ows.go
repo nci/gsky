@@ -128,6 +128,7 @@ func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r
 			conf.GetLayerDates(iLayer)
 		}
 
+		w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate, max-age=0")
 		err := utils.ExecuteWriteTemplateFile(w, conf,
 			utils.DataDir+"/templates/WMS_GetCapabilities.tpl")
 		if err != nil {
@@ -330,6 +331,7 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 			newConf.Layers[i].Dates = []string{newConf.Layers[i].Dates[0], newConf.Layers[i].Dates[len(newConf.Layers[i].Dates)-1]}
 		}
 
+		w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate, max-age=0")
 		err := utils.ExecuteWriteTemplateFile(w, &newConf, utils.DataDir+"/templates/WCS_GetCapabilities.tpl")
 		if err != nil {
 			http.Error(w, err.Error(), 500)
