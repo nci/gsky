@@ -380,6 +380,10 @@ func GenerateDates(name string, start, end time.Time, stepMins time.Duration) []
 	dateGen["monthly"] = GenerateMonthlyDates
 	dateGen["yearly"] = GenerateYearlyDates
 
+	if _, ok := dateGen[name]; !ok {
+		return []string{}
+	}
+
 	return dateGen[name](start, end, stepMins)
 }
 
