@@ -168,7 +168,7 @@ $$;
 -- function sets an API request search_path appropriately.
 
 create or replace function mas_view(gpath text)
-  returns void language plpgsql as $$
+  returns text language plpgsql as $$
 
   declare
 
@@ -189,6 +189,8 @@ create or replace function mas_view(gpath text)
       perform set_config('search_path', 'public', false);
 
     end if;
+
+    return shard;
 
   end
 $$;
@@ -479,21 +481,33 @@ create or replace function mas_timestamps(
   returns jsonb language plpgsql as $$
   declare
     result     jsonb;
-
+    query_hash text;
+    shard      text;
   begin
 
     if gpath is null then
       raise exception 'invalid search path';
     end if;
 
+    perform mas_reset();
+    shard := mas_view(gpath);
+
+    if shard = '' then
+      return jsonb_build_object('timestamps', '[]'::jsonb);
+    end if;
+
+    query_hash := md5(concat(gpath, coalesce(time_a::text, 'null'),
+      coalesce(time_b::text, 'null'), array_to_string(namespace, ',', 'null')));
+
+    select timestamps into result from timestamps_cache where query_id = query_hash;
+    if result is not null then
+      return result;
+    end if;
+
     -- By default, we filter out all the future dates
     if time_b is null then
       time_b := (select now());
-      raise notice 'aa %', time_b;
     end if;
-
-    perform mas_reset();
-    perform mas_view(gpath);
 
     result := jsonb_build_object('timestamps', coalesce((
 
@@ -527,6 +541,10 @@ create or replace function mas_timestamps(
       and po_stamps <= time_b
 
      ), '[]'::jsonb));
+
+     insert into timestamps_cache (query_id, timestamps) values (query_hash, result)
+     on conflict (query_id) do
+       update set timestamps = excluded.timestamps;
 
      perform mas_reset();
      return result;
