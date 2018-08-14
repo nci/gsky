@@ -10,6 +10,7 @@ set search_path to ${shard};
 
 truncate paths;
 truncate metadata;
+truncate timestamps_cache;
 
 EOD
 )

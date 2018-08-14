@@ -10,6 +10,7 @@ set search_path to ${shard};
 
 select refresh_views();
 select refresh_polygons();
+select refresh_caches();
 
 EOD
 )
