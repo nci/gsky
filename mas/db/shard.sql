@@ -683,5 +683,22 @@ create or replace function refresh_polygons()
   end
 $$;
 
+drop table if exists timestamps_cache cascade;
+
+-- cache for timestamps
+create unlogged table timestamps_cache (
+  query_id text primary key,
+  timestamps jsonb not null
+);
+
+create or replace function refresh_caches()
+  returns boolean language plpgsql as $$
+  begin
+    raise notice 'refresh caches';
+    truncate timestamps_cache;
+    return true;
+  end
+$$;
+
 -- Add this schema to the public views, for cross-project search
 select public.refresh_views();
