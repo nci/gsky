@@ -59,21 +59,21 @@ get_gpath () {
 }
 
 assert_gpath () {
-	if [ ! $1 -eq 0 ]
+	if [ ! "$1" -eq 0 ]
 	then	
-		if [ $1 -eq 1 ]
+		if [ "$1" -eq 1 ]
 		then
 			echo 'no crawl results or invalid format of crawl results' 
-		elif [ $1 -eq 2 ]
+		elif [ "$1" -eq 2 ]
 		then
 			echo 'no data path is specified' 
 		else
 			echo 'unknown error'
 		fi
-		exit $1
+		exit "$1"
 	fi
 
-	return $1
+	return "$1"
 }
 
 if [ -z "$gpath" ]
