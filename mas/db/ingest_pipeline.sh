@@ -1,7 +1,7 @@
 #!/bin/bash
 set -u
 set -e
-which concurrent
+command -v concurrent
 set +e
 
 if [ "$#" -lt 2 ]
