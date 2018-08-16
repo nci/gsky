@@ -17,12 +17,16 @@ type GeoDrillRequest struct {
 }
 
 type GeoDrillGranule struct {
-	Path       string
-	NameSpace  string
-	RasterType string
-	TimeStamps []time.Time
-	Geometry   string
-	CRS        string
+	Path         string
+	NameSpace    string
+	RasterType   string
+	TimeStamps   []time.Time
+	Geometry     string
+	CRS          string
+	Means        []float64
+	SampleCounts []int
+	NoData       float64
+	Approx       bool
 }
 
 type DrillResult struct {

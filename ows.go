@@ -953,7 +953,7 @@ func serveWPS(ctx context.Context, params utils.WPSParams, conf *utils.Config, r
 			if dataSource.BandStrides <= 0 {
 				dataSource.BandStrides = 1
 			}
-			proc := dp.Process(geoReq, suffix, dataSource.MetadataURL, dataSource.BandEval, dataSource.BandStrides)
+			proc := dp.Process(geoReq, suffix, dataSource.MetadataURL, dataSource.BandEval, dataSource.BandStrides, *process.Approx)
 
 			select {
 			case res := <-proc:

@@ -21,10 +21,11 @@ type GeoMetaData struct {
 	Polygon      string      `json:"polygon"`
 	ProjWKT      string      `json:"proj_wkt"`
 	Proj4        string      `json:"proj4"`
-	Min          float64     `json:"min"`
-	Max          float64     `json:"max"`
-	Mean         float64     `json:"mean"`
-	StdDev       float64     `json:"stddev"`
+	Mins         []float64   `json:"mins"`
+	Maxs         []float64   `json:"maxs"`
+	Means        []float64   `json:"means"`
+	StdDevs      []float64   `json:"stddevs"`
+	SampleCounts []int       `json:"sample_counts"`
 	NoData       float64     `json:"nodata"`
 }
 

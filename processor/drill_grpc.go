@@ -31,6 +31,57 @@ func NewDrillGRPC(ctx context.Context, serverAddress []string, errChan chan erro
 
 func (gi *GeoDrillGRPC) Run(bandStrides int) {
 	defer close(gi.Out)
+	start := time.Now()
+
+	var inputs []*GeoDrillGranule
+	for gran := range gi.In {
+		if gran.Path == "NULL" {
+			continue
+		}
+		inputs = append(inputs, gran)
+	}
+
+	if len(inputs) == 0 {
+		return
+	}
+
+	var inputsRecompute []*GeoDrillGranule
+	if inputs[0].Approx {
+		for _, gran := range inputs {
+			if len(gran.Means) == 0 || len(gran.TimeStamps) != len(gran.Means) || len(gran.SampleCounts) != len(gran.Means) {
+				inputsRecompute = append(inputsRecompute, gran)
+				continue
+			}
+
+			hasStats := true
+			ts := make([]*pb.TimeSeries, len(gran.TimeStamps))
+			for it := range gran.TimeStamps {
+				if gran.SampleCounts[it] < 0 {
+					hasStats = false
+					break
+				}
+
+				ts[it] = &pb.TimeSeries{Value: 0.0, Count: 0}
+				if gran.Means[it] != gran.NoData {
+					ts[it].Value = gran.Means[it]
+					ts[it].Count = int32(gran.SampleCounts[it])
+				}
+			}
+
+			if hasStats {
+				gi.Out <- &DrillResult{NameSpace: gran.NameSpace, Data: ts, Dates: gran.TimeStamps}
+			} else {
+				inputsRecompute = append(inputsRecompute, gran)
+			}
+		}
+	} else {
+		inputsRecompute = inputs
+	}
+
+	if len(inputsRecompute) == 0 {
+		fmt.Println("gRPC Time", time.Since(start), "Processed:", len(inputs))
+		return
+	}
 
 	const DefaultWpsRecvMsgSize = 100 * 1024 * 1024
 	const DefaultWpsConcLimit = 16
@@ -51,10 +102,9 @@ func (gi *GeoDrillGRPC) Run(bandStrides int) {
 	}
 
 	cLimiter := NewConcLimiter(DefaultWpsConcLimit * len(conns))
-	start := time.Now()
 	workerStart := rand.Intn(len(conns))
 	i := 0
-	for gran := range gi.In {
+	for _, gran := range inputsRecompute {
 		i++
 		select {
 		case <-gi.Context.Done():
@@ -75,6 +125,7 @@ func (gi *GeoDrillGRPC) Run(bandStrides int) {
 					r = &pb.Result{}
 					return
 				}
+
 				gi.Out <- &DrillResult{NameSpace: g.NameSpace, Data: r.TimeSeries, Dates: g.TimeStamps}
 			}(gran, cLimiter, i)
 		}

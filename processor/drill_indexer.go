@@ -29,9 +29,10 @@ type DrillIndexer struct {
 	APIAddress  string
 	IdentityTol float64
 	DpTol       float64
+	Approx      bool
 }
 
-func NewDrillIndexer(ctx context.Context, apiAddr string, identityTol float64, dpTol float64, errChan chan error) *DrillIndexer {
+func NewDrillIndexer(ctx context.Context, apiAddr string, identityTol float64, dpTol float64, approx bool, errChan chan error) *DrillIndexer {
 	return &DrillIndexer{
 		Context:     ctx,
 		In:          make(chan *GeoDrillRequest, 100),
@@ -40,6 +41,7 @@ func NewDrillIndexer(ctx context.Context, apiAddr string, identityTol float64, d
 		APIAddress:  apiAddr,
 		IdentityTol: identityTol,
 		DpTol:       dpTol,
+		Approx:      approx,
 	}
 }
 
@@ -104,10 +106,10 @@ func (p *DrillIndexer) Run() {
 
 		switch len(metadata.GDALDatasets) {
 		case 0:
-			p.Out <- &GeoDrillGranule{"NULL", "EmptyTile", "Byte", nil, geoReq.Geometry, geoReq.CRS}
+			p.Out <- &GeoDrillGranule{"NULL", "EmptyTile", "Byte", nil, geoReq.Geometry, geoReq.CRS, nil, nil, 0, false}
 		default:
 			for _, ds := range metadata.GDALDatasets {
-				p.Out <- &GeoDrillGranule{ds.DSName, ds.NameSpace, ds.ArrayType, ds.TimeStamps, geoReq.Geometry, geoReq.CRS}
+				p.Out <- &GeoDrillGranule{ds.DSName, ds.NameSpace, ds.ArrayType, ds.TimeStamps, geoReq.Geometry, geoReq.CRS, ds.Means, ds.SampleCounts, ds.NoData, p.Approx}
 			}
 		}
 	}

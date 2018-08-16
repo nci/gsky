@@ -114,6 +114,7 @@ type Process struct {
 	ComplexData []CompData `json:"complex_data"`
 	IdentityTol float64    `json:"identity_tol"`
 	DpTol       float64    `json:"dp_tol"`
+	Approx      *bool      `json:"approx,omitempty"`
 }
 
 // LitData contains the description of a variable used to compute a
@@ -637,6 +638,11 @@ func (config *Config) LoadConfigFile(configFile string, verbose bool) error {
 
 		if proc.DpTol <= 0 {
 			config.Processes[i].DpTol = -1.0
+		}
+
+		if proc.Approx == nil {
+			approx := true
+			config.Processes[i].Approx = &approx
 		}
 	}
 	return nil
