@@ -26,13 +26,16 @@ func main() {
 	path := os.Args[1]
 
 	concLimit := DefaultConcLimit
-	approx := false
+	approx := true
 
 	if len(os.Args) > 2 {
 		flagSet := flag.NewFlagSet("Usage", flag.ExitOnError)
 		flagSet.IntVar(&concLimit, "conc", DefaultConcLimit, "Concurrent limit on processing subdatasets")
-		flagSet.BoolVar(&approx, "approx", false, "Compute approximate statistics")
+		var exact bool
+		flagSet.BoolVar(&exact, "exact", false, "Compute exact statistics")
 		flagSet.Parse(os.Args[2:])
+
+		approx = !exact
 	}
 
 	if path == "-" {
