@@ -57,7 +57,7 @@ var CncDimTimeValues *C.char = C.CString("NETCDF_DIM_time_VALUES")
 var CncDimLevelValues *C.char = C.CString("NETCDF_DIM_lev_VALUES")
 var CncVarname *C.char = C.CString("NETCDF_VARNAME")
 
-func ExtractGDALInfo(path string, concLimit int) (*GeoFile, error) {
+func ExtractGDALInfo(path string, concLimit int, approx bool) (*GeoFile, error) {
 	cPath := C.CString(path)
 	defer C.free(unsafe.Pointer(cPath))
 	hDataset := C.GDALOpen(cPath, C.GA_ReadOnly)
@@ -78,7 +78,7 @@ func ExtractGDALInfo(path string, concLimit int) (*GeoFile, error) {
 	var datasets = []*GeoMetaData{}
 	if nsubds == C.int(0) {
 		// There are no subdatasets
-		dsInfo, err := getDataSetInfo(path, cPath, shortName)
+		dsInfo, err := getDataSetInfo(path, cPath, shortName, approx)
 		if err != nil {
 			LogErr.Printf("%v", err)
 			return &GeoFile{}, fmt.Errorf("%v", err)
@@ -102,7 +102,7 @@ func ExtractGDALInfo(path string, concLimit int) (*GeoFile, error) {
 				defer wg.Done()
 				subDSId := C.CString(fmt.Sprintf("SUBDATASET_%d_NAME", isub))
 				pszSubdatasetName := C.CSLFetchNameValue(metadata, subDSId)
-				dsInfo, err := getDataSetInfo(path, pszSubdatasetName, shortName)
+				dsInfo, err := getDataSetInfo(path, pszSubdatasetName, shortName, approx)
 
 				<-concPool
 				if err == nil {
@@ -125,7 +125,7 @@ func ExtractGDALInfo(path string, concLimit int) (*GeoFile, error) {
 	return &GeoFile{FileName: path, Driver: shortName, DataSets: datasets}, nil
 }
 
-func getDataSetInfo(filename string, dsName *C.char, driverName string) (*GeoMetaData, error) {
+func getDataSetInfo(filename string, dsName *C.char, driverName string, approx bool) (*GeoMetaData, error) {
 	datasetName := C.GoString(dsName)
 	hSubdataset := C.GDALOpen(dsName, C.GDAL_OF_READONLY)
 	if hSubdataset == nil {
@@ -222,12 +222,49 @@ func getDataSetInfo(filename string, dsName *C.char, driverName string) (*GeoMet
 
 	noData := C.GDALGetRasterNoDataValue(hBand, nil)
 
-	stats := [4]C.double{} // min, max, mean, stddev
-	cErr := C.GDALGetRasterStatistics(hBand, C.int(0), C.int(1), &stats[0], &stats[1], &stats[2], &stats[3])
-	if cErr != C.CE_None {
-		for i := 0; i < len(stats); i++ {
-			stats[i] = noData
+	var mins, maxs, means, stddevs []float64
+	var sampleCounts []int
+
+	dsWidth := int(C.GDALGetRasterXSize(hSubdataset))
+	dsHeight := int(C.GDALGetRasterYSize(hSubdataset))
+
+	bandSize := dsWidth * dsHeight
+
+	nBands := C.GDALGetRasterCount(hSubdataset)
+	for ib := 1; ib <= int(nBands); ib++ {
+		hBand := C.GDALGetRasterBand(hSubdataset, C.int(ib))
+
+		approxC := C.int(1)
+		if !approx {
+			approxC = C.int(0)
 		}
+
+		stats := [4]C.double{} // min, max, mean, stddev
+		cErr := C.GDALGetRasterStatistics(hBand, approxC, C.int(1), &stats[0], &stats[1], &stats[2], &stats[3])
+		if cErr != C.CE_None {
+			for i := 0; i < len(stats); i++ {
+				stats[i] = noData
+			}
+		}
+
+		validPercent := -1.0
+		validPercentC := C.GDALGetMetadataItem(C.GDALMajorObjectH(hBand), C.CString("STATISTICS_VALID_PERCENT"), nil)
+		if validPercentC != nil {
+			if per, e := strconv.ParseFloat(C.GoString(validPercentC), 64); e == nil {
+				validPercent = per
+			}
+		}
+
+		sampleCount := -1
+		if validPercent >= 0 {
+			sampleCount = int(float64(bandSize) * validPercent)
+		}
+
+		mins = append(mins, float64(stats[0]))
+		maxs = append(maxs, float64(stats[1]))
+		means = append(means, float64(stats[2]))
+		stddevs = append(stddevs, float64(stats[3]))
+		sampleCounts = append(sampleCounts, sampleCount)
 	}
 
 	return &GeoMetaData{
@@ -237,17 +274,18 @@ func getDataSetInfo(filename string, dsName *C.char, driverName string) (*GeoMet
 		RasterCount:  int32(C.GDALGetRasterCount(hSubdataset)),
 		TimeStamps:   times,
 		Heights:      ncLevels,
-		XSize:        int32(C.GDALGetRasterXSize(hSubdataset)),
-		YSize:        int32(C.GDALGetRasterYSize(hSubdataset)),
+		XSize:        int32(dsWidth),
+		YSize:        int32(dsHeight),
 		Polygon:      polyWkt,
 		ProjWKT:      projWkt,
 		Proj4:        proj4,
 		GeoTransform: geot,
 		Overviews:    ovrs,
-		Min:          float64(stats[0]),
-		Max:          float64(stats[1]),
-		Mean:         float64(stats[2]),
-		StdDev:       float64(stats[3]),
+		Mins:         mins,
+		Maxs:         maxs,
+		Means:        means,
+		StdDevs:      stddevs,
+		SampleCounts: sampleCounts,
 		NoData:       float64(noData),
 	}, nil
 }

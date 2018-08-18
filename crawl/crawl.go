@@ -3,9 +3,9 @@ package main
 import (
 	"bufio"
 	"encoding/json"
+	"flag"
 	"log"
 	"os"
-	"strconv"
 
 	extr "github.com/nci/gsky/crawl/extractor"
 )
@@ -16,15 +16,27 @@ func ensure(err error) {
 	}
 }
 
-const DefaultConcLimit = 4
+const DefaultConcLimit = 2
 
 func main() {
-
 	if len(os.Args) < 2 {
 		log.Fatal("Please provide a path to a file or '-' for reading from stdin")
 	}
 
 	path := os.Args[1]
+
+	concLimit := DefaultConcLimit
+	approx := true
+
+	if len(os.Args) > 2 {
+		flagSet := flag.NewFlagSet("Usage", flag.ExitOnError)
+		flagSet.IntVar(&concLimit, "conc", DefaultConcLimit, "Concurrent limit on processing subdatasets")
+		var exact bool
+		flagSet.BoolVar(&exact, "exact", false, "Compute exact statistics")
+		flagSet.Parse(os.Args[2:])
+
+		approx = !exact
+	}
 
 	if path == "-" {
 		scanner := bufio.NewScanner(os.Stdin)
@@ -32,18 +44,7 @@ func main() {
 		path = scanner.Text()
 	}
 
-	concLimit := DefaultConcLimit
-	if len(os.Args) > 2 {
-		cLimit, err := strconv.ParseInt(os.Args[2], 10, 0)
-		ensure(err)
-
-		if cLimit <= 0 {
-			cLimit = DefaultConcLimit
-		}
-		concLimit = int(cLimit)
-	}
-
-	geoFile, err := extr.ExtractGDALInfo(path, concLimit)
+	geoFile, err := extr.ExtractGDALInfo(path, concLimit, approx)
 	ensure(err)
 
 	out, err := json.Marshal(&geoFile)

@@ -441,7 +441,13 @@ create or replace function mas_intersects(
               'polygon',
               geo->>'polygon',
               'overviews',
-              geo->'overviews'
+              geo->'overviews',
+              'means',
+              geo->'means',
+              'sample_counts',
+              geo->'sample_counts',
+              'nodata',
+              geo->'nodata'
             )
               as dataset
 
