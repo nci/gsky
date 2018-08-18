@@ -13,11 +13,14 @@ import (
 )
 
 type GDALDataset struct {
-	DSName     string      `json:"ds_name"`
-	NameSpace  string      `json:"namespace"`
-	ArrayType  string      `json:"array_type"`
-	TimeStamps []time.Time `json:"timestamps"`
-	Polygon    string      `json:"polygon"`
+	DSName       string      `json:"ds_name"`
+	NameSpace    string      `json:"namespace"`
+	ArrayType    string      `json:"array_type"`
+	TimeStamps   []time.Time `json:"timestamps"`
+	Polygon      string      `json:"polygon"`
+	Means        []float64   `json:"means"`
+	SampleCounts []int       `json:"sample_counts"`
+	NoData       float64     `json:"nodata"`
 }
 
 type MetadataResponse struct {

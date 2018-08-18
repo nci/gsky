@@ -25,13 +25,13 @@ func InitDrillPipeline(ctx context.Context, apiAddr string, rpcAddrs []string, i
 	}
 }
 
-func (dp *DrillPipeline) Process(geoReq GeoDrillRequest, suffix string, templateFileName string, bandEval []string, bandStrides int) chan string {
+func (dp *DrillPipeline) Process(geoReq GeoDrillRequest, suffix string, templateFileName string, bandEval []string, bandStrides int, approx bool) chan string {
 	grpcDriller := NewDrillGRPC(dp.Context, dp.RPCAddrs, dp.Error)
 	if grpcDriller == nil {
 		dp.Error <- fmt.Errorf("Couldn't instantiate RPCDriller %s/n", dp.RPCAddrs)
 	}
 
-	i := NewDrillIndexer(dp.Context, dp.APIAddr, dp.IdentityTol, dp.DpTol, dp.Error)
+	i := NewDrillIndexer(dp.Context, dp.APIAddr, dp.IdentityTol, dp.DpTol, approx, dp.Error)
 	go func() {
 		i.In <- &geoReq
 		close(i.In)
