@@ -494,7 +494,7 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 				}
 
 				for iw, worker := range conf.ServiceConfig.OWSClusterNodes {
-					parsedUrl, err := url.Parse(worker)
+					parsedURL, err := url.Parse(worker)
 					if err != nil {
 						if *verbose {
 							Info.Printf("WCS: invalid worker hostname %v, (%v of %v)\n", worker, iw, len(conf.ServiceConfig.OWSClusterNodes))
@@ -502,7 +502,7 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 						continue
 					}
 
-					if parsedUrl.Host == conf.ServiceConfig.OWSHostname {
+					if parsedURL.Host == conf.ServiceConfig.OWSHostname {
 						if *verbose {
 							Info.Printf("WCS: skipping worker whose hostname == OWSHostName %v, (%v of %v)\n", worker, iw, len(conf.ServiceConfig.OWSClusterNodes))
 						}
@@ -589,20 +589,20 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 		if !isWorker && len(workerTileRequests) > 1 {
 			for iw := 1; iw < len(workerTileRequests); iw++ {
 				workerHostName := wcsWorkerNodes[iw-1]
-				queryUrl := workerHostName + reqURL
+				queryURL := workerHostName + reqURL
 				for _, geoReq := range workerTileRequests[iw] {
 					paramStr := fmt.Sprintf("&wbbox=%f,%f,%f,%f&wwidth=%d&wheight=%d&woffx=%d&woffy=%d",
 						geoReq.BBox[0], geoReq.BBox[1], geoReq.BBox[2], geoReq.BBox[3], geoReq.Width, geoReq.Height, geoReq.OffX, geoReq.OffY)
 
-					queryUrl += paramStr
+					queryURL += paramStr
 				}
 
 				if *verbose {
-					Info.Printf("WCS worker (%v of %v): %v\n", iw, len(workerTileRequests)-1, queryUrl)
+					Info.Printf("WCS worker (%v of %v): %v\n", iw, len(workerTileRequests)-1, queryURL)
 				}
 
 				trans := &http.Transport{}
-				req, err := http.NewRequest("GET", queryUrl, nil)
+				req, err := http.NewRequest("GET", queryURL, nil)
 				if err != nil {
 					errMsg := fmt.Sprintf("WCS: worker NewRequest error: %v", err)
 					Info.Printf(errMsg)
