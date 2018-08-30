@@ -20,7 +20,7 @@ import (
 var (
 	db       *sql.DB
 	mc       *memcache.Client
-	dbHost   = flag.String("dbhost", "/var/run/postgresq", "dbhost")
+	dbHost   = flag.String("dbhost", "/var/run/postgresql", "dbhost")
 	dbName   = flag.String("database", "mas", "database name")
 	dbUser   = flag.String("user", "api", "database user name")
 	dbPool   = flag.Int("pool", 8, "database pool size")
@@ -75,7 +75,8 @@ func handler(response http.ResponseWriter, request *http.Request) {
 				nullif($8,'')::numeric,
 				nullif($9,'')::text,
 				nullif($10,'')::float8,
-				nullif($11,'')::float
+				nullif($11,'')::float,
+				nullif($12,'')::int
 			) as json`,
 			request.URL.Path,
 			request.FormValue("srs"),
@@ -88,6 +89,7 @@ func handler(response http.ResponseWriter, request *http.Request) {
 			request.FormValue("metadata"),
 			request.FormValue("identitytol"),
 			request.FormValue("dptol"),
+			request.FormValue("limit"),
 		).Scan(&payload)
 
 	} else if _, ok := query["timestamps"]; ok {

@@ -205,7 +205,8 @@ create or replace function mas_intersect_polygons(
   namespaces text[],
   time_a timestamptz,
   time_b timestamptz,
-  resolution bigint
+  resolution bigint,
+  limit_val integer
 )
   returns text language plpgsql as $$
 
@@ -215,13 +216,20 @@ create or replace function mas_intersect_polygons(
     parts text[];
     rec record;
     qstr text;
+    limit_str text;
 
   begin
+
+    if limit_val <= 0 then
+      limit_str := '';
+    else
+      limit_str := format(' limit %1$s ', limit_val);
+    end if;
 
     for rec in select ps_srid as srid from polygon_srids loop
 
       parts := array_append(parts, format($f$
-
+        (
         select
           po_hash
         from
@@ -229,6 +237,8 @@ create or replace function mas_intersect_polygons(
         inner join
           geometries
             on ge_srid = %1$s
+        inner join paths
+            on po_hash = pa_hash
         where
           st_srid(po_polygon) = %1$s
 
@@ -259,8 +269,10 @@ create or replace function mas_intersect_polygons(
           and (%5$L is null
             or po_pixel_x::bigint = %5$L::bigint
           )
+          and path_hash(%6$L) = any(pa_parents)
+          %7$s )
 
-        $f$, rec.srid, time_a, time_b, namespaces, resolution
+        $f$, rec.srid, time_a, time_b, namespaces, resolution, gpath, limit_str
 
       ));
 
@@ -289,15 +301,9 @@ create or replace function mas_intersect_polygons(
           path_unhash(po_hash)
         )
           as file
-      from
-        paths
-      inner join
-        (select distinct(po_hash) as po_hash from (%1$s) u) hashes
-          on po_hash = pa_hash
-      where
-        path_hash(%3$L) = any(pa_parents)
+      from (select distinct(po_hash) as po_hash from (%1$s) u) hashes
 
-      $f$, qstr, bbox, gpath
+      $f$, qstr, bbox
     );
 
     return str;
@@ -320,7 +326,8 @@ create or replace function mas_intersects(
   resolution numeric, -- pixel resolution
   raw_metadata text, -- gdal, pdal
   identity_tol float8, -- distance tolerance considered as same point
-  dp_tol       float -- distance tolerance for Douglas-Peucker algorithm
+  dp_tol       float, -- distance tolerance for Douglas-Peucker algorithm
+  limit_val    integer -- limit on number of query rows
 )
   returns jsonb language plpgsql as $$
   declare
@@ -397,7 +404,11 @@ create or replace function mas_intersects(
       ceil((ST_XMax(mask)-ST_XMin(mask))/n_seg) -- degree lat/lon max segment length
     );
 
-    qstr := mas_intersect_polygons(gpath, segmask, namespace, time_a, time_b, resolution::bigint);
+    if limit_val is null then
+      limit_val := -1;
+    end if;
+
+    qstr := mas_intersect_polygons(gpath, segmask, namespace, time_a, time_b, resolution::bigint, limit_val);
 
     files := array[]::text[];
 

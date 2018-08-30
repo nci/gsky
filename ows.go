@@ -206,18 +206,6 @@ func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r
 			endTime = &eT
 		}
 
-		xRes := (params.BBox[2] - params.BBox[0]) / float64(*params.Width)
-		if conf.Layers[idx].ZoomLimit != 0.0 && xRes > conf.Layers[idx].ZoomLimit {
-			out, err := utils.GetEmptyTile(utils.DataDir+"/zoom.png", *params.Height, *params.Width)
-			if err != nil {
-				Info.Printf("Error in the utils.GetEmptyTile(zoom.png): %v\n", err)
-				http.Error(w, err.Error(), 500)
-				return
-			}
-			w.Write(out)
-			return
-		}
-
 		geoReq := &proc.GeoTileRequest{ConfigPayLoad: proc.ConfigPayLoad{NameSpaces: conf.Layers[idx].RGBProducts,
 			Mask:    conf.Layers[idx].Mask,
 			Palette: conf.Layers[idx].Palette,
@@ -229,6 +217,7 @@ func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r
 			PolygonSegments: conf.Layers[idx].WmsPolygonSegments,
 			Timeout:         conf.Layers[idx].WmsTimeout,
 			GrpcConcLimit:   conf.Layers[idx].GrpcWmsConcPerNode,
+			QueryLimit:      -1,
 		},
 			Collection: conf.Layers[idx].DataSource,
 			CRS:        *params.CRS,
@@ -242,6 +231,66 @@ func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r
 		ctx, ctxCancel := context.WithCancel(ctx)
 		defer ctxCancel()
 		errChan := make(chan error)
+
+		xRes := (params.BBox[2] - params.BBox[0]) / float64(*params.Width)
+		yRes := (params.BBox[3] - params.BBox[1]) / float64(*params.Height)
+		reqRes := xRes
+		if yRes > reqRes {
+			reqRes = yRes
+		}
+
+		if conf.Layers[idx].ZoomLimit != 0.0 && reqRes > conf.Layers[idx].ZoomLimit {
+			indexer := proc.NewTileIndexer(ctx, conf.ServiceConfig.MASAddress, errChan)
+			go func() {
+				geoReq.Mask = nil
+				geoReq.QueryLimit = 1
+				indexer.In <- geoReq
+				close(indexer.In)
+			}()
+
+			go indexer.Run()
+
+			hasData := false
+			for geo := range indexer.Out {
+				select {
+				case <-errChan:
+					break
+				case <-ctx.Done():
+					break
+				default:
+					if geo.NameSpace != "EmptyTile" {
+						hasData = true
+						break
+					}
+				}
+
+				if hasData {
+					break
+				}
+			}
+
+			if hasData {
+				out, err := utils.GetEmptyTile(utils.DataDir+"/zoom.png", *params.Height, *params.Width)
+				if err != nil {
+					Info.Printf("Error in the utils.GetEmptyTile(zoom.png): %v\n", err)
+					http.Error(w, err.Error(), 500)
+					return
+				}
+				w.Write(out)
+			} else {
+				emptyTile := &utils.ByteRaster{Height: *params.Height, Width: *params.Width}
+				out, err := utils.EncodePNG([]*utils.ByteRaster{emptyTile}, nil)
+				if err != nil {
+					Info.Printf("Error in the utils.EncodePNG: %v\n", err)
+					http.Error(w, err.Error(), 500)
+					return
+				}
+				w.Write(out)
+			}
+
+			return
+		}
+
 		tp := proc.InitTilePipeline(ctx, conf.ServiceConfig.MASAddress, conf.ServiceConfig.WorkerNodes, conf.Layers[idx].MaxGrpcRecvMsgSize, conf.Layers[idx].WmsPolygonShardConcLimit, errChan)
 		select {
 		case res := <-tp.Process(geoReq):
