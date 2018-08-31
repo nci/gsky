@@ -23,8 +23,10 @@
 			</ContactAddress>
 			<ContactElectronicMailAddress>help@nci.org.au</ContactElectronicMailAddress>
 		</ContactInformation>
-		
 		<Fees>NONE</Fees>
+		<LayerLimit>1</LayerLimit>
+		<MaxWidth>512</MaxWidth>
+		<MaxHeight>512</MaxHeight>
 	</Service>
 	<Capability>
 		<Request>
