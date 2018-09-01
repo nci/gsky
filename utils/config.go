@@ -396,11 +396,12 @@ func LoadAllConfigFiles(rootDir string, verbose bool) (map[string]*Config, error
 		}
 
 		if !info.IsDir() && info.Name() == "config.json" {
+			absPath, _ := filepath.Abs(path)
 			relPath, _ := filepath.Rel(rootDir, filepath.Dir(path))
-			log.Printf("Loading config file: %s under namespace: %s\n", path, relPath)
+			log.Printf("Loading config file: %s under namespace: %s\n", absPath, relPath)
 
 			config := &Config{}
-			e := config.LoadConfigFile(path, verbose)
+			e := config.LoadConfigFile(absPath, verbose)
 			if e != nil {
 				return e
 			}
