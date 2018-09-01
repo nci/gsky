@@ -35,6 +35,7 @@ type TileIndexer struct {
 	Out        chan *GeoTileGranule
 	Error      chan error
 	APIAddress string
+	QueryLimit int
 }
 
 func NewTileIndexer(ctx context.Context, apiAddr string, errChan chan error) *TileIndexer {
@@ -60,15 +61,6 @@ func (p *TileIndexer) Run() {
 			p.Error <- fmt.Errorf("Tile indexer context has been cancel: %v", p.Context.Err())
 			return
 		default:
-			xRes := (geoReq.BBox[2] - geoReq.BBox[0]) / float64(geoReq.Width)
-			if geoReq.ZoomLimit != 0.0 && xRes > geoReq.ZoomLimit {
-				p.Out <- &GeoTileGranule{ConfigPayLoad: ConfigPayLoad{NameSpaces: []string{"OutOfZoom"}, Palette: geoReq.Palette}, Path: "NULL", NameSpace: "OutOfZoom", RasterType: "Byte", TimeStamps: nil, TimeStamp: *geoReq.StartTime, BBox: geoReq.BBox, Height: geoReq.Height, Width: geoReq.Width, OffX: geoReq.OffX, OffY: geoReq.OffY, CRS: geoReq.CRS}
-				// TODO this needs a proper fix
-				// If the index returns too quick the gRPC connections are not ready yet
-				time.Sleep(10 * time.Millisecond)
-				continue
-			}
-
 			var wg sync.WaitGroup
 			var url string
 
@@ -78,9 +70,9 @@ func (p *TileIndexer) Run() {
 
 			nameSpaces := strings.Join(geoReq.NameSpaces, ",")
 			if geoReq.EndTime == nil {
-				url = strings.Replace(fmt.Sprintf("http://%s%s?intersects&metadata=gdal&time=%s&srs=%s&wkt=%s&namespace=%s&nseg=%d", p.APIAddress, geoReq.Collection, geoReq.StartTime.Format(ISOFormat), geoReq.CRS, BBox2WKT(geoReq.BBox), nameSpaces, geoReq.PolygonSegments), " ", "%20", -1)
+				url = strings.Replace(fmt.Sprintf("http://%s%s?intersects&metadata=gdal&time=%s&srs=%s&wkt=%s&namespace=%s&nseg=%d&limit=%d", p.APIAddress, geoReq.Collection, geoReq.StartTime.Format(ISOFormat), geoReq.CRS, BBox2WKT(geoReq.BBox), nameSpaces, geoReq.PolygonSegments, geoReq.QueryLimit), " ", "%20", -1)
 			} else {
-				url = strings.Replace(fmt.Sprintf("http://%s%s?intersects&metadata=gdal&time=%s&until=%s&srs=%s&wkt=%s&namespace=%s&nseg=%d", p.APIAddress, geoReq.Collection, geoReq.StartTime.Format(ISOFormat), geoReq.EndTime.Format(ISOFormat), geoReq.CRS, BBox2WKT(geoReq.BBox), nameSpaces, geoReq.PolygonSegments), " ", "%20", -1)
+				url = strings.Replace(fmt.Sprintf("http://%s%s?intersects&metadata=gdal&time=%s&until=%s&srs=%s&wkt=%s&namespace=%s&nseg=%d&limit=%d", p.APIAddress, geoReq.Collection, geoReq.StartTime.Format(ISOFormat), geoReq.EndTime.Format(ISOFormat), geoReq.CRS, BBox2WKT(geoReq.BBox), nameSpaces, geoReq.PolygonSegments, geoReq.QueryLimit), " ", "%20", -1)
 			}
 			log.Println(url)
 
@@ -94,9 +86,9 @@ func (p *TileIndexer) Run() {
 
 				if maskCollection != geoReq.Collection || geoReq.Mask.ID != nameSpaces {
 					if geoReq.EndTime == nil {
-						url = strings.Replace(fmt.Sprintf("http://%s%s?intersects&metadata=gdal&time=%s&srs=%s&wkt=%s&namespace=%s&nseg=%d", p.APIAddress, maskCollection, geoReq.StartTime.Format(ISOFormat), geoReq.CRS, BBox2WKT(geoReq.BBox), geoReq.Mask.ID, geoReq.PolygonSegments), " ", "%20", -1)
+						url = strings.Replace(fmt.Sprintf("http://%s%s?intersects&metadata=gdal&time=%s&srs=%s&wkt=%s&namespace=%s&nseg=%d&limit=%d", p.APIAddress, maskCollection, geoReq.StartTime.Format(ISOFormat), geoReq.CRS, BBox2WKT(geoReq.BBox), geoReq.Mask.ID, geoReq.PolygonSegments, geoReq.QueryLimit), " ", "%20", -1)
 					} else {
-						url = strings.Replace(fmt.Sprintf("http://%s%s?intersects&metadata=gdal&time=%s&until=%s&srs=%s&wkt=%s&namespace=%s&nseg=%d", p.APIAddress, maskCollection, geoReq.StartTime.Format(ISOFormat), geoReq.EndTime.Format(ISOFormat), geoReq.CRS, BBox2WKT(geoReq.BBox), geoReq.Mask.ID, geoReq.PolygonSegments), " ", "%20", -1)
+						url = strings.Replace(fmt.Sprintf("http://%s%s?intersects&metadata=gdal&time=%s&until=%s&srs=%s&wkt=%s&namespace=%s&nseg=%d&limit=%d", p.APIAddress, maskCollection, geoReq.StartTime.Format(ISOFormat), geoReq.EndTime.Format(ISOFormat), geoReq.CRS, BBox2WKT(geoReq.BBox), geoReq.Mask.ID, geoReq.PolygonSegments, geoReq.QueryLimit), " ", "%20", -1)
 					}
 					log.Println(url)
 

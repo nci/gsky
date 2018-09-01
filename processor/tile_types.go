@@ -22,6 +22,7 @@ type ConfigPayLoad struct {
 	Timeout               int
 	GrpcConcLimit         int
 	PolygonSharcConcLimit int
+	QueryLimit            int
 }
 
 type GeoTileRequest struct {
