@@ -100,6 +100,10 @@ type Layer struct {
 	WcsPolygonShardConcLimit int      `json:"wcs_polygon_shard_conc_limit"`
 	BandEval                 []string `json:"band_eval"`
 	BandStrides              int      `json:"band_strides"`
+	WmsMaxWidth              int      `json:"wms_max_width"`
+	WmsMaxHeight             int      `json:"wms_max_height"`
+	WcsMaxWidth              int      `json:"wcs_max_width"`
+	WcsMaxHeight             int      `json:"wcs_max_height"`
 }
 
 // Process contains all the details that a WPS needs
@@ -474,6 +478,11 @@ const DefaultGrpcWcsConcPerNode = 16
 const DefaultWmsPolygonShardConcLimit = 2
 const DefaultWcsPolygonShardConcLimit = 2
 
+const DefaultWmsMaxWidth = 512
+const DefaultWmsMaxHeight = 512
+const DefaultWcsMaxWidth = 50000
+const DefaultWcsMaxHeight = 30000
+
 // GetLayerDates loads dates for the ith layer
 func (config *Config) GetLayerDates(iLayer int) {
 	layer := config.Layers[iLayer]
@@ -629,6 +638,22 @@ func (config *Config) LoadConfigFile(configFile string, verbose bool) error {
 
 		if layer.Palette != nil && layer.Palette.Colours != nil && len(layer.Palette.Colours) < 3 {
 			return fmt.Errorf("The colour palette must contain at least 2 colours.")
+		}
+
+		if config.Layers[i].WmsMaxWidth <= 0 {
+			config.Layers[i].WmsMaxWidth = DefaultWmsMaxWidth
+		}
+
+		if config.Layers[i].WmsMaxHeight <= 0 {
+			config.Layers[i].WmsMaxHeight = DefaultWmsMaxHeight
+		}
+
+		if config.Layers[i].WcsMaxWidth <= 0 {
+			config.Layers[i].WcsMaxWidth = DefaultWcsMaxWidth
+		}
+
+		if config.Layers[i].WcsMaxHeight <= 0 {
+			config.Layers[i].WcsMaxHeight = DefaultWcsMaxHeight
 		}
 	}
 

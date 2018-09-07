@@ -206,6 +206,11 @@ func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r
 			endTime = &eT
 		}
 
+		if *params.Height > conf.Layers[idx].WmsMaxHeight || *params.Width > conf.Layers[idx].WmsMaxWidth {
+			http.Error(w, fmt.Sprintf("Requested width/height is too large, max width:%d, height:%d", conf.Layers[idx].WmsMaxWidth, conf.Layers[idx].WmsMaxHeight), 400)
+			return
+		}
+
 		geoReq := &proc.GeoTileRequest{ConfigPayLoad: proc.ConfigPayLoad{NameSpaces: conf.Layers[idx].RGBProducts,
 			Mask:    conf.Layers[idx].Mask,
 			Palette: conf.Layers[idx].Palette,
@@ -519,6 +524,11 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 				return
 			}
 
+		}
+
+		if *params.Height > conf.Layers[idx].WcsMaxHeight || *params.Width > conf.Layers[idx].WcsMaxWidth {
+			http.Error(w, fmt.Sprintf("Requested width/height is too large, max width:%d, height:%d", conf.Layers[idx].WcsMaxWidth, conf.Layers[idx].WcsMaxHeight), 400)
+			return
 		}
 
 		if !isWorker {
