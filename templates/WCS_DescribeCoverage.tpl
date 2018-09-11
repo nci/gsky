@@ -1,4 +1,5 @@
-<?xml version="1.0" encoding="UTF-8"?><CoverageDescription xmlns="http://www.opengis.net/wcs" xmlns:gml="http://www.opengis.net/gml" xmlns:xlink="http://www.w3.org/1999/xlink" version="1.0.0">
+<?xml version="1.0" encoding="UTF-8"?>
+<CoverageDescription xmlns="http://www.opengis.net/wcs" xmlns:gml="http://www.opengis.net/gml" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.opengis.net/wcs http://schemas.opengis.net/wcs/1.0.0/describeCoverage.xsd" version="1.0.0">
   <CoverageOffering>
     <description>
       {{ .Abstract }}
@@ -10,17 +11,17 @@
     <lonLatEnvelope srsName="urn:ogc:def:crs:OGC:1.3:CRS84">
       <gml:pos>-180.0 -90.0</gml:pos>
       <gml:pos>180.0 90.0</gml:pos>
-      <gml:timePosition>2015-01-06T01:54:08Z</gml:timePosition>
-      <gml:timePosition>2015-12-24T01:54:38Z</gml:timePosition>
+      <gml:timePosition>{{ .StartISODate }}</gml:timePosition>
+      <gml:timePosition>{{ .EndISODate }}</gml:timePosition>
     </lonLatEnvelope>
     <domainSet>
       <spatialDomain>
-        <EnvelopeWithTimePeriod srsName="urn:ogc:def:crs:OGC:1.3:CRS84">
+        <gml:EnvelopeWithTimePeriod srsName="urn:ogc:def:crs:OGC:1.3:CRS84">
           <gml:pos dimension="2">-180.0 -90.0</gml:pos>
           <gml:pos dimension="2">180.0 90.0</gml:pos>
-          <gml:timePosition>1980-01-00T00:00:00Z</gml:timePosition>
-          <gml:timePosition>2018-01-01T00:00:00Z</gml:timePosition>
-        </EnvelopeWithTimePeriod>
+          <gml:timePosition>{{ .StartISODate }}</gml:timePosition>
+          <gml:timePosition>{{ .EndISODate }}</gml:timePosition>
+        </gml:EnvelopeWithTimePeriod>
         <gml:RectifiedGrid srsName="EPSG:4326" dimension="2">
           <gml:limits>
             <gml:GridEnvelope>
@@ -45,7 +46,7 @@
     </domainSet>
     <rangeSet>
       <RangeSet>
-        <description xmlns="">
+        <description>
           {{ .Abstract }}
         </description>
         <name>{{ .Name }}</name>
