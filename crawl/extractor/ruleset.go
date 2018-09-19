@@ -139,6 +139,13 @@ var CollectionRuleSets = []RuleSet{
 		`SRTM_(?P<product>[A-Z]+)_(?P<x_coord>-?\d+)_(?P<y_coord>-?\d+)_(?P<year>\d\d\d\d)(?P<month>\d\d)(?P<day>\d\d)(?P<hour>\d\d)(?P<minute>\d\d)(?P<second>\d\d)`,
 	},
 	RuleSet{
+		"sentinel2_ard",
+		NSDataset,
+		SRSDetect,
+		Proj4Detect,
+		`_(?P<year>\d\d\d\d)(?P<month>\d\d)(?P<day>\d\d)T(?P<hour>\d\d)(?P<minute>\d\d)(?P<second>\d\d)_`,
+	},
+	RuleSet{
 		"default",
 		NSDataset,
 		SRSDetect,
