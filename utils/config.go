@@ -20,7 +20,6 @@ import (
 	"github.com/CloudyKit/jet"
 )
 
-var LibexecDir = "."
 var EtcDir = "."
 var DataDir = "."
 

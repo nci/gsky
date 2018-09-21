@@ -39,7 +39,7 @@ install:
 	install -d $(datarootdir)/mas
 	install concurrent $(bindir)
 	install $(GOBIN)/gsky $(sbindir)/gsky-ows
-	install $(GOBIN)/gdal-process $(libexecdir)/gsky-gdal-process
+	install $(GOBIN)/gdal-process $(sbindir)/gsky-gdal-process
 	install $(GOBIN)/grpc-server $(sbindir)/gsky-rpc
 	install $(GOBIN)/crawl $(sbindir)/gsky-crawl
 	install $(GOBIN)/api $(sbindir)/masapi
