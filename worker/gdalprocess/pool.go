@@ -5,8 +5,6 @@ import (
 	"log"
 )
 
-var LibexecDir = "."
-
 type ProcessPool struct {
 	Pool      []*Process
 	TaskQueue chan *Task
