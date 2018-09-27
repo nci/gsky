@@ -125,7 +125,9 @@ func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r
 		}
 
 		for iLayer := range conf.Layers {
-			conf.GetLayerDates(iLayer)
+			if conf.Layers[iLayer].AutoRefreshTimestamps {
+				conf.GetLayerDates(iLayer)
+			}
 		}
 
 		w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate, max-age=0")
