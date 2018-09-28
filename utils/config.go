@@ -70,9 +70,12 @@ type Layer struct {
 	MetadataURL string `json:"metadata_url"`
 	DataURL     string `json:"data_url"`
 	//CacheLevels  []CacheLevel `json:"cache_levels"`
-	DataSource               string   `json:"data_source"`
-	StartISODate             string   `json:"start_isodate"`
-	EndISODate               string   `json:"end_isodate"`
+	DataSource               string `json:"data_source"`
+	StartISODate             string `json:"start_isodate"`
+	EndISODate               string `json:"end_isodate"`
+	EffectiveStartDate       string
+	EffectiveEndDate         string
+	AutoRefreshTimestamps    bool     `json:"auto_refresh_timestamps"`
 	StepDays                 int      `json:"step_days"`
 	StepHours                int      `json:"step_hours"`
 	StepMinutes              int      `json:"step_minutes"`
@@ -488,11 +491,6 @@ func (config *Config) GetLayerDates(iLayer int) {
 	step := time.Minute * time.Duration(60*24*layer.StepDays+60*layer.StepHours+layer.StepMinutes)
 	if strings.TrimSpace(strings.ToLower(layer.TimeGen)) == "mas" {
 		config.Layers[iLayer].Dates = GenerateDatesMas(layer.StartISODate, layer.EndISODate, config.ServiceConfig.MASAddress, layer.DataSource, layer.RGBProducts, step)
-		nDates := len(config.Layers[iLayer].Dates)
-		if nDates > 0 {
-			config.Layers[iLayer].StartISODate = config.Layers[iLayer].Dates[0]
-			config.Layers[iLayer].EndISODate = config.Layers[iLayer].Dates[nDates-1]
-		}
 	} else {
 		start, errStart := time.Parse(ISOFormat, layer.StartISODate)
 		if errStart != nil {
@@ -512,6 +510,11 @@ func (config *Config) GetLayerDates(iLayer int) {
 		config.Layers[iLayer].Dates = GenerateDates(layer.TimeGen, start, end, step)
 	}
 
+	nDates := len(config.Layers[iLayer].Dates)
+	if nDates > 0 {
+		config.Layers[iLayer].EffectiveStartDate = config.Layers[iLayer].Dates[0]
+		config.Layers[iLayer].EffectiveEndDate = config.Layers[iLayer].Dates[nDates-1]
+	}
 }
 
 // LoadConfigFileTemplate parses the config as a Jet

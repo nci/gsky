@@ -11,16 +11,16 @@
     <lonLatEnvelope srsName="urn:ogc:def:crs:OGC:1.3:CRS84">
       <gml:pos>-180.0 -90.0</gml:pos>
       <gml:pos>180.0 90.0</gml:pos>
-      <gml:timePosition>{{ .StartISODate }}</gml:timePosition>
-      <gml:timePosition>{{ .EndISODate }}</gml:timePosition>
+      <gml:timePosition>{{ .EffectiveStartDate }}</gml:timePosition>
+      <gml:timePosition>{{ .EffectiveEndDate }}</gml:timePosition>
     </lonLatEnvelope>
     <domainSet>
       <spatialDomain>
         <gml:EnvelopeWithTimePeriod srsName="urn:ogc:def:crs:OGC:1.3:CRS84">
           <gml:pos dimension="2">-180.0 -90.0</gml:pos>
           <gml:pos dimension="2">180.0 90.0</gml:pos>
-          <gml:timePosition>{{ .StartISODate }}</gml:timePosition>
-          <gml:timePosition>{{ .EndISODate }}</gml:timePosition>
+          <gml:timePosition>{{ .EffectiveStartDate }}</gml:timePosition>
+          <gml:timePosition>{{ .EffectiveEndDate }}</gml:timePosition>
         </gml:EnvelopeWithTimePeriod>
         <gml:RectifiedGrid srsName="EPSG:4326" dimension="2">
           <gml:limits>
