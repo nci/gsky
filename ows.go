@@ -382,7 +382,9 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 		newConf := *conf
 		newConf.Layers = make([]utils.Layer, len(newConf.Layers))
 		for i, layer := range conf.Layers {
-			conf.GetLayerDates(i)
+			if layer.AutoRefreshTimestamps {
+				conf.GetLayerDates(i)
+			}
 			newConf.Layers[i] = layer
 			newConf.Layers[i].Dates = []string{newConf.Layers[i].Dates[0], newConf.Layers[i].Dates[len(newConf.Layers[i].Dates)-1]}
 		}
