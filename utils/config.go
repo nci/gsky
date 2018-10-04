@@ -75,7 +75,7 @@ type Layer struct {
 	EndISODate               string `json:"end_isodate"`
 	EffectiveStartDate       string
 	EffectiveEndDate         string
-	AutoRefreshTimestamps    bool     `json:"auto_refresh_timestamps"`
+	TimestampToken           string
 	StepDays                 int      `json:"step_days"`
 	StepHours                int      `json:"step_hours"`
 	StepMinutes              int      `json:"step_minutes"`
@@ -258,7 +258,7 @@ func GenerateDatesRegular(start, end time.Time, stepMins time.Duration) []string
 	return dates
 }
 
-func GenerateDatesMas(start, end string, masAddress string, collection string, namespaces []string, stepMins time.Duration) []string {
+func GenerateDatesMas(start, end string, masAddress string, collection string, namespaces []string, stepMins time.Duration, token string) ([]string, string) {
 	emptyDates := []string{}
 
 	start = strings.TrimSpace(start)
@@ -266,7 +266,7 @@ func GenerateDatesMas(start, end string, masAddress string, collection string, n
 		_, err := time.Parse(ISOFormat, start)
 		if err != nil {
 			log.Printf("start date parsing error: %v", err)
-			return emptyDates
+			return emptyDates, token
 		}
 	}
 
@@ -275,42 +275,47 @@ func GenerateDatesMas(start, end string, masAddress string, collection string, n
 		_, err := time.Parse(ISOFormat, end)
 		if err != nil {
 			log.Printf("end date parsing error: %v", err)
-			return emptyDates
+			return emptyDates, token
 		}
 	}
 
 	ns := strings.Join(namespaces, ",")
-	url := strings.Replace(fmt.Sprintf("http://%s%s?timestamps&time=%s&until=%s&namespace=%s", masAddress, collection, start, end, ns), " ", "%20", -1)
+	url := strings.Replace(fmt.Sprintf("http://%s%s?timestamps&time=%s&until=%s&namespace=%s&token=%s", masAddress, collection, start, end, ns, token), " ", "%20", -1)
 	log.Printf("config querying MAS for timestamps: %v", url)
 
 	resp, err := http.Get(url)
 	if err != nil {
 		log.Printf("MAS http error: %v,%v", url, err)
-		return emptyDates
+		return emptyDates, token
 	}
 	defer resp.Body.Close()
 
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		log.Printf("MAS http error: %v,%v", url, err)
-		return emptyDates
+		return emptyDates, token
 	}
 
 	type MasTimestamps struct {
 		Error      string   `json:"error"`
 		Timestamps []string `json:"timestamps"`
+		Token      string   `json:"token"`
 	}
 
 	var timestamps MasTimestamps
 	err = json.Unmarshal(body, &timestamps)
 	if err != nil {
 		log.Printf("MAS json response error: %v", err)
-		return emptyDates
+		return emptyDates, token
 	}
 
 	if len(timestamps.Error) > 0 {
 		log.Printf("MAS returned error: %v", timestamps.Error)
-		return emptyDates
+		return emptyDates, token
+	}
+
+	if timestamps.Token == token {
+		return emptyDates, token 
 	}
 
 	log.Printf("MAS returned %v timestamps", len(timestamps.Timestamps))
@@ -319,12 +324,12 @@ func GenerateDatesMas(start, end string, masAddress string, collection string, n
 		startDate, err := time.Parse(ISOFormat, timestamps.Timestamps[0])
 		if err != nil {
 			log.Printf("Error parsing MAS returned start date: %v", err)
-			return emptyDates
+			return emptyDates, token
 		}
 		endDate, err := time.Parse(ISOFormat, timestamps.Timestamps[len(timestamps.Timestamps)-1])
 		if err != nil {
 			log.Printf("Error parsing MAS returned end date: %v", err)
-			return emptyDates
+			return emptyDates, token
 		}
 
 		refDates := []time.Time{}
@@ -344,7 +349,7 @@ func GenerateDatesMas(start, end string, masAddress string, collection string, n
 				ts, err := time.Parse(ISOFormat, tsStr)
 				if err != nil {
 					log.Printf("Error parsing MAS returned date: %v", err)
-					return emptyDates
+					return emptyDates, token
 				}
 
 				refDiff := int64(refTs.Sub(ts))
@@ -371,10 +376,10 @@ func GenerateDatesMas(start, end string, masAddress string, collection string, n
 		}
 
 		log.Printf("Aggregated timestamps: %v, steps: %v", len(aggregatedTimestamps), stepMins)
-		return aggregatedTimestamps
+		return aggregatedTimestamps, timestamps.Token 
 	}
 
-	return timestamps.Timestamps
+	return timestamps.Timestamps, timestamps.Token 
 }
 
 func GenerateDates(name string, start, end time.Time, stepMins time.Duration) []string {
@@ -490,7 +495,13 @@ func (config *Config) GetLayerDates(iLayer int) {
 	layer := config.Layers[iLayer]
 	step := time.Minute * time.Duration(60*24*layer.StepDays+60*layer.StepHours+layer.StepMinutes)
 	if strings.TrimSpace(strings.ToLower(layer.TimeGen)) == "mas" {
-		config.Layers[iLayer].Dates = GenerateDatesMas(layer.StartISODate, layer.EndISODate, config.ServiceConfig.MASAddress, layer.DataSource, layer.RGBProducts, step)
+		timestamps, token := GenerateDatesMas(layer.StartISODate, layer.EndISODate, config.ServiceConfig.MASAddress, layer.DataSource, layer.RGBProducts, step, layer.TimestampToken)
+		if len(timestamps) > 0 && len(token) > 0 {
+			config.Layers[iLayer].Dates = timestamps
+			config.Layers[iLayer].TimestampToken = token
+		} else if len(timestamps) == 0 && len(token) > 0 {
+			log.Printf("Cached %d timestamps", len(config.Layers[iLayer].Dates))
+		}
 	} else {
 		start, errStart := time.Parse(ISOFormat, layer.StartISODate)
 		if errStart != nil {
