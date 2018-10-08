@@ -96,20 +96,7 @@ func (gi *GeoRasterGRPC) Run(polyLimiter *ConcLimiter) {
 		return
 	}
 
-	// We have to do this because there is no way to figure out
-	// the data type of the raster but returned from the grpc worker
-	// We need the data type to dertermine the byte size for memory
-	// bound calcuations
-	r0, err := getRPCRaster(gi.Context, g0, connPool[0])
-	if err != nil {
-		polyLimiter.Increase()
-		gi.Error <- err
-		r0 = &pb.Result{Raster: &pb.Raster{Data: make([]uint8, g0.Width*g0.Height), RasterType: "Byte", NoData: -1.}}
-		gi.Out <- []*FlexRaster{&FlexRaster{ConfigPayLoad: g0.ConfigPayLoad, Data: r0.Raster.Data, Height: g0.Height, Width: g0.Width, OffX: g0.OffX, OffY: g0.OffY, Type: r0.Raster.RasterType, NoData: r0.Raster.NoData, NameSpace: g0.NameSpace, TimeStamp: g0.TimeStamp, Polygon: g0.Polygon}}
-		return
-	}
-
-	dataSize, err := getDataSize(r0.Raster.RasterType)
+	dataSize, err := getDataSize(g0.RasterType)
 	if err != nil {
 		gi.Error <- err
 		return
@@ -131,7 +118,7 @@ func (gi *GeoRasterGRPC) Run(polyLimiter *ConcLimiter) {
 	// A typical value of 2 scales well for both small and large requests.
 	// By varying this shard concurrency value, we can trade off space and time.
 	gransByPolygon := make(map[string][]*GeoTileGranule)
-	for i := 1; i < len(grans); i++ {
+	for i := 0; i < len(grans); i++ {
 		gran := grans[i]
 		gransByPolygon[gran.Polygon] = append(gransByPolygon[gran.Polygon], gran)
 	}
@@ -203,10 +190,6 @@ func (gi *GeoRasterGRPC) Run(polyLimiter *ConcLimiter) {
 		// /proc/meminfo
 		log.Printf("meminfo error: %v", err)
 	}
-
-	polyLimiter.Increase()
-	// We first send out the raster we used to figure out data type
-	gi.Out <- []*FlexRaster{&FlexRaster{ConfigPayLoad: g0.ConfigPayLoad, Data: r0.Raster.Data, Height: g0.Height, Width: g0.Width, OffX: g0.OffX, OffY: g0.OffY, Type: r0.Raster.RasterType, NoData: r0.Raster.NoData, NameSpace: g0.NameSpace, TimeStamp: g0.TimeStamp, Polygon: g0.Polygon}}
 
 	timeoutCtx, cancel := context.WithTimeout(gi.Context, time.Duration(g0.Timeout)*time.Second)
 	defer cancel()
