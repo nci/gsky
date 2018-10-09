@@ -79,9 +79,15 @@ func (gi *GeoRasterGRPC) Run(polyLimiter *ConcLimiter) {
 		grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(gi.MaxGrpcRecvMsgSize)),
 	}
 
+	clientIdx := make([]int, len(gi.Clients))
+	for ic := range clientIdx {
+		clientIdx[ic] = ic
+	}
+	rand.Shuffle(len(clientIdx), func(i, j int) { clientIdx[i], clientIdx[j] = clientIdx[j], clientIdx[i] })
+
 	var connPool []*grpc.ClientConn
 	for i := 0; i < effectivePoolSize; i++ {
-		conn, err := grpc.Dial(gi.Clients[i], opts...)
+		conn, err := grpc.Dial(gi.Clients[clientIdx[i]], opts...)
 		if err != nil {
 			log.Printf("gRPC connection problem: %v", err)
 			continue
@@ -198,7 +204,6 @@ func (gi *GeoRasterGRPC) Run(polyLimiter *ConcLimiter) {
 	var wg sync.WaitGroup
 	wg.Add(len(gransByShard))
 
-	workerStart := rand.Intn(len(connPool))
 	granCounter := 0
 	for _, polyGrans := range gransByShard {
 		polyLimiter.Increase()
@@ -224,15 +229,15 @@ func (gi *GeoRasterGRPC) Run(polyLimiter *ConcLimiter) {
 					}
 
 					cLimiter.Increase()
-					go func(g *GeoTileGranule, iTile int, gCnt int) {
+					go func(g *GeoTileGranule, gCnt int) {
 						defer cLimiter.Decrease()
-						r, err := getRPCRaster(gi.Context, g, connPool[(gCnt+workerStart)%len(connPool)])
+						r, err := getRPCRaster(gi.Context, g, connPool[gCnt%len(connPool)])
 						if err != nil {
 							gi.Error <- err
 							r = &pb.Result{Raster: &pb.Raster{Data: make([]uint8, g.Width*g.Height), RasterType: "Byte", NoData: -1.}}
 						}
 						outChan <- &FlexRaster{ConfigPayLoad: g.ConfigPayLoad, Data: r.Raster.Data, Height: g.Height, Width: g.Width, OffX: g.OffX, OffY: g.OffY, Type: r.Raster.RasterType, NoData: r.Raster.NoData, NameSpace: g.NameSpace, TimeStamp: g.TimeStamp, Polygon: g.Polygon}
-					}(gran, iGran, granCounter+iGran)
+					}(gran, granCounter+iGran)
 				}
 
 			}
