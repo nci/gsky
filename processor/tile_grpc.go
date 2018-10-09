@@ -79,9 +79,15 @@ func (gi *GeoRasterGRPC) Run(polyLimiter *ConcLimiter) {
 		grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(gi.MaxGrpcRecvMsgSize)),
 	}
 
+	clientIdx := make([]int, len(gi.Clients))
+	for ic := range clientIdx {
+		clientIdx[ic] = ic
+	}
+	rand.Shuffle(len(clientIdx), func(i, j int) { clientIdx[i], clientIdx[j] = clientIdx[j], clientIdx[i] })
+
 	var connPool []*grpc.ClientConn
 	for i := 0; i < effectivePoolSize; i++ {
-		conn, err := grpc.Dial(gi.Clients[i], opts...)
+		conn, err := grpc.Dial(gi.Clients[clientIdx[i]], opts...)
 		if err != nil {
 			log.Printf("gRPC connection problem: %v", err)
 			continue
@@ -96,20 +102,7 @@ func (gi *GeoRasterGRPC) Run(polyLimiter *ConcLimiter) {
 		return
 	}
 
-	// We have to do this because there is no way to figure out
-	// the data type of the raster but returned from the grpc worker
-	// We need the data type to dertermine the byte size for memory
-	// bound calcuations
-	r0, err := getRPCRaster(gi.Context, g0, connPool[0])
-	if err != nil {
-		polyLimiter.Increase()
-		gi.Error <- err
-		r0 = &pb.Result{Raster: &pb.Raster{Data: make([]uint8, g0.Width*g0.Height), RasterType: "Byte", NoData: -1.}}
-		gi.Out <- []*FlexRaster{&FlexRaster{ConfigPayLoad: g0.ConfigPayLoad, Data: r0.Raster.Data, Height: g0.Height, Width: g0.Width, OffX: g0.OffX, OffY: g0.OffY, Type: r0.Raster.RasterType, NoData: r0.Raster.NoData, NameSpace: g0.NameSpace, TimeStamp: g0.TimeStamp, Polygon: g0.Polygon}}
-		return
-	}
-
-	dataSize, err := getDataSize(r0.Raster.RasterType)
+	dataSize, err := getDataSize(g0.RasterType)
 	if err != nil {
 		gi.Error <- err
 		return
@@ -131,7 +124,7 @@ func (gi *GeoRasterGRPC) Run(polyLimiter *ConcLimiter) {
 	// A typical value of 2 scales well for both small and large requests.
 	// By varying this shard concurrency value, we can trade off space and time.
 	gransByPolygon := make(map[string][]*GeoTileGranule)
-	for i := 1; i < len(grans); i++ {
+	for i := 0; i < len(grans); i++ {
 		gran := grans[i]
 		gransByPolygon[gran.Polygon] = append(gransByPolygon[gran.Polygon], gran)
 	}
@@ -204,10 +197,6 @@ func (gi *GeoRasterGRPC) Run(polyLimiter *ConcLimiter) {
 		log.Printf("meminfo error: %v", err)
 	}
 
-	polyLimiter.Increase()
-	// We first send out the raster we used to figure out data type
-	gi.Out <- []*FlexRaster{&FlexRaster{ConfigPayLoad: g0.ConfigPayLoad, Data: r0.Raster.Data, Height: g0.Height, Width: g0.Width, OffX: g0.OffX, OffY: g0.OffY, Type: r0.Raster.RasterType, NoData: r0.Raster.NoData, NameSpace: g0.NameSpace, TimeStamp: g0.TimeStamp, Polygon: g0.Polygon}}
-
 	timeoutCtx, cancel := context.WithTimeout(gi.Context, time.Duration(g0.Timeout)*time.Second)
 	defer cancel()
 	cLimiter := NewConcLimiter(g0.GrpcConcLimit * len(connPool))
@@ -215,7 +204,6 @@ func (gi *GeoRasterGRPC) Run(polyLimiter *ConcLimiter) {
 	var wg sync.WaitGroup
 	wg.Add(len(gransByShard))
 
-	workerStart := rand.Intn(len(connPool))
 	granCounter := 0
 	for _, polyGrans := range gransByShard {
 		polyLimiter.Increase()
@@ -241,15 +229,15 @@ func (gi *GeoRasterGRPC) Run(polyLimiter *ConcLimiter) {
 					}
 
 					cLimiter.Increase()
-					go func(g *GeoTileGranule, iTile int, gCnt int) {
+					go func(g *GeoTileGranule, gCnt int) {
 						defer cLimiter.Decrease()
-						r, err := getRPCRaster(gi.Context, g, connPool[(gCnt+workerStart)%len(connPool)])
+						r, err := getRPCRaster(gi.Context, g, connPool[gCnt%len(connPool)])
 						if err != nil {
 							gi.Error <- err
 							r = &pb.Result{Raster: &pb.Raster{Data: make([]uint8, g.Width*g.Height), RasterType: "Byte", NoData: -1.}}
 						}
 						outChan <- &FlexRaster{ConfigPayLoad: g.ConfigPayLoad, Data: r.Raster.Data, Height: g.Height, Width: g.Width, OffX: g.OffX, OffY: g.OffY, Type: r.Raster.RasterType, NoData: r.Raster.NoData, NameSpace: g.NameSpace, TimeStamp: g.TimeStamp, Polygon: g.Polygon}
-					}(gran, iGran, granCounter+iGran)
+					}(gran, granCounter+iGran)
 				}
 
 			}
