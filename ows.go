@@ -765,11 +765,7 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 			}
 
 			if (ir+1)%checkpointThreshold == 0 {
-				hDstDS, err = utils.EncodeGdalFlush(hDstDS, masterTempFile, driverFormat)
-				if err != nil {
-					Info.Printf("Error in the pipeline: %v\n", err)
-					http.Error(w, err.Error(), 500)
-				}
+				utils.EncodeGdalFlush(hDstDS)
 				runtime.GC()
 			}
 		}

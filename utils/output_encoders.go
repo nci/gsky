@@ -425,27 +425,8 @@ func EncodeGdalMerge(ctx context.Context, hDstDS C.GDALDatasetH, format string, 
 	return nil
 }
 
-func EncodeGdalFlush(hDstDS C.GDALDatasetH, tempFile string, format string) (C.GDALDatasetH, error) {
-	driverName, err := GetDriverNameFromFormat(format)
-	if err != nil {
-		return nil, err
-	}
-
-	C.GDALClose(hDstDS)
-
-	tempFileC := C.CString(tempFile)
-	defer C.free(unsafe.Pointer(tempFileC))
-
-	driverList := []*C.char{C.CString(driverName)}
-	defer C.free(unsafe.Pointer(driverList[0]))
-
-	newhDS := C.GDALOpenEx(tempFileC, C.GDAL_OF_UPDATE, &driverList[0], nil, nil)
-
-	if newhDS == nil {
-		return nil, fmt.Errorf("Failed to reopen existing dataset: %v", tempFile)
-	}
-
-	return newhDS, nil
+func EncodeGdalFlush(hDstDS C.GDALDatasetH) {
+	C.GDALFlushCache(hDstDS)
 }
 
 func EncodeGdalClose(hDstDS C.GDALDatasetH) {
