@@ -536,10 +536,10 @@ func (config *Config) GetLayerDates(iLayer int) {
 		}
 
 		if useMasTimestamps && step > 0 {
-			// We normalise the timestamps by truncating up to the required precision
+			// We normalise the timestamps by truncating them up to the required precision.
 			// The truncation process essentially rounds down the datetime to the
 			// nearest precision from the left. This implies that we should not
-			// do such a normalisation process on the end datetime. Or we might miss
+			// do such a normalisation to the end datetime. Or we might miss
 			// out some data points due to lower time resolution on the upper time
 			// end point.
 			// This behaviour is also consistent with the manual timestep generator
