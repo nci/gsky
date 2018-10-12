@@ -551,6 +551,8 @@ func (config *Config) GetLayerDates(iLayer int) {
 			} else if layer.StepMinutes > 0 {
 				start = start.Truncate(time.Minute)
 			}
+
+			log.Printf("Normalised MAS start date: %v", start.Format(ISOFormat))
 		}
 
 		config.Layers[iLayer].Dates = GenerateDates(layer.TimeGen, start, end, step)
