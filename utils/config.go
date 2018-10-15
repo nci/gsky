@@ -315,7 +315,7 @@ func GenerateDatesMas(start, end string, masAddress string, collection string, n
 	}
 
 	if timestamps.Token == token {
-		return emptyDates, token 
+		return emptyDates, token
 	}
 
 	log.Printf("MAS returned %v timestamps", len(timestamps.Timestamps))
@@ -376,10 +376,10 @@ func GenerateDatesMas(start, end string, masAddress string, collection string, n
 		}
 
 		log.Printf("Aggregated timestamps: %v, steps: %v", len(aggregatedTimestamps), stepMins)
-		return aggregatedTimestamps, timestamps.Token 
+		return aggregatedTimestamps, timestamps.Token
 	}
 
-	return timestamps.Timestamps, timestamps.Token 
+	return timestamps.Timestamps, timestamps.Token
 }
 
 func GenerateDates(name string, start, end time.Time, stepMins time.Duration) []string {
@@ -502,6 +502,10 @@ func (config *Config) GetLayerDates(iLayer int) {
 			config.Layers[iLayer].TimestampToken = token
 		} else if len(timestamps) == 0 && len(token) > 0 {
 			log.Printf("Cached %d timestamps", len(config.Layers[iLayer].Dates))
+			return
+		} else {
+			log.Printf("Failed to get MAS timestamps")
+			return
 		}
 	} else {
 		startDate := layer.StartISODate
@@ -521,11 +525,15 @@ func (config *Config) GetLayerDates(iLayer int) {
 		}
 
 		if useMasTimestamps {
-			masTimestamps := GenerateDatesMas(startDate, endDate, config.ServiceConfig.MASAddress, layer.DataSource, layer.RGBProducts, 0)
-			if len(masTimestamps) < 2 {
+			masTimestamps, token := GenerateDatesMas(startDate, endDate, config.ServiceConfig.MASAddress, layer.DataSource, layer.RGBProducts, 0, layer.TimestampToken)
+			if len(token) == 0 {
 				log.Printf("Failed to get MAS timestamps")
 				return
+			} else if len(masTimestamps) == 0 && len(token) > 0 {
+				log.Printf("Cached %d timestamps", len(config.Layers[iLayer].Dates))
+				return
 			}
+			config.Layers[iLayer].TimestampToken = token
 
 			if len(startDate) == 0 {
 				startDate = masTimestamps[0]
@@ -539,11 +547,13 @@ func (config *Config) GetLayerDates(iLayer int) {
 		start, errStart := time.Parse(ISOFormat, startDate)
 		if errStart != nil {
 			log.Printf("start date parsing error: %v", errStart)
+			return
 		}
 
 		end, errEnd := time.Parse(ISOFormat, endDate)
 		if errEnd != nil {
 			log.Printf("end date parsing error: %v", errEnd)
+			return
 		}
 
 		if useMasTimestamps && step > 0 {
@@ -566,7 +576,11 @@ func (config *Config) GetLayerDates(iLayer int) {
 			log.Printf("Normalised MAS start date: %v", start.Format(ISOFormat))
 		}
 
-		config.Layers[iLayer].Dates = GenerateDates(layer.TimeGen, start, end, step)
+		if start == end {
+			config.Layers[iLayer].Dates = append(config.Layers[iLayer].Dates, start.Format(ISOFormat))
+		} else {
+			config.Layers[iLayer].Dates = GenerateDates(layer.TimeGen, start, end, step)
+		}
 	}
 
 	nDates := len(config.Layers[iLayer].Dates)
