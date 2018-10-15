@@ -162,7 +162,7 @@ const ISOFormat = "2006-01-02T15:04:05.000Z"
 
 func GenerateDatesAux(start, end time.Time, stepMins time.Duration) []string {
 	dates := []string{}
-	for start.Before(end) {
+	for !start.After(end) {
 		dates = append(dates, start.Format(ISOFormat))
 		start = time.Date(start.Year()+1, 1, 1, 0, 0, 0, 0, time.UTC)
 	}
@@ -177,12 +177,12 @@ func GenerateDatesMCD43A4(start, end time.Time, stepMins time.Duration) []string
 		return dates
 	}
 	year := start.Year()
-	for start.Before(end) {
-		for start.Year() == year && start.Before(end) {
+	for !start.After(end) {
+		for start.Year() == year && !start.After(end) {
 			dates = append(dates, start.Format(ISOFormat))
 			start = start.Add(stepMins)
 		}
-		if !start.Before(end) {
+		if start.After(end) {
 			break
 		}
 		year = start.Year()
@@ -197,8 +197,8 @@ func GenerateDatesGeoglam(start, end time.Time, stepMins time.Duration) []string
 		return dates
 	}
 	year := start.Year()
-	for start.Before(end) {
-		for start.Year() == year && start.Before(end) {
+	for !start.After(end) {
+		for start.Year() == year && !start.After(end) {
 			dates = append(dates, start.Format(ISOFormat))
 			nextDate := start.AddDate(0, 0, 4)
 			if start.Month() == nextDate.Month() {
@@ -208,7 +208,7 @@ func GenerateDatesGeoglam(start, end time.Time, stepMins time.Duration) []string
 			}
 
 		}
-		if !start.Before(end) {
+		if start.After(end) {
 			break
 		}
 		year = start.Year()
@@ -219,7 +219,7 @@ func GenerateDatesGeoglam(start, end time.Time, stepMins time.Duration) []string
 
 func GenerateDatesChirps20(start, end time.Time, stepMins time.Duration) []string {
 	dates := []string{}
-	for start.Before(end) {
+	for !start.After(end) {
 		dates = append(dates, time.Date(start.Year(), start.Month(), 1, 0, 0, 0, 0, time.UTC).Format(ISOFormat))
 		dates = append(dates, time.Date(start.Year(), start.Month(), 11, 0, 0, 0, 0, time.UTC).Format(ISOFormat))
 		dates = append(dates, time.Date(start.Year(), start.Month(), 21, 0, 0, 0, 0, time.UTC).Format(ISOFormat))
@@ -230,7 +230,7 @@ func GenerateDatesChirps20(start, end time.Time, stepMins time.Duration) []strin
 
 func GenerateMonthlyDates(start, end time.Time, stepMins time.Duration) []string {
 	dates := []string{}
-	for start.Before(end) {
+	for !start.After(end) {
 		start = start.AddDate(0, 1, 0)
 		dates = append(dates, time.Date(start.Year(), start.Month(), start.Day(), 0, 0, 0, 0, time.UTC).Format(ISOFormat))
 	}
@@ -239,7 +239,7 @@ func GenerateMonthlyDates(start, end time.Time, stepMins time.Duration) []string
 
 func GenerateYearlyDates(start, end time.Time, stepMins time.Duration) []string {
 	dates := []string{}
-	for start.Before(end) {
+	for !start.After(end) {
 		start = start.AddDate(1, 0, 0)
 		dates = append(dates, time.Date(start.Year(), start.Month(), start.Day(), 0, 0, 0, 0, time.UTC).Format(ISOFormat))
 	}
@@ -251,7 +251,7 @@ func GenerateDatesRegular(start, end time.Time, stepMins time.Duration) []string
 	if int64(stepMins) <= 0 {
 		return dates
 	}
-	for start.Before(end) {
+	for !start.After(end) {
 		dates = append(dates, start.Format(ISOFormat))
 		start = start.Add(stepMins)
 	}
@@ -333,7 +333,7 @@ func GenerateDatesMas(start, end string, masAddress string, collection string, n
 		}
 
 		refDates := []time.Time{}
-		for startDate.Before(endDate) {
+		for !startDate.After(endDate) {
 			refDates = append(refDates, startDate)
 			startDate = startDate.Add(stepMins)
 		}
