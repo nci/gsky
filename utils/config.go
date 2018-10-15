@@ -494,6 +494,7 @@ const DefaultWcsMaxHeight = 30000
 func (config *Config) GetLayerDates(iLayer int) {
 	layer := config.Layers[iLayer]
 	step := time.Minute * time.Duration(60*24*layer.StepDays+60*layer.StepHours+layer.StepMinutes)
+
 	if strings.TrimSpace(strings.ToLower(layer.TimeGen)) == "mas" {
 		timestamps, token := GenerateDatesMas(layer.StartISODate, layer.EndISODate, config.ServiceConfig.MASAddress, layer.DataSource, layer.RGBProducts, step, layer.TimestampToken)
 		if len(timestamps) > 0 && len(token) > 0 {
@@ -503,19 +504,66 @@ func (config *Config) GetLayerDates(iLayer int) {
 			log.Printf("Cached %d timestamps", len(config.Layers[iLayer].Dates))
 		}
 	} else {
-		start, errStart := time.Parse(ISOFormat, layer.StartISODate)
+		startDate := layer.StartISODate
+		endDate := layer.EndISODate
+
+		useMasTimestamps := false
+		if strings.TrimSpace(strings.ToLower(startDate)) == "mas" {
+			useMasTimestamps = true
+			startDate = ""
+		}
+
+		if strings.TrimSpace(strings.ToLower(endDate)) == "mas" {
+			useMasTimestamps = true
+			endDate = ""
+		} else if strings.TrimSpace(strings.ToLower(endDate)) == "now" {
+			endDate = time.Now().UTC().Format(ISOFormat)
+		}
+
+		if useMasTimestamps {
+			masTimestamps := GenerateDatesMas(startDate, endDate, config.ServiceConfig.MASAddress, layer.DataSource, layer.RGBProducts, 0)
+			if len(masTimestamps) < 2 {
+				log.Printf("Failed to get MAS timestamps")
+				return
+			}
+
+			if len(startDate) == 0 {
+				startDate = masTimestamps[0]
+			}
+
+			if len(endDate) == 0 {
+				endDate = masTimestamps[len(masTimestamps)-1]
+			}
+		}
+
+		start, errStart := time.Parse(ISOFormat, startDate)
 		if errStart != nil {
 			log.Printf("start date parsing error: %v", errStart)
 		}
 
-		end, errEnd := time.Parse(ISOFormat, layer.EndISODate)
+		end, errEnd := time.Parse(ISOFormat, endDate)
 		if errEnd != nil {
-			if strings.TrimSpace(strings.ToLower(layer.EndISODate)) == "now" {
-				end = time.Now().UTC()
-				log.Printf("end date is set to now(): %v", end)
-			} else {
-				log.Printf("end date parsing error: %v", errEnd)
+			log.Printf("end date parsing error: %v", errEnd)
+		}
+
+		if useMasTimestamps && step > 0 {
+			// We normalise the timestamps by truncating them up to the required precision.
+			// The truncation process essentially rounds down the datetime to the
+			// nearest precision from the left. This implies that we should not
+			// do such a normalisation to the end datetime. Or we might miss
+			// out some data points due to lower time resolution on the upper time
+			// end point.
+			// This behaviour is also consistent with the manual timestep generator
+			// which offers open-ended upper time end point.
+			if layer.StepDays > 0 {
+				start = start.Truncate(24 * 60 * time.Minute)
+			} else if layer.StepHours > 0 {
+				start = start.Truncate(60 * time.Minute)
+			} else if layer.StepMinutes > 0 {
+				start = start.Truncate(time.Minute)
 			}
+
+			log.Printf("Normalised MAS start date: %v", start.Format(ISOFormat))
 		}
 
 		config.Layers[iLayer].Dates = GenerateDates(layer.TimeGen, start, end, step)

@@ -380,7 +380,9 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 		newConf := *conf
 		newConf.Layers = make([]utils.Layer, len(newConf.Layers))
 		for i, layer := range conf.Layers {
-			conf.GetLayerDates(i)
+			if layer.AutoRefreshTimestamps {
+				conf.GetLayerDates(i)
+			}
 			newConf.Layers[i] = layer
 			newConf.Layers[i].Dates = []string{newConf.Layers[i].Dates[0], newConf.Layers[i].Dates[len(newConf.Layers[i].Dates)-1]}
 		}
@@ -761,11 +763,7 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 			}
 
 			if (ir+1)%checkpointThreshold == 0 {
-				hDstDS, err = utils.EncodeGdalFlush(hDstDS, masterTempFile, driverFormat)
-				if err != nil {
-					Info.Printf("Error in the pipeline: %v\n", err)
-					http.Error(w, err.Error(), 500)
-				}
+				utils.EncodeGdalFlush(hDstDS)
 				runtime.GC()
 			}
 		}
