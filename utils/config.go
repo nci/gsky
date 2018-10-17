@@ -231,8 +231,8 @@ func GenerateDatesChirps20(start, end time.Time, stepMins time.Duration) []strin
 func GenerateMonthlyDates(start, end time.Time, stepMins time.Duration) []string {
 	dates := []string{}
 	for !start.After(end) {
-		start = start.AddDate(0, 1, 0)
 		dates = append(dates, time.Date(start.Year(), start.Month(), start.Day(), 0, 0, 0, 0, time.UTC).Format(ISOFormat))
+		start = start.AddDate(0, 1, 0)
 	}
 	return dates
 }
@@ -240,8 +240,8 @@ func GenerateMonthlyDates(start, end time.Time, stepMins time.Duration) []string
 func GenerateYearlyDates(start, end time.Time, stepMins time.Duration) []string {
 	dates := []string{}
 	for !start.After(end) {
-		start = start.AddDate(1, 0, 0)
 		dates = append(dates, time.Date(start.Year(), start.Month(), start.Day(), 0, 0, 0, 0, time.UTC).Format(ISOFormat))
+		start = start.AddDate(1, 0, 0)
 	}
 	return dates
 }
