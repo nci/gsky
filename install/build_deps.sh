@@ -1,6 +1,5 @@
 #!/bin/bash
 set -xeu
-# Comment
 prefix=${PREFIX:-/usr}
 
 v=9c
@@ -17,8 +16,7 @@ rm -f jpegsrc.v${v}.tar.gz
 
 v=2.3.0
 (set -xeu
-wget -q -O openjpeg-v${v}.tar.gz https://github.com/uclouvain/openjpeg/releases/download/v${v}/openjpeg-v${v}-linux-x86_64.tar.gz
-#wget -q -O openjpeg-v${v}.tar.gz https://github.com/uclouvain/openjpeg/archive/v${v}.tar.gz
+wget -q -O openjpeg-v${v}.tar.gz https://github.com/uclouvain/openjpeg/archive/v${v}.tar.gz
 tar -xf openjpeg-v${v}.tar.gz
 cd openjpeg-${v}
 mkdir build
@@ -29,7 +27,6 @@ make install
 )
 rm -rf openjpeg-${v}
 rm -f openjpeg-v${v}.tar.gz
-exit
 
 v=3.6.2
 (set -xeu
