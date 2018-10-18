@@ -124,10 +124,7 @@ func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r
 			return
 		}
 
-//		for iLayer := range conf.Layers {
-//			if conf.Layers[iLayer].AutoRefreshTimestamps {
-				conf.GetLayerDates(iLayer)
-//			}
+			conf.GetLayerDates(iLayer)
 		}
 
 		w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate, max-age=0")
@@ -382,9 +379,7 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 		newConf := *conf
 		newConf.Layers = make([]utils.Layer, len(newConf.Layers))
 		for i, layer := range conf.Layers {
-//			if layer.AutoRefreshTimestamps {
-				conf.GetLayerDates(i)
-//			}
+			conf.GetLayerDates(i)
 			newConf.Layers[i] = layer
 			newConf.Layers[i].Dates = []string{newConf.Layers[i].Dates[0], newConf.Layers[i].Dates[len(newConf.Layers[i].Dates)-1]}
 		}
