@@ -502,6 +502,7 @@ func (config *Config) GetLayerDates(iLayer int) {
 			config.Layers[iLayer].TimestampToken = token
 		} else if len(timestamps) == 0 && len(token) > 0 {
 			log.Printf("Cached %d timestamps", len(config.Layers[iLayer].Dates))
+			config.Layers[iLayer].TimestampToken = token
 			return
 		} else {
 			log.Printf("Failed to get MAS timestamps")
@@ -531,6 +532,7 @@ func (config *Config) GetLayerDates(iLayer int) {
 				return
 			} else if len(masTimestamps) == 0 && len(token) > 0 {
 				log.Printf("Cached %d timestamps", len(config.Layers[iLayer].Dates))
+				config.Layers[iLayer].TimestampToken = token
 				return
 			}
 			config.Layers[iLayer].TimestampToken = token
