@@ -76,7 +76,9 @@ func registerGDALDrivers() {
 	// load the drivers of interest and then load all of the
 	// drivers. This places common drivers at the front of the
 	// driver list.
-	var haveNetCDF, haveHDF4, haveHDF5, haveJP2OpenJPEG bool
+// AVS	
+//	var haveNetCDF, haveHDF4, haveHDF5, haveJP2OpenJPEG bool
+	var haveNetCDF, haveHDF4, haveHDF5 bool
 	var haveGTiff bool
 
 	// Find out which drivers are present
@@ -90,8 +92,9 @@ func registerGDALDrivers() {
 			haveHDF4 = true
 		case "HDF5":
 			haveHDF5 = true
-		case "JP2OpenJPEG":
-			haveJP2OpenJPEG = true
+// AVS			
+//		case "JP2OpenJPEG":
+//			haveJP2OpenJPEG = true
 		case "GTiff":
 			haveGTiff = true
 		}
@@ -114,9 +117,10 @@ func registerGDALDrivers() {
 	if haveHDF5 {
 		C.GDALRegister_HDF5()
 	}
-	if haveJP2OpenJPEG {
-		C.GDALRegister_JP2OpenJPEG()
-	}
+// AVS
+//	if haveJP2OpenJPEG {
+//		C.GDALRegister_JP2OpenJPEG()
+//	}
 	if haveGTiff {
 		C.GDALRegister_GTiff()
 	}
