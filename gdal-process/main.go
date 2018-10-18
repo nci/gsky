@@ -76,7 +76,7 @@ func registerGDALDrivers() {
 	// load the drivers of interest and then load all of the
 	// drivers. This places common drivers at the front of the
 	// driver list.
-// AVS	
+// AVS: JPEG option is giving an error downstream. Hence, delete it. We do not have JPEG data files.	
 //	var haveNetCDF, haveHDF4, haveHDF5, haveJP2OpenJPEG bool
 	var haveNetCDF, haveHDF4, haveHDF5 bool
 	var haveGTiff bool
@@ -92,7 +92,7 @@ func registerGDALDrivers() {
 			haveHDF4 = true
 		case "HDF5":
 			haveHDF5 = true
-// AVS			
+// AVS: JPEG option is giving an error downstream. Hence, delete it. We do not have JPEG data files.	
 //		case "JP2OpenJPEG":
 //			haveJP2OpenJPEG = true
 		case "GTiff":
@@ -117,7 +117,7 @@ func registerGDALDrivers() {
 	if haveHDF5 {
 		C.GDALRegister_HDF5()
 	}
-// AVS
+// AVS: JPEG option is giving an error downstream. Hence, delete it. We do not have JPEG data files.	
 //	if haveJP2OpenJPEG {
 //		C.GDALRegister_JP2OpenJPEG()
 //	}
