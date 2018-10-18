@@ -124,6 +124,7 @@ func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r
 			return
 		}
 
+		for iLayer := range conf.Layers {
 			conf.GetLayerDates(iLayer)
 		}
 
