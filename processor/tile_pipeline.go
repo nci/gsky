@@ -26,7 +26,7 @@ func InitTilePipeline(ctx context.Context, masAddr string, rpcAddr []string, max
 	}
 }
 
-func (dp *TilePipeline) Process(geoReq *GeoTileRequest) chan []utils.Raster {
+func (dp *TilePipeline) Process(geoReq *GeoTileRequest, verbose bool) chan []utils.Raster {
 	grpcTiler := NewRasterGRPC(dp.Context, dp.RPCAddress, dp.MaxGrpcRecvMsgSize, dp.PolygonShardConcLimit, dp.Error)
 
 	i := NewTileIndexer(dp.Context, dp.MASAddress, dp.Error)
@@ -41,7 +41,7 @@ func (dp *TilePipeline) Process(geoReq *GeoTileRequest) chan []utils.Raster {
 	m.In = grpcTiler.Out
 
 	polyLimiter := NewConcLimiter(dp.PolygonShardConcLimit)
-	go i.Run()
+	go i.Run(verbose)
 	go grpcTiler.Run(polyLimiter)
 	go m.Run(polyLimiter)
 
