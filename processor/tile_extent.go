@@ -20,7 +20,7 @@ func ComputeReprojectionExtent(ctx context.Context, geoReq *GeoTileRequest, masA
 		close(indexer.In)
 	}()
 
-	go indexer.Run()
+	go indexer.Run(verbose)
 
 	var indexGrans []*GeoTileGranule
 	for gran := range indexer.Out {

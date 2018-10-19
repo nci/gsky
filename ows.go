@@ -505,7 +505,9 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 
 			geoReq := getGeoTileRequest(0, 0, params.BBox, 0, 0)
 			maxWidth, maxHeight, err := proc.ComputeReprojectionExtent(ctx, geoReq, conf.ServiceConfig.MASAddress, conf.ServiceConfig.WorkerNodes, epsg, params.BBox, *verbose)
-			Info.Printf("WCS: Output image size: width=%v, height=%v", maxWidth, maxHeight)
+			if *verbose {
+				Info.Printf("WCS: Output image size: width=%v, height=%v", maxWidth, maxHeight)
+			}
 			if maxWidth > 0 && maxHeight > 0 {
 				*params.Width = maxWidth
 				*params.Height = maxHeight
@@ -1037,7 +1039,9 @@ func serveWPS(ctx context.Context, params utils.WPSParams, conf *utils.Config, r
 // owsHandler handles every request received on /ows
 func generalHandler(conf *utils.Config, w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "*")
-	Info.Printf("%s\n", r.URL.String())
+	if *verbose {
+		Info.Printf("%s\n", r.URL.String())
+	}
 	ctx := r.Context()
 
 	var query map[string][]string

@@ -53,7 +53,7 @@ func BBox2WKT(bbox []float64) string {
 	return fmt.Sprintf("POLYGON ((%f %f, %f %f, %f %f, %f %f, %f %f))", bbox[0], bbox[1], bbox[2], bbox[1], bbox[2], bbox[3], bbox[0], bbox[3], bbox[0], bbox[1])
 }
 
-func (p *TileIndexer) Run() {
+func (p *TileIndexer) Run(verbose bool) {
 	defer close(p.Out)
 	for geoReq := range p.In {
 		select {
@@ -74,7 +74,9 @@ func (p *TileIndexer) Run() {
 			} else {
 				url = strings.Replace(fmt.Sprintf("http://%s%s?intersects&metadata=gdal&time=%s&until=%s&srs=%s&wkt=%s&namespace=%s&nseg=%d&limit=%d", p.APIAddress, geoReq.Collection, geoReq.StartTime.Format(ISOFormat), geoReq.EndTime.Format(ISOFormat), geoReq.CRS, BBox2WKT(geoReq.BBox), nameSpaces, geoReq.PolygonSegments, geoReq.QueryLimit), " ", "%20", -1)
 			}
-			log.Println(url)
+			if verbose {
+				log.Println(url)
+			}
 
 			wg.Add(1)
 			go URLIndexGet(p.Context, url, geoReq, p.Error, p.Out, &wg)
@@ -90,7 +92,9 @@ func (p *TileIndexer) Run() {
 					} else {
 						url = strings.Replace(fmt.Sprintf("http://%s%s?intersects&metadata=gdal&time=%s&until=%s&srs=%s&wkt=%s&namespace=%s&nseg=%d&limit=%d", p.APIAddress, maskCollection, geoReq.StartTime.Format(ISOFormat), geoReq.EndTime.Format(ISOFormat), geoReq.CRS, BBox2WKT(geoReq.BBox), geoReq.Mask.ID, geoReq.PolygonSegments, geoReq.QueryLimit), " ", "%20", -1)
 					}
-					log.Println(url)
+					if verbose {
+						log.Println(url)
+					}
 
 					wg.Add(1)
 					go URLIndexGet(p.Context, url, geoReq, p.Error, p.Out, &wg)
