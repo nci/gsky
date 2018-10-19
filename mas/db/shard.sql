@@ -688,7 +688,8 @@ drop table if exists timestamps_cache cascade;
 -- cache for timestamps
 create unlogged table timestamps_cache (
   query_id text primary key,
-  timestamps jsonb not null
+  timestamps jsonb not null,
+  query_token text
 );
 
 create or replace function refresh_caches()

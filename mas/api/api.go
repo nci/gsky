@@ -98,12 +98,14 @@ func handler(response http.ResponseWriter, request *http.Request) {
 				nullif($1,'')::text,
 				nullif($2,'')::timestamptz,
 				nullif($3,'')::timestamptz,
-				string_to_array(nullif($4,''), ',')
+				string_to_array(nullif($4,''), ','),
+				nullif($5,'')::text
 			) as json`,
 			request.URL.Path,
 			request.FormValue("time"),
 			request.FormValue("until"),
 			request.FormValue("namespace"),
+			request.FormValue("token"),
 		).Scan(&payload)
 
 	} else {
