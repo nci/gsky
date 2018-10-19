@@ -258,7 +258,7 @@ func GenerateDatesRegular(start, end time.Time, stepMins time.Duration) []string
 	return dates
 }
 
-func GenerateDatesMas(start, end string, masAddress string, collection string, namespaces []string, stepMins time.Duration, token string) ([]string, string) {
+func GenerateDatesMas(start, end string, masAddress string, collection string, namespaces []string, stepMins time.Duration, token string, verbose bool) ([]string, string) {
 	emptyDates := []string{}
 
 	start = strings.TrimSpace(start)
@@ -281,7 +281,9 @@ func GenerateDatesMas(start, end string, masAddress string, collection string, n
 
 	ns := strings.Join(namespaces, ",")
 	url := strings.Replace(fmt.Sprintf("http://%s%s?timestamps&time=%s&until=%s&namespace=%s&token=%s", masAddress, collection, start, end, ns, token), " ", "%20", -1)
-	log.Printf("config querying MAS for timestamps: %v", url)
+	if verbose {
+		log.Printf("config querying MAS for timestamps: %v", url)
+	}
 
 	resp, err := http.Get(url)
 	if err != nil {
@@ -318,7 +320,9 @@ func GenerateDatesMas(start, end string, masAddress string, collection string, n
 		return emptyDates, token
 	}
 
-	log.Printf("MAS returned %v timestamps", len(timestamps.Timestamps))
+	if verbose {
+		log.Printf("MAS returned %v timestamps", len(timestamps.Timestamps))
+	}
 
 	if int64(stepMins) > 0 && len(timestamps.Timestamps) > 0 {
 		startDate, err := time.Parse(ISOFormat, timestamps.Timestamps[0])
@@ -375,7 +379,9 @@ func GenerateDatesMas(start, end string, masAddress string, collection string, n
 			}
 		}
 
-		log.Printf("Aggregated timestamps: %v, steps: %v", len(aggregatedTimestamps), stepMins)
+		if verbose {
+			log.Printf("Aggregated timestamps: %v, steps: %v", len(aggregatedTimestamps), stepMins)
+		}
 		return aggregatedTimestamps, timestamps.Token
 	}
 
@@ -491,17 +497,19 @@ const DefaultWcsMaxWidth = 50000
 const DefaultWcsMaxHeight = 30000
 
 // GetLayerDates loads dates for the ith layer
-func (config *Config) GetLayerDates(iLayer int) {
+func (config *Config) GetLayerDates(iLayer int, verbose bool) {
 	layer := config.Layers[iLayer]
 	step := time.Minute * time.Duration(60*24*layer.StepDays+60*layer.StepHours+layer.StepMinutes)
 
 	if strings.TrimSpace(strings.ToLower(layer.TimeGen)) == "mas" {
-		timestamps, token := GenerateDatesMas(layer.StartISODate, layer.EndISODate, config.ServiceConfig.MASAddress, layer.DataSource, layer.RGBProducts, step, layer.TimestampToken)
+		timestamps, token := GenerateDatesMas(layer.StartISODate, layer.EndISODate, config.ServiceConfig.MASAddress, layer.DataSource, layer.RGBProducts, step, layer.TimestampToken, verbose)
 		if len(timestamps) > 0 && len(token) > 0 {
 			config.Layers[iLayer].Dates = timestamps
 			config.Layers[iLayer].TimestampToken = token
 		} else if len(timestamps) == 0 && len(token) > 0 {
-			log.Printf("Cached %d timestamps", len(config.Layers[iLayer].Dates))
+			if verbose {
+				log.Printf("Cached %d timestamps", len(config.Layers[iLayer].Dates))
+			}
 			config.Layers[iLayer].TimestampToken = token
 			return
 		} else {
@@ -526,12 +534,14 @@ func (config *Config) GetLayerDates(iLayer int) {
 		}
 
 		if useMasTimestamps {
-			masTimestamps, token := GenerateDatesMas(startDate, endDate, config.ServiceConfig.MASAddress, layer.DataSource, layer.RGBProducts, 0, layer.TimestampToken)
+			masTimestamps, token := GenerateDatesMas(startDate, endDate, config.ServiceConfig.MASAddress, layer.DataSource, layer.RGBProducts, 0, layer.TimestampToken, verbose)
 			if len(token) == 0 {
 				log.Printf("Failed to get MAS timestamps")
 				return
 			} else if len(masTimestamps) == 0 && len(token) > 0 {
-				log.Printf("Cached %d timestamps", len(config.Layers[iLayer].Dates))
+				if verbose {
+					log.Printf("Cached %d timestamps", len(config.Layers[iLayer].Dates))
+				}
 				config.Layers[iLayer].TimestampToken = token
 				return
 			}
@@ -575,7 +585,9 @@ func (config *Config) GetLayerDates(iLayer int) {
 				start = start.Truncate(time.Minute)
 			}
 
-			log.Printf("Normalised MAS start date: %v", start.Format(ISOFormat))
+			if verbose {
+				log.Printf("Normalised MAS start date: %v", start.Format(ISOFormat))
+			}
 		}
 
 		if start == end {
@@ -679,7 +691,7 @@ func (config *Config) LoadConfigFile(configFile string, verbose bool) error {
 	}
 
 	for i, layer := range config.Layers {
-		config.GetLayerDates(i)
+		config.GetLayerDates(i, verbose)
 		config.Layers[i].OWSHostname = config.ServiceConfig.OWSHostname
 
 		if config.Layers[i].MaxGrpcRecvMsgSize <= DefaultRecvMsgSize {

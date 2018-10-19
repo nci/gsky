@@ -125,7 +125,7 @@ func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r
 		}
 
 		for iLayer := range conf.Layers {
-			conf.GetLayerDates(iLayer)
+			conf.GetLayerDates(iLayer, *verbose)
 		}
 
 		w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate, max-age=0")
@@ -253,7 +253,7 @@ func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r
 				close(indexer.In)
 			}()
 
-			go indexer.Run()
+			go indexer.Run(*verbose)
 
 			hasData := false
 			for geo := range indexer.Out {
@@ -298,7 +298,7 @@ func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r
 
 		tp := proc.InitTilePipeline(ctx, conf.ServiceConfig.MASAddress, conf.ServiceConfig.WorkerNodes, conf.Layers[idx].MaxGrpcRecvMsgSize, conf.Layers[idx].WmsPolygonShardConcLimit, errChan)
 		select {
-		case res := <-tp.Process(geoReq):
+		case res := <-tp.Process(geoReq, *verbose):
 			scaleParams := utils.ScaleParams{Offset: geoReq.ScaleParams.Offset,
 				Scale: geoReq.ScaleParams.Scale,
 				Clip:  geoReq.ScaleParams.Clip,
@@ -380,7 +380,7 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 		newConf := *conf
 		newConf.Layers = make([]utils.Layer, len(newConf.Layers))
 		for i, layer := range conf.Layers {
-			conf.GetLayerDates(i)
+			conf.GetLayerDates(i, *verbose)
 			newConf.Layers[i] = layer
 			newConf.Layers[i].Dates = []string{newConf.Layers[i].Dates[0], newConf.Layers[i].Dates[len(newConf.Layers[i].Dates)-1]}
 		}
@@ -505,7 +505,9 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 
 			geoReq := getGeoTileRequest(0, 0, params.BBox, 0, 0)
 			maxWidth, maxHeight, err := proc.ComputeReprojectionExtent(ctx, geoReq, conf.ServiceConfig.MASAddress, conf.ServiceConfig.WorkerNodes, epsg, params.BBox, *verbose)
-			Info.Printf("WCS: Output image size: width=%v, height=%v", maxWidth, maxHeight)
+			if *verbose {
+				Info.Printf("WCS: Output image size: width=%v, height=%v", maxWidth, maxHeight)
+			}
 			if maxWidth > 0 && maxHeight > 0 {
 				*params.Width = maxWidth
 				*params.Height = maxHeight
@@ -726,7 +728,7 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 			}
 
 			select {
-			case res := <-tp.Process(geoReq):
+			case res := <-tp.Process(geoReq, *verbose):
 				if !isInit {
 					hDstDS, masterTempFile, err = utils.EncodeGdalOpen(conf.ServiceConfig.TempDir, 1024, 256, driverFormat, geot, epsg, res, *params.Width, *params.Height, len(conf.Layers[idx].RGBProducts))
 					defer os.Remove(masterTempFile)
@@ -1037,7 +1039,9 @@ func serveWPS(ctx context.Context, params utils.WPSParams, conf *utils.Config, r
 // owsHandler handles every request received on /ows
 func generalHandler(conf *utils.Config, w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "*")
-	Info.Printf("%s\n", r.URL.String())
+	if *verbose {
+		Info.Printf("%s\n", r.URL.String())
+	}
 	ctx := r.Context()
 
 	var query map[string][]string
