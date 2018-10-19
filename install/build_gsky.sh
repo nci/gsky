@@ -53,4 +53,3 @@ rm -rf /local/gsky_temp
 mkdir -p /local/gsky_temp
 chown -R nobody:nobody /local/gsky_temp
 echo "Finished installing the GSKY server."
-
