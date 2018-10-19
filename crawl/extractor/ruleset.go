@@ -143,14 +143,14 @@ var CollectionRuleSets = []RuleSet{
 		NSPath,
 		SRSDetect,
 		Proj4Detect,
-		`_(?P<year>\d\d\d\d)(?P<month>\d\d)(?P<day>\d\d)T(?P<hour>\d\d)(?P<minute>\d\d)(?P<second>\d\d)_(?P<namespace>[\w\d_]+)\.TIF`,
+		`_(?P<year>\d\d\d\d)(?P<month>\d\d)(?P<day>\d\d)T(?P<hour>\d\d)(?P<minute>\d\d)(?P<second>\d\d).*_(?P<namespace>NBART?[\w\d_]+)\.TIF`,
 	},
 	RuleSet{
 		"sentinel2_ard_qa_supp",
 		NSPath,
 		SRSDetect,
 		Proj4Detect,
-		`_(?P<year>\d\d\d\d)(?P<month>\d\d)(?P<day>\d\d)T(?P<hour>\d\d)(?P<minute>\d\d)(?P<second>\d\d)_.+06_(?P<namespace>[\w\d_]+)\.TIF`,
+		`_(?P<year>\d\d\d\d)(?P<month>\d\d)(?P<day>\d\d)T(?P<hour>\d\d)(?P<minute>\d\d)(?P<second>\d\d)_.+0\d_(?P<namespace>[\w\d_]+)\.TIF`,
 	},
 	RuleSet{
 		"default",
