@@ -26,15 +26,11 @@ export PKG_CONFIG_PATH=/usr/local/lib/pkgconfig
 
 #go get github.com/nci/gsky
 go get github.com/asivapra/gsky
-#rm -rf $GOPATH/src/github.com/nci/gsky
-rm -rf $GOPATH/src/github.com/asivapra/gsky
-#git clone https://github.com/nci/gsky.git $GOPATH/src/github.com/nci/gsky
+rm -rf $GOPATH/src/github.com/nci/gsky
 git clone https://github.com/asivapra/gsky.git $GOPATH/src/github.com/nci/gsky
-#exit
 
 (set -exu
 cd $GOPATH/src/github.com/nci/gsky
-
 ./configure
 make all
 )
@@ -57,5 +53,5 @@ yes|cp -rf $GOPATH/src/github.com/nci/gsky/static $prefix/share/gsky/
 rm -rf /local/gsky_temp
 mkdir -p /local/gsky_temp
 chown -R nobody:nobody /local/gsky_temp
-echo “Finished installing the GSKY server."
+echo "Finished installing the GSKY server."
 
