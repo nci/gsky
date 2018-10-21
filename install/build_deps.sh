@@ -130,10 +130,11 @@ v=2.3.1
 wget -q http://download.osgeo.org/gdal/${v}/gdal-${v}.tar.gz
 tar -xf gdal-${v}.tar.gz
 cd gdal-${v}
-./configure --with-geos=yes --with-netcdf
+#./configure --with-geos=yes --with-netcdf
+./configure --with-geos=yes --with-netcdf --with-openjpeg
 make -j4
 make install
 )
 rm -rf gdal-${v}
 rm -f gdal-${v}.tar.gz
-echo “Finished installing the dependencies. Now, run the 'build_gsky.sh'”
+echo "Finished installing the dependencies. Now, run the 'build_gsky.sh"

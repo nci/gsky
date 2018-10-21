@@ -24,9 +24,10 @@ export GOPATH=$prefix/gopath
 export PATH="$PATH:$GOROOT/bin"
 export PKG_CONFIG_PATH=/usr/local/lib/pkgconfig
 
-go get github.com/nci/gsky
+#go get github.com/nci/gsky
+go get github.com/asivapra/gsky
 rm -rf $GOPATH/src/github.com/nci/gsky
-git clone https://github.com/nci/gsky.git $GOPATH/src/github.com/nci/gsky
+git clone https://github.com/asivapra/gsky.git $GOPATH/src/github.com/nci/gsky
 
 (set -exu
 cd $GOPATH/src/github.com/nci/gsky

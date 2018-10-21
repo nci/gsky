@@ -68,7 +68,7 @@ func dataHandler(conn net.Conn, debug bool) {
 		log.Println(err)
 	}
 
-}
+} 
 
 func registerGDALDrivers() {
 	// This is a bit nasty, but this is one way to work out which
@@ -77,7 +77,7 @@ func registerGDALDrivers() {
 	// drivers. This places common drivers at the front of the
 	// driver list.
 // AVS: JPEG option is giving an error downstream. Delete it now. Will revisit later
-//	var haveNetCDF, haveHDF4, haveHDF5, haveJP2OpenJPEG bool
+	var haveNetCDF, haveHDF4, haveHDF5, haveJP2OpenJPEG bool
 	var haveNetCDF, haveHDF4, haveHDF5 bool
 	var haveGTiff bool
 
@@ -93,8 +93,8 @@ func registerGDALDrivers() {
 		case "HDF5":
 			haveHDF5 = true
 // AVS: JPEG option is giving an error downstream. Hence, delete it. We do not have JPEG data files.	
-//		case "JP2OpenJPEG":
-//			haveJP2OpenJPEG = true
+		case "JP2OpenJPEG":
+			haveJP2OpenJPEG = true
 		case "GTiff":
 			haveGTiff = true
 		}
@@ -118,9 +118,9 @@ func registerGDALDrivers() {
 		C.GDALRegister_HDF5()
 	}
 // AVS: JPEG option is giving an error downstream. Hence, delete it. We do not have JPEG data files.	
-//	if haveJP2OpenJPEG {
-//		C.GDALRegister_JP2OpenJPEG()
-//	}
+	if haveJP2OpenJPEG {
+		C.GDALRegister_JP2OpenJPEG()
+	}
 	if haveGTiff {
 		C.GDALRegister_GTiff()
 	}
