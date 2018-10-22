@@ -78,7 +78,7 @@ func registerGDALDrivers() {
 	// driver list.
 // AVS: JPEG option is giving an error downstream. Delete it now. Will revisit later
 	var haveNetCDF, haveHDF4, haveHDF5, haveJP2OpenJPEG bool
-	var haveNetCDF, haveHDF4, haveHDF5 bool
+//	var haveNetCDF, haveHDF4, haveHDF5 bool
 	var haveGTiff bool
 
 	// Find out which drivers are present
