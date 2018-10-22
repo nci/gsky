@@ -429,8 +429,10 @@ func EncodeGdalFlush(hDstDS C.GDALDatasetH) {
 	C.GDALFlushCache(hDstDS)
 }
 
-func EncodeGdalClose(hDstDS C.GDALDatasetH) {
-	C.GDALClose(hDstDS)
+func EncodeGdalClose(hDstDS *C.GDALDatasetH) {
+	if hDstDS != nil && *hDstDS != nil {
+		C.GDALClose(*hDstDS)
+	}
 }
 
 // ExtractEPSGCode parses an SRS string and gets
