@@ -30,10 +30,11 @@ rm -rf $GOPATH/src/github.com/nci/gsky
 git clone https://github.com/asivapra/gsky.git $GOPATH/src/github.com/nci/gsky
 
 (set -exu
+echo "cd $GOPATH/src/github.com/nci/gsky"
 cd $GOPATH/src/github.com/nci/gsky
 ./configure
 make all
-)
+)	
 rm -rf $prefix/share
 mkdir -p $prefix/share/gsky
 mkdir -p $prefix/share/mas

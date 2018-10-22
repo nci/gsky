@@ -1,7 +1,8 @@
 #!/bin/bash
 set -xeu
 prefix=${PREFIX:-/usr}
-
+echo $prefix
+echo "-------------------------"
 v=9c
 (set -xeu
 wget -q http://www.ijg.org/files/jpegsrc.v${v}.tar.gz
@@ -131,7 +132,7 @@ wget -q http://download.osgeo.org/gdal/${v}/gdal-${v}.tar.gz
 tar -xf gdal-${v}.tar.gz
 cd gdal-${v}
 #./configure --with-geos=yes --with-netcdf
-./configure --with-geos=yes --with-netcdf --with-openjpeg
+./configure --with-geos=yes --with-netcdf --with-openjpeg=yes
 make -j4
 make install
 )
