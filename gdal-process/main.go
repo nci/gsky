@@ -68,7 +68,7 @@ func dataHandler(conn net.Conn, debug bool) {
 		log.Println(err)
 	}
 
-} 
+}
 
 func registerGDALDrivers() {
 	// This is a bit nasty, but this is one way to work out which
