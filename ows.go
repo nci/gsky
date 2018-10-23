@@ -738,6 +738,8 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 						http.Error(w, errMsg, 500)
 						return
 					}
+
+					defer utils.EncodeGdalClose(&hDstDS)
 					isInit = true
 				}
 
@@ -792,7 +794,6 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 					}
 					err := utils.EncodeGdalMerge(ctx, hDstDS, "geotiff", workerTempFileName, width, height, offX, offY)
 					if err != nil {
-						utils.EncodeGdalClose(hDstDS)
 						Info.Printf("%v\n", err)
 						http.Error(w, err.Error(), 500)
 						return
@@ -809,12 +810,10 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 						allWorkerDone = true
 					}
 				case err := <-workerErrChan:
-					utils.EncodeGdalClose(hDstDS)
 					Info.Printf("%v\n", err)
 					http.Error(w, err.Error(), 500)
 					return
 				case <-ctx.Done():
-					utils.EncodeGdalClose(hDstDS)
 					Error.Printf("Context cancelled with message: %v\n", ctx.Err())
 					http.Error(w, ctx.Err().Error(), 500)
 					return
@@ -826,7 +825,8 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 			}
 		}
 
-		utils.EncodeGdalClose(hDstDS)
+		utils.EncodeGdalClose(&hDstDS)
+		hDstDS = nil
 
 		fileExt := "wcs"
 		contentType := "application/wcs"
