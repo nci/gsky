@@ -15,7 +15,11 @@ set -xeu
 # Install the development tools under CentOS
 # 'yes|' means no confirmation before proceeding with removal and installation
 yes|yum groupremove "Development Tools"
-yes|yum group install "Development Tools"
+yes|yum groupinstall "Development Tools"
+yes|yum groupremove "PostgreSQL Database"
+yes|yum groupinstall "PostgreSQL Database"
+yes|yum remove postgis
+yes|yum install postgis
 yes|yum remove wget
 yes|yum install wget
 yes|yum remove cmake
