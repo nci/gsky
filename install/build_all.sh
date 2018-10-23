@@ -16,8 +16,8 @@ set -xeu
 # 'yes|' means no confirmation before proceeding with removal and installation
 yes|yum groupremove "Development Tools"
 yes|yum groupinstall "Development Tools"
-yes|yum groupremove "PostgreSQL Database"
-yes|yum groupinstall "PostgreSQL Database"
+yes|yum remove postgresql
+yes|yum install postgresql
 yes|yum remove postgis
 yes|yum install postgis
 yes|yum remove wget
@@ -29,7 +29,7 @@ yes|yum install python-devel
 #------------------------------------------------------------------------------------------------------------------
 # Install GSKY-specific dependencies
 #------------------------------------------------------------------------------------------------------------------
-# 1.	Independent JPEG Group's free JPEG software
+echo "1. Installing: Independent JPEG Group's free JPEG software"
 prefix=${PREFIX:-/usr}
 v=9c
 (set -xeu
@@ -44,7 +44,7 @@ rm -rf jpeg-${v}
 rm -f jpegsrc.v${v}.tar.gz
 echo "Finished installing: Independent JPEG Group's free JPEG software"
 #------------------------------------------------------------------------------------------------------------------
-#2.	OPENJPEG Library and Applications
+echo "2.	 Installing: OPENJPEG Library and Applications"
 v=2.3.0
 (set -xeu
 wget -q -O openjpeg-v${v}.tar.gz https://github.com/uclouvain/openjpeg/archive/v${v}.tar.gz
@@ -60,7 +60,7 @@ rm -rf openjpeg-${v}
 rm -f openjpeg-v${v}.tar.gz
 echo "Finished installing: OPENJPEG Library and Applications"
 #------------------------------------------------------------------------------------------------------------------
-# 3.	GEOS - Geometry Engine, Open Source
+echo "3.	 Installing: GEOS - Geometry Engine, Open Source"
 v=3.6.2
 (set -xeu
 wget -q http://download.osgeo.org/geos/geos-${v}.tar.bz2
@@ -75,7 +75,7 @@ rm -rf geos-${v}
 rm -f geos-${v}.tar
 echo "Finished installing: GEOS - Geometry Engine, Open Source"
 #------------------------------------------------------------------------------------------------------------------
-# 4.	Cartographic Projection Procedures for the UNIX Environment
+echo "4.	 Installing: Cartographic Projection Procedures for the UNIX Environment"
 v=5.1.0
 vd=1.7
 (set -xeu
@@ -92,7 +92,7 @@ rm -rf proj-${v}
 rm -f proj-${v}.tar
 echo "Finished installing: Cartographic Projection Procedures for the UNIX Environment"
 #------------------------------------------------------------------------------------------------------------------
-# 5.	Zlib Data Compression Library
+echo "5.	 Installing: Zlib Data Compression Library"
 v=1.2.8
 (set -xeu
 wget -q ftp://ftp.unidata.ucar.edu/pub/netcdf/netcdf-4/zlib-${v}.tar.gz
@@ -105,7 +105,7 @@ rm -rf zlib-${v}
 rm -f zlib-${v}.tar.gz
 echo "Finished installing: Zlib Data Compression Library"
 #------------------------------------------------------------------------------------------------------------------
-# 6.	HDF4 
+echo "6.	 Installing: HDF4 "
 v=4.2.13
 (set -xeu
 wget -q https://support.hdfgroup.org/ftp/HDF/HDF_Current/src/hdf-${v}.tar.gz
@@ -119,7 +119,7 @@ rm -rf hdf-${v}
 rm -f hdf-${v}.tar.gz
 echo "Finished installing: HDF4"
 #------------------------------------------------------------------------------------------------------------------
-#7.	HDF5 
+echo "7.	 Installing: HDF5 "
 v=1.8.13
 (set -xeu
 wget -q ftp://ftp.unidata.ucar.edu/pub/netcdf/netcdf-4/hdf5-${v}.tar.gz
@@ -132,7 +132,7 @@ rm -rf hdf5-${v}
 rm -f hdf5-${v}.tar.gz
 echo "Finished installing: HDF5"
 #------------------------------------------------------------------------------------------------------------------
-# 8.	NetCDF 
+echo "8.	 Installing: NetCDF "
 v=4.1.3
 (set -xeu
 wget -q http://www.unidata.ucar.edu/downloads/netcdf/ftp/netcdf-${v}.tar.gz
@@ -145,7 +145,7 @@ rm -rf netcdf-${v}
 rm -f netcdf-${v}.tar.gz
 echo "Finished installing: NetCDF"
 #------------------------------------------------------------------------------------------------------------------
-# 9.	XML C parser 
+echo "9.  Installing: XML C parser "
 v=2.9.8
 (set -xeu
 wget -q ftp://xmlsoft.org/libxml2/libxml2-${v}.tar.gz
@@ -159,7 +159,7 @@ rm -rf libxml2-${v}
 rm -f libxml2-${v}.tar.gz
 echo "Finished installing: XML C parser"
 #------------------------------------------------------------------------------------------------------------------
-# 10.	JSON-C - A JSON implementation in C
+echo "10.  Installing: JSON-C - A JSON implementation in C"
 v=0.13.1
 (set -xeu
 wget -q https://s3.amazonaws.com/json-c_releases/releases/json-c-${v}.tar.gz
@@ -173,7 +173,7 @@ rm -rf json-c-${v}
 rm -f json-c-${v}.tar.gz
 echo "Finished installing: JSON-C - A JSON implementation in C"
 #------------------------------------------------------------------------------------------------------------------
-# 11. Build GDL with OpenJPEG support
+echo "11.  Installing: GDL with OpenJPEG support"
 v=2.3.1
 (set -xeu
 wget -q http://download.osgeo.org/gdal/${v}/gdal-${v}.tar.gz
