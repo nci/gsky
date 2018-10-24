@@ -106,7 +106,7 @@ type Layer struct {
 	WmsMaxHeight             int      `json:"wms_max_height"`
 	WcsMaxWidth              int      `json:"wcs_max_width"`
 	WcsMaxHeight             int      `json:"wcs_max_height"`
-	FeatureInfoMaxDataLinks  *int     `json:"feature_info_max_data_links"`
+	FeatureInfoMaxDataLinks  int     `json:"feature_info_max_data_links"`
 	FeatureInfoDataLinkUrl   string   `json:"feature_info_data_link_url"`
 }
 
@@ -497,7 +497,6 @@ const DefaultWmsMaxWidth = 512
 const DefaultWmsMaxHeight = 512
 const DefaultWcsMaxWidth = 50000
 const DefaultWcsMaxHeight = 30000
-const DefaultFeatureInfoMaxDataLinks = 1
 
 // GetLayerDates loads dates for the ith layer
 func (config *Config) GetLayerDates(iLayer int, verbose bool) {
@@ -751,11 +750,6 @@ func (config *Config) LoadConfigFile(configFile string, verbose bool) error {
 
 		if config.Layers[i].WcsMaxHeight <= 0 {
 			config.Layers[i].WcsMaxHeight = DefaultWcsMaxHeight
-		}
-
-		if config.Layers[i].FeatureInfoMaxDataLinks == nil {
-			maxDataLinks := DefaultFeatureInfoMaxDataLinks
-			config.Layers[i].FeatureInfoMaxDataLinks = &maxDataLinks
 		}
 	}
 

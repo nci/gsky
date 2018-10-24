@@ -208,7 +208,7 @@ func getRaster(ctx context.Context, params utils.WMSParams, conf *utils.Config, 
 		return nil, nil, nil, ctx.Err()
 	}
 
-	if conf.Layers[idx].FeatureInfoMaxDataLinks == nil || (conf.Layers[idx].FeatureInfoMaxDataLinks != nil && *conf.Layers[idx].FeatureInfoMaxDataLinks < 1) {
+	if conf.Layers[idx].FeatureInfoMaxDataLinks < 1 {
 		return outRaster, conf.Layers[idx].RGBProducts, nil, nil
 	}
 
@@ -273,7 +273,7 @@ func getRaster(ctx context.Context, params utils.WMSParams, conf *utils.Config, 
 			dsFile = dsFile[len(conf.Layers[idx].DataSource)+offset:]
 			topDsFiles = append(topDsFiles, dsFile)
 
-			if i+1 >= *conf.Layers[idx].FeatureInfoMaxDataLinks {
+			if i+1 >= conf.Layers[idx].FeatureInfoMaxDataLinks {
 				break
 			}
 		}
