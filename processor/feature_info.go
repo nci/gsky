@@ -98,19 +98,27 @@ func GetFeatureInfo(ctx context.Context, params utils.WMSParams, conf *utils.Con
 		}
 	}
 
-	out += `}`
-
 	if len(dsFiles) > 0 {
+		prefix := ""
+		idx, _ := utils.GetLayerIndex(params, conf)
+		if len(conf.Layers[idx].FeatureInfoDataLinkUrl) > 0 {
+			prefix = conf.Layers[idx].FeatureInfoDataLinkUrl
+			if prefix[len(prefix)-1] != '/' {
+				prefix += "/"
+			}
+		}
 		out += `, "data_links":[`
 		for i, file := range dsFiles {
-			out += fmt.Sprintf(`"%s"`, file)
+
+			out += fmt.Sprintf(`"%s%s"`, prefix, file)
 			if i < len(dsFiles)-1 {
 				out += ","
 			}
 		}
 
-		out += `]}`
+		out += `]`
 	}
+	out += `}`
 	return out, nil
 }
 
@@ -164,6 +172,10 @@ func getRaster(ctx context.Context, params utils.WMSParams, conf *utils.Config, 
 		endTime = &eT
 	}
 
+	if len(conf.Layers[idx].DataSource) == 0 {
+		return nil, nil, nil, fmt.Errorf("Invalid data source")
+	}
+
 	geoReq := &GeoTileRequest{ConfigPayLoad: ConfigPayLoad{NameSpaces: conf.Layers[idx].RGBProducts,
 		Mask:            conf.Layers[idx].Mask,
 		ZoomLimit:       conf.Layers[idx].ZoomLimit,
@@ -196,6 +208,10 @@ func getRaster(ctx context.Context, params utils.WMSParams, conf *utils.Config, 
 		return nil, nil, nil, ctx.Err()
 	}
 
+	if conf.Layers[idx].FeatureInfoMaxDataLinks == nil || (conf.Layers[idx].FeatureInfoMaxDataLinks != nil && *conf.Layers[idx].FeatureInfoMaxDataLinks < 1) {
+		return outRaster, conf.Layers[idx].RGBProducts, nil, nil
+	}
+
 	x, y, err := utils.GetCoordinates(params)
 	if err != nil {
 		return nil, nil, nil, err
@@ -204,7 +220,7 @@ func getRaster(ctx context.Context, params utils.WMSParams, conf *utils.Config, 
 	indexer := NewTileIndexer(ctx, conf.ServiceConfig.MASAddress, errChan)
 	go func() {
 		geoReq.Mask = nil
-		geoReq.BBox = []float64{x - 1e-4, y - 1e-4, x + 1e-4, y + 1e-4}
+		geoReq.BBox = []float64{x, y, x + 1e-4, y + 1e-4}
 		indexer.In <- geoReq
 		close(indexer.In)
 	}()
@@ -232,8 +248,12 @@ func getRaster(ctx context.Context, params utils.WMSParams, conf *utils.Config, 
 	var topDsFiles []string
 	fileDedup := make(map[string]bool)
 	reGdalDs := regexp.MustCompile(`[a-zA-Z0-9\-_]+:"(.*)":.*`)
-	for _, ds := range pixelFiles {
+	for i, ds := range pixelFiles {
 		dsFile := ds.Path
+		if len(dsFile) == 0 {
+			continue
+		}
+
 		matches := reGdalDs.FindStringSubmatch(ds.Path)
 		if len(matches) > 1 {
 			dsFile = matches[1]
@@ -246,9 +266,16 @@ func getRaster(ctx context.Context, params utils.WMSParams, conf *utils.Config, 
 		fileDedup[dsFile] = true
 
 		if strings.Index(dsFile, conf.Layers[idx].DataSource) >= 0 {
-			dsFile = dsFile[len(conf.Layers[idx].DataSource):]
+			offset := 0
+			if conf.Layers[idx].DataSource[len(conf.Layers[idx].DataSource)-1] != '/' {
+				offset = 1
+			}
+			dsFile = dsFile[len(conf.Layers[idx].DataSource)+offset:]
 			topDsFiles = append(topDsFiles, dsFile)
-			break
+
+			if i+1 >= *conf.Layers[idx].FeatureInfoMaxDataLinks {
+				break
+			}
 		}
 	}
 
