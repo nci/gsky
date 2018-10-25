@@ -141,7 +141,19 @@ func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r
 			http.Error(w, fmt.Sprintf("Malformed WMS GetFeatureInfo request: %v", err), 400)
 			return
 		}
-		resp := fmt.Sprintf(`{"type":"FeatureCollection","totalFeatures":"unknown","features":[{"type":"Feature","id":"","geometry":null,"properties":{"x":%f, "y":%f}}],"crs":null}`, x, y)
+
+		var timeStr string
+		if params.Time != nil {
+			timeStr = fmt.Sprintf(`"time": "%s"`, (*params.Time).Format(utils.ISOFormat))
+		}
+
+		feat_info, err := proc.GetFeatureInfo(ctx, params, conf, *verbose)
+		if err != nil {
+			feat_info = fmt.Sprintf(`"error": "%v"`, err)
+			Error.Printf("%v\n", err)
+		}
+
+		resp := fmt.Sprintf(`{"type":"FeatureCollection","features":[{"type":"Feature","properties":{"x":%f, "y":%f, %s, %s}}]}`, x, y, timeStr, feat_info)
 		w.Write([]byte(resp))
 
 	case "DescribeLayer":
