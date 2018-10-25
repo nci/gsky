@@ -41,7 +41,10 @@ func NewRasterGRPC(ctx context.Context, serverAddress []string, maxGrpcRecvMsgSi
 	}
 }
 
-func (gi *GeoRasterGRPC) Run(polyLimiter *ConcLimiter) {
+func (gi *GeoRasterGRPC) Run(polyLimiter *ConcLimiter, verbose bool) {
+	if verbose {
+		defer log.Printf("tile grpc done")
+	}
 	defer close(gi.Out)
 
 	var grans []*GeoTileGranule
@@ -197,8 +200,6 @@ func (gi *GeoRasterGRPC) Run(polyLimiter *ConcLimiter) {
 		log.Printf("meminfo error: %v", err)
 	}
 
-	timeoutCtx, cancel := context.WithTimeout(gi.Context, time.Duration(g0.Timeout)*time.Second)
-	defer cancel()
 	cLimiter := NewConcLimiter(g0.GrpcConcLimit * len(connPool))
 
 	var wg sync.WaitGroup
@@ -209,58 +210,50 @@ func (gi *GeoRasterGRPC) Run(polyLimiter *ConcLimiter) {
 		polyLimiter.Increase()
 		go func(polyGrans []*GeoTileGranule, granCounter int) {
 			defer wg.Done()
-			outChan := make(chan *FlexRaster, len(polyGrans))
-			defer close(outChan)
+			outRasters := make([]*FlexRaster, len(polyGrans))
 
 			for iGran := range polyGrans {
 				gran := polyGrans[iGran]
 				select {
 				case <-gi.Context.Done():
-					gi.Error <- fmt.Errorf("Tile gRPC context has been cancel: %v", gi.Context.Err())
-					return
-				case <-timeoutCtx.Done():
-					log.Printf("tile grpc timed out, threshold:%v seconds", g0.Timeout)
-					gi.Error <- fmt.Errorf("Processing timed out")
+					polyLimiter.Decrease()
+					gi.sendError(fmt.Errorf("Tile gRPC context has been cancel: %v", gi.Context.Err()))
 					return
 				default:
 					if gran.Path == "NULL" {
-						outChan <- &FlexRaster{ConfigPayLoad: gran.ConfigPayLoad, Data: make([]uint8, gran.Width*gran.Height), Height: gran.Height, Width: gran.Width, OffX: gran.OffX, OffY: gran.OffY, Type: gran.RasterType, NoData: 0.0, NameSpace: gran.NameSpace, TimeStamp: gran.TimeStamp, Polygon: gran.Polygon}
+						outRasters[iGran] = &FlexRaster{ConfigPayLoad: gran.ConfigPayLoad, Data: make([]uint8, gran.Width*gran.Height), Height: gran.Height, Width: gran.Width, OffX: gran.OffX, OffY: gran.OffY, Type: gran.RasterType, NoData: 0.0, NameSpace: gran.NameSpace, TimeStamp: gran.TimeStamp, Polygon: gran.Polygon}
 						continue
 					}
 
 					cLimiter.Increase()
-					go func(g *GeoTileGranule, gCnt int) {
+					go func(g *GeoTileGranule, gCnt int, idx int) {
 						defer cLimiter.Decrease()
 						r, err := getRPCRaster(gi.Context, g, connPool[gCnt%len(connPool)])
 						if err != nil {
-							gi.Error <- err
+							gi.sendError(err)
 							r = &pb.Result{Raster: &pb.Raster{Data: make([]uint8, g.Width*g.Height), RasterType: "Byte", NoData: -1.}}
 						}
-						outChan <- &FlexRaster{ConfigPayLoad: g.ConfigPayLoad, Data: r.Raster.Data, Height: g.Height, Width: g.Width, OffX: g.OffX, OffY: g.OffY, Type: r.Raster.RasterType, NoData: r.Raster.NoData, NameSpace: g.NameSpace, TimeStamp: g.TimeStamp, Polygon: g.Polygon}
-					}(gran, granCounter+iGran)
+						outRasters[idx] = &FlexRaster{ConfigPayLoad: g.ConfigPayLoad, Data: r.Raster.Data, Height: g.Height, Width: g.Width, OffX: g.OffX, OffY: g.OffY, Type: r.Raster.RasterType, NoData: r.Raster.NoData, NameSpace: g.NameSpace, TimeStamp: g.TimeStamp, Polygon: g.Polygon}
+					}(gran, granCounter+iGran, iGran)
 				}
 
 			}
+			cLimiter.Wait()
 
-			outRasters := make([]*FlexRaster, len(polyGrans))
-			iOut := 0
-			for o := range outChan {
-				outRasters[iOut] = o
-				iOut++
-
-				if iOut == len(polyGrans) {
-					gi.Out <- outRasters
-					break
-				}
-			}
+			gi.Out <- outRasters
 
 		}(polyGrans, granCounter)
 
 		granCounter += len(polyGrans)
-
 	}
 
 	wg.Wait()
+}
+func (gi *GeoRasterGRPC) sendError(err error) {
+	select {
+	case gi.Error <- err:
+	default:
+	}
 }
 
 func getDataSize(dataType string) (int, error) {

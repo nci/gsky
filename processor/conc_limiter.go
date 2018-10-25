@@ -15,8 +15,11 @@ func (c *ConcLimiter) Increase() {
 }
 
 func (c *ConcLimiter) Decrease() {
-	c.Done()
-	<-c.Pool
+	select {
+	case <-c.Pool:
+		c.Done()
+	default:
+	}
 }
 
 func NewConcLimiter(cLevel int) *ConcLimiter {
