@@ -141,7 +141,19 @@ func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r
 			http.Error(w, fmt.Sprintf("Malformed WMS GetFeatureInfo request: %v", err), 400)
 			return
 		}
-		resp := fmt.Sprintf(`{"type":"FeatureCollection","totalFeatures":"unknown","features":[{"type":"Feature","id":"","geometry":null,"properties":{"x":%f, "y":%f}}],"crs":null}`, x, y)
+
+		var timeStr string
+		if params.Time != nil {
+			timeStr = fmt.Sprintf(`"time": "%s"`, (*params.Time).Format(utils.ISOFormat))
+		}
+
+		feat_info, err := proc.GetFeatureInfo(ctx, params, conf, *verbose)
+		if err != nil {
+			feat_info = fmt.Sprintf(`"error": "%v"`, err)
+			Error.Printf("%v\n", err)
+		}
+
+		resp := fmt.Sprintf(`{"type":"FeatureCollection","features":[{"type":"Feature","properties":{"x":%f, "y":%f, %s, %s}}]}`, x, y, timeStr, feat_info)
 		w.Write([]byte(resp))
 
 	case "DescribeLayer":
@@ -220,7 +232,6 @@ func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r
 			},
 			ZoomLimit:       conf.Layers[idx].ZoomLimit,
 			PolygonSegments: conf.Layers[idx].WmsPolygonSegments,
-			Timeout:         conf.Layers[idx].WmsTimeout,
 			GrpcConcLimit:   conf.Layers[idx].GrpcWmsConcPerNode,
 			QueryLimit:      -1,
 		},
@@ -296,6 +307,9 @@ func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r
 			return
 		}
 
+		timeoutCtx, timeoutCancel := context.WithTimeout(context.Background(), time.Duration(conf.Layers[idx].WmsTimeout)*time.Second)
+		defer timeoutCancel()
+
 		tp := proc.InitTilePipeline(ctx, conf.ServiceConfig.MASAddress, conf.ServiceConfig.WorkerNodes, conf.Layers[idx].MaxGrpcRecvMsgSize, conf.Layers[idx].WmsPolygonShardConcLimit, errChan)
 		select {
 		case res := <-tp.Process(geoReq, *verbose):
@@ -335,6 +349,9 @@ func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r
 		case <-ctx.Done():
 			Error.Printf("Context cancelled with message: %v\n", ctx.Err())
 			http.Error(w, ctx.Err().Error(), 500)
+		case <-timeoutCtx.Done():
+			Error.Printf("WMS pipeline timed out, threshold:%v seconds", conf.Layers[idx].WmsTimeout)
+			http.Error(w, "WMS request timed out", 500)
 		}
 		return
 
@@ -468,7 +485,6 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 				},
 				ZoomLimit:       0.0,
 				PolygonSegments: conf.Layers[idx].WcsPolygonSegments,
-				Timeout:         conf.Layers[idx].WcsTimeout,
 				GrpcConcLimit:   conf.Layers[idx].GrpcWcsConcPerNode,
 			},
 				Collection: conf.Layers[idx].DataSource,
@@ -719,6 +735,9 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 			driverFormat = "geotiff"
 		}
 
+		timeoutCtx, timeoutCancel := context.WithTimeout(context.Background(), time.Duration(conf.Layers[idx].WcsTimeout)*time.Second)
+		defer timeoutCancel()
+
 		isInit := false
 
 		tp := proc.InitTilePipeline(ctx, conf.ServiceConfig.MASAddress, conf.ServiceConfig.WorkerNodes, conf.Layers[idx].MaxGrpcRecvMsgSize, conf.Layers[idx].WcsPolygonShardConcLimit, errChan)
@@ -731,15 +750,16 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 			case res := <-tp.Process(geoReq, *verbose):
 				if !isInit {
 					hDstDS, masterTempFile, err = utils.EncodeGdalOpen(conf.ServiceConfig.TempDir, 1024, 256, driverFormat, geot, epsg, res, *params.Width, *params.Height, len(conf.Layers[idx].RGBProducts))
-					defer os.Remove(masterTempFile)
 					if err != nil {
+						os.Remove(masterTempFile)
 						errMsg := fmt.Sprintf("EncodeGdalOpen() failed: %v", err)
 						Info.Printf(errMsg)
 						http.Error(w, errMsg, 500)
 						return
 					}
-
 					defer utils.EncodeGdalClose(&hDstDS)
+					defer os.Remove(masterTempFile)
+
 					isInit = true
 				}
 
@@ -761,6 +781,10 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 			case <-ctx.Done():
 				Error.Printf("Context cancelled with message: %v\n", ctx.Err())
 				http.Error(w, ctx.Err().Error(), 500)
+				return
+			case <-timeoutCtx.Done():
+				Error.Printf("WCS pipeline timed out, threshold:%v seconds", conf.Layers[idx].WcsTimeout)
+				http.Error(w, "WCS pipeline timed out", 500)
 				return
 			}
 
