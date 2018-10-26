@@ -144,8 +144,15 @@ func getRaster(ctx context.Context, params utils.WMSParams, conf *utils.Config, 
 		reqRes = yRes
 	}
 
+	var namespaces []string
+	if len(conf.Layers[idx].FeatureInfoBands) > 0 {
+		namespaces = conf.Layers[idx].FeatureInfoBands
+	} else {
+		namespaces = conf.Layers[idx].RGBProducts
+	}
+
 	if conf.Layers[idx].ZoomLimit != 0.0 && reqRes > conf.Layers[idx].ZoomLimit {
-		return []utils.Raster{&utils.ByteRaster{NameSpace: "ZoomOut"}}, conf.Layers[idx].RGBProducts, nil, nil
+		return []utils.Raster{&utils.ByteRaster{NameSpace: "ZoomOut"}}, namespaces, nil, nil
 	}
 
 	if params.Height == nil || params.Width == nil {
@@ -176,7 +183,7 @@ func getRaster(ctx context.Context, params utils.WMSParams, conf *utils.Config, 
 		return nil, nil, nil, fmt.Errorf("Invalid data source")
 	}
 
-	geoReq := &GeoTileRequest{ConfigPayLoad: ConfigPayLoad{NameSpaces: conf.Layers[idx].RGBProducts,
+	geoReq := &GeoTileRequest{ConfigPayLoad: ConfigPayLoad{NameSpaces: namespaces,
 		Mask:            conf.Layers[idx].Mask,
 		ZoomLimit:       conf.Layers[idx].ZoomLimit,
 		PolygonSegments: conf.Layers[idx].WmsPolygonSegments,
@@ -208,7 +215,7 @@ func getRaster(ctx context.Context, params utils.WMSParams, conf *utils.Config, 
 	}
 
 	if conf.Layers[idx].FeatureInfoMaxDataLinks < 1 {
-		return outRaster, conf.Layers[idx].RGBProducts, nil, nil
+		return outRaster, namespaces, nil, nil
 	}
 
 	x, y, err := utils.GetCoordinates(params)
@@ -278,5 +285,5 @@ func getRaster(ctx context.Context, params utils.WMSParams, conf *utils.Config, 
 		}
 	}
 
-	return outRaster, conf.Layers[idx].RGBProducts, topDsFiles, nil
+	return outRaster, namespaces, topDsFiles, nil
 }

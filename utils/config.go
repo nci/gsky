@@ -108,6 +108,7 @@ type Layer struct {
 	WcsMaxHeight             int      `json:"wcs_max_height"`
 	FeatureInfoMaxDataLinks  int      `json:"feature_info_max_data_links"`
 	FeatureInfoDataLinkUrl   string   `json:"feature_info_data_link_url"`
+	FeatureInfoBands         []string `json:"feature_info_bands"`
 }
 
 // Process contains all the details that a WPS needs
