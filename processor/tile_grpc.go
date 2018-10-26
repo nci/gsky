@@ -188,7 +188,7 @@ func (gi *GeoRasterGRPC) Run(polyLimiter *ConcLimiter, verbose bool) {
 
 		if availableMem-requestedSize <= ReservedMemorySize {
 			log.Printf("Out of memory, freeMem:%v, requested:%v", freeMem, requestedSize)
-			gi.Error <- fmt.Errorf("Server resources exhausted")
+			gi.sendError(fmt.Errorf("Server resources exhausted"))
 			return
 		}
 
@@ -200,11 +200,10 @@ func (gi *GeoRasterGRPC) Run(polyLimiter *ConcLimiter, verbose bool) {
 		log.Printf("meminfo error: %v", err)
 	}
 
-	cLimiter := NewConcLimiter(g0.GrpcConcLimit * len(connPool))
-
 	var wg sync.WaitGroup
 	wg.Add(len(gransByShard))
 
+	cLimiter := NewConcLimiter(g0.GrpcConcLimit * len(connPool))
 	granCounter := 0
 	for _, polyGrans := range gransByShard {
 		polyLimiter.Increase()
@@ -212,12 +211,12 @@ func (gi *GeoRasterGRPC) Run(polyLimiter *ConcLimiter, verbose bool) {
 			defer wg.Done()
 			outRasters := make([]*FlexRaster, len(polyGrans))
 
+			var wgRpc sync.WaitGroup
 			for iGran := range polyGrans {
 				gran := polyGrans[iGran]
 				select {
 				case <-gi.Context.Done():
 					polyLimiter.Decrease()
-					gi.sendError(fmt.Errorf("Tile gRPC context has been cancel: %v", gi.Context.Err()))
 					return
 				default:
 					if gran.Path == "NULL" {
@@ -225,8 +224,10 @@ func (gi *GeoRasterGRPC) Run(polyLimiter *ConcLimiter, verbose bool) {
 						continue
 					}
 
+					wgRpc.Add(1)
 					cLimiter.Increase()
 					go func(g *GeoTileGranule, gCnt int, idx int) {
+						defer wgRpc.Done()
 						defer cLimiter.Decrease()
 						r, err := getRPCRaster(gi.Context, g, connPool[gCnt%len(connPool)])
 						if err != nil {
@@ -238,7 +239,13 @@ func (gi *GeoRasterGRPC) Run(polyLimiter *ConcLimiter, verbose bool) {
 				}
 
 			}
-			cLimiter.Wait()
+			wgRpc.Wait()
+
+			select {
+			case <-gi.Context.Done():
+				return
+			default:
+			}
 
 			gi.Out <- outRasters
 

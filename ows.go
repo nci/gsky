@@ -307,7 +307,7 @@ func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r
 			return
 		}
 
-		timeoutCtx, timeoutCancel := context.WithTimeout(ctx, time.Duration(conf.Layers[idx].WmsTimeout)*time.Second)
+		timeoutCtx, timeoutCancel := context.WithTimeout(context.Background(), time.Duration(conf.Layers[idx].WmsTimeout)*time.Second)
 		defer timeoutCancel()
 
 		tp := proc.InitTilePipeline(ctx, conf.ServiceConfig.MASAddress, conf.ServiceConfig.WorkerNodes, conf.Layers[idx].MaxGrpcRecvMsgSize, conf.Layers[idx].WmsPolygonShardConcLimit, errChan)
@@ -735,7 +735,7 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 			driverFormat = "geotiff"
 		}
 
-		timeoutCtx, timeoutCancel := context.WithTimeout(ctx, time.Duration(conf.Layers[idx].WcsTimeout)*time.Second)
+		timeoutCtx, timeoutCancel := context.WithTimeout(context.Background(), time.Duration(conf.Layers[idx].WcsTimeout)*time.Second)
 		defer timeoutCancel()
 
 		isInit := false
