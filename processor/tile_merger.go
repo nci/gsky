@@ -1,8 +1,10 @@
 package processor
 
 import (
+	"context"
 	"fmt"
 	"hash/fnv"
+	"log"
 	"reflect"
 	"sort"
 	"strconv"
@@ -17,16 +19,18 @@ const SizeofInt16 = 2
 const SizeofFloat32 = 4
 
 type RasterMerger struct {
-	In    chan []*FlexRaster
-	Out   chan []utils.Raster
-	Error chan error
+	Context context.Context
+	In      chan []*FlexRaster
+	Out     chan []utils.Raster
+	Error   chan error
 }
 
-func NewRasterMerger(errChan chan error) *RasterMerger {
+func NewRasterMerger(ctx context.Context, errChan chan error) *RasterMerger {
 	return &RasterMerger{
-		In:    make(chan []*FlexRaster, 100),
-		Out:   make(chan []utils.Raster, 100),
-		Error: errChan,
+		Context: ctx,
+		In:      make(chan []*FlexRaster, 100),
+		Out:     make(chan []utils.Raster, 100),
+		Error:   errChan,
 	}
 }
 
@@ -324,15 +328,29 @@ func ComputeMask(mask *utils.Mask, data []byte, rType string) (out []bool, err e
 	return
 }
 
-func (enc *RasterMerger) Run(polyLimiter *ConcLimiter) {
+func (enc *RasterMerger) Run(polyLimiter *ConcLimiter, verbose bool) {
+	if verbose {
+		defer log.Printf("tile merger done")
+	}
 	defer close(enc.Out)
 
 	canvasMap := map[string]*FlexRaster{}
 	for inRasters := range enc.In {
+		select {
+		case <-enc.Context.Done():
+			polyLimiter.Decrease()
+			return
+		default:
+		}
+
 		maskMap := map[int64][]bool{}
 		rasterStack := map[int64][]*FlexRaster{}
 
 		for _, r := range inRasters {
+			if r == nil {
+				continue
+			}
+
 			h := fnv.New32a()
 			h.Write([]byte(r.Polygon))
 			geoStamp := r.TimeStamp.UnixNano() + int64(h.Sum32())
@@ -354,14 +372,22 @@ func (enc *RasterMerger) Run(polyLimiter *ConcLimiter) {
 			rasterStack[geoStamp] = append(rasterStack[geoStamp], r)
 		}
 
-		tmpMap, err := ProcessRasterStack(rasterStack, maskMap, canvasMap)
-		if err != nil {
-			enc.Error <- err
-			return
+		if len(rasterStack) > 0 {
+			tmpMap, err := ProcessRasterStack(rasterStack, maskMap, canvasMap)
+			if err != nil {
+				enc.Error <- err
+				return
+			}
+			canvasMap = tmpMap
 		}
-		canvasMap = tmpMap
 
 		polyLimiter.Decrease()
+	}
+
+	select {
+	case <-enc.Context.Done():
+		return
+	default:
 	}
 
 	if len(canvasMap) == 2 && canvasMap["Nadir_Reflectance_Band1"].Type == "Int16" {
@@ -449,9 +475,7 @@ func (enc *RasterMerger) Run(polyLimiter *ConcLimiter) {
 		default:
 			enc.Error <- fmt.Errorf("raster type %s not recognised", canvas.Type)
 		}
-
 	}
 
 	enc.Out <- out
-
 }

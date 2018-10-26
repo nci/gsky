@@ -106,7 +106,7 @@ type Layer struct {
 	WmsMaxHeight             int      `json:"wms_max_height"`
 	WcsMaxWidth              int      `json:"wcs_max_width"`
 	WcsMaxHeight             int      `json:"wcs_max_height"`
-	FeatureInfoMaxDataLinks  int     `json:"feature_info_max_data_links"`
+	FeatureInfoMaxDataLinks  int      `json:"feature_info_max_data_links"`
 	FeatureInfoDataLinkUrl   string   `json:"feature_info_data_link_url"`
 }
 
