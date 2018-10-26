@@ -2,7 +2,6 @@ package processor
 
 import (
 	"context"
-
 	"github.com/nci/gsky/utils"
 )
 
@@ -35,15 +34,15 @@ func (dp *TilePipeline) Process(geoReq *GeoTileRequest, verbose bool) chan []uti
 		close(i.In)
 	}()
 
-	m := NewRasterMerger(dp.Error)
+	m := NewRasterMerger(dp.Context, dp.Error)
 
 	grpcTiler.In = i.Out
 	m.In = grpcTiler.Out
 
 	polyLimiter := NewConcLimiter(dp.PolygonShardConcLimit)
 	go i.Run(verbose)
-	go grpcTiler.Run(polyLimiter)
-	go m.Run(polyLimiter)
+	go grpcTiler.Run(polyLimiter, verbose)
+	go m.Run(polyLimiter, verbose)
 
 	return m.Out
 
