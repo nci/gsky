@@ -6,26 +6,86 @@
 # Adapted from 'build_deps.sh' and 'build_gsky.sh'
 #####################################################################
 # **** NOTE ****: This shel script must be run as super user. 
-# Usage: 'sudo ./build_all.sh' or 'sudo -i' and then './build_all.sh'.
+# Usage: 
+#	1. Create a temporary installation dir. e.g. ~/gsky
+#	2. Place this script to the temp dir. e.g. cp build_all.sh ~/gsky
+#	3. Change directory. e.g. cd ~/gsky
+#	4. Execute the script. e.g. 'sudo ./build_all.sh' 
+#		or 'sudo -i' and then './build_all.sh'.
 #####################################################################
+
+# Git clone the required files to your own workspace. These can be edited by you.
+repo=asivapra # production repo = nci
+git clone https://github.com/${repo}/gsky.git
+cd gsky/install
+
+prefix=${PREFIX:-/usr}
 
 # Set the bash script to print the commands being executed and to exit on error
 set -xeu
+
+# Install PostGIS. This should be done after installing other deps
+v=2.5.0
+wget -q https://download.osgeo.org/postgis/source/postgis-${v}.tar.gz
+tar xf postgis-${v}.tar.gz
+cd postgis-${v}
+
+# The default loader/Makefile tries to compile 'pgsql2shp' and 'shp2pgsql', and crashes.
+# Therefore, mask it out in Makefile.in to prevent them being compiled. 
+# These executables are then copied/downloaded from elsewhere.
+yes|cp ../postgis-2.5.0_Makefile.in loader/Makefile.in
+./configure --with-pgconfig=/usr/local/pgsql/bin/pg_config
+make
+
+# The folowing executables are required for 'make install'. Currently they are being copied from another location.
+yes|cp ../pgsql2shp loader
+yes|cp ../shp2pgsql loader
+make install
+exit
 
 # Install the development tools under CentOS
 # 'yes|' means no confirmation before proceeding with removal and installation
 yes|yum groupremove "Development Tools"
 yes|yum groupinstall "Development Tools"
-yes|yum remove postgresql
-yes|yum install postgresql
-yes|yum remove postgis
-yes|yum install postgis
 yes|yum remove wget
 yes|yum install wget
 yes|yum remove cmake
 yes|yum install cmake
 yes|yum remove python-devel
 yes|yum install python-devel
+yum install readline-devel
+
+# Install PostGreSQL
+echo "a. Installing: PostGreSQL"
+#yum install readline-devel
+v=11.0
+(set -xeu
+wget -q https://ftp.postgresql.org/pub/source/v${v}/postgresql-${v}.tar.gz
+tar -xf postgresql-${v}.tar.gz
+cd postgresql-${v}
+./configure
+make
+make install
+rm -rf postgresql-${v}
+rm -f postgresql-${v}.tar.gz
+
+# Check and create the user 'postgres'
+s1=`id -u postgres`
+echo $s1
+if [ $s1 ]
+then
+	echo "User, 'postgres', exists!"
+else
+	adduser postgres
+fi
+mkdir -p /var/lib/pgsql
+mkdir -p /usr/local/pgsql/data
+chown postgres /usr/local/pgsql/data
+# Initialise the database and start the server. This must be done under user, 'postgres'.
+su - postgres -c '/usr/local/pgsql/bin/initdb -D /usr/local/pgsql/data; /usr/local/pgsql/bin/postgres -D /usr/local/pgsql/data >/tmp/logfile 2>&1 &'
+)
+echo "Finished PostgreSQL Installation"
+
 #------------------------------------------------------------------------------------------------------------------
 # Install GSKY-specific dependencies
 #------------------------------------------------------------------------------------------------------------------
