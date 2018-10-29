@@ -7,7 +7,7 @@ TL;DR
 - Create a VM instance on tenjin.nci.org.au.
 	- Choose the option that gives at least 4GB RAM and 80GB disk.
 	- Choose CentOS 7 as the operating system.
-•	Remember that the VM is accessible only from within NCI network.
+- Remember that the VM is accessible only from within NCI network.
 	- Use the ethernet for connection when in the office.
 	- WiFi through ANU-Secure will not be enough, unless your PC’s IP is added to the firewall.
 	- Use VPN to connect from remote locations or from within the office.
@@ -33,7 +33,7 @@ Build a Virtual Machine
 Build the GSKY environment
 ----------
 	- Login to the VM via SSH
-	- copy the ‘build_all.sh’ to the home dir.
+	- Transfer ‘build_all.sh’ to the home dir.
 	- cd ~
 	- sudo ./build_all.sh
 
