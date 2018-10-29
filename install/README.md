@@ -143,19 +143,21 @@ OR, clone it under your username so that files can be edited by yourself.
 This will take several minutes to complete. It is normal to see many warning messages. Ignore the warnings, but make sure that there is no fatal error. If installation goes to completion, it will display “Completed ALL steps. Exiting”
 
 COMPONENTS AND COMMANDS
--	sudo -i
+-----------------------
+
+-	**sudo -i**
 
 This command starts a super user session using the current shell (e.g. /bin/bash) so that all system commands can be run without having to do a ‘sudo command’ every time. This method, however, has the disadvantage that you are now not in your username’s login shell and therefore the environments, aliases, etc. for your shell are not available. Another risk is that now you are a super user and can accidentally delete/modify things you could not have done before. The safe way is to use ‘sudo command’. For this, avoid the ‘sudo -i’ and prepend ‘sudo’ to all the commands shown below.
 
-**./build_all.sh**
+- **./build_all.sh**
 
 This script installs several dependencies as given below. It is required to run this script only once.
 
--	**yum groupremove "Development Tools"**
+- **yum groupremove "Development Tools"**
 
 Remove the previously installed programs, if any, so that the latest versions will be installed when the next command is run.
 
--	**yum groupinstall "Development Tools"** [[Ref](https://serverfault.com/questions/274279/whats-the-difference-between-yum-groupinstall-vs-regular-yum-install)]
+- **yum groupinstall "Development Tools"** [[Ref](https://serverfault.com/questions/274279/whats-the-difference-between-yum-groupinstall-vs-regular-yum-install)]
 
 The groupinstall command installs a bundle of packages that are designated as a group so that you don't need to install a bunch of individual packages yourself to have all of the features. So, yum groupinstall "Development Tools" would install a bunch of packages necessary for development, such as gcc, make, git, etc.
 
@@ -165,16 +167,16 @@ The regular install just installs individual packages (and their dependencies) b
 
 The following programs are not part of the “groupinstall Development Tools” and, therefore, must be installed separately.
 
--	**yum install wget**
+- **yum install wget**
 The program, ‘wget’, is used to get several packages required for GSKY. 
 
--	**yum install cmake**
+- **yum install cmake**
 cmake - Cross-Platform Makefile Generator.
 
--	**yum install python-devel**
+- **yum install python-devel**
 An include file, Python.h’, is required. It comes from this package.
 
--	**yum install readline-devel**
+- **yum install readline-devel**
 This is required for PostGreSQL installation.
 
 After the above common dependencies are installed, we must install the following which are specific for GSKY.
@@ -203,146 +205,25 @@ The distributed programs provide conversion between JPEG JFIF format and image f
 
 - **2.	OPENJPEG Library and Applications** [[Ref](https://github.com/uclouvain/openjpeg/blob/master/README.md)]
 
-	- ``wget -q -O openjpeg-v${v}.tar.gz https://github.com/uclouvain/openjpeg/archive/v${v}.tar.gz``
+```
+v=2.3.0
+(
+	set -xeu
+	wget -q -O openjpeg-v${v}.tar.gz https://github.com/uclouvain/openjpeg/archive/v${v}.tar.gz
+	tar -xf openjpeg-v${v}.tar.gz
+	cd openjpeg-${v}
+	mkdir build
+	cd build
+	cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="$prefix"
+	make -j4
+	make install
+)
+rm -rf openjpeg-${v}
+rm -f openjpeg-v${v}.tar.gz
+```
 
 OpenJPEG is an open-source JPEG 2000 codec written in C language. It has been developed in order to promote the use of JPEG 2000, a still-image compression standard from the Joint Photographic Experts Group (JPEG). Since April 2015, it is officially recognized by ISO/IEC and ITU-T as a JPEG 2000 Reference Software.
 
 NOTE: The above link appears to be an older version that has been archived. Their latest release has a different tar structure. The current ‘build_deps.sh’ is unable to use that archive. It is not known whether we specifically need the presumably older release.
-
-
-3.	GEOS - Geometry Engine, Open Source [Ref]
- 
-wget -q http://download.osgeo.org/geos/geos-${v}.tar.bz2
-
-GEOS (Geometry Engine - Open Source) is a C++ port of the Java Topology Suite (JTS). As such, it aims to contain the complete functionality of JTS in C++. This includes all the OpenGIS Simple Features for SQL spatial predicate functions and spatial operators, as well as specific JTS enhanced topology functions.
-
-Capabilities
-•	Geometries: Point, LineString, Polygon, MultiPoint, MultiLineString, MultiPolygon, GeometryCollection
-•	Predicates: Intersects, Touches, Disjoint, Crosses, Within, Contains, Overlaps, Equals, Covers
-•	Operations: Union, Distance, Intersection, Symmetric Difference, Convex Hull, Envelope, Buffer, Simplify, Polygon Assembly, Valid, Area, Length,
-•	Prepared geometries (pre-spatially indexed)
-•	STR spatial index
-•	OGC Well Known Text (WKT) and Well-Known Binary (WKB) encoders and decoders.
-•	C and C++ API (C API gives long term ABI stability)
-•	Thread safe (using the re-entrant API)
-NOTE: The v3.6.2 being downloaded in the script is an older version (2017). Latest stable release is 3.7.0 (Sep 2018)
-
-
-
-4.	Cartographic Projection Procedures for the UNIX Environment [Ref]
-
-wget -q http://download.osgeo.org/proj/proj-${v}.tar.gz
-
-Program proj (release 3) is a standard Unix filter function which converts geographic longitude and latitude coordinates into cartesian coordinates, (λ, φ) → (x, y), by means of a wide variety of cartographic projection functions. For many of the projection functions the inverse conversion, (x, y) → (λ, φ), can also be performed.
-
-NOTE: The v5.1.0 being downloaded in the script is an older version (2017). Latest stable release is v5.2.0 (Sep 2018)
-
-
-5.	Zlib Data Compression Library [Ref][Ref]
-
-wget -q ftp://ftp.unidata.ucar.edu/pub/netcdf/netcdf-4/zlib-${v}.tar.gz
-
-zlib 1.2.8 is a general-purpose data compression library.  All the code is thread safe.  The data format used by the zlib library is described by RFCs (Request for Comments) 1950 to 1952 in the files http://tools.ietf.org/html/rfc1950 (zlib format), rfc1951 (deflate format) and rfc1952 (gzip format).
-
-zlib compressed data are typically written with a gzip or a zlib wrapper. The wrapper encapsulates the raw deflate data by adding a header and trailer. This provides stream identification and error detection that are not provided by the raw deflate data.
-
-
-6.	HDF4 [Ref]
-
-wget -q https://support.hdfgroup.org/ftp/HDF/HDF_Current/src/hdf-${v}.tar.gz
-
-HDF4® is a library and multi-object file format for storing and managing data between machines. HDF4 is a very different technology than HDF5. The HDF Group recommends that, other than for working with existing HDF4 data, new applications use HDF5 since HDF5 addresses important deficiencies of HDF4.
-
-If you’re interested in converting your data from HDF4 to HDF5, our engineers can help. Learn more about our consulting service or free and open source h4toh5 conversion tools.
-
-NASA maintains a network of Earth Observing Satellites that transmit huge volumes of new imagery data daily in HDF4.  As a result, HDF4 is used extensively in the Earth Sciences. The HDF-EOS Website, http://www.hdfeos.org has a wealth of information on these uses.
-
-NOTE: We are using both HDF4 and HDF5 (see below)
-
-
-7.	HDF5 [Ref]
-
-wget -q ftp://ftp.unidata.ucar.edu/pub/netcdf/netcdf-4/hdf5-${v}.tar.gz
-
-Hierarchical Data Format 5 (HDF5) is a unique open source technology suite for managing data collections of all sizes and complexity. HDF5 was specifically designed: • For high volume and/or complex data (but can be used for low volume/simple data) • For every size and type of system (portable) • For flexible, efficient storage and I/O • To enable applications to evolve in their use of HDF5 and to accommodate new models • To be used as a file format tool kit (many formats use HDF5 under the hood)
-
-
-8.	NetCDF [Ref]
-
-wget -q http://www.unidata.ucar.edu/downloads/netcdf/ftp/netcdf-${v}.tar.gz
-
-NetCDF (network Common Data Form) is a set of software libraries and machine-independent data formats that support the creation, access, and sharing of array-oriented scientific data. Distributions are provided for Java and C/C++/Fortran. See the netCDF web site and the FAQ answer to How do I get the netCDF software package? for more information.
-
-
-9.	XML C parser [Ref]
-
-wget -q ftp://xmlsoft.org/libxml2/libxml2-${v}.tar.gz
-
-Libxml2 is the XML C parser and toolkit developed for the Gnome project (but usable outside of the Gnome platform), it is free software available under the MIT License. XML itself is a metalanguage to design markup languages, i.e. text language where semantic and structure are added to the content using extra "markup" information enclosed between angle brackets. HTML is the most well-known markup language. Though the library is written in C a variety of language bindings make it available in other environments.
-
-
-
-10.	JSON-C - A JSON implementation in C [Ref]
-
-wget -q https://s3.amazonaws.com/json-c_releases/releases/json-c-${v}.tar.gz
-
-JSON-C implements a reference counting object model that allows you to easily construct JSON objects in C, output them as JSON formatted strings and parse JSON formatted strings back into the C representation of JSON objects. It aims to conform to RFC 7159.
-
-
-11.	GDAL [Ref]
-
-wget -q http://download.osgeo.org/gdal/${v}/gdal-${v}.tar.gz
-
-The Geospatial Data Abstraction Library (GDAL) is a computer software library for reading and writing raster and vector geospatial data formats, and is released under the permissive X/MIT style free software license by the Open Source Geospatial Foundation. As a library, it presents a single abstract data model to the calling application for all supported formats. It may also be built with a variety of useful command line interface utilities for data translation and processing. Projections and transformations are supported by the PROJ.4 library.
-
- 
-12.	Install PostGreSQL
-PostGreSQL and PostGIS (see below) must be installed AFTER the GDAL, and via source compilation. Though these can be done with ‘yum install’, they will not link correctly with GDAL.
-
-13.	Install PostGIS
-PostGIS requires GEOS and GDAL (see below for all dependencies). Hence it must be installed after GEOS, GDAL and PostGreSQL.
-
-
--------------- Dependencies --------------
-  GEOS config:          /usr/bin/geos-config
-  GEOS version:         3.6.2
-  GDAL config:          /usr/local/bin/gdal-config
-  GDAL version:         2.3.1
-  PostgreSQL config:    /usr/local/pgsql/bin/pg_config
-  PostgreSQL version:   PostgreSQL 11.0
-  PROJ4 version:        51
-  Libxml2 config:       /usr/bin/xml2-config
-  Libxml2 version:      2.9.8
-  JSON-C support:       yes
-  protobuf-c support:   no
-  PCRE support:         no
-  Perl:                 /usr/bin/perl
--------------------------------------------------
-
-NOTE: Due to some possible quirk with the VM there are some additional dependencies for it. These are taken care of in the ‘build_all.sh’, but not so elegantly. A way to automate a failsafe method must be worked out.
-
-Specifically, compilation of executables, ‘pgsql2shp’ and ‘shp2pgsql’ are crashing due to some references in GEOS, ‘GEOSVoronoiDiagram’ and ‘GEOSClipByRect’, missing. It is unclear why ‘libtool’ does not find these. As a workaround, the compilation steps for these are to be disabled and, then, copy pre-compiled versions of these from another VM. This, however, may result in errors in future if there are version dependencies.  
-
-The above error appears to be related to the OS image used for creating the VM. The latest, ‘vl-centos7-20180816’ gave an error, whereas an older version (‘vl-centos7-20170706‘) did not.
-
-14.	Install GO
-wget -q -O go.tar.gz https://dl.google.com/go/go1.10.3.linux-amd64.tar.gz
-
-The ‘go’ executable will be installed in /local/gsky/go/bin. Add it to your PATH to run from command line.
-	$ export PATH=$PATH: /local/gsky/go/bin
-	$ which go
-		/local/gsky/go/bin/go
-
-15.	Build GSKY
-The GSKY source files are in the Github repo, ‘github.com/nci/gsky’. They are first cloned into /local/gsky/gopath/src/github.com before building the GSKY binary.
-
-16.	Install all binaries
-This step involves just copying the right files into…
-•	/local/gsky/bin/api*
-•	/local/gsky/share/gsky/gsky*
-•	/local/gsky/share/gsky/grpc_server*
-•	/local/gsky/share/gsky/gsky-gdal-process*
-•	/local/gsky/share/gsky/gsky-crawl*
-•	/local/gsky/share/mas
 
 
