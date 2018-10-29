@@ -63,7 +63,9 @@ The VM instances on https://tenjin.nci.org.au/dashboard/project/instances/ are w
 
 - Go to https://tenjin.nci.org.au/dashboard/project/
 	- Click on ‘Instances’ and then on ‘Launch Instance’
-![Step1](pic1.png) 
+
+![Step1](pic1.png)
+
 ![Step2](pic2.png) 
 
 - Fill in details as per the example below.
@@ -88,19 +90,24 @@ The VM instances on https://tenjin.nci.org.au/dashboard/project/instances/ are w
  
 ![Step7](pic7.png) 
 
-- Login with NCI username/password when prompted. This is now a regular VM console.
-- If you are on the NCI network, either through ethernet or VPN, the following step is not required.
-- Change to ‘sudo -I’ and add the IP address of your local PC to the iptables
-	- This step is necessary only when not on the NCI network through ethernet.
-	-cd /etc/puppetlabs/code/environments/production/
-	-cat > hieradata/node/siva-gsky.yaml (same name as instance.yaml)
-- nci::firewall::ruleset::ssh::sources_array:
-	- – “130.56.84.195”
-	-Or 
-- vim hieradata/node/siva-gsky.yaml
-- Change the IP address
-	-puppet-apply
-	-iptables –list
+- Login with NCI username/password when prompted. 
+	- This is now a regular VM console.
+- Add your IP address to the iptables.
+	- If you are on the NCI network, either through ethernet or VPN, this step is not required.
+		- Change to ‘sudo -i’ and add the IP address of your local PC to the iptables.
+		- cd /etc/puppetlabs/code/environments/production/hieradata/node/
+		- cat > [vm name].yaml (e.g. siva-gsky.yaml)
+			- nci::firewall::ruleset::ssh::sources_array:
+			- – “130.56.84.195” 
+				- Tip: Find your IP address:
+					- ipconfig (Windows IPv4 address) 
+					- ifconfig | awk '/inet / {print}' in Linux
+		- OR 
+			- vim siva-gsky.yaml
+			- Change the IP address to your own as per the example below.
+				- – “130.56.84.195”
+		- puppet-apply
+		- iptables –list
 
 Create an SSH key pair:
 =================
