@@ -337,3 +337,30 @@ If you’re interested in converting your data from HDF4 to HDF5, our engineers 
 NASA maintains a network of Earth Observing Satellites that transmit huge volumes of new imagery data daily in HDF4.  As a result, HDF4 is used extensively in the Earth Sciences. The HDF-EOS Website, http://www.hdfeos.org has a wealth of information on these uses.
 
 `NOTE: We are using both HDF4 and HDF5 (see below)`
+
+------------
+
+- **7.	HDF5** [[Ref](https://support.hdfgroup.org/HDF5/Tutor/HDF5Intro.pdf)]
+
+```
+v=1.8.13
+(
+	set -xeu
+	wget -q ftp://ftp.unidata.ucar.edu/pub/netcdf/netcdf-4/hdf5-${v}.tar.gz
+	tar -xf hdf5-${v}.tar.gz && cd hdf5-${v}
+	./configure --enable-shared --enable-hl --prefix="$prefix"
+	make -j4
+	make install
+)
+rm -rf hdf5-${v}
+rm -f hdf5-${v}.tar.gz
+```
+Hierarchical Data Format 5 (HDF5) is a unique open source technology suite for managing data collections of all sizes and complexity. HDF5 was specifically designed: 
+- For high volume and/or complex data (but can be used for low volume/simple data) 
+- For every size and type of system (portable) 
+- For flexible, efficient storage and I/O 
+- To enable applications to evolve in their use of HDF5 and to accommodate new models 
+- To be used as a file format tool kit (many formats use HDF5 under the hood)
+
+------------
+
