@@ -88,6 +88,8 @@ The VM instances on https://tenjin.nci.org.au/dashboard/project/instances/ are w
 
  - Click on ‘Console’ tab and then on the hypertext link, “Click here…”
  
+![Step8](pic8.png) 
+
 ![Step7](pic7.png) 
 
 - Login with NCI username/password when prompted. 
