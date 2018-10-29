@@ -34,7 +34,7 @@ Build a Virtual Machine
 - Go to: https://tenjin.nci.org.au/dashboard/auth/login/
 - Login with your NCI username and password.
 	- Instances >> Launch Instances >> Specify the details >> Launch
-	- Wait at least 7 minutes for the setup to complete.
+	- Wait at least 10 minutes for the setup to complete.
 
 Build the GSKY environment
 ----------
@@ -96,9 +96,10 @@ The VM instances on https://tenjin.nci.org.au/dashboard/project/instances/ are w
 	- This is now a regular VM console.
 - Add your IP address to the iptables.
 	- If you are on the NCI network, either through ethernet or VPN, this step is not required.
-		- Change to ‘sudo -i’ and add the IP address of your local PC to the iptables.
+		- sudo -i
 		- cd /etc/puppetlabs/code/environments/production/hieradata/node/
 		- cat > [vm name].yaml (e.g. siva-gsky.yaml)
+			- insert the following.
 			- nci::firewall::ruleset::ssh::sources_array:
 			- – “130.56.84.195” 
 				- Tip: Find your IP address:
