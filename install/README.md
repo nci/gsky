@@ -181,20 +181,20 @@ After the above common dependencies are installed, we must install the following
 
 - **1.	Independent JPEG Group's free JPEG software** [[Ref](http://www.ijg.org/files/README)]
 
-	{v=9c
-(
-	set -xeu
-	wget -q http://www.ijg.org/files/jpegsrc.v${v}.tar.gz
-	tar -xf jpegsrc.v${v}.tar.gz
-	cd jpeg-${v}
-	./configure --prefix="$prefix"
-	make -j4
-	make install
-)
-rm -rf jpeg-${v}
-rm -f jpegsrc.v${v}.tar.gz}
-
-	```wget -q http://www.ijg.org/files/jpegsrc.v${v}.tar.gz```
+	```
+	v=9c
+	(
+		set -xeu
+		wget -q http://www.ijg.org/files/jpegsrc.v${v}.tar.gz
+		tar -xf jpegsrc.v${v}.tar.gz
+		cd jpeg-${v}
+		./configure --prefix="$prefix"
+		make -j4
+		make install
+	)
+	rm -rf jpeg-${v}
+	rm -f jpegsrc.v${v}.tar.gz
+	```
 
 This package contains the C software to implement JPEG image encoding, decoding, and transcoding.  JPEG is a standardized compression method for full-colour and grayscale images.
 
