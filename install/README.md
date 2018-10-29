@@ -181,6 +181,8 @@ This is required for PostGreSQL installation.
 
 After the above common dependencies are installed, we must install the following which are specific for GSKY.
 
+ 
+--------------
 - **1.	Independent JPEG Group's free JPEG software** [[Ref](http://www.ijg.org/files/README)]
 
 	```
