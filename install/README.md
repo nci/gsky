@@ -293,7 +293,7 @@ Program proj (release 3) is a standard Unix filter function which converts geogr
 
 ------------
 
-- **5.	Zlib Data Compression Library** [[Ref](https://en.wikipedia.org/wiki/Zlib)][[Ref](ftp://ftp.unidata.ucar.edu/pub/netcdf/netcdf-4/)]
+- **5.	Zlib Data Compression Library** [[Ref](https://en.wikipedia.org/wiki/Zlib)]
 
 ```
 v=1.2.8
@@ -313,3 +313,27 @@ zlib 1.2.8 is a general-purpose data compression library.  All the code is threa
 zlib compressed data are typically written with a gzip or a zlib wrapper. The wrapper encapsulates the raw deflate data by adding a header and trailer. This provides stream identification and error detection that are not provided by the raw deflate data.
 
 ------------
+
+- **6.	HDF4** [[Ref](https://www.hdfgroup.org/solutions/hdf4/)]
+
+```
+v=4.2.13
+(
+	set -xeu
+	wget -q https://support.hdfgroup.org/ftp/HDF/HDF_Current/src/hdf-${v}.tar.gz
+	tar -xf hdf-${v}.tar.gz
+	cd hdf-${v}
+	./configure --enable-shared --disable-fortran --prefix="$prefix"
+	make -j4
+	make install
+)
+rm -rf hdf-${v}
+rm -f hdf-${v}.tar.gz
+```
+HDF4 is a library and multi-object file format for storing and managing data between machines. HDF4 is a very different technology than HDF5. The HDF Group recommends that, other than for working with existing HDF4 data, new applications use HDF5 since HDF5 addresses important deficiencies of HDF4.
+
+If you’re interested in converting your data from HDF4 to HDF5, our engineers can help. Learn more about our consulting service or free and open source h4toh5 conversion tools.
+
+NASA maintains a network of Earth Observing Satellites that transmit huge volumes of new imagery data daily in HDF4.  As a result, HDF4 is used extensively in the Earth Sciences. The HDF-EOS Website, http://www.hdfeos.org has a wealth of information on these uses.
+
+`NOTE: We are using both HDF4 and HDF5 (see below)`
