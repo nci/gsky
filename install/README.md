@@ -364,7 +364,7 @@ Hierarchical Data Format 5 (HDF5) is a unique open source technology suite for m
 
 ------------
 
-- **8.	NetCDF** [[Ref](https://www.unidata.ucar.edu/downloads/netcdf/index.jsp)]
+- **8.	Network Common Data Form (NetCDF)** [[Ref](https://www.unidata.ucar.edu/downloads/netcdf/index.jsp)]
 
 ```
 v=4.1.3
@@ -423,7 +423,7 @@ JSON-C implements a reference counting object model that allows you to easily co
 
 ------------
 
-- **11.	GDAL** [[Ref](https://en.wikipedia.org/wiki/GDAL)]
+- **11.	Geospatial Data Abstraction Library (GDAL)** [[Ref](https://en.wikipedia.org/wiki/GDAL)]
 
 ```
 v=2.3.1
