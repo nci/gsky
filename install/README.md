@@ -402,3 +402,24 @@ rm -f libxml2-${v}.tar.gz
 Libxml2 is the XML C parser and toolkit developed for the Gnome project (but usable outside of the Gnome platform), it is free software available under the MIT License. XML itself is a metalanguage to design markup languages, i.e. text language where semantic and structure are added to the content using extra "markup" information enclosed between angle brackets. HTML is the most well-known markup language. Though the library is written in C a variety of language bindings make it available in other environments.
 
 ------------
+
+- **10.	JSON-C - A JSON implementation in C** [[Ref](https://github.com/json-c/json-c/blob/master/README.md)]
+
+```
+v=0.13.1
+(
+	set -xeu
+	wget -q https://s3.amazonaws.com/json-c_releases/releases/json-c-${v}.tar.gz
+	tar -xf json-c-${v}.tar.gz
+	cd json-c-${v}
+	./configure --prefix="$prefix"
+	make -j4
+	make install
+)
+rm -rf json-c-${v}
+rm -f json-c-${v}.tar.gz
+```
+JSON-C implements a reference counting object model that allows you to easily construct JSON objects in C, output them as JSON formatted strings and parse JSON formatted strings back into the C representation of JSON objects. It aims to conform to RFC 7159.
+
+------------
+
