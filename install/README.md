@@ -364,7 +364,7 @@ Hierarchical Data Format 5 (HDF5) is a unique open source technology suite for m
 
 ------------
 
-- **8.	NetCDF** [[Ref[(https://www.unidata.ucar.edu/downloads/netcdf/index.jsp)]
+- **8.	NetCDF** [[Ref](https://www.unidata.ucar.edu/downloads/netcdf/index.jsp)]
 
 ```
 v=4.1.3
@@ -380,5 +380,25 @@ rm -rf netcdf-${v}
 rm -f netcdf-${v}.tar.gz
 ```
 NetCDF (network Common Data Form) is a set of software libraries and machine-independent data formats that support the creation, access, and sharing of array-oriented scientific data. Distributions are provided for Java and C/C++/Fortran. See the netCDF web site and the FAQ answer to How do I get the netCDF software package? for more information.
+
+------------
+
+- **9.	XML C parser** [[Ref](http://xmlsoft.org/)]
+
+```
+v=2.9.8
+(
+	set -xeu
+	wget -q ftp://xmlsoft.org/libxml2/libxml2-${v}.tar.gz
+	tar -xf libxml2-${v}.tar.gz
+	cd libxml2-${v}
+	./configure --prefix="$prefix"
+	make -j4
+	make install
+)
+rm -rf libxml2-${v}
+rm -f libxml2-${v}.tar.gz
+```
+Libxml2 is the XML C parser and toolkit developed for the Gnome project (but usable outside of the Gnome platform), it is free software available under the MIT License. XML itself is a metalanguage to design markup languages, i.e. text language where semantic and structure are added to the content using extra "markup" information enclosed between angle brackets. HTML is the most well-known markup language. Though the library is written in C a variety of language bindings make it available in other environments.
 
 ------------
