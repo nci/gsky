@@ -461,3 +461,41 @@ The Geospatial Data Abstraction Library (GDAL) is a computer software library fo
 
 ------------
 
+- **12.	PostgreSQL Relational Database** [[Ref](https://www.postgresql.org/about/)}
+
+```
+v=11.0
+(
+	set -xeu
+	wget -q https://ftp.postgresql.org/pub/source/v${v}/postgresql-${v}.tar.gz
+	tar -xf postgresql-${v}.tar.gz
+	cd postgresql-${v}
+	./configure
+	make
+	make install
+)
+rm -rf postgresql-${v}
+rm -f postgresql-${v}.tar.gz*
+
+# Check and create the user 'postgres'
+s1=`id -u postgres`
+echo $s1
+if [ $s1 ]
+then
+	echo "User, 'postgres', exists. Nothing to do!"
+else
+	echo "Creating the user!"
+	adduser postgres
+fi
+mkdir -p /var/lib/pgsql
+mkdir -p /usr/local/pgsql/data
+chown postgres /usr/local/pgsql/data
+su - postgres -c '/usr/local/pgsql/bin/initdb -D /usr/local/pgsql/data; /usr/local/pgsql/bin/postgres -D /usr/local/pgsql/data >/tmp/logfile 2>&1 &'
+```
+
+PostgreSQL is a powerful, open source object-relational database system that uses and extends the SQL language combined with many features that safely store and scale the most complicated data workloads. The origins of PostgreSQL date back to 1986 as part of the POSTGRES project at the University of California at Berkeley and has more than 30 years of active development on the core platform.
+
+`PostgreSQL and PostGIS (see below) must be installed, via source compilation, AFTER the GEOS and GDAL installations. Though these can be installed with ‘yum install’, it will not link correctly with GDAL.`
+
+------------
+
