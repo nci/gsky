@@ -364,3 +364,21 @@ Hierarchical Data Format 5 (HDF5) is a unique open source technology suite for m
 
 ------------
 
+- **8.	NetCDF** [[Ref[(https://www.unidata.ucar.edu/downloads/netcdf/index.jsp)]
+
+```
+v=4.1.3
+(
+	set -xeu
+	wget -q http://www.unidata.ucar.edu/downloads/netcdf/ftp/netcdf-${v}.tar.gz
+	tar -xf netcdf-${v}.tar.gz && cd netcdf-${v}
+	./configure --enable-netcdf-4 --enable-shared --enable-dap --prefix="$prefix"
+	make -j4
+	make install
+)
+rm -rf netcdf-${v}
+rm -f netcdf-${v}.tar.gz
+```
+NetCDF (network Common Data Form) is a set of software libraries and machine-independent data formats that support the creation, access, and sharing of array-oriented scientific data. Distributions are provided for Java and C/C++/Fortran. See the netCDF web site and the FAQ answer to How do I get the netCDF software package? for more information.
+
+------------
