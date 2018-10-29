@@ -242,19 +242,21 @@ v=3.6.2
 )
 rm -rf geos-${v}
 rm -f geos-${v}.tar
-
 ```
-GEOS (Geometry Engine - Open Source) is a C++ port of the Java Topology Suite (JTS). As such, it aims to contain the complete functionality of JTS in C++. This includes all the OpenGIS Simple Features for SQL spatial predicate functions and spatial operators, as well as specific JTS enhanced topology functions.
+
+**GEOS (Geometry Engine - Open Source)** is a C++ port of the Java Topology Suite (JTS). As such, it aims to contain the complete functionality of JTS in C++. This includes all the OpenGIS Simple Features for SQL spatial predicate functions and spatial operators, as well as specific JTS enhanced topology functions.
 
 Capabilities
-•	Geometries: Point, LineString, Polygon, MultiPoint, MultiLineString, MultiPolygon, GeometryCollection
-•	Predicates: Intersects, Touches, Disjoint, Crosses, Within, Contains, Overlaps, Equals, Covers
-•	Operations: Union, Distance, Intersection, Symmetric Difference, Convex Hull, Envelope, Buffer, Simplify, Polygon Assembly, Valid, Area, Length,
-•	Prepared geometries (pre-spatially indexed)
-•	STR spatial index
-•	OGC Well Known Text (WKT) and Well-Known Binary (WKB) encoders and decoders.
-•	C and C++ API (C API gives long term ABI stability)
-•	Thread safe (using the re-entrant API)
+------------
+-	Geometries: Point, LineString, Polygon, MultiPoint, MultiLineString, MultiPolygon, GeometryCollection
+-	Predicates: Intersects, Touches, Disjoint, Crosses, Within, Contains, Overlaps, Equals, Covers
+-	Operations: Union, Distance, Intersection, Symmetric Difference, Convex Hull, Envelope, Buffer, Simplify, Polygon Assembly, Valid, Area, Length,
+-	Prepared geometries (pre-spatially indexed)
+-	STR spatial index
+-	OGC Well Known Text (WKT) and Well-Known Binary (WKB) encoders and decoders.
+-	C and C++ API (C API gives long term ABI stability)
+-	Thread safe (using the re-entrant API)
+
 NOTE: The v3.6.2 being downloaded in the script is an older version (2017). Latest stable release is 3.7.0 (Sep 2018)
 
 
