@@ -203,6 +203,8 @@ This package contains the C software to implement JPEG image encoding, decoding,
 
 The distributed programs provide conversion between JPEG JFIF format and image files in PBMPLUS PPM/PGM, GIF, BMP, and Targa file formats.  The core compression and decompression library can easily be reused in other programs, such as image viewers.  The package is highly portable C code; we have tested it on many machines ranging from PCs to Crays. jpegsrc.vN.tar.gz contains source code, documentation, and test files for release N in Unix format.
 
+------------
+
 - **2.	OPENJPEG Library and Applications** [[Ref](https://github.com/uclouvain/openjpeg/blob/master/README.md)]
 
 ```
@@ -226,6 +228,8 @@ OpenJPEG is an open-source JPEG 2000 codec written in C language. It has been de
 
 `NOTE: The above link appears to be an older version that has been archived. Their latest release has a different tar structure. The current ‘build_deps.sh’ is unable to use that archive. It is not known whether we specifically need the presumably older release.`
 
+------------
+
 - **3.	GEOS - Geometry Engine, Open Source** [[Ref](https://www.osgeo.org/projects/geos/)]
  
 ```
@@ -246,8 +250,8 @@ rm -f geos-${v}.tar
 
 **GEOS (Geometry Engine - Open Source)** is a C++ port of the Java Topology Suite (JTS). As such, it aims to contain the complete functionality of JTS in C++. This includes all the OpenGIS Simple Features for SQL spatial predicate functions and spatial operators, as well as specific JTS enhanced topology functions.
 
-Capabilities
-------------
+**Capabilities**
+
 -	Geometries: Point, LineString, Polygon, MultiPoint, MultiLineString, MultiPolygon, GeometryCollection
 -	Predicates: Intersects, Touches, Disjoint, Crosses, Within, Contains, Overlaps, Equals, Covers
 -	Operations: Union, Distance, Intersection, Symmetric Difference, Convex Hull, Envelope, Buffer, Simplify, Polygon Assembly, Valid, Area, Length,
@@ -258,6 +262,8 @@ Capabilities
 -	Thread safe (using the re-entrant API)
 
 `NOTE: The v3.6.2 being downloaded in the script is an older version (2017). Latest stable release is 3.7.0 (Sep 2018)`
+
+------------
 
 - **4.	Cartographic Projection Procedures for the UNIX Environment** [[Ref](http://download.osgeo.org/proj/OF90-284.pdf)]
 
@@ -282,3 +288,5 @@ rm -f proj-datumgrid-${vd}.zip
 Program proj (release 3) is a standard Unix filter function which converts geographic longitude and latitude coordinates into cartesian coordinates, (λ, φ) → (x, y), by means of a wide variety of cartographic projection functions. For many of the projection functions the inverse conversion, (x, y) → (λ, φ), can also be performed.
 
 `NOTE: The v5.1.0 being downloaded in the script is an older version (2017). Latest stable release is v5.2.0 (Sep 2018)`
+
+------------
