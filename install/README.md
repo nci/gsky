@@ -423,3 +423,41 @@ JSON-C implements a reference counting object model that allows you to easily co
 
 ------------
 
+- **11.	GDAL** [[Ref](https://en.wikipedia.org/wiki/GDAL)]
+
+```
+v=2.3.1
+(
+	set -xeu
+	wget -q http://download.osgeo.org/gdal/${v}/gdal-${v}.tar.gz
+	tar -xf gdal-${v}.tar.gz
+	
+	# Location of the openjpeg libraries.
+	include=/usr/include
+	
+	# Find out where the openjpeg libraries are. 
+	# This step is for safety, as sometimes the libraries are in /include 
+	res=`find /. -name libopenjp2.pc`
+	if [ $res ]
+	then
+		p=${res/libopenjp2.pc/}
+		p=${p/./}
+		export PKG_CONFIG_PATH=$p
+		q=`/usr/bin/pkg-config libopenjp2 --cflags`
+		r=${q/\/openjpeg*/}
+		include=${r/-I/}
+	fi
+	
+	cd gdal-${v}
+	./configure --with-geos=yes --with-netcdf --with-openjpeg=$include
+	make -j4
+	make install
+)
+rm -rf gdal-${v}
+rm -f gdal-${v}.tar.gz
+```
+
+The Geospatial Data Abstraction Library (GDAL) is a computer software library for reading and writing raster and vector geospatial data formats, and is released under the permissive X/MIT style free software license by the Open Source Geospatial Foundation. As a library, it presents a single abstract data model to the calling application for all supported formats. It may also be built with a variety of useful command line interface utilities for data translation and processing. Projections and transformations are supported by the PROJ.4 library.
+
+------------
+
