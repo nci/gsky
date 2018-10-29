@@ -179,16 +179,16 @@ This is required for PostGreSQL installation.
 
 After the above common dependencies are installed, we must install the following which are specific for GSKY.
 
-- **1.	Independent JPEG Group's free JPEG software** [Ref]
+- **1.	Independent JPEG Group's free JPEG software** [[Ref](http://www.ijg.org/files/README)]
 
-	wget -q http://www.ijg.org/files/jpegsrc.v${v}.tar.gz
+	```wget -q http://www.ijg.org/files/jpegsrc.v${v}.tar.gz```
 
 This package contains the C software to implement JPEG image encoding, decoding, and transcoding.  JPEG is a standardized compression method for full-colour and grayscale images.
 
 The distributed programs provide conversion between JPEG JFIF format and image files in PBMPLUS PPM/PGM, GIF, BMP, and Targa file formats.  The core compression and decompression library can easily be reused in other programs, such as image viewers.  The package is highly portable C code; we have tested it on many machines ranging from PCs to Crays. jpegsrc.vN.tar.gz contains source code, documentation, and test files for release N in Unix format.
 
 
-2.	OPENJPEG Library and Applications [[Ref](http://www.ijg.org/files/README)]
+- **2.	OPENJPEG Library and Applications** [[Ref](https://github.com/uclouvain/openjpeg/blob/master/README.md)]
 
 	- ``wget -q -O openjpeg-v${v}.tar.gz https://github.com/uclouvain/openjpeg/archive/v${v}.tar.gz``
 
