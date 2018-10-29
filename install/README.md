@@ -63,7 +63,9 @@ The VM instances on https://tenjin.nci.org.au/dashboard/project/instances/ are w
 
 - Go to https://tenjin.nci.org.au/dashboard/project/
 	- Click on ‘Instances’ and then on ‘Launch Instance’
-![Step1](pic1.png) 
+
+![Step1](pic1.png)
+
 ![Step2](pic2.png) 
 
 - Fill in details as per the example below.
@@ -97,15 +99,15 @@ The VM instances on https://tenjin.nci.org.au/dashboard/project/instances/ are w
 		- cat > [vm name].yaml (e.g. siva-gsky.yaml)
 			- nci::firewall::ruleset::ssh::sources_array:
 			- – “130.56.84.195” 
-			- Tip: Find your IP address:
-				- ipconfig (Windows IPv4 address) 
-				- ifconfig | awk '/inet / {print}' in Linux
+				- Tip: Find your IP address:
+					- ipconfig (Windows IPv4 address) 
+					- ifconfig | awk '/inet / {print}' in Linux
 		- OR 
 			- vim siva-gsky.yaml
 			- Change the IP address to your own as per the example below.
 				- – “130.56.84.195”
-		-puppet-apply
-		-iptables –list
+		- puppet-apply
+		- iptables –list
 
 Create an SSH key pair:
 =================
