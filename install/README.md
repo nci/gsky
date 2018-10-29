@@ -292,3 +292,24 @@ Program proj (release 3) is a standard Unix filter function which converts geogr
 `NOTE: The v5.1.0 being downloaded in the script is an older version (2017). Latest stable release is v5.2.0 (Sep 2018)`
 
 ------------
+
+- 5.	**Zlib Data Compression Library** [[Ref](https://en.wikipedia.org/wiki/Zlib)][[Ref](ftp://ftp.unidata.ucar.edu/pub/netcdf/netcdf-4/)]
+
+```
+v=1.2.8
+(
+	set -xeu
+	wget -q ftp://ftp.unidata.ucar.edu/pub/netcdf/netcdf-4/zlib-${v}.tar.gz
+	tar -xf zlib-${v}.tar.gz && cd zlib-${v}
+	./configure --prefix="$prefix"
+	make -j4
+	make install
+)
+rm -rf zlib-${v}
+rm -f zlib-${v}.tar.gz
+```
+zlib 1.2.8 is a general-purpose data compression library.  All the code is thread safe.  The data format used by the zlib library is described by RFCs (Request for Comments) 1950 to 1952 in the files http://tools.ietf.org/html/rfc1950 (zlib format), rfc1951 (deflate format) and rfc1952 (gzip format).
+
+zlib compressed data are typically written with a gzip or a zlib wrapper. The wrapper encapsulates the raw deflate data by adding a header and trailer. This provides stream identification and error detection that are not provided by the raw deflate data.
+
+------------
