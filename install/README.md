@@ -205,7 +205,7 @@ The distributed programs provide conversion between JPEG JFIF format and image f
 
 - **2.	OPENJPEG Library and Applications** [[Ref](https://github.com/uclouvain/openjpeg/blob/master/README.md)]
 
-````
+```
 v=2.3.0
 (
 	set -xeu
@@ -220,10 +220,41 @@ v=2.3.0
 )
 rm -rf openjpeg-${v}
 rm -f openjpeg-v${v}.tar.gz
-````
+```
 
 OpenJPEG is an open-source JPEG 2000 codec written in C language. It has been developed in order to promote the use of JPEG 2000, a still-image compression standard from the Joint Photographic Experts Group (JPEG). Since April 2015, it is officially recognized by ISO/IEC and ITU-T as a JPEG 2000 Reference Software.
 
 `NOTE: The above link appears to be an older version that has been archived. Their latest release has a different tar structure. The current ‘build_deps.sh’ is unable to use that archive. It is not known whether we specifically need the presumably older release.`
+
+- **3.	GEOS - Geometry Engine, Open Source** [[Ref](https://www.osgeo.org/projects/geos/)]
+ 
+```
+v=3.6.2
+(
+	set -xeu
+	wget -q http://download.osgeo.org/geos/geos-${v}.tar.bz2
+	bunzip2 geos-${v}.tar.bz2
+	tar -xf  geos-${v}.tar
+	cd geos-${v}
+	./configure --prefix="$prefix"
+	make -j4
+	make install
+)
+rm -rf geos-${v}
+rm -f geos-${v}.tar
+
+```
+GEOS (Geometry Engine - Open Source) is a C++ port of the Java Topology Suite (JTS). As such, it aims to contain the complete functionality of JTS in C++. This includes all the OpenGIS Simple Features for SQL spatial predicate functions and spatial operators, as well as specific JTS enhanced topology functions.
+
+Capabilities
+•	Geometries: Point, LineString, Polygon, MultiPoint, MultiLineString, MultiPolygon, GeometryCollection
+•	Predicates: Intersects, Touches, Disjoint, Crosses, Within, Contains, Overlaps, Equals, Covers
+•	Operations: Union, Distance, Intersection, Symmetric Difference, Convex Hull, Envelope, Buffer, Simplify, Polygon Assembly, Valid, Area, Length,
+•	Prepared geometries (pre-spatially indexed)
+•	STR spatial index
+•	OGC Well Known Text (WKT) and Well-Known Binary (WKB) encoders and decoders.
+•	C and C++ API (C API gives long term ABI stability)
+•	Thread safe (using the re-entrant API)
+NOTE: The v3.6.2 being downloaded in the script is an older version (2017). Latest stable release is 3.7.0 (Sep 2018)
 
 
