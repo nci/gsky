@@ -1,5 +1,28 @@
 package extractor
 
+// #include <stdio.h>
+// #include <stdlib.h>
+// #include "gdal.h"
+// #include "ogr_srs_api.h" /* for SRS calls */
+// #include "cpl_string.h"
+// #cgo pkg-config: gdal
+//char *getProj4Text(char *projWKT)
+//{
+//	char *pszProj4;
+//	char *result;
+//	OGRSpatialReferenceH hSRS;
+//
+//	hSRS = OSRNewSpatialReference(projWKT);
+//	OSRExportToProj4(hSRS, &pszProj4);
+//	result = strdup(pszProj4);
+//
+//	OSRDestroySpatialReference(hSRS);
+//	CPLFree(pszProj4);
+//
+//	return result;
+//}
+import "C"
+
 import (
 	"fmt"
 	"gopkg.in/yaml.v2"
@@ -7,6 +30,7 @@ import (
 	"log"
 	"path/filepath"
 	"time"
+	"unsafe"
 )
 
 type ArdBand struct {
@@ -79,6 +103,14 @@ func ExtractSentinel2Yaml(filename string) (*GeoFile, error) {
 		log.Printf("invalid timestamp: %v", err)
 	}
 
+	projWkt := ard.Grid_spatial.Projection.Spatial_reference
+
+	cProjWKT := C.CString(projWkt)
+	cProj4 := C.getProj4Text(cProjWKT)
+	C.free(unsafe.Pointer(cProjWKT))
+	proj4 := C.GoString(cProj4)
+	C.free(unsafe.Pointer(cProj4))
+
 	for ns, aband := range ard.Image.Bands {
 		ds := &GeoMetaData{
 			DataSetName:  filepath.Join(dsPath, aband.Path),
@@ -101,8 +133,8 @@ func ExtractSentinel2Yaml(filename string) (*GeoFile, error) {
 				ard.Grid_spatial.Projection.Geo_ref_Points.Ul.X,
 				ard.Grid_spatial.Projection.Geo_ref_Points.Ul.Y),
 
-			ProjWKT: ard.Grid_spatial.Projection.Spatial_reference,
-			Proj4:   "+proj=utm +zone=52 +south +datum=WGS84 +units=m +no_defs ",
+			ProjWKT: projWkt,
+			Proj4:   proj4,
 		}
 
 		geoFile.DataSets = append(geoFile.DataSets, ds)
