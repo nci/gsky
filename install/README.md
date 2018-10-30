@@ -13,7 +13,7 @@ CONTENTS
 	- Build a Virtual Machine
 	- Create an SSH key pair
 	- Build the GSKY environment
-- COMPONENTS AND COMMANDS
+- Components and Commands
 	- sudo -i
 	- ./build_all.sh
 	- yum groupremove "Development Tools"
@@ -23,7 +23,7 @@ CONTENTS
 	- yum install python-devel
 	- yum install readline-devel
 	- Specific Dependencies
-	- 1.	Independent JPEG Group's free JPEG software
+	1.	Independent JPEG Group's free JPEG software
 	- 2.	OPENJPEG Library and Applications
 	- 3.	GEOS - Geometry Engine, Open Source
 	- 4.	Cartographic Projection Procedures for the UNIX Environment
