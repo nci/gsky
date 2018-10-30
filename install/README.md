@@ -479,7 +479,6 @@ rm -f postgresql-${v}.tar.gz*
 
 # Check and create the user 'postgres'
 s1=`id -u postgres`
-echo $s1
 if [ $s1 ]
 then
 	echo "User, 'postgres', exists. Nothing to do!"
@@ -498,4 +497,44 @@ PostgreSQL is a powerful, open source object-relational database system that use
 `PostgreSQL and PostGIS (see below) must be installed, via source compilation, AFTER the GEOS and GDAL installations. Though these can be installed with ‘yum install’, it will not link correctly with GDAL.`
 
 ------------
+
+- **13.	PostGIS: Spatial database extender** [[Ref](https://postgis.net/)]
+
+PostGIS is a spatial database extender for PostgreSQL object-relational database. It adds support for geographic objects allowing location queries to be run in SQL. In addition to basic location awareness, PostGIS offers many features rarely found in other competing spatial databases such as Oracle Locator/Spatial and SQL Server. Refer to PostGIS Feature List for more details.
+
+```
+v=2.5.0
+(
+	set -xeu
+	wget -q https://download.osgeo.org/postgis/source/postgis-${v}.tar.gz
+	tar xf postgis-${v}.tar.gz
+	cd postgis-${v}
+	./configure --with-pgconfig=/usr/local/pgsql/bin/pg_config
+	make
+	make install
+)
+rm -f postgis-${v}.tar.gz*
+rm -rf postgis-${v}
+```
+
+`PostGIS requires GEOS and GDAL (see below for all dependencies). Hence it must be installed after GEOS, GDAL and PostGreSQL.`
+
+```
+-------------- Dependencies --------------
+  GEOS config:          /usr/bin/geos-config
+  GEOS version:         3.6.2
+  GDAL config:          /usr/local/bin/gdal-config
+  GDAL version:         2.3.1
+  PostgreSQL config:    /usr/local/pgsql/bin/pg_config
+  PostgreSQL version:   PostgreSQL 11.0
+  PROJ4 version:        51
+  Libxml2 config:       /usr/bin/xml2-config
+  Libxml2 version:      2.9.8
+  JSON-C support:       yes
+  protobuf-c support:   no
+  PCRE support:         no
+  Perl:                 /usr/bin/perl
+-------------------------------------------------
+```
+
 
