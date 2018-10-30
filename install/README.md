@@ -578,4 +578,22 @@ The ‘go’ executable will be installed in /local/gsky/go/bin. Add it to your 
 
 -------------
 
+- **15.	Build GSKY binary**
+
+The GSKY source files are in the Github repo, ‘https://github.com/nci/gsky’. They are first cloned into /local/gsky/gopath/src/github.com before building the GSKY binary.
+
+```
+repo=nci
+go get github.com/${repo}/gsky
+rm -rf $GOPATH/src/github.com/${repo}/gsky
+git clone https://github.com/${repo}/gsky.git $GOPATH/src/github.com/${repo}/gsky
+(
+	set -exu
+	cd $GOPATH/src/github.com/${repo}/gsky
+	./configure
+	make all
+)	
+```
+
+-------------
 
