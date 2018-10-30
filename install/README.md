@@ -49,7 +49,7 @@ TL;DR
 	- Choose CentOS 7 as the operating system.
 	- Remember that the VM is accessible only from within NCI network.
 	- Use the ethernet for connection when in the office.
-	- WiFi through ANU-Secure will not be enough, unless your PC’s IP is added to the firewall.
+	- WiFi through ANU-Secure will not connect to the VM, unless your PC’s IP is added to its firewall.
 	- Use VPN to connect from remote locations or from within the office when using the WiFi.
 - The GSKY environment must be setup on each new VM.
 	- See the short instructions for quick start.
@@ -665,6 +665,28 @@ mkdir -p /local/gsky_temp
 chown -R nobody:nobody /local/gsky_temp
 ```
 -------------
+
+Troubleshooting
+===============
+
+- **VM is not created**
+
+If you choose more CPUs and/or RAM than what are available, the system will refuse to create the VM. For the GSKY server, 4 CPUs, 8GB RAM and 40GB disk is recommended. Though you can install GSKY on a VM with 1 CPU and 2GB RAM, the operations could be slower. 
+
+- **VM becomes unresponsive**
+
+This is not a frequent event, but occasionally a newly created VM may never finish installing the OS and/or become unresponsive to every action. If so, contact the Helpdesk (help@nci.org.au) to delete the instance and start over. 
+
+- **Building GSKY gives an error**
+
+Occasionally, the OS for the VM is not properly installed and it results in an error at some point (specifically, with PostGIS). If the error occurs everytime at the same step in build_all.sh, then delete the VM and recreate another instance. It seems to work after re-creating the VM.
+
+- **The build_all.sh crashes at different points**
+
+Due to some quirk with the OS, the script sometimes crashes with strange messages like, 'stall not found', etc. It appears that a command in the script gets mutilated when executing (hence, 'stall' instead of 'install'). Re-starting the script often solves it.
+
+
+
 
 **END OF SECTION**
 
