@@ -1,7 +1,7 @@
 INTRODUCTION
 ============
 
-This document is a detailed instruction set for creating an instance of Virtual Machine (VM) on tenjin.nci.org.au and to build the GSKY environment on it. If you have already set it up once, then you may require only the short instructions. To refresh memory, read the TL;DR section or the detailed text.
+This document describes how to create an instance of Virtual Machine (VM) on tenjin.nci.org.au and to build the GSKY environment on it. If you have already set it up once, then you may require only the short instructions given below. To refresh memory, read the **TL;DR** section or the detailed instructions.
 
 CONTENTS
 ========
@@ -15,7 +15,7 @@ CONTENTS
 	- Build the GSKY environment
 - Components and Commands
 	- sudo -i
-	- ./build_all.sh
+	- build_all.sh
 	- yum groupremove "Development Tools"
 	- yum groupinstall "Development Tools"
 	- yum install wget
@@ -38,9 +38,7 @@ CONTENTS
 		- 	PostGIS: Spatial database extender
 		- 	GO Programming Language
 		- 	Build GSKY binary
-		- 	Install the GSKY binaries
-
-	
+		- 	Install the GSKY binaries	
 
 TL;DR
 =====
@@ -72,8 +70,8 @@ Build a Virtual Machine
 ------------
 - Go to: https://tenjin.nci.org.au/dashboard/auth/login/
 - Login with your NCI username and password.
-	- Instances >> Launch Instances >> Specify the details >> Launch
-	- Wait at least 10 minutes for the setup to complete.
+	- Instances >> Launch Instance >> Specify Parameters >> Launch
+	- Wait at least 10 minutes for the VM setup to complete.
 
 Build the GSKY environment
 ----------
@@ -82,7 +80,7 @@ Build the GSKY environment
 - cd ~
 - sudo ./build_all.sh
 
-Do the following if the ‘build_all.sh’ is not provided.
+Do the following if ‘build_all.sh’ is not provided.
 
 - cd ~
 - git clone https://github.com/nci/gsky.git
