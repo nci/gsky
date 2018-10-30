@@ -263,7 +263,7 @@ rm -f openjpeg-v${v}.tar.gz
 
 OpenJPEG is an open-source JPEG 2000 codec written in C language. It has been developed in order to promote the use of JPEG 2000, a still-image compression standard from the Joint Photographic Experts Group (JPEG). Since April 2015, it is officially recognized by ISO/IEC and ITU-T as a JPEG 2000 Reference Software.
 
-`NOTE: The above link appears to be an older version that has been archived. Their latest release has a different tar structure. The current ‘build_deps.sh’ is unable to use that archive. It is not known whether we specifically need the presumably older release.`
+``NOTE: The download link appears to be an older version that has been archived. Their latest release has a different tar structure. It is not known whether we specifically need the presumably older release.``
 
 ------------
 
