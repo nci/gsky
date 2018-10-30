@@ -597,3 +597,18 @@ git clone https://github.com/${repo}/gsky.git $GOPATH/src/github.com/${repo}/gsk
 
 -------------
 
+- **16.	Install the GSKY binaries**
+
+This step involves just copying the right files into…
+-	/local/gsky/bin/api*
+-	/local/gsky/share/gsky/gsky*
+-	/local/gsky/share/gsky/grpc_server*
+-	/local/gsky/share/gsky/gsky-gdal-process*
+
+-------------
+
+**END OF SECTION**
+
+-------------
+
+
