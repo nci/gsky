@@ -544,6 +544,19 @@ rm -rf postgis-${v}
 Go (often referred to as Golang) is a programming language designed by Google. Go is a statically typed, compiled language in the tradition of C, with the added benefits of memory safety, garbage collection, structural typing and CSP-style concurrency. The compiler, tools, and source code are all free and open source.
 
 ```
+prefix=/local/gsky
+
+mkdir -p $prefix
+
+rm -rf $prefix/gopath
+mkdir $prefix/gopath
+
+rm -rf $prefix/bin
+mkdir $prefix/bin
+
+C_INCLUDE_PATH=$(/usr/bin/nc-config --includedir)
+export C_INCLUDE_PATH
+
 wget -q -O go.tar.gz https://dl.google.com/go/go1.10.3.linux-amd64.tar.gz
 tar -xf go.tar.gz
 rm -rf go.tar.gz
