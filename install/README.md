@@ -219,6 +219,7 @@ After the above common dependencies are installed, we must install the following
 
 --------------
 - **1.	Independent JPEG Group's free JPEG software** [[Ref](http://www.ijg.org/files/README)]
+
 	```
 	prefix=${PREFIX:-/usr}
 	v=9c
