@@ -1,7 +1,46 @@
 INTRODUCTION
 ============
 
-This document is a detailed instruction set for creating an instance of a Virtual Machine (VM) on tenjin.nci.org.au and to build the GSKY environment on it. If you have already set it up once, then you may require only the short instructions. To refresh memory, read the TL;DR section or the detailed text.
+This document is a detailed instruction set for creating an instance of Virtual Machine (VM) on tenjin.nci.org.au and to build the GSKY environment on it. If you have already set it up once, then you may require only the short instructions. To refresh memory, read the TL;DR section or the detailed text.
+
+CONTENTS
+========
+
+- Short Instructions
+	- Build a Virtual Machine
+	- Build the GSKY environment
+- Detailed Instructions
+	- Build a Virtual Machine
+	- Create an SSH key pair
+	- Build the GSKY environment
+- COMPONENTS AND COMMANDS
+	- sudo -i
+	- ./build_all.sh
+	- yum groupremove "Development Tools"
+	- yum groupinstall "Development Tools"
+	- yum install wget
+	- yum install cmake
+	- yum install python-devel
+	- yum install readline-devel
+	- Specific Dependencies
+	- 1.	Independent JPEG Group's free JPEG software
+	- 2.	OPENJPEG Library and Applications
+	- 3.	GEOS - Geometry Engine, Open Source
+	- 4.	Cartographic Projection Procedures for the UNIX Environment
+	- 5.	Zlib Data Compression Library
+	- 6.	Hierarchical Data Format (HDF4)
+	- 7.	Hierarchical Data Format (HDF5)
+	- 8.	Network Common Data Form (NetCDF)
+	- 9.	XML C parser
+	- 10.	JSON-C - A JSON implementation in C
+	- 11.	Geospatial Data Abstraction Library (GDAL)
+	- 12.	PostgreSQL Relational Database
+	- 13.	PostGIS: Spatial database extender
+	- 14.	GO Programming Language
+	- 15.	Build GSKY binary
+	- 16.	Install the GSKY binaries
+
+	
 
 TL;DR
 =====
@@ -112,12 +151,12 @@ The VM instances on https://tenjin.nci.org.au/dashboard/project/instances/ are w
 		- puppet-apply
 		- iptables –list
 
-Create an SSH key pair:
+Create an SSH key pair
 =================
 NOTE: You will only need this if intending to login and/or transfer files between the VM and another Unix server. There is not much use of it under Microsoft Windows, as ‘putty’ and ‘winscp’ cannot use the openssh keys. Converting them to putty key (*.ppk) does not work either, as the VM does not recognise it. 
 
-To create:
--------------
+**To create:**
+
 - SSH to your “home machine”
 	- ssh-keygen -t rsa -f username.key
 - Copy the content of ‘username.key.pub’ and paste it into the box.
@@ -145,7 +184,7 @@ This will take several minutes to complete. It is normal to see many warning mes
 COMPONENTS AND COMMANDS
 -----------------------
 
--	**sudo -i**
+- **sudo -i**
 
 This command starts a super user session using the current shell (e.g. /bin/bash) so that all system commands can be run without having to do a ‘sudo command’ every time. This method, however, has the disadvantage that you are now not in your username’s login shell and therefore the environments, aliases, etc. for your shell are not available. Another risk is that now you are a super user and can accidentally delete/modify things you could not have done before. The safe way is to use ‘sudo command’. For this, avoid the ‘sudo -i’ and prepend ‘sudo’ to all the commands shown below.
 
@@ -314,7 +353,7 @@ zlib compressed data are typically written with a gzip or a zlib wrapper. The wr
 
 ------------
 
-- **6.	HDF4** [[Ref](https://www.hdfgroup.org/solutions/hdf4/)]
+- **6.	Hierarchical Data Format (HDF4)** [[Ref](https://www.hdfgroup.org/solutions/hdf4/)]
 
 ```
 v=4.2.13
@@ -340,7 +379,7 @@ NASA maintains a network of Earth Observing Satellites that transmit huge volume
 
 ------------
 
-- **7.	HDF5** [[Ref](https://support.hdfgroup.org/HDF5/Tutor/HDF5Intro.pdf)]
+- **7.	Hierarchical Data Format (HDF5)** [[Ref](https://support.hdfgroup.org/HDF5/Tutor/HDF5Intro.pdf)]
 
 ```
 v=1.8.13
