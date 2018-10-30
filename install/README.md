@@ -220,21 +220,21 @@ After the above common dependencies are installed, we must install the following
 --------------
 - **1.	Independent JPEG Group's free JPEG software** [[Ref](http://www.ijg.org/files/README)]
 
-	```
-	prefix=${PREFIX:-/usr}
-	v=9c
-	(
-		set -xeu
-		wget -q http://www.ijg.org/files/jpegsrc.v${v}.tar.gz
-		tar -xf jpegsrc.v${v}.tar.gz
-		cd jpeg-${v}
-		./configure --prefix="$prefix"
-		make -j4
-		make install
-	)
-	rm -rf jpeg-${v}
-	rm -f jpegsrc.v${v}.tar.gz
-	```
+```
+prefix=${PREFIX:-/usr}
+v=9c
+(
+	set -xeu
+	wget -q http://www.ijg.org/files/jpegsrc.v${v}.tar.gz
+	tar -xf jpegsrc.v${v}.tar.gz
+	cd jpeg-${v}
+	./configure --prefix="$prefix"
+	make -j4
+	make install
+)
+rm -rf jpeg-${v}
+rm -f jpegsrc.v${v}.tar.gz
+```
 
 This package contains the C software to implement JPEG image encoding, decoding, and transcoding.  JPEG is a standardized compression method for full-colour and grayscale images.
 
@@ -263,7 +263,7 @@ rm -f openjpeg-v${v}.tar.gz
 
 OpenJPEG is an open-source JPEG 2000 codec written in C language. It has been developed in order to promote the use of JPEG 2000, a still-image compression standard from the Joint Photographic Experts Group (JPEG). Since April 2015, it is officially recognized by ISO/IEC and ITU-T as a JPEG 2000 Reference Software.
 
-``NOTE: The download link appears to be an older version that has been archived. Their latest release has a different tar structure. It is not known whether we specifically need the presumably older release.``
+```NOTE: The download link appears to get an older version that has been archived. Their latest release has a different tar structure. It is not known whether we specifically need the presumably older release.```
 
 ------------
 
@@ -569,7 +569,6 @@ rm -rf postgis-${v}
   protobuf-c support:   no
   PCRE support:         no
   Perl:                 /usr/bin/perl
--------------------------------------------------
 ```
 
 -------------
@@ -668,11 +667,11 @@ Troubleshooting
 
 - **VM is not created**
 
-If you choose more CPUs and/or RAM than what are available, the system will refuse to create the VM. For the GSKY server, 4 CPUs, 8GB RAM and 40GB disk is recommended. Though you can install GSKY on a VM with 1 CPU and 2GB RAM, the operations could be slower. 
+If you choose more CPUs and/or RAM than what are available, the system will refuse to create the VM. For the GSKY server, 4 CPUs, 8GB RAM and 40GB disk are recommended. Though you can install GSKY on a VM with 1 CPU and 2GB RAM, the operations could be slower. 
 
 - **VM becomes unresponsive**
 
-This is not a frequent event, but occasionally a newly created VM may never finish installing the OS and/or become unresponsive to every action. If so, contact the Helpdesk (help@nci.org.au) to delete the instance and start over. 
+This is not a frequent event, but occasionally a newly created VM may never finish installing the OS and/or become unresponsive to every action including the deletion of the instance. If so, contact the Helpdesk (help@nci.org.au) to delete the instance and start over. 
 
 - **Building GSKY gives an error**
 
@@ -684,7 +683,7 @@ Due to some quirk with the OS, the script sometimes crashes with strange message
 
 - **Segmentation Fault**
 
-Sometimes will see this message even though everything has been installed correctly, and the script has displayed the success message. Unsure what it means or its impact on downstream operations. It is best to restart the installation until the error does not happen.
+This message appears sometimes, even though the script has run to completion and everything has been installed correctly. Unsure what it means or its impact on downstream operations. It is best to restart the installation until the error does not happen.
 
 
 **END OF SECTION**
