@@ -78,13 +78,12 @@ Build a Virtual Machine
 Build the GSKY environment
 ----------
 - Login to the VM via SSH
-- copy the ‘build_all.sh’ to the home dir.
+- Transfer ‘build_all.sh’ to the home dir.
 - cd ~
 - sudo ./build_all.sh
 
 Do the following if the ‘build_all.sh’ is not provided.
 
-- Login to the VM via SSH
 - cd ~
 - git clone https://github.com/nci/gsky.git
 - cp gsky/install/build_all.sh ~
