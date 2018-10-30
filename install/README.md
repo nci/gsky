@@ -605,6 +605,27 @@ This step involves just copying the right files into…
 -	/local/gsky/share/gsky/grpc_server*
 -	/local/gsky/share/gsky/gsky-gdal-process*
 
+```
+rm -rf $prefix/share
+mkdir -p $prefix/share/gsky
+mkdir -p $prefix/share/mas
+yes|cp -f $GOPATH/src/github.com/${repo}/gsky/concurrent $prefix/bin/concurrent
+yes|cp -f $GOPATH/bin/api $prefix/bin/api
+yes|cp -f $GOPATH/bin/gsky $prefix/share/gsky/gsky
+yes|cp -f $GOPATH/bin/grpc-server $prefix/share/gsky/grpc_server
+yes|cp -f $GOPATH/bin/gdal-process $prefix/share/gsky/gsky-gdal-process
+yes|cp -f $GOPATH/bin/crawl $prefix/share/gsky/gsky-crawl
+yes|cp -f $GOPATH/src/github.com/${repo}/gsky/crawl/crawl_pipeline.sh $prefix/share/gsky/crawl_pipeline.sh
+yes|cp -f $GOPATH/src/github.com/${repo}/gsky/mas/db/* $prefix/share/mas/
+
+yes|cp -rf $GOPATH/src/github.com/${repo}/gsky/*.png $prefix/share/gsky/
+yes|cp -rf $GOPATH/src/github.com/${repo}/gsky/templates $prefix/share/gsky/
+yes|cp -rf $GOPATH/src/github.com/${repo}/gsky/static $prefix/share/gsky/
+
+rm -rf /local/gsky_temp
+mkdir -p /local/gsky_temp
+chown -R nobody:nobody /local/gsky_temp
+```
 -------------
 
 **END OF SECTION**
