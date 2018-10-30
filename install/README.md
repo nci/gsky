@@ -185,26 +185,26 @@ COMPONENTS AND COMMANDS
 
 This command starts a super user session using the current shell (e.g. /bin/bash) so that all system commands can be run without having to do a ‘sudo command’ every time. This method, however, has the disadvantage that you are now not in your username’s login shell and therefore the environments, aliases, etc. for your shell are not available. Another risk is that now you are a super user and can accidentally delete/modify things you could not have done before. The safe way is to use ‘sudo command’. For this, avoid the ‘sudo -i’ and prepend ‘sudo’ to all the commands shown below.
 
-- **./build_all.sh**
+- **build_all.sh**
 
 This script installs several dependencies as given below. It is required to run this script only once.
 
 - **yum groupremove "Development Tools"**
 
-Remove the previously installed programs, if any, so that the latest versions will be installed when the next command is run.
+Remove the previously installed programs, if any, so that the latest versions will be installed.
 
 - **yum groupinstall "Development Tools"** [[Ref](https://serverfault.com/questions/274279/whats-the-difference-between-yum-groupinstall-vs-regular-yum-install)]
 
-The groupinstall command installs a bundle of packages that are designated as a group so that you don't need to install a bunch of individual packages yourself to have all of the features. So, yum groupinstall "Development Tools" would install a bunch of packages necessary for development, such as gcc, make, git, etc.
+The groupinstall command installs packages that are designated as a group so that you don't need to install a large number of individual packages yourself to have all of the features. So, yum groupinstall "Development Tools" would install all packages necessary for development, such as gcc, make, git, etc.
 
-yum grouplist will list the possible groups. yum groupinfo groupname will show what packages are members of groupname (you will need "quotes" if there are spaces in the group name).
+'yum grouplist' will list the possible groups. 'yum groupinfo groupname' will show what packages are members of groupname (you will need quotes if there are spaces in the group name).
 
-The regular install just installs individual packages (and their dependencies) by name.
+The regular 'yum install' just installs individual packages (and their dependencies) by name.
 
 The following programs are not part of the “groupinstall Development Tools” and, therefore, must be installed separately.
 
 - **yum install wget**
-The program, ‘wget’, is used to get several packages required for GSKY. 
+The program, ‘wget’, is used to download several packages required for GSKY. 
 
 - **yum install cmake**
 cmake - Cross-Platform Makefile Generator.
@@ -215,12 +215,10 @@ An include file, Python.h’, is required. It comes from this package.
 - **yum install readline-devel**
 This is required for PostGreSQL installation.
 
-After the above common dependencies are installed, we must install the following which are specific for GSKY.
+After the above common dependencies are installed, we must install the following dependencies that are specific for GSKY.
 
- 
 --------------
 - **1.	Independent JPEG Group's free JPEG software** [[Ref](http://www.ijg.org/files/README)]
-
 	```
 	prefix=${PREFIX:-/usr}
 	v=9c
