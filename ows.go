@@ -223,19 +223,31 @@ func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r
 			return
 		}
 
-		geoReq := &proc.GeoTileRequest{ConfigPayLoad: proc.ConfigPayLoad{NameSpaces: conf.Layers[idx].RGBProducts,
-			Mask:    conf.Layers[idx].Mask,
-			Palette: conf.Layers[idx].Palette,
-			ScaleParams: proc.ScaleParams{Offset: conf.Layers[idx].OffsetValue,
-				Scale: conf.Layers[idx].ScaleValue,
-				Clip:  conf.Layers[idx].ClipValue,
+		styleIdx, err := utils.GetLayerStyleIndex(params, conf, idx)
+		if err != nil {
+			Error.Printf("%s\n", err)
+			http.Error(w, fmt.Sprintf("Malformed WMS GetMap request: %v", err), 400)
+			return
+		}
+
+		styleLayer := &conf.Layers[idx]
+		if styleIdx >= 0 {
+			styleLayer = &conf.Layers[idx].Styles[styleIdx]
+		}
+
+		geoReq := &proc.GeoTileRequest{ConfigPayLoad: proc.ConfigPayLoad{NameSpaces: styleLayer.RGBProducts,
+			Mask:    styleLayer.Mask,
+			Palette: styleLayer.Palette,
+			ScaleParams: proc.ScaleParams{Offset: styleLayer.OffsetValue,
+				Scale: styleLayer.ScaleValue,
+				Clip:  styleLayer.ClipValue,
 			},
 			ZoomLimit:       conf.Layers[idx].ZoomLimit,
 			PolygonSegments: conf.Layers[idx].WmsPolygonSegments,
 			GrpcConcLimit:   conf.Layers[idx].GrpcWmsConcPerNode,
 			QueryLimit:      -1,
 		},
-			Collection: conf.Layers[idx].DataSource,
+			Collection: styleLayer.DataSource,
 			CRS:        *params.CRS,
 			BBox:       params.BBox,
 			Height:     *params.Height,
@@ -336,7 +348,7 @@ func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r
 				return
 			}
 
-			out, err := utils.EncodePNG(norm, conf.Layers[idx].Palette)
+			out, err := utils.EncodePNG(norm, styleLayer.Palette)
 			if err != nil {
 				Info.Printf("Error in the utils.EncodePNG: %v\n", err)
 				http.Error(w, err.Error(), 500)
@@ -367,10 +379,21 @@ func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r
 			}
 			return
 		}
-
-		b, err := ioutil.ReadFile(conf.Layers[idx].LegendPath)
+		styleIdx, err := utils.GetLayerStyleIndex(params, conf, idx)
 		if err != nil {
-			Error.Printf("Error reading legend image: %v, %v\n", conf.Layers[idx].LegendPath, err)
+			Error.Printf("%s\n", err)
+			http.Error(w, fmt.Sprintf("Malformed WMS GetMap request: %v", err), 400)
+			return
+		}
+
+		styleLayer := &conf.Layers[idx]
+		if styleIdx >= 0 {
+			styleLayer = &conf.Layers[idx].Styles[styleIdx]
+		}
+
+		b, err := ioutil.ReadFile(styleLayer.LegendPath)
+		if err != nil {
+			Error.Printf("Error reading legend image: %v, %v\n", styleLayer.LegendPath, err)
 			http.Error(w, "Legend graphics not found", 500)
 			return
 		}
@@ -465,6 +488,18 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 			endTime = &eT
 		}
 
+		styleIdx, err := utils.GetCoverageStyleIndex(params, conf, idx)
+		if err != nil {
+			Error.Printf("%s\n", err)
+			http.Error(w, fmt.Sprintf("Malformed WMS GetMap request: %v", err), 400)
+			return
+		}
+
+		styleLayer := &conf.Layers[idx]
+		if styleIdx >= 0 {
+			styleLayer = &conf.Layers[idx].Styles[styleIdx]
+		}
+
 		maxXTileSize := 1024
 		maxYTileSize := 1024
 		checkpointThreshold := 300
@@ -476,18 +511,19 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 		_, isWorker := query["wbbox"]
 
 		getGeoTileRequest := func(width int, height int, bbox []float64, offX int, offY int) *proc.GeoTileRequest {
-			geoReq := &proc.GeoTileRequest{ConfigPayLoad: proc.ConfigPayLoad{NameSpaces: conf.Layers[idx].RGBProducts,
-				Mask:    conf.Layers[idx].Mask,
-				Palette: conf.Layers[idx].Palette,
-				ScaleParams: proc.ScaleParams{Offset: conf.Layers[idx].OffsetValue,
-					Scale: conf.Layers[idx].ScaleValue,
-					Clip:  conf.Layers[idx].ClipValue,
+			geoReq := &proc.GeoTileRequest{ConfigPayLoad: proc.ConfigPayLoad{NameSpaces: styleLayer.RGBProducts,
+				Mask:    styleLayer.Mask,
+				Palette: styleLayer.Palette,
+				ScaleParams: proc.ScaleParams{Offset: styleLayer.OffsetValue,
+					Scale: styleLayer.ScaleValue,
+					Clip:  styleLayer.ClipValue,
 				},
 				ZoomLimit:       0.0,
 				PolygonSegments: conf.Layers[idx].WcsPolygonSegments,
 				GrpcConcLimit:   conf.Layers[idx].GrpcWcsConcPerNode,
+				QueryLimit:      -1,
 			},
-				Collection: conf.Layers[idx].DataSource,
+				Collection: styleLayer.DataSource,
 				CRS:        *params.CRS,
 				BBox:       bbox,
 				Height:     height,
@@ -749,7 +785,7 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 			select {
 			case res := <-tp.Process(geoReq, *verbose):
 				if !isInit {
-					hDstDS, masterTempFile, err = utils.EncodeGdalOpen(conf.ServiceConfig.TempDir, 1024, 256, driverFormat, geot, epsg, res, *params.Width, *params.Height, len(conf.Layers[idx].RGBProducts))
+					hDstDS, masterTempFile, err = utils.EncodeGdalOpen(conf.ServiceConfig.TempDir, 1024, 256, driverFormat, geot, epsg, res, *params.Width, *params.Height, len(styleLayer.RGBProducts))
 					if err != nil {
 						os.Remove(masterTempFile)
 						errMsg := fmt.Sprintf("EncodeGdalOpen() failed: %v", err)

@@ -110,17 +110,20 @@
 					<Format>text/plain</Format>
 					<OnlineResource xlink:type="simple" xlink:href="{{ .DataURL }}"/>
 				</DataURL>
-				<Style>
-					<Name>{{ .Name }}</Name>
-					<Title>{{ .Title }}</Title>
-					<Abstract>A sample style that draws a raster, good for displaying imagery</Abstract>
-					{{if .LegendPath }}
-					<LegendURL width="160" height="424">
-						<Format>image/png</Format>
-						<OnlineResource xlink:type="simple" xlink:href="http://{{ .OWSHostname }}/ows/{{ .NameSpace }}?service=WMS&amp;request=GetLegendGraphic&amp;version=1.3.0&amp;layers={{ .Name }}"/>
-					</LegendURL>
-					{{end}}
-				</Style>
+				
+				{{ range $styleIdx, $style := $value.Styles }}
+					<Style>
+						<Name>{{ .Name }}</Name>
+						<Title>{{ .Title }}</Title>
+						<Abstract>{{ .Abstract }}</Abstract>
+						{{if .LegendPath }}
+						<LegendURL width="{{ .LegendWidth }}" height="{{ .LegendHeight }}">
+							<Format>image/png</Format>
+							<OnlineResource xlink:type="simple" xlink:href="http://{{ .OWSHostname }}/ows/{{ .NameSpace }}?service=WMS&amp;request=GetLegendGraphic&amp;version=1.3.0&amp;layers={{ $value.Name }}&amp;styles={{ .Name }}"/>
+						</LegendURL>
+						{{end}}
+					</Style>
+				{{end}}
 			</Layer>
 			{{end}}
 		</Layer>

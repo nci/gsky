@@ -205,6 +205,32 @@ func GetLayerIndex(params WMSParams, config *Config) (int, error) {
 	return -1, fmt.Errorf("WMS request doesn't specify a product")
 }
 
+// GetLayerStyleIndex returns the index of the
+// specified style inside a layer
+func GetLayerStyleIndex(params WMSParams, config *Config, layerIdx int) (int, error) {
+	if params.Styles != nil {
+		style := strings.TrimSpace(params.Styles[0])
+		if len(style) == 0 {
+			if len(config.Layers[layerIdx].Styles) > 0 {
+				return 0, nil
+			} else {
+				return -1, nil
+			}
+		}
+		for i := range config.Layers[layerIdx].Styles {
+			if config.Layers[layerIdx].Styles[i].Name == style {
+				return i, nil
+			}
+		}
+		return -1, fmt.Errorf("style %s not found in this layer", style)
+	} else {
+		if len(config.Layers[layerIdx].Styles) > 0 {
+			return 0, nil
+		}
+	}
+	return -1, nil
+}
+
 func ExecuteWriteTemplateFile(w io.Writer, data interface{}, filePath string) error {
 	// General template compilation, execution and writting in to
 	// a stream.
