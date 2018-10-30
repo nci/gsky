@@ -517,7 +517,7 @@ rm -f postgis-${v}.tar.gz*
 rm -rf postgis-${v}
 ```
 
-`PostGIS requires GEOS and GDAL (see below for all dependencies). Hence it must be installed after GEOS, GDAL and PostGreSQL.`
+`PostGIS requires GEOS and GDAL (see below for all dependencies). Hence it must be installed after GEOS, GDAL and PostgreSQL.`
 
 ```
 -------------- Dependencies --------------
@@ -536,5 +536,32 @@ rm -rf postgis-${v}
   Perl:                 /usr/bin/perl
 -------------------------------------------------
 ```
+
+-------------
+
+- **14.	GO Programming Language** [[Ref](https://en.wikipedia.org/wiki/Go_(programming_language))]
+
+Go (often referred to as Golang) is a programming language designed by Google. Go is a statically typed, compiled language in the tradition of C, with the added benefits of memory safety, garbage collection, structural typing and CSP-style concurrency. The compiler, tools, and source code are all free and open source.
+
+```
+wget -q -O go.tar.gz https://dl.google.com/go/go1.10.3.linux-amd64.tar.gz
+tar -xf go.tar.gz
+rm -rf go.tar.gz
+
+rm -rf $prefix/go
+mv go $prefix/go
+
+export GOROOT=$prefix/go
+export GOPATH=$prefix/gopath
+export PATH="$PATH:$GOROOT/bin"
+export PKG_CONFIG_PATH=/usr/local/lib/pkgconfig
+```
+
+The ‘go’ executable will be installed in /local/gsky/go/bin. Add it to your PATH to run from command line.
+	$ export PATH=$PATH: /local/gsky/go/bin
+	$ which go
+		/local/gsky/go/bin/go
+
+-------------
 
 
