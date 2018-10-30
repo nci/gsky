@@ -90,6 +90,7 @@ type Layer struct {
 	ScaleValue               float64  `json:"scale_value"`
 	Palette                  *Palette `json:"palette"`
 	LegendPath               string   `json:"legend_path"`
+	Styles                   []Layer  `json:"styles"`
 	ZoomLimit                float64  `json:"zoom_limit"`
 	MaxGrpcRecvMsgSize       int      `json:"max_grpc_recv_msg_size"`
 	WmsPolygonSegments       int      `json:"wms_polygon_segments"`
@@ -434,6 +435,14 @@ func LoadAllConfigFiles(rootDir string, verbose bool) (map[string]*Config, error
 					ns = ""
 				}
 				config.Layers[i].NameSpace = ns
+				for j := range config.Layers[i].Styles {
+					config.Layers[i].Styles[j].OWSHostname = config.Layers[i].OWSHostname
+					config.Layers[i].Styles[j].NameSpace = config.Layers[i].NameSpace
+					if len(config.Layers[i].Styles[j].DataSource) == 0 {
+						config.Layers[i].Styles[j].DataSource = config.Layers[i].DataSource
+					}
+				}
+
 			}
 		}
 		return nil
@@ -752,6 +761,7 @@ func (config *Config) LoadConfigFile(configFile string, verbose bool) error {
 		if config.Layers[i].WcsMaxHeight <= 0 {
 			config.Layers[i].WcsMaxHeight = DefaultWcsMaxHeight
 		}
+
 	}
 
 	for i, proc := range config.Processes {

@@ -144,11 +144,21 @@ func getRaster(ctx context.Context, params utils.WMSParams, conf *utils.Config, 
 		reqRes = yRes
 	}
 
+	styleIdx, err := utils.GetLayerStyleIndex(params, conf, idx)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	styleLayer := &conf.Layers[idx]
+	if styleIdx >= 0 {
+		styleLayer = &conf.Layers[idx].Styles[styleIdx]
+	}
+
 	var namespaces []string
 	if len(conf.Layers[idx].FeatureInfoBands) > 0 {
 		namespaces = conf.Layers[idx].FeatureInfoBands
 	} else {
-		namespaces = conf.Layers[idx].RGBProducts
+		namespaces = styleLayer.RGBProducts
 	}
 
 	if conf.Layers[idx].ZoomLimit != 0.0 && reqRes > conf.Layers[idx].ZoomLimit {
@@ -184,13 +194,13 @@ func getRaster(ctx context.Context, params utils.WMSParams, conf *utils.Config, 
 	}
 
 	geoReq := &GeoTileRequest{ConfigPayLoad: ConfigPayLoad{NameSpaces: namespaces,
-		Mask:            conf.Layers[idx].Mask,
+		Mask:            styleLayer.Mask,
 		ZoomLimit:       conf.Layers[idx].ZoomLimit,
 		PolygonSegments: conf.Layers[idx].WmsPolygonSegments,
 		GrpcConcLimit:   conf.Layers[idx].GrpcWmsConcPerNode,
 		QueryLimit:      -1,
 	},
-		Collection: conf.Layers[idx].DataSource,
+		Collection: styleLayer.DataSource,
 		CRS:        *params.CRS,
 		BBox:       params.BBox,
 		Height:     *params.Height,
@@ -271,12 +281,12 @@ func getRaster(ctx context.Context, params utils.WMSParams, conf *utils.Config, 
 		}
 		fileDedup[dsFile] = true
 
-		if strings.Index(dsFile, conf.Layers[idx].DataSource) >= 0 {
+		if strings.Index(dsFile, styleLayer.DataSource) >= 0 {
 			offset := 0
-			if conf.Layers[idx].DataSource[len(conf.Layers[idx].DataSource)-1] != '/' {
+			if styleLayer.DataSource[len(styleLayer.DataSource)-1] != '/' {
 				offset = 1
 			}
-			dsFile = dsFile[len(conf.Layers[idx].DataSource)+offset:]
+			dsFile = dsFile[len(styleLayer.DataSource)+offset:]
 			topDsFiles = append(topDsFiles, dsFile)
 
 			if i+1 >= conf.Layers[idx].FeatureInfoMaxDataLinks {
