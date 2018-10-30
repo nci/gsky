@@ -446,7 +446,6 @@ func LoadAllConfigFiles(rootDir string, verbose bool) (map[string]*Config, error
 					if config.Layers[i].Styles[j].LegendWidth <= 0 {
 						config.Layers[i].Styles[j].LegendWidth = DefaultLegendWidth
 					}
-
 					if config.Layers[i].Styles[j].LegendHeight <= 0 {
 						config.Layers[i].Styles[j].LegendHeight = DefaultLegendHeight
 					}
@@ -772,7 +771,6 @@ func (config *Config) LoadConfigFile(configFile string, verbose bool) error {
 		if config.Layers[i].WcsMaxHeight <= 0 {
 			config.Layers[i].WcsMaxHeight = DefaultWcsMaxHeight
 		}
-
 	}
 
 	for i, proc := range config.Processes {
