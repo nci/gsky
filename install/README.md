@@ -95,7 +95,7 @@ DETAILED INSTRUCTIONS
 Build a Virtual Machine
 -------------------------
 
-The VM instances on https://tenjin.nci.org.au/dashboard/project/instances/ are where the GSKY installation and servers are built and managed.
+The VM instances on https://tenjin.nci.org.au are where the GSKY installation and servers are built and managed.
 
 - Go to https://tenjin.nci.org.au/dashboard/project/
 	- Click on ‘Instances’ and then on ‘Launch Instance’
@@ -108,7 +108,7 @@ The VM instances on https://tenjin.nci.org.au/dashboard/project/instances/ are w
 
 ![Step3](pic3.png) 
 
-- Create/choose a key pair if you wish to use it for password-less login. Otherwise, leave it as blank.*
+- Create/choose a key pair if you wish to use it for password-less login. Otherwise, leave it as blank.
 	- Click the + icon to create a new key pair.
 	
 ![Step4](pic4.png) 
