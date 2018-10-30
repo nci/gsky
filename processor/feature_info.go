@@ -155,7 +155,9 @@ func getRaster(ctx context.Context, params utils.WMSParams, conf *utils.Config, 
 	}
 
 	var namespaces []string
-	if len(conf.Layers[idx].FeatureInfoBands) > 0 {
+	if len(styleLayer.FeatureInfoBands) > 0 {
+		namespaces = styleLayer.FeatureInfoBands
+	} else if len(conf.Layers[idx].FeatureInfoBands) > 0 {
 		namespaces = conf.Layers[idx].FeatureInfoBands
 	} else {
 		namespaces = styleLayer.RGBProducts

@@ -157,7 +157,11 @@ func GetCoverageStyleIndex(params WCSParams, config *Config, covIdx int) (int, e
 	if params.Styles != nil {
 		style := strings.TrimSpace(params.Styles[0])
 		if len(style) == 0 {
-			return -1, nil
+			if len(config.Layers[covIdx].Styles) > 0 {
+				return 0, nil
+			} else {
+				return -1, nil
+			}
 		}
 		for i := range config.Layers[covIdx].Styles {
 			if config.Layers[covIdx].Styles[i].Name == style {

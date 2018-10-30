@@ -211,7 +211,11 @@ func GetLayerStyleIndex(params WMSParams, config *Config, layerIdx int) (int, er
 	if params.Styles != nil {
 		style := strings.TrimSpace(params.Styles[0])
 		if len(style) == 0 {
-			return -1, nil
+			if len(config.Layers[layerIdx].Styles) > 0 {
+				return 0, nil
+			} else {
+				return -1, nil
+			}
 		}
 		for i := range config.Layers[layerIdx].Styles {
 			if config.Layers[layerIdx].Styles[i].Name == style {

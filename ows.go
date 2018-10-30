@@ -521,6 +521,7 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 				ZoomLimit:       0.0,
 				PolygonSegments: conf.Layers[idx].WcsPolygonSegments,
 				GrpcConcLimit:   conf.Layers[idx].GrpcWcsConcPerNode,
+				QueryLimit:      -1,
 			},
 				Collection: styleLayer.DataSource,
 				CRS:        *params.CRS,
@@ -784,7 +785,7 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 			select {
 			case res := <-tp.Process(geoReq, *verbose):
 				if !isInit {
-					hDstDS, masterTempFile, err = utils.EncodeGdalOpen(conf.ServiceConfig.TempDir, 1024, 256, driverFormat, geot, epsg, res, *params.Width, *params.Height, len(conf.Layers[idx].RGBProducts))
+					hDstDS, masterTempFile, err = utils.EncodeGdalOpen(conf.ServiceConfig.TempDir, 1024, 256, driverFormat, geot, epsg, res, *params.Width, *params.Height, len(styleLayer.RGBProducts))
 					if err != nil {
 						os.Remove(masterTempFile)
 						errMsg := fmt.Sprintf("EncodeGdalOpen() failed: %v", err)

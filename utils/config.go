@@ -90,6 +90,8 @@ type Layer struct {
 	ScaleValue               float64  `json:"scale_value"`
 	Palette                  *Palette `json:"palette"`
 	LegendPath               string   `json:"legend_path"`
+	LegendHeight             int      `json:"legend_height"`
+	LegendWidth              int      `json:"legend_width"`
 	Styles                   []Layer  `json:"styles"`
 	ZoomLimit                float64  `json:"zoom_limit"`
 	MaxGrpcRecvMsgSize       int      `json:"max_grpc_recv_msg_size"`
@@ -441,8 +443,14 @@ func LoadAllConfigFiles(rootDir string, verbose bool) (map[string]*Config, error
 					if len(config.Layers[i].Styles[j].DataSource) == 0 {
 						config.Layers[i].Styles[j].DataSource = config.Layers[i].DataSource
 					}
-				}
+					if config.Layers[i].Styles[j].LegendWidth <= 0 {
+						config.Layers[i].Styles[j].LegendWidth = DefaultLegendWidth
+					}
 
+					if config.Layers[i].Styles[j].LegendHeight <= 0 {
+						config.Layers[i].Styles[j].LegendHeight = DefaultLegendHeight
+					}
+				}
 			}
 		}
 		return nil
@@ -507,6 +515,9 @@ const DefaultWmsMaxWidth = 512
 const DefaultWmsMaxHeight = 512
 const DefaultWcsMaxWidth = 50000
 const DefaultWcsMaxHeight = 30000
+
+const DefaultLegendWidth = 160
+const DefaultLegendHeight = 320
 
 // GetLayerDates loads dates for the ith layer
 func (config *Config) GetLayerDates(iLayer int, verbose bool) {
