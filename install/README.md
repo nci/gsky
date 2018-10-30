@@ -571,9 +571,10 @@ export PKG_CONFIG_PATH=/usr/local/lib/pkgconfig
 ```
 
 The ‘go’ executable will be installed in /local/gsky/go/bin. Add it to your PATH to run from command line.
-	$ export PATH=$PATH: /local/gsky/go/bin
-	$ which go
-		/local/gsky/go/bin/go
+
+	- export PATH=$PATH: /local/gsky/go/bin
+	- which go
+		- /local/gsky/go/bin/go
 
 -------------
 
