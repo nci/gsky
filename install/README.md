@@ -23,22 +23,22 @@ CONTENTS
 	- yum install python-devel
 	- yum install readline-devel
 	- Specific Dependencies
-	1.	Independent JPEG Group's free JPEG software
-	- 2.	OPENJPEG Library and Applications
-	- 3.	GEOS - Geometry Engine, Open Source
-	- 4.	Cartographic Projection Procedures for the UNIX Environment
-	- 5.	Zlib Data Compression Library
-	- 6.	Hierarchical Data Format (HDF4)
-	- 7.	Hierarchical Data Format (HDF5)
-	- 8.	Network Common Data Form (NetCDF)
-	- 9.	XML C parser
-	- 10.	JSON-C - A JSON implementation in C
-	- 11.	Geospatial Data Abstraction Library (GDAL)
-	- 12.	PostgreSQL Relational Database
-	- 13.	PostGIS: Spatial database extender
-	- 14.	GO Programming Language
-	- 15.	Build GSKY binary
-	- 16.	Install the GSKY binaries
+		- 	Independent JPEG Group's free JPEG software
+		- 	OPENJPEG Library and Applications
+		- 	GEOS - Geometry Engine, Open Source
+		- 	Cartographic Projection Procedures for the UNIX Environment
+		- 	Zlib Data Compression Library
+		- 	Hierarchical Data Format (HDF4)
+		- 	Hierarchical Data Format (HDF5)
+		- 	Network Common Data Form (NetCDF)
+		- 	XML C parser
+		- 	JSON-C - A JSON implementation in C
+		- 	Geospatial Data Abstraction Library (GDAL)
+		- 	PostgreSQL Relational Database
+		- 	PostGIS: Spatial database extender
+		- 	GO Programming Language
+		- 	Build GSKY binary
+		- 	Install the GSKY binaries
 
 	
 
