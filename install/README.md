@@ -683,9 +683,11 @@ Occasionally, the OS for the VM is not properly installed and it results in an e
 
 - **The build_all.sh crashes at different points**
 
-Due to some quirk with the OS, the script sometimes crashes with strange messages like, 'stall not found', etc. It appears that a command in the script gets mutilated when executing (hence, 'stall' instead of 'install'). Re-starting the script often solves it.
+Due to some quirk with the OS, the script sometimes crashes with strange messages like, 'stall not found', etc. It appears that a command in the script gets mutilated during execution (hence, 'stall' instead of 'install'). Re-starting the script often solves it.
 
+- **Segmentation Fault**
 
+Sometimes will see this message even though everything has been installed correctly, and the script has displayed the success message. Unsure what it means or its impact on downstream operations. It is best to restart the installation until the error does not happen.
 
 
 **END OF SECTION**
