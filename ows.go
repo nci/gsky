@@ -258,7 +258,7 @@ func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r
 
 		ctx, ctxCancel := context.WithCancel(ctx)
 		defer ctxCancel()
-		errChan := make(chan error)
+		errChan := make(chan error, 100)
 
 		xRes := (params.BBox[2] - params.BBox[0]) / float64(*params.Width)
 		yRes := (params.BBox[3] - params.BBox[1]) / float64(*params.Height)
@@ -539,7 +539,7 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 
 		ctx, ctxCancel := context.WithCancel(ctx)
 		defer ctxCancel()
-		errChan := make(chan error)
+		errChan := make(chan error, 100)
 
 		epsg, err := utils.ExtractEPSGCode(*params.CRS)
 		if err != nil {
@@ -696,7 +696,7 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 
 		tempFileGeoReq := make(map[string][]*proc.GeoTileRequest)
 
-		workerErrChan := make(chan error)
+		workerErrChan := make(chan error, 100)
 		workerDoneChan := make(chan string, len(workerTileRequests)-1)
 
 		if !isWorker && len(workerTileRequests) > 1 {
@@ -1011,7 +1011,7 @@ func serveWPS(ctx context.Context, params utils.WPSParams, conf *utils.Config, r
 		var result string
 		ctx, ctxCancel := context.WithCancel(ctx)
 		defer ctxCancel()
-		errChan := make(chan error)
+		errChan := make(chan error, 100)
 		suffix := fmt.Sprintf("_%04d", rand.Intn(1000))
 
 		for ids, dataSource := range process.DataSources {
