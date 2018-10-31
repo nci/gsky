@@ -13,7 +13,7 @@ import (
 )
 
 func ComputeReprojectionExtent(ctx context.Context, geoReq *GeoTileRequest, masAddress string, workerNodes []string, epsg int, bbox []float64, verbose bool) (int, int, error) {
-	errChan := make(chan error)
+	errChan := make(chan error, 100)
 	indexer := NewTileIndexer(ctx, masAddress, errChan)
 	go func() {
 		indexer.In <- geoReq
