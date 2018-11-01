@@ -235,9 +235,10 @@ func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r
 			styleLayer = &conf.Layers[idx].Styles[styleIdx]
 		}
 
-		geoReq := &proc.GeoTileRequest{ConfigPayLoad: proc.ConfigPayLoad{NameSpaces: styleLayer.RGBProducts,
-			Mask:    styleLayer.Mask,
-			Palette: styleLayer.Palette,
+		geoReq := &proc.GeoTileRequest{ConfigPayLoad: proc.ConfigPayLoad{NameSpaces: styleLayer.RGBExpressions.VarList,
+			BandExpr: styleLayer.RGBExpressions,
+			Mask:     styleLayer.Mask,
+			Palette:  styleLayer.Palette,
 			ScaleParams: proc.ScaleParams{Offset: styleLayer.OffsetValue,
 				Scale: styleLayer.ScaleValue,
 				Clip:  styleLayer.ClipValue,
@@ -511,9 +512,10 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 		_, isWorker := query["wbbox"]
 
 		getGeoTileRequest := func(width int, height int, bbox []float64, offX int, offY int) *proc.GeoTileRequest {
-			geoReq := &proc.GeoTileRequest{ConfigPayLoad: proc.ConfigPayLoad{NameSpaces: styleLayer.RGBProducts,
-				Mask:    styleLayer.Mask,
-				Palette: styleLayer.Palette,
+			geoReq := &proc.GeoTileRequest{ConfigPayLoad: proc.ConfigPayLoad{NameSpaces: styleLayer.RGBExpressions.VarList,
+				BandExpr: styleLayer.RGBExpressions,
+				Mask:     styleLayer.Mask,
+				Palette:  styleLayer.Palette,
 				ScaleParams: proc.ScaleParams{Offset: styleLayer.OffsetValue,
 					Scale: styleLayer.ScaleValue,
 					Clip:  styleLayer.ClipValue,

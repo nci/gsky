@@ -155,12 +155,16 @@ func getRaster(ctx context.Context, params utils.WMSParams, conf *utils.Config, 
 	}
 
 	var namespaces []string
+	var bandExpr *utils.BandExpressions
 	if len(styleLayer.FeatureInfoBands) > 0 {
-		namespaces = styleLayer.FeatureInfoBands
+		namespaces = styleLayer.FeatureInfoExpressions.VarList
+		bandExpr = styleLayer.FeatureInfoExpressions
 	} else if len(conf.Layers[idx].FeatureInfoBands) > 0 {
-		namespaces = conf.Layers[idx].FeatureInfoBands
+		namespaces = conf.Layers[idx].FeatureInfoExpressions.VarList
+		bandExpr = conf.Layers[idx].FeatureInfoExpressions
 	} else {
-		namespaces = styleLayer.RGBProducts
+		namespaces = styleLayer.RGBExpressions.VarList
+		bandExpr = styleLayer.RGBExpressions
 	}
 
 	if conf.Layers[idx].ZoomLimit != 0.0 && reqRes > conf.Layers[idx].ZoomLimit {
@@ -196,6 +200,7 @@ func getRaster(ctx context.Context, params utils.WMSParams, conf *utils.Config, 
 	}
 
 	geoReq := &GeoTileRequest{ConfigPayLoad: ConfigPayLoad{NameSpaces: namespaces,
+		BandExpr:        bandExpr,
 		Mask:            styleLayer.Mask,
 		ZoomLimit:       conf.Layers[idx].ZoomLimit,
 		PolygonSegments: conf.Layers[idx].WmsPolygonSegments,
@@ -227,7 +232,7 @@ func getRaster(ctx context.Context, params utils.WMSParams, conf *utils.Config, 
 	}
 
 	if conf.Layers[idx].FeatureInfoMaxDataLinks < 1 {
-		return outRaster, namespaces, nil, nil
+		return outRaster, bandExpr.ExprNames, nil, nil
 	}
 
 	x, y, err := utils.GetCoordinates(params)
@@ -297,5 +302,5 @@ func getRaster(ctx context.Context, params utils.WMSParams, conf *utils.Config, 
 		}
 	}
 
-	return outRaster, namespaces, topDsFiles, nil
+	return outRaster, bandExpr.ExprNames, topDsFiles, nil
 }

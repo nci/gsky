@@ -328,7 +328,7 @@ func ComputeMask(mask *utils.Mask, data []byte, rType string) (out []bool, err e
 	return
 }
 
-func (enc *RasterMerger) Run(polyLimiter *ConcLimiter, verbose bool) {
+func (enc *RasterMerger) Run(polyLimiter *ConcLimiter, bandExpr *utils.BandExpressions, verbose bool) {
 	if verbose {
 		defer log.Printf("tile merger done")
 	}
@@ -359,7 +359,7 @@ func (enc *RasterMerger) Run(polyLimiter *ConcLimiter, verbose bool) {
 			if r.Mask != nil && r.Mask.ID == r.NameSpace {
 				mask, err := ComputeMask(r.Mask, r.Data, r.Type)
 				if err != nil {
-					enc.Error <- err
+					enc.sendError(err)
 					return
 				}
 				maskMap[geoStamp] = mask
@@ -375,7 +375,7 @@ func (enc *RasterMerger) Run(polyLimiter *ConcLimiter, verbose bool) {
 		if len(rasterStack) > 0 {
 			tmpMap, err := ProcessRasterStack(rasterStack, maskMap, canvasMap)
 			if err != nil {
-				enc.Error <- err
+				enc.sendError(err)
 				return
 			}
 			canvasMap = tmpMap
@@ -442,40 +442,149 @@ func (enc *RasterMerger) Run(polyLimiter *ConcLimiter, verbose bool) {
 		return
 	}
 
-	out := make([]utils.Raster, len(nameSpaces))
+	nOut := len(nameSpaces)
+	if len(bandExpr.Expressions) > 0 {
+		nOut = len(bandExpr.Expressions)
+	}
+
+	out := make([]utils.Raster, nOut)
+	bandVars := make([]*utils.Float32Raster, len(nameSpaces))
+
 	for i, ns := range nameSpaces {
 		canvas := canvasMap[ns]
 		headr := *(*reflect.SliceHeader)(unsafe.Pointer(&canvas.Data))
 		switch canvas.Type {
 		case "Byte":
-			out[i] = &utils.ByteRaster{NoData: canvas.NoData, Data: canvas.Data,
-				Width: canvas.Width, Height: canvas.Height, NameSpace: ns}
+			if len(bandExpr.Expressions) == 0 {
+				out[i] = &utils.ByteRaster{NoData: canvas.NoData, Data: canvas.Data,
+					Width: canvas.Width, Height: canvas.Height, NameSpace: ns}
+			} else {
+				data := *(*[]uint8)(unsafe.Pointer(&headr))
+				varData := make([]float32, len(data))
+				for i, val := range data {
+					varData[i] = float32(val)
+				}
+				bandVars[i] = &utils.Float32Raster{NoData: float64(canvas.NoData), Data: varData}
+			}
 
 		case "UInt16":
 			headr.Len /= SizeofUint16
 			headr.Cap /= SizeofUint16
 			data := *(*[]uint16)(unsafe.Pointer(&headr))
-			out[i] = &utils.UInt16Raster{NoData: canvas.NoData, Data: data,
-				Width: canvas.Width, Height: canvas.Height, NameSpace: ns}
+			if len(bandExpr.Expressions) == 0 {
+				out[i] = &utils.UInt16Raster{NoData: canvas.NoData, Data: data,
+					Width: canvas.Width, Height: canvas.Height, NameSpace: ns}
+			} else {
+				varData := make([]float32, len(data))
+				for i, val := range data {
+					varData[i] = float32(val)
+				}
+				bandVars[i] = &utils.Float32Raster{NoData: float64(canvas.NoData), Data: varData}
+			}
 
 		case "Int16":
 			headr.Len /= SizeofInt16
 			headr.Cap /= SizeofInt16
 			data := *(*[]int16)(unsafe.Pointer(&headr))
-			out[i] = &utils.Int16Raster{NoData: canvas.NoData, Data: data,
-				Width: canvas.Width, Height: canvas.Height, NameSpace: ns}
+			if len(bandExpr.Expressions) == 0 {
+				out[i] = &utils.Int16Raster{NoData: canvas.NoData, Data: data,
+					Width: canvas.Width, Height: canvas.Height, NameSpace: ns}
+			} else {
+				varData := make([]float32, len(data))
+				for i, val := range data {
+					varData[i] = float32(val)
+				}
+				bandVars[i] = &utils.Float32Raster{NoData: float64(canvas.NoData), Data: varData}
+			}
 
 		case "Float32":
 			headr.Len /= SizeofFloat32
 			headr.Cap /= SizeofFloat32
 			data := *(*[]float32)(unsafe.Pointer(&headr))
-			out[i] = &utils.Float32Raster{NoData: canvas.NoData, Data: data,
-				Width: canvas.Width, Height: canvas.Height, NameSpace: ns}
+			if len(bandExpr.Expressions) == 0 {
+				out[i] = &utils.Float32Raster{NoData: canvas.NoData, Data: data,
+					Width: canvas.Width, Height: canvas.Height, NameSpace: ns}
+			} else {
+				varData := make([]float32, len(data))
+				for i, val := range data {
+					varData[i] = val
+				}
+				bandVars[i] = &utils.Float32Raster{NoData: float64(canvas.NoData), Data: varData}
+			}
 
 		default:
-			enc.Error <- fmt.Errorf("raster type %s not recognised", canvas.Type)
+			enc.sendError(fmt.Errorf("raster type %s not recognised", canvas.Type))
+			return
 		}
 	}
 
+	if len(bandExpr.Expressions) > 0 {
+		parameters := make(map[string]interface{}, len(bandVars))
+
+		width := canvasMap[nameSpaces[0]].Width
+		height := canvasMap[nameSpaces[0]].Height
+		noData := bandVars[0].NoData
+		noDataMasks := make([]bool, width*height)
+		for i := 0; i < len(noDataMasks); i++ {
+			noDataMasks[i] = true
+		}
+
+		for i, ns := range nameSpaces {
+			parameters[ns] = bandVars[i].Data
+
+			for j := 0; j < len(noDataMasks); j++ {
+				if float64(bandVars[i].Data[j]) == bandVars[i].NoData {
+					noDataMasks[j] = false
+				}
+			}
+		}
+
+		for iv := range bandExpr.Expressions {
+			result, err := bandExpr.Expressions[iv].Evaluate(parameters)
+			if err != nil {
+				enc.sendError(fmt.Errorf("bandExpr '%v' error: %v", bandExpr.ExprText[iv], err))
+				return
+			}
+
+			outRaster := &utils.Float32Raster{NoData: noData, Data: make([]float32, len(noDataMasks)),
+				Width: width, Height: height, NameSpace: bandExpr.ExprNames[iv]}
+			out[iv] = outRaster
+
+			resScal, isScal := result.(float32)
+			if isScal {
+				for i := range outRaster.Data {
+					if noDataMasks[i] {
+						outRaster.Data[i] = resScal
+					} else {
+						outRaster.Data[i] = float32(noData)
+					}
+				}
+				continue
+			}
+
+			resArr, isArr := result.([]float32)
+			if isArr {
+				for i := range outRaster.Data {
+					if noDataMasks[i] {
+						outRaster.Data[i] = resArr[i]
+					} else {
+						outRaster.Data[i] = float32(noData)
+					}
+				}
+				continue
+			}
+
+			enc.sendError(fmt.Errorf("unknown data type for returned value '%v' for expression '%v'", result, bandExpr.ExprText[iv]))
+			return
+		}
+
+	}
+
 	enc.Out <- out
+}
+func (enc *RasterMerger) sendError(err error) {
+	select {
+	case enc.Error <- err:
+	default:
+	}
 }
