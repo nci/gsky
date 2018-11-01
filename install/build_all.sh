@@ -427,6 +427,7 @@ then
 	ln -s $prefix/share/gsky/config.json /usr/local/etc/config.json
 	
 	echo "Start the OWS server"
+	export LD_LIBRARY_PATH=/usr/local/lib:/usr/lib
 	/local/gsky/share/gsky/gsky -p 80&
 fi
 #------------------------------------------------------------------------------------------------------------------
