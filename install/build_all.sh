@@ -15,7 +15,7 @@
 #####################################################################
 
 # Git clone the required files to your own workspace. These will be owned by root
-repo=nci # production repo: nci; Dev repo: asivapra
+repo=asivapra # production repo: nci; Dev repo: asivapra
 git clone https://github.com/${repo}/gsky.git
 
 # Installation happens in the required dirs accessible only by root. 
@@ -209,7 +209,7 @@ v=2.3.1
 	
 	# Find out where the openjpeg libraries are. 
 	# This step is for safety, as sometimes the libraries are in /include 
-	res=`find /. -name libopenjp2.pc`
+	res=`find /usr/. -name libopenjp2.pc`
 	if [ $res ]
 	then
 		p=${res/libopenjp2.pc/}
@@ -340,10 +340,24 @@ yes|cp -rf $GOPATH/src/github.com/${repo}/gsky/*.png $prefix/share/gsky/
 yes|cp -rf $GOPATH/src/github.com/${repo}/gsky/templates $prefix/share/gsky/
 yes|cp -rf $GOPATH/src/github.com/${repo}/gsky/static $prefix/share/gsky/
 
+# AVS: Put a soft link to find the /usr/local/share/gsky
+ln -s /local/gsky/share/gsky /usr/local/share/gsky
+
+# Create the first config.json
+input=gsky/install/config.json
+echo $input
+ip=`curl ifconfig.me`
+rm -f $prefix/share/gsky/config.json
+while IFS= read -r var
+do
+  line=${var/OWS_IP_ADDRESS/$ip}
+  echo "$line" >> $prefix/share/gsky/config.json
+done < "$input"
+
 rm -rf /local/gsky_temp
 mkdir -p /local/gsky_temp
 chown -R nobody:nobody /local/gsky_temp
 echo "**** Finished installing the GSKY server. **** "
 #------------------------------------------------------------------------------------------------------------------
-echo "Completed ALL steps. Exitting!"
+echo "Completed ALL steps. Exiting!"
 exit

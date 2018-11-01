@@ -1,0 +1,33 @@
+{
+  "service_config": {
+    "mas_address": "10.0.1.210:8888",
+    "worker_nodes": [
+        "10.0.1.190:6000",
+        "10.0.1.192:6000"
+    ],
+    "ows_hostname": "OWS_IP_ADDRESS"
+  },
+  "layers": [
+    {
+      "step_days": 16,
+      "abstract": "This product has been corrected to remove the influences of the atmosphere, the time of year and satellite view angles using the methods described in Li et al. 2010 https://doi.org/10.1109/JSTARS.2010.2042281. Landsat 8 Operational Land Imager (OLI) data is available from March 2013 and onwards. More detailed information about the surface reflectance product suite produced using Digital Earth Australia including CCBY4.0 is available at http://dx.doi.org/10.4225/25/5a7a501e1c5af. This service provides access to Landsat 8 OLI terrain corrected surface reflectance data. This service provides access to Landsat 8 OLI surface reflectance data. The true colour composite is composed of wavelengths of light as seen by the human eye. The image composites are made from images acquired within a 16 day period, and may include clouds.  ",
+      "start_isodate": "2013-03-01T00:00:00.000Z",
+      "clip_value": 2500,
+      "data_source": "/g/data2/rs0/datacube/002/LS8_OLI_NBAR",
+      "offset_value": 0,
+      "rgb_products": [
+        "red",
+        "green",
+        "blue"
+      ],
+      "name": "LS8:NBAR:TRUE",
+      "title": "DEA Landsat 8 surface reflectance true colour",
+      "scale_value": 0.1016,
+      "time_generator": "regular",
+      "accum": true,
+      "end_isodate": "mas",
+      "zoom_limit": 500
+    }
+
+   ]
+ }
