@@ -342,25 +342,8 @@ fi
 #------------------------------------------------------------------------------------------------------------------
 if [ $dep14 ]
 then
-	#####################################################################
-	# Install GO
-	#####################################################################
 	echo "14. Install GO"
 	prefix=/local/gsky
-	C_INCLUDE_PATH=$(/usr/bin/nc-config --includedir)
-	export C_INCLUDE_PATH
-	
-	wget -q -O go.tar.gz https://dl.google.com/go/go1.10.3.linux-amd64.tar.gz
-	tar -xf go.tar.gz
-	rm -rf go.tar.gz
-	rm -rf $prefix/go
-	mv go $prefix/go
-fi
-#------------------------------------------------------------------------------------------------------------------
-if [ $dep15 ]
-then
-	prefix=/local/gsky
-	
 	mkdir -p $prefix
 	
 	rm -rf $prefix/gopath
@@ -368,6 +351,16 @@ then
 	
 	rm -rf $prefix/bin
 	mkdir $prefix/bin
+
+	C_INCLUDE_PATH=$(/usr/bin/nc-config --includedir)
+	export C_INCLUDE_PATH
+	
+	wget -q -O go.tar.gz https://dl.google.com/go/go1.10.3.linux-amd64.tar.gz
+	tar -xf go.tar.gz
+	rm -rf go.tar.gz
+
+	rm -rf $prefix/go
+	mv go $prefix/go
 
 	export GOROOT=$prefix/go
 	export GOPATH=$prefix/gopath
@@ -384,6 +377,12 @@ then
 		./configure
 		make all
 	)	
+fi
+#------------------------------------------------------------------------------------------------------------------
+if [ $dep15 ]
+then
+	echo "Copy all files to final locations"
+	prefix=/local/gsky	
 	rm -rf $prefix/share
 	mkdir -p $prefix/share/gsky
 	mkdir -p $prefix/share/mas
@@ -407,25 +406,31 @@ fi
 #------------------------------------------------------------------------------------------------------------------
 if [ $dep16 ]
 then
+	echo "Create the config.json and start the server"
 	prefix=/local/gsky
+
 	echo "Put a soft link to find the /usr/local/share/gsky"
-	rm /usr/local/share/gsky
-	ln -s /local/gsky/share/gsky /usr/local/share/gsky
+	if [ ! -L /usr/local/share/gsky ] 
+	then
+		ln -s /local/gsky/share/gsky /usr/local/share/gsky
+	fi
 	
-	echo "Creating a sample config.json"	
-	input=$home/gsky/install/config.json
-	ip=`curl ifconfig.me`
-	rm -f $prefix/share/gsky/config.json
-	while IFS= read -r var
-	do
-	  line=${var/OWS_IP_ADDRESS/$ip}
-	  echo "$line" >> $prefix/share/gsky/config.json
-	done < "$input"
-	
+	if [ ! -f $prefix/share/gsky/config.json ] 
+	then
+		echo "Creating a sample config.json"	
+		input=$home/gsky/install/config.json
+		ip=`curl ifconfig.me`
+		while IFS= read -r var
+		do
+		  line=${var/OWS_IP_ADDRESS/$ip}
+		  echo "$line" >> $prefix/share/gsky/config.json
+		done < "$input"
+	fi	
 	echo "Create a soft link to the config.json from /usr/local/etc"
-	rm -f /usr/local/etc/config.json # This could be dangerous if an unrelated config.json exists
-	ln -s $prefix/share/gsky/config.json /usr/local/etc/config.json
-	
+	if [ ! -L /usr/local/etc/config.json ] 
+	then
+		ln -s $prefix/share/gsky/config.json /usr/local/etc/config.json
+	fi
 	echo "Start the OWS server"
 	export LD_LIBRARY_PATH=/usr/local/lib:/usr/lib
 	/local/gsky/share/gsky/gsky -p 80&
