@@ -3,7 +3,7 @@
 # build_all.sh
 # Installs all dependencies for GSKY and build the GSKY environment on a VM
 # Created on: 23 October, 2018; Arapaut V. Sivaprasad.
-# Last Revision: 29 Oct, 2018; Arapaut V. Sivaprasad.
+# Last Revision: 2 Nov, 2018; Arapaut V. Sivaprasad.
 # Adapted from 'build_deps.sh' and 'build_gsky.sh' by Jian Edison Guo.
 #####################################################################
 # Usage: 
