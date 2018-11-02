@@ -390,47 +390,6 @@ func (enc *RasterMerger) Run(polyLimiter *ConcLimiter, bandExpr *utils.BandExpre
 	default:
 	}
 
-	if len(canvasMap) == 2 && canvasMap["Nadir_Reflectance_Band1"].Type == "Int16" {
-		headerB1 := *(*reflect.SliceHeader)(unsafe.Pointer(&canvasMap["Nadir_Reflectance_Band1"].Data))
-		headerB1.Len /= SizeofInt16
-		headerB1.Cap /= SizeofInt16
-		DataB1 := *(*[]int16)(unsafe.Pointer(&headerB1))
-
-		headerB2 := *(*reflect.SliceHeader)(unsafe.Pointer(&canvasMap["Nadir_Reflectance_Band2"].Data))
-		headerB2.Len /= SizeofInt16
-		headerB2.Cap /= SizeofInt16
-		DataB2 := *(*[]int16)(unsafe.Pointer(&headerB2))
-
-		nodata := float32(canvasMap["Nadir_Reflectance_Band1"].NoData)
-		data := make([]float32, len(DataB1))
-
-		for i := range data {
-			v1 := float32(DataB1[i])
-			v2 := float32(DataB2[i])
-			if v1 != nodata && v2 != nodata {
-				if (v2-v1)/(v2+v1) <= 0 {
-					data[i] = 0.005
-				} else {
-					data[i] = (v2 - v1) / (v2 + v1)
-				}
-			}
-		}
-
-		dataBytesHdr := *(*reflect.SliceHeader)(unsafe.Pointer(&data))
-		dataBytesHdr.Len *= 4
-		dataBytesHdr.Cap *= 4
-		DataBytes := *(*[]uint8)(unsafe.Pointer(&dataBytesHdr))
-
-		canvas := canvasMap["Nadir_Reflectance_Band1"]
-		config := ConfigPayLoad{NameSpaces: []string{"NDVI"}, ScaleParams: canvas.ScaleParams,
-			Palette: canvas.Palette, Mask: canvas.Mask, ZoomLimit: canvas.ZoomLimit}
-		canvasMap["NDVI"] = &FlexRaster{ConfigPayLoad: config, NoData: 0, Data: DataBytes, Type: "Float32",
-			Height: canvas.Height, Width: canvas.Width, OffX: canvas.OffX, OffY: canvas.OffY,
-			NameSpace: "NDVI"}
-		delete(canvasMap, "Nadir_Reflectance_Band1")
-		delete(canvasMap, "Nadir_Reflectance_Band2")
-	}
-
 	var nameSpaces []string
 	for _, canvas := range canvasMap {
 		nameSpaces = canvas.ConfigPayLoad.NameSpaces
@@ -444,6 +403,12 @@ func (enc *RasterMerger) Run(polyLimiter *ConcLimiter, bandExpr *utils.BandExpre
 
 	nOut := len(nameSpaces)
 	if len(bandExpr.Expressions) > 0 {
+		for _, v := range bandExpr.VarList {
+			if _, found := canvasMap[v]; !found {
+				enc.sendError(fmt.Errorf("band '%v' not found", v))
+				return
+			}
+		}
 		nOut = len(bandExpr.Expressions)
 	}
 
