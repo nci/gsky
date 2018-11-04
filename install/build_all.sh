@@ -3,18 +3,20 @@
 # build_all.sh
 # Installs all dependencies for GSKY and build the GSKY environment on a VM
 # Created on: 23 October, 2018; Arapaut V. Sivaprasad.
-# Last Revision: 29 Oct, 2018; Arapaut V. Sivaprasad.
+# Last Revision: 2 Nov, 2018; Arapaut V. Sivaprasad.
 # Adapted from 'build_deps.sh' and 'build_gsky.sh' by Jian Edison Guo.
 #####################################################################
 # Usage: 
 #	1. Place this script in your login dir or any convenient subdir. e.g. cp build_all.sh ~
 #	2. chmod 755 build_all.sh
-#	3. Execute the script. e.g. 'sudo ./build_all.sh'. Will take 45 to 60 min.
-#	4. Watch for error exit, if any. If none, should say "Completed ALL steps. Exitting!"
+#	3. Execute the script. e.g. 'sudo ./build_all.sh'. Generally takes 25 min to finish.
+#	4. Watch for error exit, if any. If none, should say "Completed ALL steps. Exiting!"
 # Note: This script requires CentOS 7 or later operating system.
 #####################################################################
 
 # Define which programs to install. Blank out the not-needed ones. e.g. dep1=""
+# All are required, in that order, on the first installation.
+# If any of them errors out, you can disable those above it and run the script again.
 git="Yes"; devtools="Yes"; dep1="Yes"; dep2="Yes"; dep3="Yes"; dep4="Yes"
 dep5="Yes"; dep6="Yes"; dep7="Yes"; dep8="Yes"; dep9="Yes"; dep10="Yes"
 dep11="Yes"; dep12="Yes"; dep13="Yes"; dep14="Yes"; dep15="Yes"; dep16="Yes"
@@ -296,7 +298,6 @@ then
 	
 	# Check and create the user 'postgres'
 	s1=`id -u postgres`
-	echo $s1
 	if [ $s1 ]
 	then
 		echo "User, 'postgres', exists. Nothing to do!"
@@ -343,6 +344,7 @@ fi
 if [ $dep14 ]
 then
 	echo "14. Install GO"
+	set -xeu
 	prefix=/local/gsky
 	mkdir -p $prefix
 	
@@ -381,6 +383,7 @@ fi
 #------------------------------------------------------------------------------------------------------------------
 if [ $dep15 ]
 then
+	set -xeu
 	echo "Copy all files to final locations"
 	prefix=/local/gsky	
 	rm -rf $prefix/share
