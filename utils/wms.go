@@ -202,7 +202,7 @@ func GetLayerIndex(params WMSParams, config *Config) (int, error) {
 		}
 		return -1, fmt.Errorf("%s not found in config Layers", product)
 	}
-	return -1, fmt.Errorf("WMS request doesn't specify a product")
+	return -1, fmt.Errorf("WMS request doesn't specify a product: AVS")
 }
 
 // GetLayerStyleIndex returns the index of the
