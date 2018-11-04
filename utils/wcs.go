@@ -22,6 +22,7 @@ type WCSParams struct {
 	Height    *int       `json:"height,omitempty"`
 	Width     *int       `json:"width,omitempty"`
 	Format    *string    `json:"format,omitempty"`
+	Styles    []string   `json:"styles,omitempty"`
 }
 
 // WCSRegexpMap maps WCS request parameters to
@@ -121,6 +122,12 @@ func WCSParamsChecker(params map[string][]string, compREMap map[string]*regexp.R
 		}
 	}
 
+	if styles, stylesOK := params["styles"]; stylesOK {
+		if !strings.Contains(styles[0], "\"") {
+			jsonFields = append(jsonFields, fmt.Sprintf(`"styles":["%s"]`, strings.Replace(styles[0], ",", "\",\"", -1)))
+		}
+	}
+
 	jsonParams := fmt.Sprintf("{%s}", strings.Join(jsonFields, ","))
 
 	var wcsParams WCSParams
@@ -142,4 +149,30 @@ func GetCoverageIndex(params WCSParams, config *Config) (int, error) {
 		return -1, fmt.Errorf("%s not found in config Layers", product)
 	}
 	return -1, fmt.Errorf("WCS request doesn't specify a product")
+}
+
+// GetCoverageStyleIndex returns the index of the
+// specified style inside a coverage
+func GetCoverageStyleIndex(params WCSParams, config *Config, covIdx int) (int, error) {
+	if params.Styles != nil {
+		style := strings.TrimSpace(params.Styles[0])
+		if len(style) == 0 {
+			if len(config.Layers[covIdx].Styles) > 0 {
+				return 0, nil
+			} else {
+				return -1, nil
+			}
+		}
+		for i := range config.Layers[covIdx].Styles {
+			if config.Layers[covIdx].Styles[i].Name == style {
+				return i, nil
+			}
+		}
+		return -1, fmt.Errorf("style %s not found in this coverage", style)
+	} else {
+		if len(config.Layers[covIdx].Styles) > 0 {
+			return 0, nil
+		}
+	}
+	return -1, nil
 }

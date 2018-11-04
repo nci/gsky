@@ -141,7 +141,19 @@ func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r
 			http.Error(w, fmt.Sprintf("Malformed WMS GetFeatureInfo request: %v", err), 400)
 			return
 		}
-		resp := fmt.Sprintf(`{"type":"FeatureCollection","totalFeatures":"unknown","features":[{"type":"Feature","id":"","geometry":null,"properties":{"x":%f, "y":%f}}],"crs":null}`, x, y)
+
+		var timeStr string
+		if params.Time != nil {
+			timeStr = fmt.Sprintf(`"time": "%s"`, (*params.Time).Format(utils.ISOFormat))
+		}
+
+		feat_info, err := proc.GetFeatureInfo(ctx, params, conf, *verbose)
+		if err != nil {
+			feat_info = fmt.Sprintf(`"error": "%v"`, err)
+			Error.Printf("%v\n", err)
+		}
+
+		resp := fmt.Sprintf(`{"type":"FeatureCollection","features":[{"type":"Feature","properties":{"x":%f, "y":%f, %s, %s}}]}`, x, y, timeStr, feat_info)
 		w.Write([]byte(resp))
 
 	case "DescribeLayer":
@@ -211,20 +223,31 @@ func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r
 			return
 		}
 
-		geoReq := &proc.GeoTileRequest{ConfigPayLoad: proc.ConfigPayLoad{NameSpaces: conf.Layers[idx].RGBProducts,
-			Mask:    conf.Layers[idx].Mask,
-			Palette: conf.Layers[idx].Palette,
-			ScaleParams: proc.ScaleParams{Offset: conf.Layers[idx].OffsetValue,
-				Scale: conf.Layers[idx].ScaleValue,
-				Clip:  conf.Layers[idx].ClipValue,
+		styleIdx, err := utils.GetLayerStyleIndex(params, conf, idx)
+		if err != nil {
+			Error.Printf("%s\n", err)
+			http.Error(w, fmt.Sprintf("Malformed WMS GetMap request: %v", err), 400)
+			return
+		}
+
+		styleLayer := &conf.Layers[idx]
+		if styleIdx >= 0 {
+			styleLayer = &conf.Layers[idx].Styles[styleIdx]
+		}
+
+		geoReq := &proc.GeoTileRequest{ConfigPayLoad: proc.ConfigPayLoad{NameSpaces: styleLayer.RGBProducts,
+			Mask:    styleLayer.Mask,
+			Palette: styleLayer.Palette,
+			ScaleParams: proc.ScaleParams{Offset: styleLayer.OffsetValue,
+				Scale: styleLayer.ScaleValue,
+				Clip:  styleLayer.ClipValue,
 			},
 			ZoomLimit:       conf.Layers[idx].ZoomLimit,
 			PolygonSegments: conf.Layers[idx].WmsPolygonSegments,
-			Timeout:         conf.Layers[idx].WmsTimeout,
 			GrpcConcLimit:   conf.Layers[idx].GrpcWmsConcPerNode,
 			QueryLimit:      -1,
 		},
-			Collection: conf.Layers[idx].DataSource,
+			Collection: styleLayer.DataSource,
 			CRS:        *params.CRS,
 			BBox:       params.BBox,
 			Height:     *params.Height,
@@ -235,7 +258,7 @@ func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r
 
 		ctx, ctxCancel := context.WithCancel(ctx)
 		defer ctxCancel()
-		errChan := make(chan error)
+		errChan := make(chan error, 100)
 
 		xRes := (params.BBox[2] - params.BBox[0]) / float64(*params.Width)
 		yRes := (params.BBox[3] - params.BBox[1]) / float64(*params.Height)
@@ -296,6 +319,9 @@ func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r
 			return
 		}
 
+		timeoutCtx, timeoutCancel := context.WithTimeout(context.Background(), time.Duration(conf.Layers[idx].WmsTimeout)*time.Second)
+		defer timeoutCancel()
+
 		tp := proc.InitTilePipeline(ctx, conf.ServiceConfig.MASAddress, conf.ServiceConfig.WorkerNodes, conf.Layers[idx].MaxGrpcRecvMsgSize, conf.Layers[idx].WmsPolygonShardConcLimit, errChan)
 		select {
 		case res := <-tp.Process(geoReq, *verbose):
@@ -322,7 +348,7 @@ func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r
 				return
 			}
 
-			out, err := utils.EncodePNG(norm, conf.Layers[idx].Palette)
+			out, err := utils.EncodePNG(norm, styleLayer.Palette)
 			if err != nil {
 				Info.Printf("Error in the utils.EncodePNG: %v\n", err)
 				http.Error(w, err.Error(), 500)
@@ -335,6 +361,9 @@ func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r
 		case <-ctx.Done():
 			Error.Printf("Context cancelled with message: %v\n", ctx.Err())
 			http.Error(w, ctx.Err().Error(), 500)
+		case <-timeoutCtx.Done():
+			Error.Printf("WMS pipeline timed out, threshold:%v seconds", conf.Layers[idx].WmsTimeout)
+			http.Error(w, "WMS request timed out", 500)
 		}
 		return
 
@@ -350,10 +379,21 @@ func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r
 			}
 			return
 		}
-
-		b, err := ioutil.ReadFile(conf.Layers[idx].LegendPath)
+		styleIdx, err := utils.GetLayerStyleIndex(params, conf, idx)
 		if err != nil {
-			Error.Printf("Error reading legend image: %v, %v\n", conf.Layers[idx].LegendPath, err)
+			Error.Printf("%s\n", err)
+			http.Error(w, fmt.Sprintf("Malformed WMS GetMap request: %v", err), 400)
+			return
+		}
+
+		styleLayer := &conf.Layers[idx]
+		if styleIdx >= 0 {
+			styleLayer = &conf.Layers[idx].Styles[styleIdx]
+		}
+
+		b, err := ioutil.ReadFile(styleLayer.LegendPath)
+		if err != nil {
+			Error.Printf("Error reading legend image: %v, %v\n", styleLayer.LegendPath, err)
 			http.Error(w, "Legend graphics not found", 500)
 			return
 		}
@@ -448,6 +488,18 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 			endTime = &eT
 		}
 
+		styleIdx, err := utils.GetCoverageStyleIndex(params, conf, idx)
+		if err != nil {
+			Error.Printf("%s\n", err)
+			http.Error(w, fmt.Sprintf("Malformed WMS GetMap request: %v", err), 400)
+			return
+		}
+
+		styleLayer := &conf.Layers[idx]
+		if styleIdx >= 0 {
+			styleLayer = &conf.Layers[idx].Styles[styleIdx]
+		}
+
 		maxXTileSize := 1024
 		maxYTileSize := 1024
 		checkpointThreshold := 300
@@ -459,19 +511,19 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 		_, isWorker := query["wbbox"]
 
 		getGeoTileRequest := func(width int, height int, bbox []float64, offX int, offY int) *proc.GeoTileRequest {
-			geoReq := &proc.GeoTileRequest{ConfigPayLoad: proc.ConfigPayLoad{NameSpaces: conf.Layers[idx].RGBProducts,
-				Mask:    conf.Layers[idx].Mask,
-				Palette: conf.Layers[idx].Palette,
-				ScaleParams: proc.ScaleParams{Offset: conf.Layers[idx].OffsetValue,
-					Scale: conf.Layers[idx].ScaleValue,
-					Clip:  conf.Layers[idx].ClipValue,
+			geoReq := &proc.GeoTileRequest{ConfigPayLoad: proc.ConfigPayLoad{NameSpaces: styleLayer.RGBProducts,
+				Mask:    styleLayer.Mask,
+				Palette: styleLayer.Palette,
+				ScaleParams: proc.ScaleParams{Offset: styleLayer.OffsetValue,
+					Scale: styleLayer.ScaleValue,
+					Clip:  styleLayer.ClipValue,
 				},
 				ZoomLimit:       0.0,
 				PolygonSegments: conf.Layers[idx].WcsPolygonSegments,
-				Timeout:         conf.Layers[idx].WcsTimeout,
 				GrpcConcLimit:   conf.Layers[idx].GrpcWcsConcPerNode,
+				QueryLimit:      -1,
 			},
-				Collection: conf.Layers[idx].DataSource,
+				Collection: styleLayer.DataSource,
 				CRS:        *params.CRS,
 				BBox:       bbox,
 				Height:     height,
@@ -487,7 +539,7 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 
 		ctx, ctxCancel := context.WithCancel(ctx)
 		defer ctxCancel()
-		errChan := make(chan error)
+		errChan := make(chan error, 100)
 
 		epsg, err := utils.ExtractEPSGCode(*params.CRS)
 		if err != nil {
@@ -644,7 +696,7 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 
 		tempFileGeoReq := make(map[string][]*proc.GeoTileRequest)
 
-		workerErrChan := make(chan error)
+		workerErrChan := make(chan error, 100)
 		workerDoneChan := make(chan string, len(workerTileRequests)-1)
 
 		if !isWorker && len(workerTileRequests) > 1 {
@@ -719,6 +771,9 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 			driverFormat = "geotiff"
 		}
 
+		timeoutCtx, timeoutCancel := context.WithTimeout(context.Background(), time.Duration(conf.Layers[idx].WcsTimeout)*time.Second)
+		defer timeoutCancel()
+
 		isInit := false
 
 		tp := proc.InitTilePipeline(ctx, conf.ServiceConfig.MASAddress, conf.ServiceConfig.WorkerNodes, conf.Layers[idx].MaxGrpcRecvMsgSize, conf.Layers[idx].WcsPolygonShardConcLimit, errChan)
@@ -730,16 +785,17 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 			select {
 			case res := <-tp.Process(geoReq, *verbose):
 				if !isInit {
-					hDstDS, masterTempFile, err = utils.EncodeGdalOpen(conf.ServiceConfig.TempDir, 1024, 256, driverFormat, geot, epsg, res, *params.Width, *params.Height, len(conf.Layers[idx].RGBProducts))
-					defer os.Remove(masterTempFile)
+					hDstDS, masterTempFile, err = utils.EncodeGdalOpen(conf.ServiceConfig.TempDir, 1024, 256, driverFormat, geot, epsg, res, *params.Width, *params.Height, len(styleLayer.RGBProducts))
 					if err != nil {
+						os.Remove(masterTempFile)
 						errMsg := fmt.Sprintf("EncodeGdalOpen() failed: %v", err)
 						Info.Printf(errMsg)
 						http.Error(w, errMsg, 500)
 						return
 					}
-
 					defer utils.EncodeGdalClose(&hDstDS)
+					defer os.Remove(masterTempFile)
+
 					isInit = true
 				}
 
@@ -761,6 +817,10 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 			case <-ctx.Done():
 				Error.Printf("Context cancelled with message: %v\n", ctx.Err())
 				http.Error(w, ctx.Err().Error(), 500)
+				return
+			case <-timeoutCtx.Done():
+				Error.Printf("WCS pipeline timed out, threshold:%v seconds", conf.Layers[idx].WcsTimeout)
+				http.Error(w, "WCS pipeline timed out", 500)
 				return
 			}
 
@@ -951,7 +1011,7 @@ func serveWPS(ctx context.Context, params utils.WPSParams, conf *utils.Config, r
 		var result string
 		ctx, ctxCancel := context.WithCancel(ctx)
 		defer ctxCancel()
-		errChan := make(chan error)
+		errChan := make(chan error, 100)
 		suffix := fmt.Sprintf("_%04d", rand.Intn(1000))
 
 		for ids, dataSource := range process.DataSources {

@@ -27,12 +27,14 @@ func main() {
 
 	concLimit := DefaultConcLimit
 	approx := true
+	sentinel2Yaml := false
 
 	if len(os.Args) > 2 {
 		flagSet := flag.NewFlagSet("Usage", flag.ExitOnError)
 		flagSet.IntVar(&concLimit, "conc", DefaultConcLimit, "Concurrent limit on processing subdatasets")
 		var exact bool
 		flagSet.BoolVar(&exact, "exact", false, "Compute exact statistics")
+		flagSet.BoolVar(&sentinel2Yaml, "sentinel2_yaml", false, "Extract sentinel2 metadata from its yaml files")
 		flagSet.Parse(os.Args[2:])
 
 		approx = !exact
@@ -44,7 +46,13 @@ func main() {
 		path = scanner.Text()
 	}
 
-	geoFile, err := extr.ExtractGDALInfo(path, concLimit, approx)
+	var geoFile *extr.GeoFile
+	var err error
+	if sentinel2Yaml {
+		geoFile, err = extr.ExtractSentinel2Yaml(path)
+	} else {
+		geoFile, err = extr.ExtractGDALInfo(path, concLimit, approx)
+	}
 	ensure(err)
 
 	out, err := json.Marshal(&geoFile)

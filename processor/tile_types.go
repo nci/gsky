@@ -19,7 +19,6 @@ type ConfigPayLoad struct {
 	Mask                  *utils.Mask
 	ZoomLimit             float64
 	PolygonSegments       int
-	Timeout               int
 	GrpcConcLimit         int
 	PolygonSharcConcLimit int
 	QueryLimit            int
