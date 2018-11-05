@@ -9,10 +9,14 @@ CONTENTS
 - Short Instructions
 	- Build a Virtual Machine
 	- Build the GSKY environment
+	- Create the configuration file(s)
+	- Run and test the GSKY server
 - Detailed Instructions
 	- Build a Virtual Machine
 	- Create an SSH key pair
 	- Build the GSKY environment
+	- Create the configuration file(s)
+	- Run and test the GSKY server
 - Components and Commands
 	- sudo -i
 	- build_all.sh
@@ -86,7 +90,19 @@ Do the following if ‘build_all.sh’ is not provided.
 - git clone https://github.com/nci/gsky.git
 - cp gsky/install/build_all.sh ~
 - sudo ./build_all.sh
-	
+
+Create the configuration file(s)
+--------------------------------
+- cd /usr/local/etc
+- Create a 'config.json'
+
+Run and test the GSKY server
+----------------------------
+
+- sudo /local/gsky/share/gsky/gsky -p 80&
+- Open http://130.56.242.16/terria/
+- Add Data >> My Data >> Add Web Data >> http://130.56.242.xx/ows >> Add
+
 ------------------
 
 DETAILED INSTRUCTIONS
