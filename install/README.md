@@ -748,8 +748,9 @@ Project
 The config.json has the following keys:
 
 - service_config
-	Specifies the IP addresses of the main server ('OWS'), the MAS server and the worker nodes.
+	- Specifies the IP addresses of the main server ('OWS'), the MAS server and the worker nodes.
 - layers
+	- Each layer describes a dataset. There can be more than one layer in a config file.
 
 ```
 {
@@ -781,6 +782,12 @@ The config.json has the following keys:
       "accum": true,
       "end_isodate": "mas",
       "zoom_limit": 500
+    },
+    {
+      "title": "Next layer",
+    },
+    {
+      "title": "Next layer",
     }
    ]
  }
@@ -809,7 +816,9 @@ Due to some quirk with the OS, the script sometimes crashes with strange message
 This message appears sometimes, even though the script has run to completion and everything has been installed correctly. Unsure what it means or its impact on downstream operations. It too appears to be related to a [possibly] faulty VM installation. It is best to redo the VM installation until the error does not happen.
 
 - **Error starting the OWS server**
+
 The URL for the server should without the ending "/" as below. Adding the / at the end will result in an error.
+
 `http://130.56.242.19/ows`
 
 **END OF SECTION**
