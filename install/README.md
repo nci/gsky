@@ -94,7 +94,7 @@ Do the following if ‘build_all.sh’ is not provided.
 Create the configuration file(s)
 --------------------------------
 - cd /usr/local/etc
-- Create a 'config.json'
+- Create a '[config.json](config.json)'
 
 Run and test the GSKY server
 ----------------------------
