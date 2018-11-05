@@ -173,10 +173,11 @@ The VM instances on https://tenjin.nci.org.au are where the GSKY installation an
 
 ![Step9](pic7.png) 
 
-![Step10](pic10.png) 
-
 - Login with NCI username/password when prompted. 
 	- This is now a regular VM console.
+
+![Step10](pic10.png) 
+
 - Add your IP address to the iptables.
 	- If you are on the NCI network, either through ethernet or VPN, this step is not required.
 		- sudo -i
