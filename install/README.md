@@ -94,11 +94,11 @@ Do the following if ‘build_all.sh’ is not provided.
 Create the configuration file(s)
 --------------------------------
 - cd /usr/local/etc
-- Create a '[config.json](config.json)'
+- Create or copy a [config.json](config.json)
+- Insert your server's IP in: "ows_hostname": "OWS_IP_ADDRESS"
 
 Run and test the GSKY server
 ----------------------------
-
 - sudo /local/gsky/share/gsky/gsky -p 80&
 - Open http://130.56.242.16/terria/
 - Add Data >> My Data >> Add Web Data >> http://130.56.242.xx/ows >> Add
