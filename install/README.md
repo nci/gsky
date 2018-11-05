@@ -85,11 +85,7 @@ Build the GSKY environment
 - sudo ./build_all.sh
 
 Do the following if ‘build_all.sh’ is not provided.
-
-- cd ~
 - git clone https://github.com/nci/gsky.git
-- cp gsky/install/build_all.sh ~
-- sudo ./build_all.sh
 
 Create the configuration file(s)
 --------------------------------
@@ -103,6 +99,21 @@ Run and test the GSKY server
 - Open http://130.56.242.16/terria/
 - Add Data >> My Data >> Add Web Data >> http://130.56.242.xx/ows >> Add
 
+TIPS AND TRAPS
+==============
+- The following environment variable is required to start the OWS server
+	- export LD_LIBRARY_PATH=/usr/local/lib:/usr/lib
+- The files are created in /usr/local/share/gsky, but the server looks for them in /usr/local/share/gsky
+	- Do a `ln -s /local/gsky/share/gsky /usr/local/share/gsky`
+- A running OWS server must be killed before starting another.
+	```	
+		pid=`ps -ef | grep gsky | grep -v grep | awk '{split($0,a," "); print a[2]}'`
+		kill $pid
+	```
+- The 'Add Web Data' URL on http://130.56.242.16/terria/ must NOT have the ending slash.
+	- http://130.56.242.19/ows - Correct
+	- http://130.56.242.19/ows/ - Incorrect
+	
 ------------------
 
 DETAILED INSTRUCTIONS
@@ -817,7 +828,7 @@ This message appears sometimes, even though the script has run to completion and
 
 - **Error starting the OWS server**
 
-The URL for the server should without the ending "/" as below. Adding the / at the end will result in an error.
+The URL for the server should be without the ending "/" as below. Adding the / at the end will result in an error.
 
 `http://130.56.242.19/ows`
 
