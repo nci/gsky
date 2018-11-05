@@ -578,30 +578,26 @@ rm -rf postgis-${v}
 Go (often referred to as Golang) is a programming language designed by Google. Go is a statically typed, compiled language in the tradition of C, with the added benefits of memory safety, garbage collection, structural typing and CSP-style concurrency. The compiler, tools, and source code are all free and open source.
 
 ```
-prefix=/local/gsky
+	echo "14. Install GO"
+	set -xeu
+	prefix=/local/gsky
+	mkdir -p $prefix
+	
+	rm -rf $prefix/gopath
+	mkdir $prefix/gopath
+	
+	rm -rf $prefix/bin
+	mkdir $prefix/bin
 
-mkdir -p $prefix
+	C_INCLUDE_PATH=$(/usr/bin/nc-config --includedir)
+	export C_INCLUDE_PATH
+	
+	wget -q -O go.tar.gz https://dl.google.com/go/go1.10.3.linux-amd64.tar.gz
+	tar -xf go.tar.gz
+	rm -rf go.tar.gz
 
-rm -rf $prefix/gopath
-mkdir $prefix/gopath
-
-rm -rf $prefix/bin
-mkdir $prefix/bin
-
-C_INCLUDE_PATH=$(/usr/bin/nc-config --includedir)
-export C_INCLUDE_PATH
-
-wget -q -O go.tar.gz https://dl.google.com/go/go1.10.3.linux-amd64.tar.gz
-tar -xf go.tar.gz
-rm -rf go.tar.gz
-
-rm -rf $prefix/go
-mv go $prefix/go
-
-export GOROOT=$prefix/go
-export GOPATH=$prefix/gopath
-export PATH="$PATH:$GOROOT/bin"
-export PKG_CONFIG_PATH=/usr/local/lib/pkgconfig
+	rm -rf $prefix/go
+	mv go $prefix/go
 ```
 
 The ‘go’ executable will be installed in /local/gsky/go/bin. Add it to your PATH to run from command line.
@@ -617,16 +613,24 @@ The ‘go’ executable will be installed in /local/gsky/go/bin. Add it to your 
 The GSKY source files are in the Github repo, ‘https://github.com/nci/gsky’. They are first cloned into /local/gsky/gopath/src/github.com before building the GSKY binary.
 
 ```
-repo=nci
-go get github.com/${repo}/gsky
-rm -rf $GOPATH/src/github.com/${repo}/gsky
-git clone https://github.com/${repo}/gsky.git $GOPATH/src/github.com/${repo}/gsky
-(
-	set -exu
-	cd $GOPATH/src/github.com/${repo}/gsky
-	./configure
-	make all
-)	
+	echo "15. Compile GSKY"
+	repo=asivapra
+	(
+		set -xeu
+		prefix=/local/gsky
+		export GOROOT=$prefix/go
+		export GOPATH=$prefix/gopath
+		export PATH="$PATH:$GOROOT/bin"
+		export PKG_CONFIG_PATH=/usr/local/lib/pkgconfig
+		
+		go get github.com/${repo}/gsky
+		rm -rf $GOPATH/src/github.com/${repo}/gsky
+		git clone https://github.com/${repo}/gsky.git $GOPATH/src/github.com/${repo}/gsky
+		set -xeu
+		cd $GOPATH/src/github.com/${repo}/gsky
+		./configure
+		make all
+	)	
 ```
 
 -------------
@@ -640,28 +644,75 @@ This step involves just copying the right files into…
 -	/local/gsky/share/gsky/gsky-gdal-process*
 
 ```
-rm -rf $prefix/share
-mkdir -p $prefix/share/gsky
-mkdir -p $prefix/share/mas
-yes|cp -f $GOPATH/src/github.com/${repo}/gsky/concurrent $prefix/bin/concurrent
-yes|cp -f $GOPATH/bin/api $prefix/bin/api
-yes|cp -f $GOPATH/bin/gsky $prefix/share/gsky/gsky
-yes|cp -f $GOPATH/bin/grpc-server $prefix/share/gsky/grpc_server
-yes|cp -f $GOPATH/bin/gdal-process $prefix/share/gsky/gsky-gdal-process
-yes|cp -f $GOPATH/bin/crawl $prefix/share/gsky/gsky-crawl
-yes|cp -f $GOPATH/src/github.com/${repo}/gsky/crawl/crawl_pipeline.sh $prefix/share/gsky/crawl_pipeline.sh
-yes|cp -f $GOPATH/src/github.com/${repo}/gsky/mas/db/* $prefix/share/mas/
-
-yes|cp -rf $GOPATH/src/github.com/${repo}/gsky/*.png $prefix/share/gsky/
-yes|cp -rf $GOPATH/src/github.com/${repo}/gsky/templates $prefix/share/gsky/
-yes|cp -rf $GOPATH/src/github.com/${repo}/gsky/static $prefix/share/gsky/
-
-rm -rf /local/gsky_temp
-mkdir -p /local/gsky_temp
-chown -R nobody:nobody /local/gsky_temp
+if [ $dep17 ]
+then
+	echo "16. Copy all files to final locations"
+	(
+		set -xeu
+		prefix=/local/gsky	
+		export GOPATH=$prefix/gopath
+		rm -rf $prefix/share
+		mkdir -p $prefix/share/gsky
+		mkdir -p $prefix/share/mas
+		yes|cp -f $GOPATH/src/github.com/${repo}/gsky/concurrent $prefix/bin/concurrent
+		yes|cp -f $GOPATH/bin/api $prefix/bin/api
+		yes|cp -f $GOPATH/bin/gsky $prefix/share/gsky/gsky
+		yes|cp -f $GOPATH/bin/grpc-server $prefix/share/gsky/grpc_server
+		yes|cp -f $GOPATH/bin/gdal-process $prefix/share/gsky/gsky-gdal-process
+		yes|cp -f $GOPATH/bin/crawl $prefix/share/gsky/gsky-crawl
+		yes|cp -f $GOPATH/src/github.com/${repo}/gsky/crawl/crawl_pipeline.sh $prefix/share/gsky/crawl_pipeline.sh
+		yes|cp -f $GOPATH/src/github.com/${repo}/gsky/mas/db/* $prefix/share/mas/
+		
+		yes|cp -rf $GOPATH/src/github.com/${repo}/gsky/*.png $prefix/share/gsky/
+		yes|cp -rf $GOPATH/src/github.com/${repo}/gsky/templates $prefix/share/gsky/
+		yes|cp -rf $GOPATH/src/github.com/${repo}/gsky/static $prefix/share/gsky/
+		rm -rf /local/gsky_temp
+		mkdir -p /local/gsky_temp
+		chown -R nobody:nobody /local/gsky_temp
+	)
+	echo "**** Finished installing the GSKY server. **** "
+fi
 ```
 -------------
 
+- **17. Start the OWS server**
+```
+prefix=/local/gsky
+echo "Put a soft link to find the /usr/local/share/gsky"
+if [ ! -L /usr/local/share/gsky ] 
+then
+	ln -s /local/gsky/share/gsky /usr/local/share/gsky
+fi
+
+if [ ! -f $prefix/share/gsky/config.json ] 
+then
+	echo "Creating a sample config.json"	
+	input=$home/gsky/install/config.json
+	ip=`curl ifconfig.me`
+	while IFS= read -r var
+	do
+	  line=${var/OWS_IP_ADDRESS/$ip}
+	  echo "$line" >> $prefix/share/gsky/config.json
+	done < "$input"
+fi	
+echo "Create a soft link to the config.json from /usr/local/etc"
+if [ ! -L /usr/local/etc/config.json ] 
+then
+	ln -s $prefix/share/gsky/config.json /usr/local/etc/config.json
+fi
+```
+- **18. Start the OWS server**
+```
+echo "Start the OWS server"
+export LD_LIBRARY_PATH=/usr/local/lib:/usr/lib
+
+# Kill an already ruunig server, if any.
+pid=`ps -ef | grep gsky | grep -v grep | awk '{split($0,a," "); print a[2]}'`
+kill $pid
+
+# Start the server
+/local/gsky/share/gsky/gsky -p 80&
+```
 Troubleshooting
 ===============
 
@@ -683,7 +734,7 @@ Due to some quirk with the OS, the script sometimes crashes with strange message
 
 - **Segmentation Fault**
 
-This message appears sometimes, even though the script has run to completion and everything has been installed correctly. Unsure what it means or its impact on downstream operations. It is best to restart the installation until the error does not happen.
+This message appears sometimes, even though the script has run to completion and everything has been installed correctly. Unsure what it means or its impact on downstream operations. It too appears to be related to a [possibly] faulty VM installation. It is best to redo the VM installation until the error does not happen.
 
 
 **END OF SECTION**
