@@ -41,7 +41,7 @@ func (dp *TilePipeline) Process(geoReq *GeoTileRequest, verbose bool) chan []uti
 
 	polyLimiter := NewConcLimiter(dp.PolygonShardConcLimit)
 	go i.Run(verbose)
-	go grpcTiler.Run(polyLimiter, verbose)
+	go grpcTiler.Run(polyLimiter, geoReq.BandExpr.VarList, verbose)
 	go m.Run(polyLimiter, geoReq.BandExpr, verbose)
 
 	return m.Out

@@ -401,14 +401,10 @@ func (enc *RasterMerger) Run(polyLimiter *ConcLimiter, bandExpr *utils.BandExpre
 		return
 	}
 
+	hasExpr := (nameSpaces[0] != "EmptyTile") && (len(bandExpr.Expressions) > 0)
+
 	nOut := len(nameSpaces)
-	if len(bandExpr.Expressions) > 0 {
-		for _, v := range bandExpr.VarList {
-			if _, found := canvasMap[v]; !found {
-				enc.sendError(fmt.Errorf("band '%v' not found", v))
-				return
-			}
-		}
+	if hasExpr {
 		nOut = len(bandExpr.Expressions)
 	}
 
@@ -420,7 +416,7 @@ func (enc *RasterMerger) Run(polyLimiter *ConcLimiter, bandExpr *utils.BandExpre
 		headr := *(*reflect.SliceHeader)(unsafe.Pointer(&canvas.Data))
 		switch canvas.Type {
 		case "Byte":
-			if len(bandExpr.Expressions) == 0 {
+			if !hasExpr {
 				out[i] = &utils.ByteRaster{NoData: canvas.NoData, Data: canvas.Data,
 					Width: canvas.Width, Height: canvas.Height, NameSpace: ns}
 			} else {
@@ -436,7 +432,7 @@ func (enc *RasterMerger) Run(polyLimiter *ConcLimiter, bandExpr *utils.BandExpre
 			headr.Len /= SizeofUint16
 			headr.Cap /= SizeofUint16
 			data := *(*[]uint16)(unsafe.Pointer(&headr))
-			if len(bandExpr.Expressions) == 0 {
+			if !hasExpr {
 				out[i] = &utils.UInt16Raster{NoData: canvas.NoData, Data: data,
 					Width: canvas.Width, Height: canvas.Height, NameSpace: ns}
 			} else {
@@ -451,7 +447,7 @@ func (enc *RasterMerger) Run(polyLimiter *ConcLimiter, bandExpr *utils.BandExpre
 			headr.Len /= SizeofInt16
 			headr.Cap /= SizeofInt16
 			data := *(*[]int16)(unsafe.Pointer(&headr))
-			if len(bandExpr.Expressions) == 0 {
+			if !hasExpr {
 				out[i] = &utils.Int16Raster{NoData: canvas.NoData, Data: data,
 					Width: canvas.Width, Height: canvas.Height, NameSpace: ns}
 			} else {
@@ -466,7 +462,7 @@ func (enc *RasterMerger) Run(polyLimiter *ConcLimiter, bandExpr *utils.BandExpre
 			headr.Len /= SizeofFloat32
 			headr.Cap /= SizeofFloat32
 			data := *(*[]float32)(unsafe.Pointer(&headr))
-			if len(bandExpr.Expressions) == 0 {
+			if !hasExpr {
 				out[i] = &utils.Float32Raster{NoData: canvas.NoData, Data: data,
 					Width: canvas.Width, Height: canvas.Height, NameSpace: ns}
 			} else {
@@ -483,7 +479,7 @@ func (enc *RasterMerger) Run(polyLimiter *ConcLimiter, bandExpr *utils.BandExpre
 		}
 	}
 
-	if len(bandExpr.Expressions) > 0 {
+	if hasExpr {
 		parameters := make(map[string]interface{}, len(bandVars))
 
 		width := canvasMap[nameSpaces[0]].Width
@@ -547,6 +543,7 @@ func (enc *RasterMerger) Run(polyLimiter *ConcLimiter, bandExpr *utils.BandExpre
 
 	enc.Out <- out
 }
+
 func (enc *RasterMerger) sendError(err error) {
 	select {
 	case enc.Error <- err:
