@@ -94,7 +94,7 @@ Do the following if ‘build_all.sh’ is not provided.
 Create the configuration file(s)
 --------------------------------
 - cd /usr/local/etc
-- Create or copy a [config.json](config.json)
+- Create or copy a [config.json](config.json) in the above directory or sub-directories.
 - Insert your server's IP in: "ows_hostname": "OWS_IP_ADDRESS"
 
 Run and test the GSKY server
@@ -729,6 +729,62 @@ kill $pid
 # Start the server
 /local/gsky/share/gsky/gsky -p 80&
 ```
+
+Create the configuration file(s)
+--------------------------------
+The configuration file is what describes the data, such as data source, title, date, description, etc. There must be one file for each source dataset and must be named as 'config.json'. There can be several config.json files in sub-directories of a project.
+
+```
+e.g.
+Project
+	config.json
+	- Subdir1
+		config.json
+	- Subdir2
+		config.json
+		- Subdir3
+			config.json
+```
+The config.json has the following keys:
+
+- service_config
+	Specifies the IP addresses of the main server ('OWS'), the MAS server and the worker nodes.
+- layers
+
+```
+{
+  "service_config": {
+    "mas_address": "10.0.1.210:8888",
+    "worker_nodes": [
+        "10.0.1.190:6000",
+        "10.0.1.192:6000"
+    ],
+    "ows_hostname": "OWS_IP_ADDRESS"
+  },
+  "layers": [
+    {
+      "step_days": 16,
+      "abstract": "This product has been corrected to remove the influences of the atmosphere..  ",
+      "start_isodate": "2013-03-01T00:00:00.000Z",
+      "clip_value": 2500,
+      "data_source": "/g/data2/rs0/datacube/002/LS8_OLI_NBAR",
+      "offset_value": 0,
+      "rgb_products": [
+        "red",
+        "green",
+        "blue"
+      ],
+      "name": "LS8:NBAR:TRUE",
+      "title": "DEA Landsat 8 surface reflectance true colour",
+      "scale_value": 0.1016,
+      "time_generator": "regular",
+      "accum": true,
+      "end_isodate": "mas",
+      "zoom_limit": 500
+    }
+   ]
+ }
+```
 Troubleshooting
 ===============
 
@@ -752,6 +808,9 @@ Due to some quirk with the OS, the script sometimes crashes with strange message
 
 This message appears sometimes, even though the script has run to completion and everything has been installed correctly. Unsure what it means or its impact on downstream operations. It too appears to be related to a [possibly] faulty VM installation. It is best to redo the VM installation until the error does not happen.
 
+- **Error starting the OWS server**
+The URL for the server should without the ending "/" as below. Adding the / at the end will result in an error.
+`http://130.56.242.19/ows`
 
 **END OF SECTION**
 
