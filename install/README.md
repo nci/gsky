@@ -159,13 +159,17 @@ The VM instances on https://tenjin.nci.org.au are where the GSKY installation an
 - Wait 10 min for the installation to complete.
 - Click on the instance name.
 
-![Step6](pic6.png) 
+![Step6](pic9.png) 
+- Click the 'log' tab
+- Verify that the last line says, "Cloud-init v. x.x.x finished at ..."
+
+![Step7](pic6.png) 
 
  - Click on ‘Console’ tab and then on the hypertext link, “Click here…”
  
 ![Step8](pic8.png) 
 
-![Step7](pic7.png) 
+![Step9](pic7.png) 
 
 - Login with NCI username/password when prompted. 
 	- This is now a regular VM console.
