@@ -82,10 +82,12 @@ Build the GSKY environment
 - Login to the VM via SSH
 - Transfer ‘build_all.sh’ to the home dir.
 - cd ~
+- chmod 755 build_all.sh
 - sudo ./build_all.sh
 
 Do the following if ‘build_all.sh’ is not provided.
 - git clone https://github.com/nci/gsky.git
+- cp gsky/install/build_all.sh ~
 
 Create the configuration file(s)
 --------------------------------
@@ -103,16 +105,27 @@ TIPS AND TRAPS
 ==============
 - The following environment variable is required to start the OWS server
 	- export LD_LIBRARY_PATH=/usr/local/lib:/usr/lib
+
 - The files are created in /usr/local/share/gsky, but the server looks for them in /usr/local/share/gsky
 	- Do a `ln -s /local/gsky/share/gsky /usr/local/share/gsky`
+
 - A running OWS server must be killed before starting another.
 	```	
 		pid=`ps -ef | grep gsky | grep -v grep | awk '{split($0,a," "); print a[2]}'`
 		kill $pid
 	```
+
+- Start an OWS server as...
+	- /local/gsky/share/gsky/gsky -p 80&
+	- /local/gsky/share/gsky/gsky --conf_dir=/local/gsky/share/gsky -p 80&
+	
+- Must kill and restart the OWS server if config.json is edited or added
+
 - The 'Add Web Data' URL on http://130.56.242.16/terria/ must NOT have the ending slash.
 	- http://130.56.242.19/ows - Correct
 	- http://130.56.242.19/ows/ - Incorrect
+
+- The layers will only be seen on the map at a zoom level of 20 km per inch or higher
 	
 ------------------
 
@@ -761,7 +774,8 @@ The config.json has the following keys:
 - service_config
 	- Specifies the IP addresses of the main server ('OWS'), the MAS server and the worker nodes.
 - layers
-	- Each layer describes a dataset. There can be more than one layer in a config file.
+	- Each layer describes a dataset. 
+	- There can be more than one layer in a config file.
 
 ```
 {
@@ -831,6 +845,10 @@ This message appears sometimes, even though the script has run to completion and
 The URL for the server should be without the ending "/" as below. Adding the / at the end will result in an error.
 
 `http://130.56.242.19/ows`
+
+- **The added data layers are not seen on the map***
+
+In order to see the added data on the map, it is necessary to zoom in at the right location. A zoom factor of 20 km per inch or lower is required. It will say "Zoom in to view this layer" at higher zoom levels.	
 
 **END OF SECTION**
 
