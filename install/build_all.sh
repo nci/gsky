@@ -3,7 +3,7 @@
 # build_all.sh
 # Installs all dependencies for GSKY and build the GSKY environment on a VM
 # Created on: 23 October, 2018; Arapaut V. Sivaprasad.
-# Last Revision: 2 Nov, 2018; Arapaut V. Sivaprasad.
+# Last Revision: 6 Nov, 2018; Arapaut V. Sivaprasad.
 # Adapted from 'build_deps.sh' and 'build_gsky.sh' by Jian Edison Guo.
 #####################################################################
 # Usage: 
@@ -17,9 +17,9 @@
 # Define which programs to install. Blank out the not-needed ones. e.g. dep1=""
 # All are required, in that order, on the first installation.
 # If any of them errors out, you can disable those above it and run the script again.
-git="Yes"; devtools="Yes"; dep1="Yes"; dep2="Yes"; dep3="Yes"; dep4="Yes"
-dep5="Yes"; dep6="Yes"; dep7="Yes"; dep8="Yes"; dep9="Yes"; dep10="Yes"
-dep11="Yes"; dep12="Yes"; dep13="Yes"; dep14="Yes"; dep15="Yes"; dep16="Yes"
+git="Yes"; devtools="Yes"; dep1="Yes"; dep2="Yes"; dep3="Yes"; dep4="Yes"; dep5="Yes"; dep6="Yes"; 
+dep7="Yes"; dep8="Yes"; dep9="Yes"; dep10="Yes"; dep11="Yes"; dep12="Yes"; dep13="Yes"; dep14="Yes"; 
+dep15="Yes"; dep16="Yes"; dep17="Yes"; dep18="Yes"
 
 home=`pwd`
 if [ $git ]
@@ -363,62 +363,64 @@ then
 
 	rm -rf $prefix/go
 	mv go $prefix/go
-
-	export GOROOT=$prefix/go
-	export GOPATH=$prefix/gopath
-	export PATH="$PATH:$GOROOT/bin"
-	export PKG_CONFIG_PATH=/usr/local/lib/pkgconfig
-	
-	repo=nci
-	go get github.com/${repo}/gsky
-	rm -rf $GOPATH/src/github.com/${repo}/gsky
-	git clone https://github.com/${repo}/gsky.git $GOPATH/src/github.com/${repo}/gsky
+fi
+if [ $dep15 ]
+then
+	echo "15. Compile GSKY"
+	repo=asivapra
 	(
-		set -exu
+		set -xeu
+		prefix=/local/gsky
+		export GOROOT=$prefix/go
+		export GOPATH=$prefix/gopath
+		export PATH="$PATH:$GOROOT/bin"
+		export PKG_CONFIG_PATH=/usr/local/lib/pkgconfig
+		
+		go get github.com/${repo}/gsky
+		rm -rf $GOPATH/src/github.com/${repo}/gsky
+		git clone https://github.com/${repo}/gsky.git $GOPATH/src/github.com/${repo}/gsky
+		set -xeu
 		cd $GOPATH/src/github.com/${repo}/gsky
 		./configure
 		make all
 	)	
 fi
 #------------------------------------------------------------------------------------------------------------------
-if [ $dep15 ]
+if [ $dep16 ]
 then
-	set -xeu
-	echo "Copy all files to final locations"
-	prefix=/local/gsky	
-	rm -rf $prefix/share
-	mkdir -p $prefix/share/gsky
-	mkdir -p $prefix/share/mas
-	yes|cp -f $GOPATH/src/github.com/${repo}/gsky/concurrent $prefix/bin/concurrent
-	yes|cp -f $GOPATH/bin/api $prefix/bin/api
-	yes|cp -f $GOPATH/bin/gsky $prefix/share/gsky/gsky
-	yes|cp -f $GOPATH/bin/grpc-server $prefix/share/gsky/grpc_server
-	yes|cp -f $GOPATH/bin/gdal-process $prefix/share/gsky/gsky-gdal-process
-	yes|cp -f $GOPATH/bin/crawl $prefix/share/gsky/gsky-crawl
-	yes|cp -f $GOPATH/src/github.com/${repo}/gsky/crawl/crawl_pipeline.sh $prefix/share/gsky/crawl_pipeline.sh
-	yes|cp -f $GOPATH/src/github.com/${repo}/gsky/mas/db/* $prefix/share/mas/
-	
-	yes|cp -rf $GOPATH/src/github.com/${repo}/gsky/*.png $prefix/share/gsky/
-	yes|cp -rf $GOPATH/src/github.com/${repo}/gsky/templates $prefix/share/gsky/
-	yes|cp -rf $GOPATH/src/github.com/${repo}/gsky/static $prefix/share/gsky/
-	rm -rf /local/gsky_temp
-	mkdir -p /local/gsky_temp
-	chown -R nobody:nobody /local/gsky_temp
+	echo "16. Copy all files to final locations"
+	(
+		set -xeu
+		prefix=/local/gsky	
+		export GOPATH=$prefix/gopath
+		rm -rf $prefix/share
+		mkdir -p $prefix/share/gsky
+		mkdir -p $prefix/share/mas
+		yes|cp -f $GOPATH/src/github.com/${repo}/gsky/concurrent $prefix/bin/concurrent
+		yes|cp -f $GOPATH/bin/api $prefix/bin/api
+		yes|cp -f $GOPATH/bin/gsky $prefix/share/gsky/gsky
+		yes|cp -f $GOPATH/bin/grpc-server $prefix/share/gsky/grpc_server
+		yes|cp -f $GOPATH/bin/gdal-process $prefix/share/gsky/gsky-gdal-process
+		yes|cp -f $GOPATH/bin/crawl $prefix/share/gsky/gsky-crawl
+		yes|cp -f $GOPATH/src/github.com/${repo}/gsky/crawl/crawl_pipeline.sh $prefix/share/gsky/crawl_pipeline.sh
+		yes|cp -f $GOPATH/src/github.com/${repo}/gsky/mas/db/* $prefix/share/mas/
+		
+		yes|cp -rf $GOPATH/src/github.com/${repo}/gsky/*.png $prefix/share/gsky/
+		yes|cp -rf $GOPATH/src/github.com/${repo}/gsky/templates $prefix/share/gsky/
+		yes|cp -rf $GOPATH/src/github.com/${repo}/gsky/static $prefix/share/gsky/
+		rm -rf /local/gsky_temp
+		mkdir -p /local/gsky_temp
+		chown -R nobody:nobody /local/gsky_temp
+	)
 	echo "**** Finished installing the GSKY server. **** "
 fi
 #------------------------------------------------------------------------------------------------------------------
-if [ $dep16 ]
+if [ $dep17 ]
 then
-	echo "Create the config.json and start the server"
+	echo "17. Create a sample config.json"
 	prefix=/local/gsky
 
-	echo "Put a soft link to find the /usr/local/share/gsky"
-	if [ ! -L /usr/local/share/gsky ] 
-	then
-		ln -s /local/gsky/share/gsky /usr/local/share/gsky
-	fi
-	
-	if [ ! -f $prefix/share/gsky/config.json ] 
+	if [ ! -f /usr/local/etc/config.json ] 
 	then
 		echo "Creating a sample config.json"	
 		input=$home/gsky/install/config.json
@@ -426,16 +428,33 @@ then
 		while IFS= read -r var
 		do
 		  line=${var/OWS_IP_ADDRESS/$ip}
-		  echo "$line" >> $prefix/share/gsky/config.json
+		  echo "$line" >> /usr/local/etc/config.json
 		done < "$input"
 	fi	
-	echo "Create a soft link to the config.json from /usr/local/etc"
-	if [ ! -L /usr/local/etc/config.json ] 
+
+	echo "Put a soft link to find the /usr/local/share/gsky"
+	if [ ! -L /usr/local/share/gsky ] 
 	then
-		ln -s $prefix/share/gsky/config.json /usr/local/etc/config.json
+		ln -s /local/gsky/share/gsky /usr/local/share/gsky
 	fi
-	echo "Start the OWS server"
+	
+#	echo "Create a soft link to the config.json from /usr/local/etc"
+#	if [ ! -L /usr/local/etc/config.json ] 
+#	then
+#		ln -s $prefix/share/gsky/config.json /usr/local/etc/config.json
+#	fi
+fi
+#------------------------------------------------------------------------------------------------------------------
+if [ $dep18 ]
+then
+	echo "18. Start the OWS server"
 	export LD_LIBRARY_PATH=/usr/local/lib:/usr/lib
+	
+	# Kill an already ruunig server, if any.
+	pid=`ps -ef | grep gsky | grep -v grep | awk '{split($0,a," "); print a[2]}'`
+	kill $pid
+	
+	# Start the server
 	/local/gsky/share/gsky/gsky -p 80&
 fi
 #------------------------------------------------------------------------------------------------------------------
