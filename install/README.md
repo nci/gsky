@@ -101,31 +101,30 @@ Run and test the GSKY server
 - Open http://130.56.242.16/terria/
 - Add Data >> My Data >> Add Web Data >> http://130.56.242.xx/ows >> Add
 
-TIPS AND TRAPS
+TIPS AND TRICKS
 ==============
-- The following environment variable is required to start the OWS server
+- The following environment variable is required to start the OWS server.
 	- export LD_LIBRARY_PATH=/usr/local/lib:/usr/lib
 
 - The files are created in /usr/local/share/gsky, but the server looks for them in /usr/local/share/gsky
-	- Do a `ln -s /local/gsky/share/gsky /usr/local/share/gsky`
+	- ```ln -s /local/gsky/share/gsky /usr/local/share/gsky```
 
 - A running OWS server must be killed before starting another.
 	```	
 		pid=`ps -ef | grep gsky | grep -v grep | awk '{split($0,a," "); print a[2]}'`
 		kill $pid
 	```
-
 - Start an OWS server as...
 	- /local/gsky/share/gsky/gsky -p 80&
 	- /local/gsky/share/gsky/gsky --conf_dir=/local/gsky/share/gsky -p 80&
 	
-- Must kill and restart the OWS server if config.json is edited or added
+- Must kill and restart the OWS server if config.json is edited or added.
 
 - The 'Add Web Data' URL on http://130.56.242.16/terria/ must NOT have the ending slash.
 	- http://130.56.242.19/ows - Correct
 	- http://130.56.242.19/ows/ - Incorrect
 
-- The layers will only be seen on the map at a zoom level of 20 km per inch or higher
+- The layers will only be seen on the map at a zoom level of 20 km per inch or higher.
 	
 ------------------
 
@@ -618,33 +617,31 @@ rm -rf postgis-${v}
 Go (often referred to as Golang) is a programming language designed by Google. Go is a statically typed, compiled language in the tradition of C, with the added benefits of memory safety, garbage collection, structural typing and CSP-style concurrency. The compiler, tools, and source code are all free and open source.
 
 ```
-	echo "14. Install GO"
-	set -xeu
-	prefix=/local/gsky
-	mkdir -p $prefix
-	
-	rm -rf $prefix/gopath
-	mkdir $prefix/gopath
-	
-	rm -rf $prefix/bin
-	mkdir $prefix/bin
+echo "14. Install GO"
+set -xeu
+prefix=/local/gsky
+mkdir -p $prefix
 
-	C_INCLUDE_PATH=$(/usr/bin/nc-config --includedir)
-	export C_INCLUDE_PATH
-	
-	wget -q -O go.tar.gz https://dl.google.com/go/go1.10.3.linux-amd64.tar.gz
-	tar -xf go.tar.gz
-	rm -rf go.tar.gz
+rm -rf $prefix/gopath
+mkdir $prefix/gopath
 
-	rm -rf $prefix/go
-	mv go $prefix/go
+rm -rf $prefix/bin
+mkdir $prefix/bin
+
+C_INCLUDE_PATH=$(/usr/bin/nc-config --includedir)
+export C_INCLUDE_PATH
+
+wget -q -O go.tar.gz https://dl.google.com/go/go1.10.3.linux-amd64.tar.gz
+tar -xf go.tar.gz
+rm -rf go.tar.gz
+
+rm -rf $prefix/go
+mv go $prefix/go
 ```
 
-The ‘go’ executable will be installed in /local/gsky/go/bin. Add it to your PATH to run from command line.
+The ‘go’ executable will be installed in /local/gsky/go/bin. Add it to your PATH to run from command line. This step is not required.
 
-	- export PATH=$PATH: /local/gsky/go/bin
-	- which go
-		- /local/gsky/go/bin/go
+- export PATH=$PATH:/local/gsky/go/bin
 
 -------------
 
@@ -653,65 +650,61 @@ The ‘go’ executable will be installed in /local/gsky/go/bin. Add it to your 
 The GSKY source files are in the Github repo, ‘https://github.com/nci/gsky’. They are first cloned into /local/gsky/gopath/src/github.com before building the GSKY binary.
 
 ```
-	echo "15. Compile GSKY"
-	repo=asivapra
-	(
-		set -xeu
-		prefix=/local/gsky
-		export GOROOT=$prefix/go
-		export GOPATH=$prefix/gopath
-		export PATH="$PATH:$GOROOT/bin"
-		export PKG_CONFIG_PATH=/usr/local/lib/pkgconfig
-		
-		go get github.com/${repo}/gsky
-		rm -rf $GOPATH/src/github.com/${repo}/gsky
-		git clone https://github.com/${repo}/gsky.git $GOPATH/src/github.com/${repo}/gsky
-		set -xeu
-		cd $GOPATH/src/github.com/${repo}/gsky
-		./configure
-		make all
-	)	
+echo "15. Compile GSKY"
+repo=asivapra
+(
+	set -xeu
+	prefix=/local/gsky
+	export GOROOT=$prefix/go
+	export GOPATH=$prefix/gopath
+	export PATH="$PATH:$GOROOT/bin"
+	export PKG_CONFIG_PATH=/usr/local/lib/pkgconfig
+
+	go get github.com/${repo}/gsky
+	rm -rf $GOPATH/src/github.com/${repo}/gsky
+	git clone https://github.com/${repo}/gsky.git $GOPATH/src/github.com/${repo}/gsky
+	set -xeu
+	cd $GOPATH/src/github.com/${repo}/gsky
+	./configure
+	make all
+)	
 ```
 
 -------------
 
 - **16.	Install the GSKY binaries**
 
-This step involves just copying the right files into…
+This step involves just copying the files into the right directories.
 -	/local/gsky/bin/api*
 -	/local/gsky/share/gsky/gsky*
 -	/local/gsky/share/gsky/grpc_server*
 -	/local/gsky/share/gsky/gsky-gdal-process*
 
 ```
-if [ $dep17 ]
-then
-	echo "16. Copy all files to final locations"
-	(
-		set -xeu
-		prefix=/local/gsky	
-		export GOPATH=$prefix/gopath
-		rm -rf $prefix/share
-		mkdir -p $prefix/share/gsky
-		mkdir -p $prefix/share/mas
-		yes|cp -f $GOPATH/src/github.com/${repo}/gsky/concurrent $prefix/bin/concurrent
-		yes|cp -f $GOPATH/bin/api $prefix/bin/api
-		yes|cp -f $GOPATH/bin/gsky $prefix/share/gsky/gsky
-		yes|cp -f $GOPATH/bin/grpc-server $prefix/share/gsky/grpc_server
-		yes|cp -f $GOPATH/bin/gdal-process $prefix/share/gsky/gsky-gdal-process
-		yes|cp -f $GOPATH/bin/crawl $prefix/share/gsky/gsky-crawl
-		yes|cp -f $GOPATH/src/github.com/${repo}/gsky/crawl/crawl_pipeline.sh $prefix/share/gsky/crawl_pipeline.sh
-		yes|cp -f $GOPATH/src/github.com/${repo}/gsky/mas/db/* $prefix/share/mas/
-		
-		yes|cp -rf $GOPATH/src/github.com/${repo}/gsky/*.png $prefix/share/gsky/
-		yes|cp -rf $GOPATH/src/github.com/${repo}/gsky/templates $prefix/share/gsky/
-		yes|cp -rf $GOPATH/src/github.com/${repo}/gsky/static $prefix/share/gsky/
-		rm -rf /local/gsky_temp
-		mkdir -p /local/gsky_temp
-		chown -R nobody:nobody /local/gsky_temp
-	)
-	echo "**** Finished installing the GSKY server. **** "
-fi
+echo "16. Copy all files to final locations"
+(
+	set -xeu
+	prefix=/local/gsky	
+	export GOPATH=$prefix/gopath
+	rm -rf $prefix/share
+	mkdir -p $prefix/share/gsky
+	mkdir -p $prefix/share/mas
+	yes|cp -f $GOPATH/src/github.com/${repo}/gsky/concurrent $prefix/bin/concurrent
+	yes|cp -f $GOPATH/bin/api $prefix/bin/api
+	yes|cp -f $GOPATH/bin/gsky $prefix/share/gsky/gsky
+	yes|cp -f $GOPATH/bin/grpc-server $prefix/share/gsky/grpc_server
+	yes|cp -f $GOPATH/bin/gdal-process $prefix/share/gsky/gsky-gdal-process
+	yes|cp -f $GOPATH/bin/crawl $prefix/share/gsky/gsky-crawl
+	yes|cp -f $GOPATH/src/github.com/${repo}/gsky/crawl/crawl_pipeline.sh $prefix/share/gsky/crawl_pipeline.sh
+	yes|cp -f $GOPATH/src/github.com/${repo}/gsky/mas/db/* $prefix/share/mas/		
+	yes|cp -rf $GOPATH/src/github.com/${repo}/gsky/*.png $prefix/share/gsky/
+	yes|cp -rf $GOPATH/src/github.com/${repo}/gsky/templates $prefix/share/gsky/
+	yes|cp -rf $GOPATH/src/github.com/${repo}/gsky/static $prefix/share/gsky/
+	rm -rf /local/gsky_temp
+	mkdir -p /local/gsky_temp
+	chown -R nobody:nobody /local/gsky_temp
+)
+echo "**** Finished installing the GSKY server. **** "
 ```
 -------------
 
@@ -842,7 +835,7 @@ This message appears sometimes, even though the script has run to completion and
 
 - **Error starting the OWS server**
 
-The URL for the server should be without the ending "/" as below. Adding the / at the end will result in an error.
+The URL for the server should be entered without the ending "/" as below. Adding the / at the end will result in an error.
 
 `http://130.56.242.19/ows`
 
@@ -853,5 +846,3 @@ In order to see the added data on the map, it is necessary to zoom in at the rig
 **END OF SECTION**
 
 -------------
-
-
