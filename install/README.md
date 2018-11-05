@@ -159,11 +159,11 @@ The VM instances on https://tenjin.nci.org.au are where the GSKY installation an
 - Wait 10 min for the installation to complete.
 - Click on the instance name.
 
-![Step6](pic9.png) 
-- Click the 'log' tab
-- Verify that the last line says, "Cloud-init v. x.x.x finished at ..."
-
 ![Step7](pic6.png) 
+
+- Click the 'log' tab
+![Step6](pic9.png) 
+- Verify that the last line says, "Cloud-init v. x.x.x finished at ..."
 
  - Click on ‘Console’ tab and then on the hypertext link, “Click here…”
  
