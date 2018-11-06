@@ -103,19 +103,25 @@ Run and test the GSKY server
 
 TIPS AND TRICKS
 ==============
+- The VM must be created in the puppet environment of 'gsky-env' for the port 80 to be accessible.
+	- In production mode, add the following to the VM's iptables
+	```sudo iptables -A INPUT -p tcp --dport 80 -m conntrack --ctstate NEW,ESTABLISHED -j ACCEPT```
+
 - The following environment variable is required to start the OWS server.
 	- export LD_LIBRARY_PATH=/usr/local/lib:/usr/lib
 
 - The files are created in /usr/local/share/gsky, but the server looks for them in /usr/local/share/gsky
+	- Create a soft link as...
 	- ```ln -s /local/gsky/share/gsky /usr/local/share/gsky```
 
 - A running OWS server must be killed before starting another.
-	```	
-		pid=`ps -ef | grep gsky | grep -v grep | awk '{split($0,a," "); print a[2]}'`
-		kill $pid
-	```
-- Start an OWS server as...
+	```	pid=`ps -ef | grep gsky | grep -v grep | awk '{split($0,a," "); print a[2]}'`
+		kill $pid```
+- Start the OWS server as...
 	- /local/gsky/share/gsky/gsky -p 80&
+	
+	or, by specifying a configuration directory.
+	
 	- /local/gsky/share/gsky/gsky --conf_dir=/local/gsky/share/gsky -p 80&
 	
 - Must kill and restart the OWS server if config.json is edited or added.
