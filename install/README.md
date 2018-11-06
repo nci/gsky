@@ -156,7 +156,7 @@ The VM instances on https://tenjin.nci.org.au are where the GSKY installation an
 
 ![Step3](pic3a.png) 
 
-- Enter Pupet Environment as 'gsky-dev' or 'production', as the case may be.
+- Enter Puppet Environment as 'gsky-dev' or 'production', as the case may be.
 
 ![Step3](pic3b.png) 
 
