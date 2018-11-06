@@ -241,17 +241,16 @@ Build the GSKY environment
 In order to run an OWS server, it is required to install GSKY and its dependencies on the VM. This step is required on each new VM being created.
 
 -	Install the dependencies and GSKY environment.
--	Use the 'build_all.sh' provided or clone the git repo from below.
 	- copy the ‘build_all.sh’ to the home dir.
 	- cd ~
 	- sudo ./build_all.sh
+	
 OR, clone it under your username so that files can be edited by yourself.
--	cd ~
+
 -	git clone https://github.com/nci/gsky.git
 	- cp gsky/install/build_all.sh ~
-	- sudo ./build_all.sh
 
-This will take several minutes to complete. It is normal to see many warning messages. Ignore the warnings, but make sure that there is no fatal error. If installation goes to completion, it will display “Completed ALL steps. Exiting”
+This will take 30 to 45 minutes to complete. It is normal to see many warning messages. Ignore the warnings, but make sure that there is no fatal error. If installation goes to completion, it will start the OWS server and display “Completed ALL steps. Exiting”
 
 COMPONENTS AND COMMANDS
 -----------------------
