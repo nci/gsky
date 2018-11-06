@@ -115,7 +115,8 @@ TIPS AND TRICKS
 	- ```ln -s /local/gsky/share/gsky /usr/local/share/gsky```
 
 - A running OWS server must be killed before starting another.
-	```	pid=`ps -ef | grep gsky | grep -v grep | awk '{split($0,a," "); print a[2]}'`
+	- Also, must kill and restart the OWS server if config.json is edited or added.
+	- ```	pid=`ps -ef | grep gsky | grep -v grep | awk '{split($0,a," "); print a[2]}'`
 		kill $pid```
 - Start the OWS server as...
 	- /local/gsky/share/gsky/gsky -p 80&
@@ -124,11 +125,10 @@ TIPS AND TRICKS
 	
 	- /local/gsky/share/gsky/gsky --conf_dir=/local/gsky/share/gsky -p 80&
 	
-- Must kill and restart the OWS server if config.json is edited or added.
-
 - The 'Add Web Data' URL on http://130.56.242.16/terria/ must NOT have the ending slash.
 	- http://130.56.242.19/ows - Correct
 	- http://130.56.242.19/ows/ - Incorrect
+	- http://130.56.242.19/ows/project1 - Correct
 
 - The layers will only be seen on the map at a zoom level of 20 km per inch or higher.
 	
