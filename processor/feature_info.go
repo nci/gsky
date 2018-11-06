@@ -168,7 +168,7 @@ func getRaster(ctx context.Context, params utils.WMSParams, conf *utils.Config, 
 	}
 
 	if conf.Layers[idx].ZoomLimit != 0.0 && reqRes > conf.Layers[idx].ZoomLimit {
-		return []utils.Raster{&utils.ByteRaster{NameSpace: "ZoomOut"}}, namespaces, nil, nil
+		return []utils.Raster{&utils.ByteRaster{NameSpace: "ZoomOut"}}, bandExpr.ExprNames, nil, nil
 	}
 
 	if params.Height == nil || params.Width == nil {

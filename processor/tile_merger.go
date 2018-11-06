@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"hash/fnv"
 	"log"
+	"math"
 	"reflect"
 	"sort"
 	"strconv"
@@ -527,7 +528,11 @@ func (enc *RasterMerger) Run(polyLimiter *ConcLimiter, bandExpr *utils.BandExpre
 			if isArr {
 				for i := range outRaster.Data {
 					if noDataMasks[i] {
-						outRaster.Data[i] = resArr[i]
+						if math.IsInf(float64(resArr[i]), 0) || math.IsNaN(float64(resArr[i])) {
+							outRaster.Data[i] = float32(noData)
+						} else {
+							outRaster.Data[i] = resArr[i]
+						}
 					} else {
 						outRaster.Data[i] = float32(noData)
 					}

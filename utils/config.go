@@ -460,6 +460,22 @@ func LoadAllConfigFiles(rootDir string, verbose bool) (map[string]*Config, error
 					if config.Layers[i].Styles[j].LegendHeight <= 0 {
 						config.Layers[i].Styles[j].LegendHeight = DefaultLegendHeight
 					}
+
+					bandExpr, err := ParseBandExpressions(config.Layers[i].Styles[j].RGBProducts)
+					if err != nil {
+						log.Printf("RGBExpression parsing error: %v", err)
+						bandExpr = &BandExpressions{}
+					}
+					config.Layers[i].Styles[j].RGBExpressions = bandExpr
+
+					if len(config.Layers[i].Styles[j].FeatureInfoBands) > 0 {
+						featureInfoExpr, err := ParseBandExpressions(config.Layers[i].Styles[j].FeatureInfoBands)
+						if err != nil {
+							log.Printf("FeatureInfoExpression parsing error: %v", err)
+							featureInfoExpr = &BandExpressions{}
+						}
+						config.Layers[i].Styles[j].FeatureInfoExpressions = featureInfoExpr
+					}
 				}
 			}
 		}
