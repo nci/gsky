@@ -178,8 +178,22 @@ The VM instances on https://tenjin.nci.org.au are where the GSKY installation an
 
 ![Step10](pic10.png) 
 
-- Add your IP address to the iptables.
-	- If you are on the NCI network, either through ethernet or VPN, this step is not required.
+**Accessing the VM from your workstation**
+
+You can imediately SSH to the VM if you are on the NCI network, either through ethernet or VPN.
+
+Must add your IP address to the VM's iptables if your workstation is on a private network, including the 'ANU-Secure' WiFi network.
+
+- Find your IP addres
+- Open a command window on PC (Windows)
+	- ipconfig
+	
+	![ifconfig](pic11.png)
+	
+	- or 'curl ifconfig.me'
+	
+	![curl](pic12.png)
+	
 		- sudo -i
 		- cd /etc/puppetlabs/code/environments/production/hieradata/node/
 		- cat > [vm name].yaml (e.g. siva-gsky.yaml)
