@@ -184,8 +184,8 @@ You can imediately SSH to the VM if you are on the NCI network, either through e
 
 Must add your IP address to the VM's iptables if your workstation is on a private network, including the 'ANU-Secure' WiFi network.
 
-- Find your IP addres
-- Open a command window on PC (Windows)
+- Find your IP addres (on Windows)
+
 	- ipconfig
 	
 	![ifconfig](pic11.png)
@@ -194,21 +194,26 @@ Must add your IP address to the VM's iptables if your workstation is on a privat
 	
 	![curl](pic12.png)
 	
+	- Swich to the VM console
+		
 		- sudo -i
-		- cd /etc/puppetlabs/code/environments/production/hieradata/node/
+		- cd /etc/puppetlabs/code/environments/gsky-dev/hieradata/node/
+		
 		- cat > [vm name].yaml (e.g. siva-gsky.yaml)
 			- insert the following.
 			- nci::firewall::ruleset::ssh::sources_array:
 			- – “130.56.84.195” 
-				- Tip: Find your IP address:
-					- ipconfig (Windows IPv4 address) 
-					- ifconfig | awk '/inet / {print}' in Linux
+
+		![firewall](pic13.png)
+
 		- OR 
 			- vim siva-gsky.yaml
 			- Change the IP address to your own as per the example below.
 				- – “130.56.84.195”
 		- puppet-apply
 		- iptables –list
+
+		![iptables](pic14.png)
 
 Create an SSH key pair
 =================
