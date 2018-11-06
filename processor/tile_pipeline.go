@@ -12,9 +12,10 @@ type TilePipeline struct {
 	MaxGrpcRecvMsgSize    int
 	PolygonShardConcLimit int
 	MASAddress            string
+	MaxGrpcBufferSize     int
 }
 
-func InitTilePipeline(ctx context.Context, masAddr string, rpcAddr []string, maxGrpcRecvMsgSize int, polygonShardConcLimit int, errChan chan error) *TilePipeline {
+func InitTilePipeline(ctx context.Context, masAddr string, rpcAddr []string, maxGrpcRecvMsgSize int, polygonShardConcLimit int, maxGrpcBufferSize int, errChan chan error) *TilePipeline {
 	return &TilePipeline{
 		Context:               ctx,
 		Error:                 errChan,
@@ -22,11 +23,12 @@ func InitTilePipeline(ctx context.Context, masAddr string, rpcAddr []string, max
 		MaxGrpcRecvMsgSize:    maxGrpcRecvMsgSize,
 		PolygonShardConcLimit: polygonShardConcLimit,
 		MASAddress:            masAddr,
+		MaxGrpcBufferSize:     maxGrpcBufferSize,
 	}
 }
 
 func (dp *TilePipeline) Process(geoReq *GeoTileRequest, verbose bool) chan []utils.Raster {
-	grpcTiler := NewRasterGRPC(dp.Context, dp.RPCAddress, dp.MaxGrpcRecvMsgSize, dp.PolygonShardConcLimit, dp.Error)
+	grpcTiler := NewRasterGRPC(dp.Context, dp.RPCAddress, dp.MaxGrpcRecvMsgSize, dp.PolygonShardConcLimit, dp.MaxGrpcBufferSize, dp.Error)
 
 	i := NewTileIndexer(dp.Context, dp.MASAddress, dp.Error)
 	go func() {
