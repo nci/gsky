@@ -103,9 +103,9 @@ Run and test the GSKY server
 
 TIPS AND TRICKS
 ==============
-- The VM must be created in the puppet environment of 'gsky-env' for the port 80 to be accessible.
-	- In production mode, add the following to the VM's iptables
-	```sudo iptables -A INPUT -p tcp --dport 80 -m conntrack --ctstate NEW,ESTABLISHED -j ACCEPT```
+- The VM must be created using the puppet environment of 'gsky-env', for the port 80 to be accessible.
+	- In production mode, add the following to the VM's iptables.
+	- ```sudo iptables -A INPUT -p tcp --dport 80 -m conntrack --ctstate NEW,ESTABLISHED -j ACCEPT```
 
 - The following environment variable is required to start the OWS server.
 	- export LD_LIBRARY_PATH=/usr/local/lib:/usr/lib
