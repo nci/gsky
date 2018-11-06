@@ -199,17 +199,17 @@ Must add your IP address to the VM's iptables if your workstation is on a privat
 		- sudo -i
 		- cd /etc/puppetlabs/code/environments/gsky-dev/hieradata/node/
 		
-		- cat > [vm name].yaml (e.g. siva-gsky.yaml)
+		- cat > [vm name].yaml (e.g. avs900-gsky.yaml)
 			- insert the following.
 			- nci::firewall::ruleset::ssh::sources_array:
-			- – “130.56.84.195” 
+			- – "130.56.208.145" 
 
 		![firewall](pic13.png)
 
 		- OR 
-			- vim siva-gsky.yaml
+			- vim avs900-gsky.yaml
 			- Change the IP address to your own as per the example below.
-				- – “130.56.84.195”
+				- – "130.56.208.145"
 		- puppet-apply
 		- iptables –list
 
