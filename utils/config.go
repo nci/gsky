@@ -27,12 +27,13 @@ var DataDir = "."
 const ReservedMemorySize = 1.5 * 1024 * 1024 * 1024
 
 type ServiceConfig struct {
-	OWSHostname     string `json:"ows_hostname"`
-	NameSpace       string
-	MASAddress      string   `json:"mas_address"`
-	WorkerNodes     []string `json:"worker_nodes"`
-	OWSClusterNodes []string `json:"ows_cluster_nodes"`
-	TempDir         string   `json:"temp_dir"`
+	OWSHostname       string `json:"ows_hostname"`
+	NameSpace         string
+	MASAddress        string   `json:"mas_address"`
+	WorkerNodes       []string `json:"worker_nodes"`
+	OWSClusterNodes   []string `json:"ows_cluster_nodes"`
+	TempDir           string   `json:"temp_dir"`
+	MaxGrpcBufferSize int      `json:"max_grpc_buffer_size"`
 }
 
 // CacheLevel contains the source files of one layer as well as the
@@ -780,6 +781,13 @@ func (config *Config) LoadConfigFile(configFile string, verbose bool) error {
 			return fmt.Errorf("error creating temp directory: %v", err)
 		}
 	}
+
+	if config.ServiceConfig.MaxGrpcBufferSize > 0 && config.ServiceConfig.MaxGrpcBufferSize < 10 {
+		config.ServiceConfig.MaxGrpcBufferSize = 0
+		log.Printf("%v: MaxGrpcBufferSize is set to less than 10MB, reset to unlimited", configFile)
+	}
+
+	config.ServiceConfig.MaxGrpcBufferSize = config.ServiceConfig.MaxGrpcBufferSize * 1024 * 1024
 
 	for i, layer := range config.Layers {
 		bandExpr, err := ParseBandExpressions(layer.RGBProducts)

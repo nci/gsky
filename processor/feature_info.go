@@ -221,7 +221,7 @@ func getRaster(ctx context.Context, params utils.WMSParams, conf *utils.Config, 
 	errChan := make(chan error, 100)
 
 	var outRaster []utils.Raster
-	tp := InitTilePipeline(ctx, conf.ServiceConfig.MASAddress, conf.ServiceConfig.WorkerNodes, conf.Layers[idx].MaxGrpcRecvMsgSize, conf.Layers[idx].WmsPolygonShardConcLimit, errChan)
+	tp := InitTilePipeline(ctx, conf.ServiceConfig.MASAddress, conf.ServiceConfig.WorkerNodes, conf.Layers[idx].MaxGrpcRecvMsgSize, conf.Layers[idx].WmsPolygonShardConcLimit, conf.ServiceConfig.MaxGrpcBufferSize, errChan)
 	select {
 	case res := <-tp.Process(geoReq, verbose):
 		outRaster = res
