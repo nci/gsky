@@ -1119,8 +1119,28 @@ func generalHandler(conf *utils.Config, w http.ResponseWriter, r *http.Request) 
 	}
 
 	if _, fOK := query["service"]; !fOK {
-		http.Error(w, fmt.Sprintf("Not a OWS request. Request does not contain a 'service' parameter."), 400)
-		return
+		canInferService := false
+		if request, hasReq := query["request"]; hasReq {
+			reqService := map[string]string{
+				"GetFeatureInfo":   "WMS",
+				"GetMap":           "WMS",
+				"DescribeLayer":    "WMS",
+				"GetLegendGraphic": "WMS",
+				"DescribeCoverage": "WCS",
+				"GetCoverage":      "WCS",
+				"DescribeProcess":  "WPS",
+				"Execute":          "WPS",
+			}
+			if service, found := reqService[request[0]]; found {
+				query["service"] = []string{service}
+				canInferService = true
+			}
+		}
+
+		if !canInferService {
+			http.Error(w, fmt.Sprintf("Not a OWS request. Request does not contain a 'service' parameter."), 400)
+			return
+		}
 	}
 
 	switch query["service"][0] {
