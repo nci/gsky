@@ -147,7 +147,11 @@ The VM instances on https://tenjin.nci.org.au are where the GSKY installation an
 
 ![Step3](pic3.png) 
 
+- Click the tab, 'Initial Boot'
+
 ![Step3](pic3a.png) 
+
+- Enter Pupet Environment as 'gsky-dev' or 'production', as the case may be.
 
 ![Step3](pic3b.png) 
 
@@ -161,7 +165,7 @@ The VM instances on https://tenjin.nci.org.au are where the GSKY installation an
 ![Step5](pic5.png) 
 
 - Wait 10 min for the installation to complete.
-- Click on the instance name below (e.g. siva-gsky).
+- Click on the instance name below (e.g. avs900-gsky).
 
 ![Step7](pic6.png) 
 
