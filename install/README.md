@@ -147,6 +147,10 @@ The VM instances on https://tenjin.nci.org.au are where the GSKY installation an
 
 ![Step3](pic3.png) 
 
+![Step3](pic3a.png) 
+
+![Step3](pic3b.png) 
+
 - Create/choose a key pair if you wish to use it for password-less login. Otherwise, leave it as blank.
 	- Click the + icon to create a new key pair.
 	
