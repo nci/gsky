@@ -156,7 +156,15 @@ func WMSParamsChecker(params map[string][]string, compREMap map[string]*regexp.R
 		}
 	}
 
-	if layers, layersOK := params["layers"]; layersOK {
+	var layers []string
+	if _layers, layersOK := params["layers"]; layersOK {
+		layers = _layers
+	} else {
+		if _layer, layerOK := params["layer"]; layerOK {
+			layers = _layer
+		}
+	}
+	if len(layers) > 0 {
 		if !strings.Contains(layers[0], "\"") {
 			jsonFields = append(jsonFields, fmt.Sprintf(`"layers":["%s"]`, strings.Replace(layers[0], ",", "\",\"", -1)))
 		}
