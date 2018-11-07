@@ -6,7 +6,7 @@ import (
 	"math"
 	"sort"
 
-	goeval "github.com/Knetic/govaluate"
+	goeval "github.com/edisonguo/govaluate"
 	"github.com/nci/gsky/utils"
 	pb "github.com/nci/gsky/worker/gdalservice"
 )
@@ -150,13 +150,13 @@ func (dm *DrillMerger) Run(suffix string, namespaces []string, templateFileName 
 				return
 			}
 
-			val, ok := result.(float64)
+			val, ok := result.(float32)
 			if !ok {
-				dm.Error <- fmt.Errorf("WPS: Failed to cast eval results '%v' to float64, %v", val, bandEval[iv])
+				dm.Error <- fmt.Errorf("WPS: Failed to cast eval results '%v' to float323232, %v", val, bandEval[iv])
 				return
 			}
 
-			fmt.Fprintf(csv, "%f", val)
+			fmt.Fprintf(csv, "%f", float64(val))
 		}
 
 		fmt.Fprint(csv, "\\n")
