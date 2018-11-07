@@ -39,13 +39,14 @@ func NewRasterGRPC(ctx context.Context, serverAddress []string, maxGrpcRecvMsgSi
 	}
 }
 
-func (gi *GeoRasterGRPC) Run(polyLimiter *ConcLimiter, verbose bool) {
+func (gi *GeoRasterGRPC) Run(polyLimiter *ConcLimiter, varList []string, verbose bool) {
 	if verbose {
 		defer log.Printf("tile grpc done")
 	}
 	defer close(gi.Out)
 
 	var grans []*GeoTileGranule
+	availNamespaces := make(map[string]bool)
 	i := 0
 	imageSize := 0
 	for gran := range gi.In {
@@ -59,12 +60,23 @@ func (gi *GeoRasterGRPC) Run(polyLimiter *ConcLimiter, verbose bool) {
 				imageSize = gran.Height * gran.Width
 			}
 
+			if _, found := availNamespaces[gran.NameSpace]; !found {
+				availNamespaces[gran.NameSpace] = true
+			}
+
 			i++
 		}
 	}
 
 	if len(grans) == 0 {
 		return
+	}
+
+	for _, v := range varList {
+		if _, found := availNamespaces[v]; !found {
+			gi.sendError(fmt.Errorf("band '%v' not found", v))
+			return
+		}
 	}
 
 	g0 := grans[0]

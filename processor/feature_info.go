@@ -155,16 +155,20 @@ func getRaster(ctx context.Context, params utils.WMSParams, conf *utils.Config, 
 	}
 
 	var namespaces []string
+	var bandExpr *utils.BandExpressions
 	if len(styleLayer.FeatureInfoBands) > 0 {
-		namespaces = styleLayer.FeatureInfoBands
+		namespaces = styleLayer.FeatureInfoExpressions.VarList
+		bandExpr = styleLayer.FeatureInfoExpressions
 	} else if len(conf.Layers[idx].FeatureInfoBands) > 0 {
-		namespaces = conf.Layers[idx].FeatureInfoBands
+		namespaces = conf.Layers[idx].FeatureInfoExpressions.VarList
+		bandExpr = conf.Layers[idx].FeatureInfoExpressions
 	} else {
-		namespaces = styleLayer.RGBProducts
+		namespaces = styleLayer.RGBExpressions.VarList
+		bandExpr = styleLayer.RGBExpressions
 	}
 
 	if conf.Layers[idx].ZoomLimit != 0.0 && reqRes > conf.Layers[idx].ZoomLimit {
-		return []utils.Raster{&utils.ByteRaster{NameSpace: "ZoomOut"}}, namespaces, nil, nil
+		return []utils.Raster{&utils.ByteRaster{NameSpace: "ZoomOut"}}, bandExpr.ExprNames, nil, nil
 	}
 
 	if params.Height == nil || params.Width == nil {
@@ -195,7 +199,26 @@ func getRaster(ctx context.Context, params utils.WMSParams, conf *utils.Config, 
 		return nil, nil, nil, fmt.Errorf("Invalid data source")
 	}
 
+	// We construct a 2x2 image corresponding to an infinitesimal bounding box
+	// to approximate a pixel.
+	// We observed several order of magnitude of performance improvement as a
+	// result of such an approximation.
+	xmin := params.BBox[0] + float64(*params.X)*xRes
+	ymin := params.BBox[3] - float64(*params.Y)*yRes
+
+	xmax := params.BBox[0] + float64(*params.X+1)*xRes
+	ymax := params.BBox[3] - float64(*params.Y-1)*xRes
+
+	*params.Height = 2
+	*params.Width = 2
+
+	*params.X = 0
+	*params.Y = 1
+
+	params.BBox = []float64{xmin, ymin, xmax, ymax}
+
 	geoReq := &GeoTileRequest{ConfigPayLoad: ConfigPayLoad{NameSpaces: namespaces,
+		BandExpr:        bandExpr,
 		Mask:            styleLayer.Mask,
 		ZoomLimit:       conf.Layers[idx].ZoomLimit,
 		PolygonSegments: conf.Layers[idx].WmsPolygonSegments,
@@ -227,18 +250,12 @@ func getRaster(ctx context.Context, params utils.WMSParams, conf *utils.Config, 
 	}
 
 	if conf.Layers[idx].FeatureInfoMaxDataLinks < 1 {
-		return outRaster, namespaces, nil, nil
-	}
-
-	x, y, err := utils.GetCoordinates(params)
-	if err != nil {
-		return nil, nil, nil, err
+		return outRaster, bandExpr.ExprNames, nil, nil
 	}
 
 	indexer := NewTileIndexer(ctx, conf.ServiceConfig.MASAddress, errChan)
 	go func() {
 		geoReq.Mask = nil
-		geoReq.BBox = []float64{x, y, x + 1e-4, y + 1e-4}
 		indexer.In <- geoReq
 		close(indexer.In)
 	}()
@@ -297,5 +314,5 @@ func getRaster(ctx context.Context, params utils.WMSParams, conf *utils.Config, 
 		}
 	}
 
-	return outRaster, namespaces, topDsFiles, nil
+	return outRaster, bandExpr.ExprNames, topDsFiles, nil
 }
