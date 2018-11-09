@@ -3,7 +3,7 @@
 # build_all.sh
 # Installs all dependencies for GSKY and build the GSKY environment on a VM
 # Created on: 23 October, 2018; Arapaut V. Sivaprasad.
-# Last Revision: 6 Nov, 2018; Arapaut V. Sivaprasad.
+# Last Revision: 9 Nov, 2018; Arapaut V. Sivaprasad.
 # Adapted from 'build_deps.sh' and 'build_gsky.sh' by Jian Edison Guo.
 #####################################################################
 # Usage: 
@@ -282,6 +282,7 @@ fi
 if [ $dep12 ]
 then
 	# Install PostGreSQL
+	set -xeu
 	echo "12. Installing: PostGreSQL"
 	v=11.0
 	(
@@ -295,7 +296,7 @@ then
 	)
 	rm -rf postgresql-${v}
 	rm -f postgresql-${v}.tar.gz*
-	
+
 	# Check and create the user 'postgres'
 	s1=`id -u postgres`
 	if [ $s1 ]
@@ -314,31 +315,23 @@ fi
 #------------------------------------------------------------------------------------------------------------------
 if [ $dep13 ]
 then
-	# Install PostGIS. This should be done after installing other deps
-	echo "13. Installing: PostGIS"
-	v=2.5.0
+	v=2.4.4
 	(
 		set -xeu
 		wget -q https://download.osgeo.org/postgis/source/postgis-${v}.tar.gz
-		tar xf postgis-${v}.tar.gz
+		tar -xf postgis-${v}.tar.gz
 		cd postgis-${v}
-		
-		# The default loader/Makefile tries to compile 'pgsql2shp' and 'shp2pgsql', and crashes.
-		# Therefore, mask it out in Makefile.in to prevent them being compiled. 
-		# These executables are then copied/downloaded from elsewhere.
-		#yes|cp ../postgis-2.5.0_Makefile.in loader/Makefile.in
-		./configure --with-pgconfig=/usr/local/pgsql/bin/pg_config
-		make
-		
-		# The folowing executables are required for 'make install'. Currently they are being copied from another location.
-		#yes|cp ../pgsql2shp loader
-		#yes|cp ../shp2pgsql loader
+#		./configure --with-pgconfig=/usr/local/pgsql/bin/pg_config
+		make -j4
 		make install
 	)
-	rm -f postgis-${v}.tar.gz*
 	rm -rf postgis-${v}
-	echo "Finished Installing: PostGIS"
-	echo "**** Finished installing ALL the dependencies. ****"
+	rm -f postgis-${v}.tar.gz
+	
+	if [ ! -L /usr/local/pgsql/lib/libgdal.so.20 ]
+	then
+		ln -s /usr/local/lib/libgdal.so.20 /usr/local/pgsql/lib/libgdal.so.20
+	fi
 fi
 #------------------------------------------------------------------------------------------------------------------
 if [ $dep14 ]
@@ -452,7 +445,10 @@ then
 	
 	# Kill an already ruunig server, if any.
 	pid=`ps -ef | grep gsky | grep -v grep | awk '{split($0,a," "); print a[2]}'`
-	kill $pid
+	if [ $pid ]
+	then
+		kill $pid
+	fi
 	
 	# Start the server
 	/local/gsky/share/gsky/gsky -p 80&
