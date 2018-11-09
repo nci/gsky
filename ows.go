@@ -1062,7 +1062,8 @@ func serveWPS(ctx context.Context, params utils.WPSParams, conf *utils.Config, r
 			geoReq := proc.GeoDrillRequest{Geometry: string(feat),
 				CRS:        "EPSG:4326",
 				Collection: dataSource.DataSource,
-				NameSpaces: dataSource.RGBProducts,
+				NameSpaces: dataSource.RGBExpressions.VarList,
+				BandExpr:   dataSource.RGBExpressions,
 				StartTime:  startDateTime,
 				EndTime:    endDateTime,
 			}
@@ -1072,7 +1073,7 @@ func serveWPS(ctx context.Context, params utils.WPSParams, conf *utils.Config, r
 			if dataSource.BandStrides <= 0 {
 				dataSource.BandStrides = 1
 			}
-			proc := dp.Process(geoReq, suffix, dataSource.MetadataURL, dataSource.BandEval, dataSource.BandStrides, *process.Approx)
+			proc := dp.Process(geoReq, suffix, dataSource.MetadataURL, dataSource.BandStrides, *process.Approx)
 
 			select {
 			case res := <-proc:
