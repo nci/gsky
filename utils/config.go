@@ -66,6 +66,7 @@ type BandExpressions struct {
 	Expressions []*goeval.EvaluableExpression
 	VarList     []string
 	ExprNames   []string
+	ExprVarRef  [][]string
 }
 
 // Layer contains all the details that a layer needs
@@ -113,7 +114,6 @@ type Layer struct {
 	GrpcWcsConcPerNode       int      `json:"grpc_wcs_conc_per_node"`
 	WmsPolygonShardConcLimit int      `json:"wms_polygon_shard_conc_limit"`
 	WcsPolygonShardConcLimit int      `json:"wcs_polygon_shard_conc_limit"`
-	BandEval                 []string `json:"band_eval"`
 	BandStrides              int      `json:"band_strides"`
 	WmsMaxWidth              int      `json:"wms_max_width"`
 	WmsMaxHeight             int      `json:"wms_max_height"`
@@ -463,16 +463,14 @@ func LoadAllConfigFiles(rootDir string, verbose bool) (map[string]*Config, error
 
 					bandExpr, err := ParseBandExpressions(config.Layers[i].Styles[j].RGBProducts)
 					if err != nil {
-						log.Printf("RGBExpression parsing error: %v", err)
-						bandExpr = &BandExpressions{}
+						return fmt.Errorf("Layer %v, style %v, RGBExpression parsing error: %v", config.Layers[i].Name, config.Layers[i].Styles[j].Name, err)
 					}
 					config.Layers[i].Styles[j].RGBExpressions = bandExpr
 
 					if len(config.Layers[i].Styles[j].FeatureInfoBands) > 0 {
 						featureInfoExpr, err := ParseBandExpressions(config.Layers[i].Styles[j].FeatureInfoBands)
 						if err != nil {
-							log.Printf("FeatureInfoExpression parsing error: %v", err)
-							featureInfoExpr = &BandExpressions{}
+							return fmt.Errorf("Layer %v, style %v, FeatureInfoExpression parsing error: %v", config.Layers[i].Name, config.Layers[i].Styles[j].Name, err)
 						}
 						config.Layers[i].Styles[j].FeatureInfoExpressions = featureInfoExpr
 					}
@@ -657,7 +655,7 @@ func ParseBandExpressions(bands []string) (*BandExpressions, error) {
 	bandExpr := &BandExpressions{ExprText: bands}
 	varFound := make(map[string]bool)
 	hasExprAll := false
-	for _, bandRaw := range bands {
+	for ib, bandRaw := range bands {
 		parts := strings.Split(bandRaw, "=")
 		if len(parts) == 0 {
 			return nil, fmt.Errorf("invalid expression: %v", bandRaw)
@@ -683,6 +681,8 @@ func ParseBandExpressions(bands []string) (*BandExpressions, error) {
 		}
 		bandExpr.Expressions = append(bandExpr.Expressions, expr)
 
+		bandExpr.ExprVarRef = append(bandExpr.ExprVarRef, []string{})
+		bandVarFound := make(map[string]bool)
 		for _, token := range expr.Tokens() {
 			if token.Kind == goeval.VARIABLE {
 				varName, ok := token.Value.(string)
@@ -694,6 +694,12 @@ func ParseBandExpressions(bands []string) (*BandExpressions, error) {
 					varFound[varName] = true
 					bandExpr.VarList = append(bandExpr.VarList, varName)
 				}
+
+				if _, found := bandVarFound[varName]; !found {
+					bandVarFound[varName] = true
+					bandExpr.ExprVarRef[ib] = append(bandExpr.ExprVarRef[ib], varName)
+				}
+
 			} else {
 				hasExprAll = true
 			}
@@ -808,15 +814,13 @@ func (config *Config) LoadConfigFile(configFile string, verbose bool) error {
 	for i, layer := range config.Layers {
 		bandExpr, err := ParseBandExpressions(layer.RGBProducts)
 		if err != nil {
-			log.Printf("RGBExpression parsing error: %v", err)
-			bandExpr = &BandExpressions{}
+			return fmt.Errorf("Layer %v RGBExpression parsing error: %v", layer.Name, err)
 		}
 		config.Layers[i].RGBExpressions = bandExpr
 
 		featureInfoExpr, err := ParseBandExpressions(layer.FeatureInfoBands)
 		if err != nil {
-			log.Printf("FeatureInfoExpression parsing error: %v", err)
-			featureInfoExpr = &BandExpressions{}
+			return fmt.Errorf("Layer %v FeatureInfoExpression parsing error: %v", layer.Name, err)
 		}
 		config.Layers[i].FeatureInfoExpressions = featureInfoExpr
 
@@ -894,6 +898,15 @@ func (config *Config) LoadConfigFile(configFile string, verbose bool) error {
 			approx := true
 			config.Processes[i].Approx = &approx
 		}
+
+		for ids, ds := range proc.DataSources {
+			bandExpr, err := ParseBandExpressions(ds.RGBProducts)
+			if err != nil {
+				return fmt.Errorf("Process %v, data source %v, RGBExpression parsing error: %v", proc.Identifier, ids, err)
+			}
+			config.Processes[i].DataSources[ids].RGBExpressions = bandExpr
+		}
+
 	}
 	return nil
 }
