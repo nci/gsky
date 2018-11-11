@@ -958,15 +958,17 @@ func serveWPS(ctx context.Context, params utils.WPSParams, conf *utils.Config, r
 			http.Error(w, err.Error(), 500)
 		}
 	case "DescribeProcess":
-		for _, process := range conf.Processes {
-			if process.Identifier == *params.Identifier {
-				err := utils.ExecuteWriteTemplateFile(w, process,
-					utils.DataDir+"/templates/WPS_DescribeProcess.tpl")
-				if err != nil {
-					http.Error(w, err.Error(), 500)
-				}
-				break
-			}
+		idx, err := utils.GetProcessIndex(params, conf)
+		if err != nil {
+			Error.Printf("Requested process not found: %v, %v\n", err, reqURL)
+			http.Error(w, fmt.Sprintf("%v: %s", err, reqURL), 400)
+			return
+		}
+		process := conf.Processes[idx]
+		err = utils.ExecuteWriteTemplateFile(w, process,
+			utils.DataDir+"/templates/WPS_DescribeProcess.tpl")
+		if err != nil {
+			http.Error(w, err.Error(), 500)
 		}
 	case "Execute":
 		idx, err := utils.GetProcessIndex(params, conf)
