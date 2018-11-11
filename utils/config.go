@@ -149,7 +149,7 @@ type LitData struct {
 	DataType      string   `json:"data_type"`
 	DataTypeRef   string   `json:"data_type_ref"`
 	AllowedValues []string `json:"allowed_values"`
-	MinOccurs     string   `json:"min_occurs"`
+	MinOccurs     int      `json:"min_occurs"`
 }
 
 // CompData contains the description of a variable used to compute a
@@ -161,7 +161,7 @@ type CompData struct {
 	MimeType   string `json:"mime_type"`
 	Encoding   string `json:"encoding"`
 	Schema     string `json:"schema"`
-	MinOccurs  string `json:"min_occurs"`
+	MinOccurs  int    `json:"min_occurs"`
 }
 
 // Config is the struct representing the configuration
