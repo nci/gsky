@@ -4,6 +4,7 @@ import (
 	"image"
 	"time"
 
+	"github.com/nci/gsky/utils"
 	pb "github.com/nci/gsky/worker/gdalservice"
 )
 
@@ -12,6 +13,7 @@ type GeoDrillRequest struct {
 	CRS        string
 	Collection string
 	NameSpaces []string
+	BandExpr   *utils.BandExpressions
 	StartTime  time.Time
 	EndTime    time.Time
 }
