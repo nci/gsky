@@ -6,7 +6,6 @@ import (
 	"math"
 	"sort"
 
-	goeval "github.com/Knetic/govaluate"
 	"github.com/nci/gsky/utils"
 	pb "github.com/nci/gsky/worker/gdalservice"
 )
@@ -25,7 +24,7 @@ func NewDrillMerger(errChan chan error) *DrillMerger {
 	}
 }
 
-func (dm *DrillMerger) Run(suffix string, namespaces []string, templateFileName string, bandEval []string) {
+func (dm *DrillMerger) Run(suffix string, namespaces []string, templateFileName string, bandExpr *utils.BandExpressions) {
 	defer close(dm.Out)
 	results := make(map[string]map[string][]*pb.TimeSeries)
 
@@ -64,40 +63,6 @@ func (dm *DrillMerger) Run(suffix string, namespaces []string, templateFileName 
 	}
 	sort.Strings(dates)
 
-	varRefs := [][]string{}
-	expressions := make([]*goeval.EvaluableExpression, len(bandEval))
-
-	for iExpr := range bandEval {
-		expr, expErr := goeval.NewEvaluableExpression(bandEval[iExpr])
-		if expErr != nil {
-			dm.Error <- fmt.Errorf("WPS: Experession parsing error: %v", expErr)
-			return
-		}
-
-		expressions[iExpr] = expr
-
-		variables := []string{}
-		for iToken, token := range expr.Tokens() {
-			if token.Kind == goeval.VARIABLE {
-				varName, ok := token.Value.(string)
-				if !ok {
-					dm.Error <- fmt.Errorf("WPS: Expression token name failed to cast to string %d", iToken)
-					return
-				}
-
-				_, varFound := results[varName]
-				if !varFound {
-					dm.Error <- fmt.Errorf("WPS: undefined variable '%s' in '%s'. All variables: %v", varName, bandEval[iExpr], namespaces)
-					return
-				}
-
-				variables = append(variables, varName)
-			}
-		}
-
-		varRefs = append(varRefs, variables)
-	}
-
 	csv := bytes.NewBufferString("")
 	for _, key := range dates {
 		values := map[string]float64{}
@@ -117,16 +82,21 @@ func (dm *DrillMerger) Run(suffix string, namespaces []string, templateFileName 
 
 		fmt.Fprintf(csv, "%s", key)
 
-		for _, ns := range namespaces {
-			fmt.Fprint(csv, ",")
-			if val, ok := values[ns]; ok {
-				fmt.Fprintf(csv, "%f", val)
+		if len(bandExpr.Expressions) == 0 {
+			for _, ns := range bandExpr.ExprNames {
+				fmt.Fprint(csv, ",")
+				if val, ok := values[ns]; ok {
+					fmt.Fprintf(csv, "%f", val)
+				}
 			}
+
+			fmt.Fprint(csv, "\\n")
+			continue
 		}
 
-		for iv, variables := range varRefs {
+		for ix, expr := range bandExpr.Expressions {
 			noData := false
-			for _, variable := range variables {
+			for _, variable := range bandExpr.ExprVarRef[ix] {
 				if _, ok := values[variable]; !ok {
 					noData = true
 					break
@@ -139,24 +109,24 @@ func (dm *DrillMerger) Run(suffix string, namespaces []string, templateFileName 
 				continue
 			}
 
-			parameters := make(map[string]interface{}, len(variables))
-			for _, variable := range variables {
+			parameters := make(map[string]interface{}, len(bandExpr.ExprVarRef[ix]))
+			for _, variable := range bandExpr.ExprVarRef[ix] {
 				parameters[variable] = values[variable]
 			}
 
-			result, err := expressions[iv].Evaluate(parameters)
+			result, err := expr.Evaluate(parameters)
 			if err != nil {
-				dm.Error <- fmt.Errorf("WPS: Eval '%v' error: %v", bandEval[iv], err)
+				dm.Error <- fmt.Errorf("WPS: Eval '%v' error: %v", bandExpr.ExprText[ix], err)
 				return
 			}
 
-			val, ok := result.(float64)
+			val, ok := result.(float32)
 			if !ok {
-				dm.Error <- fmt.Errorf("WPS: Failed to cast eval results '%v' to float64, %v", val, bandEval[iv])
+				dm.Error <- fmt.Errorf("WPS: Failed to cast eval results '%v' to float32, %v", val, bandExpr.ExprText[ix])
 				return
 			}
 
-			fmt.Fprintf(csv, "%f", val)
+			fmt.Fprintf(csv, "%f", float64(val))
 		}
 
 		fmt.Fprint(csv, "\\n")

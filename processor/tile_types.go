@@ -14,6 +14,7 @@ type ScaleParams struct {
 
 type ConfigPayLoad struct {
 	NameSpaces            []string
+	BandExpr              *utils.BandExpressions
 	ScaleParams           ScaleParams
 	Palette               *utils.Palette
 	Mask                  *utils.Mask

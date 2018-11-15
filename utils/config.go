@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"github.com/CloudyKit/jet"
+	goeval "github.com/edisonguo/govaluate"
 )
 
 var EtcDir = "."
@@ -26,12 +27,13 @@ var DataDir = "."
 const ReservedMemorySize = 1.5 * 1024 * 1024 * 1024
 
 type ServiceConfig struct {
-	OWSHostname     string `json:"ows_hostname"`
-	NameSpace       string
-	MASAddress      string   `json:"mas_address"`
-	WorkerNodes     []string `json:"worker_nodes"`
-	OWSClusterNodes []string `json:"ows_cluster_nodes"`
-	TempDir         string   `json:"temp_dir"`
+	OWSHostname       string `json:"ows_hostname"`
+	NameSpace         string
+	MASAddress        string   `json:"mas_address"`
+	WorkerNodes       []string `json:"worker_nodes"`
+	OWSClusterNodes   []string `json:"ows_cluster_nodes"`
+	TempDir           string   `json:"temp_dir"`
+	MaxGrpcBufferSize int      `json:"max_grpc_buffer_size"`
 }
 
 // CacheLevel contains the source files of one layer as well as the
@@ -59,6 +61,14 @@ type Palette struct {
 	Colours     []color.RGBA `json:"colours"`
 }
 
+type BandExpressions struct {
+	ExprText    []string
+	Expressions []*goeval.EvaluableExpression
+	VarList     []string
+	ExprNames   []string
+	ExprVarRef  [][]string
+}
+
 // Layer contains all the details that a layer needs
 // to be published and rendered
 type Layer struct {
@@ -84,6 +94,7 @@ type Layer struct {
 	ResFilter                *int     `json:"resolution_filter"`
 	Dates                    []string `json:"dates"`
 	RGBProducts              []string `json:"rgb_products"`
+	RGBExpressions           *BandExpressions
 	Mask                     *Mask    `json:"mask"`
 	OffsetValue              float64  `json:"offset_value"`
 	ClipValue                float64  `json:"clip_value"`
@@ -103,7 +114,6 @@ type Layer struct {
 	GrpcWcsConcPerNode       int      `json:"grpc_wcs_conc_per_node"`
 	WmsPolygonShardConcLimit int      `json:"wms_polygon_shard_conc_limit"`
 	WcsPolygonShardConcLimit int      `json:"wcs_polygon_shard_conc_limit"`
-	BandEval                 []string `json:"band_eval"`
 	BandStrides              int      `json:"band_strides"`
 	WmsMaxWidth              int      `json:"wms_max_width"`
 	WmsMaxHeight             int      `json:"wms_max_height"`
@@ -112,6 +122,7 @@ type Layer struct {
 	FeatureInfoMaxDataLinks  int      `json:"feature_info_max_data_links"`
 	FeatureInfoDataLinkUrl   string   `json:"feature_info_data_link_url"`
 	FeatureInfoBands         []string `json:"feature_info_bands"`
+	FeatureInfoExpressions   *BandExpressions
 }
 
 // Process contains all the details that a WPS needs
@@ -138,7 +149,7 @@ type LitData struct {
 	DataType      string   `json:"data_type"`
 	DataTypeRef   string   `json:"data_type_ref"`
 	AllowedValues []string `json:"allowed_values"`
-	MinOccurs     string   `json:"min_occurs"`
+	MinOccurs     int      `json:"min_occurs"`
 }
 
 // CompData contains the description of a variable used to compute a
@@ -150,7 +161,7 @@ type CompData struct {
 	MimeType   string `json:"mime_type"`
 	Encoding   string `json:"encoding"`
 	Schema     string `json:"schema"`
-	MinOccurs  string `json:"min_occurs"`
+	MinOccurs  int    `json:"min_occurs"`
 }
 
 // Config is the struct representing the configuration
@@ -449,6 +460,20 @@ func LoadAllConfigFiles(rootDir string, verbose bool) (map[string]*Config, error
 					if config.Layers[i].Styles[j].LegendHeight <= 0 {
 						config.Layers[i].Styles[j].LegendHeight = DefaultLegendHeight
 					}
+
+					bandExpr, err := ParseBandExpressions(config.Layers[i].Styles[j].RGBProducts)
+					if err != nil {
+						return fmt.Errorf("Layer %v, style %v, RGBExpression parsing error: %v", config.Layers[i].Name, config.Layers[i].Styles[j].Name, err)
+					}
+					config.Layers[i].Styles[j].RGBExpressions = bandExpr
+
+					if len(config.Layers[i].Styles[j].FeatureInfoBands) > 0 {
+						featureInfoExpr, err := ParseBandExpressions(config.Layers[i].Styles[j].FeatureInfoBands)
+						if err != nil {
+							return fmt.Errorf("Layer %v, style %v, FeatureInfoExpression parsing error: %v", config.Layers[i].Name, config.Layers[i].Styles[j].Name, err)
+						}
+						config.Layers[i].Styles[j].FeatureInfoExpressions = featureInfoExpr
+					}
 				}
 			}
 		}
@@ -524,7 +549,7 @@ func (config *Config) GetLayerDates(iLayer int, verbose bool) {
 	step := time.Minute * time.Duration(60*24*layer.StepDays+60*layer.StepHours+layer.StepMinutes)
 
 	if strings.TrimSpace(strings.ToLower(layer.TimeGen)) == "mas" {
-		timestamps, token := GenerateDatesMas(layer.StartISODate, layer.EndISODate, config.ServiceConfig.MASAddress, layer.DataSource, layer.RGBProducts, step, layer.TimestampToken, verbose)
+		timestamps, token := GenerateDatesMas(layer.StartISODate, layer.EndISODate, config.ServiceConfig.MASAddress, layer.DataSource, layer.RGBExpressions.VarList, step, layer.TimestampToken, verbose)
 		if len(timestamps) > 0 && len(token) > 0 {
 			config.Layers[iLayer].Dates = timestamps
 			config.Layers[iLayer].TimestampToken = token
@@ -556,7 +581,7 @@ func (config *Config) GetLayerDates(iLayer int, verbose bool) {
 		}
 
 		if useMasTimestamps {
-			masTimestamps, token := GenerateDatesMas(startDate, endDate, config.ServiceConfig.MASAddress, layer.DataSource, layer.RGBProducts, 0, layer.TimestampToken, verbose)
+			masTimestamps, token := GenerateDatesMas(startDate, endDate, config.ServiceConfig.MASAddress, layer.DataSource, layer.RGBExpressions.VarList, 0, layer.TimestampToken, verbose)
 			if len(token) == 0 {
 				log.Printf("Failed to get MAS timestamps")
 				return
@@ -624,6 +649,73 @@ func (config *Config) GetLayerDates(iLayer int, verbose bool) {
 		config.Layers[iLayer].EffectiveStartDate = config.Layers[iLayer].Dates[0]
 		config.Layers[iLayer].EffectiveEndDate = config.Layers[iLayer].Dates[nDates-1]
 	}
+}
+
+func ParseBandExpressions(bands []string) (*BandExpressions, error) {
+	bandExpr := &BandExpressions{ExprText: bands}
+	varFound := make(map[string]bool)
+	hasExprAll := false
+	for ib, bandRaw := range bands {
+		parts := strings.Split(bandRaw, "=")
+		if len(parts) == 0 {
+			return nil, fmt.Errorf("invalid expression: %v", bandRaw)
+		}
+		for ip, p := range parts {
+			parts[ip] = strings.TrimSpace(p)
+			if len(parts[ip]) == 0 {
+				return nil, fmt.Errorf("invalid expression: %v", bandRaw)
+			}
+		}
+		var band string
+		if len(parts) == 1 {
+			band = parts[0]
+		} else if len(parts) == 2 {
+			band = parts[1]
+		} else {
+			return nil, fmt.Errorf("invalid expression: %v", bandRaw)
+		}
+
+		expr, err := goeval.NewEvaluableExpression(band)
+		if err != nil {
+			return nil, err
+		}
+		bandExpr.Expressions = append(bandExpr.Expressions, expr)
+
+		bandExpr.ExprVarRef = append(bandExpr.ExprVarRef, []string{})
+		bandVarFound := make(map[string]bool)
+		for _, token := range expr.Tokens() {
+			if token.Kind == goeval.VARIABLE {
+				varName, ok := token.Value.(string)
+				if !ok {
+					return nil, fmt.Errorf("variable token '%v' failed to cast string for band '%v'", token.Value, band)
+				}
+
+				if _, found := varFound[varName]; !found {
+					varFound[varName] = true
+					bandExpr.VarList = append(bandExpr.VarList, varName)
+				}
+
+				if _, found := bandVarFound[varName]; !found {
+					bandVarFound[varName] = true
+					bandExpr.ExprVarRef[ib] = append(bandExpr.ExprVarRef[ib], varName)
+				}
+
+			} else {
+				hasExprAll = true
+			}
+		}
+
+		if len(parts) == 1 {
+			bandExpr.ExprNames = append(bandExpr.ExprNames, band)
+		} else if len(parts) == 2 {
+			bandExpr.ExprNames = append(bandExpr.ExprNames, parts[0])
+		}
+	}
+
+	if !hasExprAll {
+		bandExpr.Expressions = nil
+	}
+	return bandExpr, nil
 }
 
 // LoadConfigFileTemplate parses the config as a Jet
@@ -712,8 +804,28 @@ func (config *Config) LoadConfigFile(configFile string, verbose bool) error {
 		}
 	}
 
+	if config.ServiceConfig.MaxGrpcBufferSize > 0 && config.ServiceConfig.MaxGrpcBufferSize < 10 {
+		config.ServiceConfig.MaxGrpcBufferSize = 0
+		log.Printf("%v: MaxGrpcBufferSize is set to less than 10MB, reset to unlimited", configFile)
+	}
+
+	config.ServiceConfig.MaxGrpcBufferSize = config.ServiceConfig.MaxGrpcBufferSize * 1024 * 1024
+
 	for i, layer := range config.Layers {
+		bandExpr, err := ParseBandExpressions(layer.RGBProducts)
+		if err != nil {
+			return fmt.Errorf("Layer %v RGBExpression parsing error: %v", layer.Name, err)
+		}
+		config.Layers[i].RGBExpressions = bandExpr
+
+		featureInfoExpr, err := ParseBandExpressions(layer.FeatureInfoBands)
+		if err != nil {
+			return fmt.Errorf("Layer %v FeatureInfoExpression parsing error: %v", layer.Name, err)
+		}
+		config.Layers[i].FeatureInfoExpressions = featureInfoExpr
+
 		config.GetLayerDates(i, verbose)
+
 		config.Layers[i].OWSHostname = config.ServiceConfig.OWSHostname
 
 		if config.Layers[i].MaxGrpcRecvMsgSize <= DefaultRecvMsgSize {
@@ -786,6 +898,15 @@ func (config *Config) LoadConfigFile(configFile string, verbose bool) error {
 			approx := true
 			config.Processes[i].Approx = &approx
 		}
+
+		for ids, ds := range proc.DataSources {
+			bandExpr, err := ParseBandExpressions(ds.RGBProducts)
+			if err != nil {
+				return fmt.Errorf("Process %v, data source %v, RGBExpression parsing error: %v", proc.Identifier, ids, err)
+			}
+			config.Processes[i].DataSources[ids].RGBExpressions = bandExpr
+		}
+
 	}
 	return nil
 }

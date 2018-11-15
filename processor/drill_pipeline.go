@@ -25,7 +25,7 @@ func InitDrillPipeline(ctx context.Context, apiAddr string, rpcAddrs []string, i
 	}
 }
 
-func (dp *DrillPipeline) Process(geoReq GeoDrillRequest, suffix string, templateFileName string, bandEval []string, bandStrides int, approx bool) chan string {
+func (dp *DrillPipeline) Process(geoReq GeoDrillRequest, suffix string, templateFileName string, bandStrides int, approx bool) chan string {
 	grpcDriller := NewDrillGRPC(dp.Context, dp.RPCAddrs, dp.Error)
 	if grpcDriller == nil {
 		dp.Error <- fmt.Errorf("Couldn't instantiate RPCDriller %s/n", dp.RPCAddrs)
@@ -44,7 +44,7 @@ func (dp *DrillPipeline) Process(geoReq GeoDrillRequest, suffix string, template
 
 	go i.Run()
 	go grpcDriller.Run(bandStrides)
-	go dm.Run(suffix, geoReq.NameSpaces, templateFileName, bandEval)
+	go dm.Run(suffix, geoReq.NameSpaces, templateFileName, geoReq.BandExpr)
 
 	return dm.Out
 }
