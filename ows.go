@@ -235,9 +235,10 @@ func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r
 			styleLayer = &conf.Layers[idx].Styles[styleIdx]
 		}
 
-		geoReq := &proc.GeoTileRequest{ConfigPayLoad: proc.ConfigPayLoad{NameSpaces: styleLayer.RGBProducts,
-			Mask:    styleLayer.Mask,
-			Palette: styleLayer.Palette,
+		geoReq := &proc.GeoTileRequest{ConfigPayLoad: proc.ConfigPayLoad{NameSpaces: styleLayer.RGBExpressions.VarList,
+			BandExpr: styleLayer.RGBExpressions,
+			Mask:     styleLayer.Mask,
+			Palette:  styleLayer.Palette,
 			ScaleParams: proc.ScaleParams{Offset: styleLayer.OffsetValue,
 				Scale: styleLayer.ScaleValue,
 				Clip:  styleLayer.ClipValue,
@@ -322,7 +323,7 @@ func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r
 		timeoutCtx, timeoutCancel := context.WithTimeout(context.Background(), time.Duration(conf.Layers[idx].WmsTimeout)*time.Second)
 		defer timeoutCancel()
 
-		tp := proc.InitTilePipeline(ctx, conf.ServiceConfig.MASAddress, conf.ServiceConfig.WorkerNodes, conf.Layers[idx].MaxGrpcRecvMsgSize, conf.Layers[idx].WmsPolygonShardConcLimit, errChan)
+		tp := proc.InitTilePipeline(ctx, conf.ServiceConfig.MASAddress, conf.ServiceConfig.WorkerNodes, conf.Layers[idx].MaxGrpcRecvMsgSize, conf.Layers[idx].WmsPolygonShardConcLimit, conf.ServiceConfig.MaxGrpcBufferSize, errChan)
 		select {
 		case res := <-tp.Process(geoReq, *verbose):
 			scaleParams := utils.ScaleParams{Offset: geoReq.ScaleParams.Offset,
@@ -511,9 +512,10 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 		_, isWorker := query["wbbox"]
 
 		getGeoTileRequest := func(width int, height int, bbox []float64, offX int, offY int) *proc.GeoTileRequest {
-			geoReq := &proc.GeoTileRequest{ConfigPayLoad: proc.ConfigPayLoad{NameSpaces: styleLayer.RGBProducts,
-				Mask:    styleLayer.Mask,
-				Palette: styleLayer.Palette,
+			geoReq := &proc.GeoTileRequest{ConfigPayLoad: proc.ConfigPayLoad{NameSpaces: styleLayer.RGBExpressions.VarList,
+				BandExpr: styleLayer.RGBExpressions,
+				Mask:     styleLayer.Mask,
+				Palette:  styleLayer.Palette,
 				ScaleParams: proc.ScaleParams{Offset: styleLayer.OffsetValue,
 					Scale: styleLayer.ScaleValue,
 					Clip:  styleLayer.ClipValue,
@@ -776,7 +778,7 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 
 		isInit := false
 
-		tp := proc.InitTilePipeline(ctx, conf.ServiceConfig.MASAddress, conf.ServiceConfig.WorkerNodes, conf.Layers[idx].MaxGrpcRecvMsgSize, conf.Layers[idx].WcsPolygonShardConcLimit, errChan)
+		tp := proc.InitTilePipeline(ctx, conf.ServiceConfig.MASAddress, conf.ServiceConfig.WorkerNodes, conf.Layers[idx].MaxGrpcRecvMsgSize, conf.Layers[idx].WcsPolygonShardConcLimit, conf.ServiceConfig.MaxGrpcBufferSize, errChan)
 		for ir, geoReq := range workerTileRequests[0] {
 			if *verbose {
 				Info.Printf("WCS: processing tile (%d of %d): xOff:%v, yOff:%v, width:%v, height:%v", ir+1, len(workerTileRequests[0]), geoReq.OffX, geoReq.OffY, geoReq.Width, geoReq.Height)
@@ -956,15 +958,17 @@ func serveWPS(ctx context.Context, params utils.WPSParams, conf *utils.Config, r
 			http.Error(w, err.Error(), 500)
 		}
 	case "DescribeProcess":
-		for _, process := range conf.Processes {
-			if process.Identifier == *params.Identifier {
-				err := utils.ExecuteWriteTemplateFile(w, process,
-					utils.DataDir+"/templates/WPS_DescribeProcess.tpl")
-				if err != nil {
-					http.Error(w, err.Error(), 500)
-				}
-				break
-			}
+		idx, err := utils.GetProcessIndex(params, conf)
+		if err != nil {
+			Error.Printf("Requested process not found: %v, %v\n", err, reqURL)
+			http.Error(w, fmt.Sprintf("%v: %s", err, reqURL), 400)
+			return
+		}
+		process := conf.Processes[idx]
+		err = utils.ExecuteWriteTemplateFile(w, process,
+			utils.DataDir+"/templates/WPS_DescribeProcess.tpl")
+		if err != nil {
+			http.Error(w, err.Error(), 500)
 		}
 	case "Execute":
 		idx, err := utils.GetProcessIndex(params, conf)
@@ -1060,7 +1064,8 @@ func serveWPS(ctx context.Context, params utils.WPSParams, conf *utils.Config, r
 			geoReq := proc.GeoDrillRequest{Geometry: string(feat),
 				CRS:        "EPSG:4326",
 				Collection: dataSource.DataSource,
-				NameSpaces: dataSource.RGBProducts,
+				NameSpaces: dataSource.RGBExpressions.VarList,
+				BandExpr:   dataSource.RGBExpressions,
 				StartTime:  startDateTime,
 				EndTime:    endDateTime,
 			}
@@ -1070,7 +1075,7 @@ func serveWPS(ctx context.Context, params utils.WPSParams, conf *utils.Config, r
 			if dataSource.BandStrides <= 0 {
 				dataSource.BandStrides = 1
 			}
-			proc := dp.Process(geoReq, suffix, dataSource.MetadataURL, dataSource.BandEval, dataSource.BandStrides, *process.Approx)
+			proc := dp.Process(geoReq, suffix, dataSource.MetadataURL, dataSource.BandStrides, *process.Approx)
 
 			select {
 			case res := <-proc:
@@ -1119,8 +1124,28 @@ func generalHandler(conf *utils.Config, w http.ResponseWriter, r *http.Request) 
 	}
 
 	if _, fOK := query["service"]; !fOK {
-		http.Error(w, fmt.Sprintf("Not a OWS request. Request does not contain a 'service' parameter."), 400)
-		return
+		canInferService := false
+		if request, hasReq := query["request"]; hasReq {
+			reqService := map[string]string{
+				"GetFeatureInfo":   "WMS",
+				"GetMap":           "WMS",
+				"DescribeLayer":    "WMS",
+				"GetLegendGraphic": "WMS",
+				"DescribeCoverage": "WCS",
+				"GetCoverage":      "WCS",
+				"DescribeProcess":  "WPS",
+				"Execute":          "WPS",
+			}
+			if service, found := reqService[request[0]]; found {
+				query["service"] = []string{service}
+				canInferService = true
+			}
+		}
+
+		if !canInferService {
+			http.Error(w, fmt.Sprintf("Not a OWS request. Request does not contain a 'service' parameter."), 400)
+			return
+		}
 	}
 
 	switch query["service"][0] {

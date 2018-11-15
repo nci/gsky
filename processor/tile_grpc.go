@@ -5,19 +5,15 @@ import (
 	"log"
 	"math"
 	"math/rand"
-	"runtime"
 	"sort"
 	"strconv"
 	"sync"
 	"time"
 
-	"github.com/nci/go.procmeminfo"
 	pb "github.com/nci/gsky/worker/gdalservice"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 )
-
-const ReservedMemorySize = 1.5 * 1024 * 1024 * 1024
 
 type GeoRasterGRPC struct {
 	Context               context.Context
@@ -27,9 +23,10 @@ type GeoRasterGRPC struct {
 	Clients               []string
 	MaxGrpcRecvMsgSize    int
 	PolygonShardConcLimit int
+	MaxGrpcBufferSize     int
 }
 
-func NewRasterGRPC(ctx context.Context, serverAddress []string, maxGrpcRecvMsgSize int, polygonShardConcLimit int, errChan chan error) *GeoRasterGRPC {
+func NewRasterGRPC(ctx context.Context, serverAddress []string, maxGrpcRecvMsgSize int, polygonShardConcLimit int, maxGrpcBufferSize int, errChan chan error) *GeoRasterGRPC {
 	return &GeoRasterGRPC{
 		Context:               ctx,
 		In:                    make(chan *GeoTileGranule, 100),
@@ -38,16 +35,18 @@ func NewRasterGRPC(ctx context.Context, serverAddress []string, maxGrpcRecvMsgSi
 		Clients:               serverAddress,
 		MaxGrpcRecvMsgSize:    maxGrpcRecvMsgSize,
 		PolygonShardConcLimit: polygonShardConcLimit,
+		MaxGrpcBufferSize:     maxGrpcBufferSize,
 	}
 }
 
-func (gi *GeoRasterGRPC) Run(polyLimiter *ConcLimiter, verbose bool) {
+func (gi *GeoRasterGRPC) Run(polyLimiter *ConcLimiter, varList []string, verbose bool) {
 	if verbose {
 		defer log.Printf("tile grpc done")
 	}
 	defer close(gi.Out)
 
 	var grans []*GeoTileGranule
+	availNamespaces := make(map[string]bool)
 	i := 0
 	imageSize := 0
 	for gran := range gi.In {
@@ -61,6 +60,10 @@ func (gi *GeoRasterGRPC) Run(polyLimiter *ConcLimiter, verbose bool) {
 				imageSize = gran.Height * gran.Width
 			}
 
+			if _, found := availNamespaces[gran.NameSpace]; !found {
+				availNamespaces[gran.NameSpace] = true
+			}
+
 			i++
 		}
 	}
@@ -69,40 +72,19 @@ func (gi *GeoRasterGRPC) Run(polyLimiter *ConcLimiter, verbose bool) {
 		return
 	}
 
+	for _, v := range varList {
+		if _, found := availNamespaces[v]; !found {
+			gi.sendError(fmt.Errorf("band '%v' not found", v))
+			return
+		}
+	}
+
 	g0 := grans[0]
 	effectivePoolSize := int(math.Ceil(float64(len(grans)) / float64(g0.GrpcConcLimit)))
 	if effectivePoolSize < 1 {
 		effectivePoolSize = 1
 	} else if effectivePoolSize > len(gi.Clients) {
 		effectivePoolSize = len(gi.Clients)
-	}
-
-	opts := []grpc.DialOption{
-		grpc.WithInsecure(),
-		grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(gi.MaxGrpcRecvMsgSize)),
-	}
-
-	clientIdx := make([]int, len(gi.Clients))
-	for ic := range clientIdx {
-		clientIdx[ic] = ic
-	}
-	rand.Shuffle(len(clientIdx), func(i, j int) { clientIdx[i], clientIdx[j] = clientIdx[j], clientIdx[i] })
-
-	var connPool []*grpc.ClientConn
-	for i := 0; i < effectivePoolSize; i++ {
-		conn, err := grpc.Dial(gi.Clients[clientIdx[i]], opts...)
-		if err != nil {
-			log.Printf("gRPC connection problem: %v", err)
-			continue
-		}
-		defer conn.Close()
-
-		connPool = append(connPool, conn)
-	}
-
-	if len(connPool) == 0 {
-		gi.Error <- fmt.Errorf("All gRPC servers offline")
-		return
 	}
 
 	dataSize, err := getDataSize(g0.RasterType)
@@ -148,22 +130,19 @@ func (gi *GeoRasterGRPC) Run(polyLimiter *ConcLimiter, verbose bool) {
 		}
 
 		accumLen += len(polyGran)
-		if accumLen >= g0.GrpcConcLimit*len(connPool) {
+		if accumLen >= g0.GrpcConcLimit*effectivePoolSize {
 			accumLen = 0
 			iShard++
 		}
 
 	}
 
-	meminfo := procmeminfo.MemInfo{}
-	err = meminfo.Update()
-
-	if err == nil {
+	if gi.MaxGrpcBufferSize > 0 {
 		// We figure the sizes of each shard and then sort them in descending order.
 		// We then compute the total size of the top PolygonShardConcLimit shards.
 		// If the total size of the top shards is below memory threshold, we are good to go.
 		shardSizes := make([]int, len(gransByShard))
-		iShard := 0
+		iShard = 0
 		for _, polyGran := range gransByShard {
 			shardSizes[iShard] = imageSize * dataSize * len(polyGran)
 			iShard++
@@ -181,23 +160,39 @@ func (gi *GeoRasterGRPC) Run(polyLimiter *ConcLimiter, verbose bool) {
 			requestedSize += shardSizes[i]
 		}
 
-		freeMem := int(meminfo.Available())
-		var mem runtime.MemStats
-		runtime.ReadMemStats(&mem)
-		availableMem := freeMem + int(mem.HeapIdle)
-
-		if availableMem-requestedSize <= ReservedMemorySize {
-			log.Printf("Out of memory, freeMem:%v, requested:%v", freeMem, requestedSize)
+		if requestedSize > gi.MaxGrpcBufferSize {
+			log.Printf("requested size greater than MaxGrpcBufferSize, requested:%v, MaxGrpcBufferSize:%v", requestedSize, gi.MaxGrpcBufferSize)
 			gi.sendError(fmt.Errorf("Server resources exhausted"))
 			return
 		}
+	}
 
-	} else {
-		// If we have error obtaining meminfo,
-		// we assume that we have enough memory.
-		// This can happen if the OS doesn't support
-		// /proc/meminfo
-		log.Printf("meminfo error: %v", err)
+	opts := []grpc.DialOption{
+		grpc.WithInsecure(),
+		grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(gi.MaxGrpcRecvMsgSize)),
+	}
+
+	clientIdx := make([]int, len(gi.Clients))
+	for ic := range clientIdx {
+		clientIdx[ic] = ic
+	}
+	rand.Shuffle(len(clientIdx), func(i, j int) { clientIdx[i], clientIdx[j] = clientIdx[j], clientIdx[i] })
+
+	var connPool []*grpc.ClientConn
+	for i := 0; i < effectivePoolSize; i++ {
+		conn, err := grpc.Dial(gi.Clients[clientIdx[i]], opts...)
+		if err != nil {
+			log.Printf("gRPC connection problem: %v", err)
+			continue
+		}
+		defer conn.Close()
+
+		connPool = append(connPool, conn)
+	}
+
+	if len(connPool) == 0 {
+		gi.Error <- fmt.Errorf("All gRPC servers offline")
+		return
 	}
 
 	var wg sync.WaitGroup
