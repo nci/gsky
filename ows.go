@@ -501,8 +501,8 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 			styleLayer = &conf.Layers[idx].Styles[styleIdx]
 		}
 
-		maxXTileSize := 1024
-		maxYTileSize := 1024
+		maxXTileSize := conf.Layers[idx].WcsMaxTileWidth
+		maxYTileSize := conf.Layers[idx].WcsMaxTileHeight
 		checkpointThreshold := 300
 		minTilesPerWorker := 5
 

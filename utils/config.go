@@ -119,6 +119,8 @@ type Layer struct {
 	WmsMaxHeight             int      `json:"wms_max_height"`
 	WcsMaxWidth              int      `json:"wcs_max_width"`
 	WcsMaxHeight             int      `json:"wcs_max_height"`
+	WcsMaxTileWidth          int      `json:"wcs_max_tile_width"`
+	WcsMaxTileHeight         int      `json:"wcs_max_tile_height"`
 	FeatureInfoMaxDataLinks  int      `json:"feature_info_max_data_links"`
 	FeatureInfoDataLinkUrl   string   `json:"feature_info_data_link_url"`
 	FeatureInfoBands         []string `json:"feature_info_bands"`
@@ -539,6 +541,8 @@ const DefaultWmsMaxWidth = 512
 const DefaultWmsMaxHeight = 512
 const DefaultWcsMaxWidth = 50000
 const DefaultWcsMaxHeight = 30000
+const DefaultWcsMaxTileWidth = 1024
+const DefaultWcsMaxTileHeight = 1024
 
 const DefaultLegendWidth = 160
 const DefaultLegendHeight = 320
@@ -882,6 +886,14 @@ func (config *Config) LoadConfigFile(configFile string, verbose bool) error {
 
 		if config.Layers[i].WcsMaxHeight <= 0 {
 			config.Layers[i].WcsMaxHeight = DefaultWcsMaxHeight
+		}
+
+		if config.Layers[i].WcsMaxTileWidth <= 0 {
+			config.Layers[i].WcsMaxTileWidth = DefaultWcsMaxTileWidth
+		}
+
+		if config.Layers[i].WcsMaxTileHeight <= 0 {
+			config.Layers[i].WcsMaxTileHeight = DefaultWcsMaxTileHeight
 		}
 	}
 
