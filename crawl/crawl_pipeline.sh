@@ -3,6 +3,7 @@ set -e
 which concurrent
 which gsky-crawl
 set +e
+crawl_job_id='u39'  # AVS
 
 conc_limit=${CRAWL_CONC_LIMIT:-16}
 
@@ -14,7 +15,7 @@ else
 	data_dir="$CRAWL_OUTPUT_DIR"
 fi
 
-mkdir -p $data_dir
+#mkdir -p $data_dir # AVS commented out
 
 if [ -z "$CRAWL_FILE_LIST" ]
 then
@@ -31,9 +32,10 @@ then
 	set -u
 	
 	job_id="${find_dir//[\/]/_}"
-	file_list=$data_dir/${job_id}.filelist
+#	file_list=$data_dir/${job_id}.filelist
+	file_list=$data_dir/${crawl_job_id}.filelist # AVS
 
-	set -ex
+	set +ex # AVS changed from -ex to +ex
 	find $find_dir -name "$file_pattern" $find_params > ${file_list}
 	set +x
 else
@@ -43,21 +45,19 @@ else
 	filename=$(basename $file_list)
 	job_id=${filename%.*}
 fi
-
-crawl_file="$data_dir/${job_id}_gdal.tsv.gz"
+#crawl_file="$data_dir/${job_id}_gdal.tsv.gz"
+crawl_file="$data_dir/${crawl_job_id}_gdal.tsv.gz" # AVS
 
 echo "INFO: file list to crawl: $file_list"
 echo "INFO: crawl output file: $crawl_file"
 
 gdal_json() {
 	src_file="$1"
-
 	json=$(gsky-crawl $src_file)
 	echo -e "$src_file\tgdal\t$json"
 }
-
 export -f gdal_json
 export GDAL_PAM_ENABLED=NO
-
-cat $file_list | concurrent -i -l $conc_limit xargs bash -c 'gdal_json "$@"' _ | gzip > $crawl_file
+#cat $file_list | concurrent -i -l $conc_limit xargs bash -c 'gdal_json "$@"' _ | gzip > $crawl_file
+tail $file_list | concurrent -i -l $conc_limit xargs bash -c 'gdal_json "$@"' _ | gzip > $crawl_file
 
