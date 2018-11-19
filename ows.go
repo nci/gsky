@@ -307,14 +307,13 @@ func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r
 				}
 				w.Write(out)
 			} else {
-				emptyTile := &utils.ByteRaster{Height: *params.Height, Width: *params.Width}
-				out, err := utils.EncodePNG([]*utils.ByteRaster{emptyTile}, nil)
+				out, err := utils.GetEmptyTile("", *params.Height, *params.Width)
 				if err != nil {
-					Info.Printf("Error in the utils.EncodePNG: %v\n", err)
+					Info.Printf("Error in the utils.GetEmptyTile(): %v\n", err)
 					http.Error(w, err.Error(), 500)
-					return
+				} else {
+					w.Write(out)
 				}
-				w.Write(out)
 			}
 
 			return
@@ -339,9 +338,9 @@ func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r
 			}
 
 			if norm[0].Width == 0 || norm[0].Height == 0 {
-				out, err := utils.GetEmptyTile(utils.DataDir+"/data_unavailable.png", *params.Height, *params.Width)
+				out, err := utils.GetEmptyTile(conf.Layers[idx].NoDataLegendPath, *params.Height, *params.Width)
 				if err != nil {
-					Info.Printf("Error in the utils.GetEmptyTile(data_unavailable.png): %v\n", err)
+					Info.Printf("Error in the utils.GetEmptyTile(): %v\n", err)
 					http.Error(w, err.Error(), 500)
 				} else {
 					w.Write(out)

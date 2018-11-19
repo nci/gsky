@@ -125,6 +125,7 @@ type Layer struct {
 	FeatureInfoDataLinkUrl   string   `json:"feature_info_data_link_url"`
 	FeatureInfoBands         []string `json:"feature_info_bands"`
 	FeatureInfoExpressions   *BandExpressions
+	NoDataLegendPath         string `json:"nodata_legend_path"`
 }
 
 // Process contains all the details that a WPS needs
