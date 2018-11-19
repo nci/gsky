@@ -337,7 +337,7 @@ func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r
 				return
 			}
 
-			if norm[0].Width == 0 || norm[0].Height == 0 {
+			if len(norm) == 0 || norm[0].Width == 0 || norm[0].Height == 0 {
 				out, err := utils.GetEmptyTile(conf.Layers[idx].NoDataLegendPath, *params.Height, *params.Width)
 				if err != nil {
 					Info.Printf("Error in the utils.GetEmptyTile(): %v\n", err)
