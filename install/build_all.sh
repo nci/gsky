@@ -3,7 +3,7 @@
 # build_all.sh
 # Installs all dependencies for GSKY and build the GSKY environment on a VM
 # Created on: 23 October, 2018; Arapaut V. Sivaprasad.
-# Last Revision: 9 Nov, 2018; Arapaut V. Sivaprasad.
+# Last Revision: 21 Nov, 2018; Arapaut V. Sivaprasad.
 # Adapted from 'build_deps.sh' and 'build_gsky.sh' by Jian Edison Guo.
 #####################################################################
 # Usage: 
@@ -19,18 +19,18 @@
 # If any of them errors out, you can disable those above it and run the script again.
 git="Yes"; devtools="Yes"; dep1="Yes"; dep2="Yes"; dep3="Yes"; dep4="Yes"; dep5="Yes"; dep6="Yes"; 
 dep7="Yes"; dep8="Yes"; dep9="Yes"; dep10="Yes"; dep11="Yes"; dep12="Yes"; dep13="Yes"; dep14="Yes"; 
-dep15="Yes"; dep16="Yes"; dep17="Yes"; dep18="Yes"
+dep15="Yes"; dep16="Yes"; dep17="Yes"; dep18="Yes"; dep19="Yes"
+#------------------------------------------------------------------------------------------------------------------
 
 home=`pwd`
+repo=asivapra # production repo: nci; Dev repo: asivapra
 if [ $git ]
 then
-	repo=asivapra # production repo: nci; Dev repo: asivapra
 	echo "Cloning the GIT repositry: $repo"
 	rm -rf gsky
 	# Git clone the required files to your own workspace. These will be owned by root
 	git clone https://github.com/${repo}/gsky.git
 fi
-
 # Installation happens in the required dirs accessible only by root. 
 # The files created in the 'install' dir will be deleted on success.
 mkdir -p gsky/install
@@ -45,15 +45,15 @@ then
 	echo "---> Installing the Development Tools and other dependencies."
 	# Install the development tools under CentOS
 	# 'yes|' means no confirmation before proceeding with removal and installation
-	yes|yum groupremove "Development Tools"
-	yes|yum groupinstall "Development Tools"
-	yes|yum remove wget
-	yes|yum install wget
-	yes|yum remove cmake
-	yes|yum install cmake
-	yes|yum remove python-devel
-	yes|yum install python-devel
-	yes|yum install readline-devel
+	yum -y groupremove "Development Tools"
+	yum -y groupinstall "Development Tools"
+	yum -y remove wget
+	yum -y install wget
+	yum -y remove cmake
+	yum -y install cmake
+	yum -y remove python-devel
+	yum -y install python-devel
+	yum -y install readline-devel
 fi
 #------------------------------------------------------------------------------------------------------------------
 # Install GSKY-specific dependencies
@@ -74,7 +74,7 @@ then
 	)
 	rm -rf jpeg-${v}
 	rm -f jpegsrc.v${v}.tar.gz
-	echo "Finished installing: Independent JPEG Group's free JPEG software"
+	echo "1. Finished installing: Independent JPEG Group's free JPEG software"
 fi
 #------------------------------------------------------------------------------------------------------------------
 if [ $dep2 ]
@@ -94,7 +94,7 @@ then
 	)
 	rm -rf openjpeg-${v}
 	rm -f openjpeg-v${v}.tar.gz
-	echo "Finished installing: OPENJPEG Library and Applications"
+	echo "2.	 Finished installing: OPENJPEG Library and Applications"
 fi
 #------------------------------------------------------------------------------------------------------------------
 if [ $dep3 ]
@@ -114,7 +114,7 @@ then
 	)
 	rm -rf geos-${v}
 	rm -f geos-${v}.tar
-	echo "Finished installing: GEOS - Geometry Engine, Open Source"
+	echo "3.	 Finished installing: GEOS - Geometry Engine, Open Source"
 fi
 #------------------------------------------------------------------------------------------------------------------
 if [ $dep4 ]
@@ -136,7 +136,7 @@ then
 	rm -rf proj-${v}
 	rm -f proj-${v}.tar.gz*
 	rm -f proj-datumgrid-${vd}.zip
-	echo "Finished installing: Cartographic Projection Procedures for the UNIX Environment"
+	echo "4.	 Finished installing: Cartographic Projection Procedures for the UNIX Environment"
 fi
 #------------------------------------------------------------------------------------------------------------------
 if [ $dep5 ]
@@ -153,7 +153,7 @@ then
 	)
 	rm -rf zlib-${v}
 	rm -f zlib-${v}.tar.gz
-	echo "Finished installing: Zlib Data Compression Library"
+	echo "5.	 Finished installing: Zlib Data Compression Library"
 fi
 #------------------------------------------------------------------------------------------------------------------
 if [ $dep6 ]
@@ -171,7 +171,7 @@ then
 	)
 	rm -rf hdf-${v}
 	rm -f hdf-${v}.tar.gz
-	echo "Finished installing: HDF4"
+	echo "6.	 Finished installing HDF5 "
 fi
 #------------------------------------------------------------------------------------------------------------------
 if [ $dep7 ]
@@ -188,12 +188,12 @@ then
 	)
 	rm -rf hdf5-${v}
 	rm -f hdf5-${v}.tar.gz
-	echo "Finished installing: HDF5"
+	echo "7.	 Finished installing HDF5 "
 fi
 #------------------------------------------------------------------------------------------------------------------
 if [ $dep8 ]
 then
-	echo "8.	 Installing: NetCDF "
+	echo "8.	 Installing NetCDF "
 	v=4.1.3
 	(
 		set -xeu
@@ -205,12 +205,12 @@ then
 	)
 	rm -rf netcdf-${v}
 	rm -f netcdf-${v}.tar.gz
-	echo "Finished installing: NetCDF"
+	echo "8.	Finished installing NetCDF"
 fi
 #------------------------------------------------------------------------------------------------------------------
 if [ $dep9 ]
 then
-	echo "9.  Installing: XML C parser "
+	echo "9.  Installing XML C parser "
 	v=2.9.8
 	(
 		set -xeu
@@ -223,7 +223,7 @@ then
 	)
 	rm -rf libxml2-${v}
 	rm -f libxml2-${v}.tar.gz
-	echo "Finished installing: XML C parser"
+	echo "9.  Finished installing XML C parser "
 fi
 #------------------------------------------------------------------------------------------------------------------
 if [ $dep10 ]
@@ -241,12 +241,12 @@ then
 	)
 	rm -rf json-c-${v}
 	rm -f json-c-${v}.tar.gz
-	echo "Finished installing: JSON-C - A JSON implementation in C"
+	echo "10.  Finished installing JSON-C - A JSON implementation in C"
 fi
 #------------------------------------------------------------------------------------------------------------------
 if [ $dep11 ]
 then
-	echo "11.  Installing: GDAL with OpenJPEG support"
+	echo "11.  Installing GDAL with OpenJPEG support"
 	v=2.3.1
 	(
 		set -xeu
@@ -276,14 +276,12 @@ then
 	)
 	rm -rf gdal-${v}
 	rm -f gdal-${v}.tar.gz
-	echo "Finished: GDAL with OpenJPEG support"
+	echo "11.  Finished installing GDAL with OpenJPEG support"
 fi
 #------------------------------------------------------------------------------------------------------------------
 if [ $dep12 ]
 then
-	# Install PostGreSQL
-	set -xeu
-	echo "12. Installing: PostGreSQL"
+	echo "12. Installing PostGreSQL"
 	v=11.0
 	(
 		set -xeu
@@ -310,18 +308,20 @@ then
 	mkdir -p /usr/local/pgsql/data
 	chown postgres /usr/local/pgsql/data
 	su - postgres -c '/usr/local/pgsql/bin/initdb -D /usr/local/pgsql/data; /usr/local/pgsql/bin/postgres -D /usr/local/pgsql/data >/tmp/logfile 2>&1 &'
-	echo "Finished PostgreSQL Installation"
+	echo "12. Finished installing PostGreSQL"
 fi
 #------------------------------------------------------------------------------------------------------------------
 if [ $dep13 ]
 then
+ 	# Install PostGIS. This should be done after installing other deps
+ 	echo "13. Installing: PostGIS"
 	v=2.4.4
 	(
 		set -xeu
 		wget -q https://download.osgeo.org/postgis/source/postgis-${v}.tar.gz
 		tar -xf postgis-${v}.tar.gz
 		cd postgis-${v}
-#		./configure --with-pgconfig=/usr/local/pgsql/bin/pg_config
+		./configure --with-pgconfig=/usr/local/pgsql/bin/pg_config
 		make -j4
 		make install
 	)
@@ -332,6 +332,7 @@ then
 	then
 		ln -s /usr/local/lib/libgdal.so.20 /usr/local/pgsql/lib/libgdal.so.20
 	fi
+ 	echo "13. Finished Installing: PostGIS"
 fi
 #------------------------------------------------------------------------------------------------------------------
 if [ $dep14 ]
@@ -356,11 +357,12 @@ then
 
 	rm -rf $prefix/go
 	mv go $prefix/go
+	echo "14. Finished Installing GO"
 fi
+#------------------------------------------------------------------------------------------------------------------
 if [ $dep15 ]
 then
 	echo "15. Compile GSKY"
-	repo=asivapra
 	(
 		set -xeu
 		prefix=/local/gsky
@@ -368,7 +370,6 @@ then
 		export GOPATH=$prefix/gopath
 		export PATH="$PATH:$GOROOT/bin"
 		export PKG_CONFIG_PATH=/usr/local/lib/pkgconfig
-		
 		go get github.com/${repo}/gsky
 		rm -rf $GOPATH/src/github.com/${repo}/gsky
 		git clone https://github.com/${repo}/gsky.git $GOPATH/src/github.com/${repo}/gsky
@@ -377,6 +378,7 @@ then
 		./configure
 		make all
 	)	
+	echo "15. Finished Compiling GSKY"
 fi
 #------------------------------------------------------------------------------------------------------------------
 if [ $dep16 ]
@@ -389,28 +391,52 @@ then
 		rm -rf $prefix/share
 		mkdir -p $prefix/share/gsky
 		mkdir -p $prefix/share/mas
-		yes|cp -f $GOPATH/src/github.com/${repo}/gsky/concurrent $prefix/bin/concurrent
-		yes|cp -f $GOPATH/bin/api $prefix/bin/api
-		yes|cp -f $GOPATH/bin/gsky $prefix/share/gsky/gsky
-		yes|cp -f $GOPATH/bin/grpc-server $prefix/share/gsky/grpc_server
-		yes|cp -f $GOPATH/bin/gdal-process $prefix/share/gsky/gsky-gdal-process
-		yes|cp -f $GOPATH/bin/crawl $prefix/share/gsky/gsky-crawl
-		yes|cp -f $GOPATH/src/github.com/${repo}/gsky/crawl/crawl_pipeline.sh $prefix/share/gsky/crawl_pipeline.sh
-		yes|cp -f $GOPATH/src/github.com/${repo}/gsky/mas/db/* $prefix/share/mas/
+		cp -f $GOPATH/src/github.com/${repo}/gsky/concurrent $prefix/bin/concurrent
+		cp -f $GOPATH/bin/api $prefix/bin/api
+		cp -f $GOPATH/bin/gsky $prefix/share/gsky/gsky
+		cp -f $GOPATH/bin/grpc-server $prefix/share/gsky/grpc_server
+		cp -f $GOPATH/bin/gdal-process $prefix/share/gsky/gsky-gdal-process
+		cp -f $GOPATH/bin/crawl $prefix/share/gsky/gsky-crawl
+		cp -f $GOPATH/src/github.com/${repo}/gsky/crawl/crawl_pipeline.sh $prefix/share/gsky/crawl_pipeline.sh
+		cp -f $GOPATH/src/github.com/${repo}/gsky/mas/db/* $prefix/share/mas/
 		
-		yes|cp -rf $GOPATH/src/github.com/${repo}/gsky/*.png $prefix/share/gsky/
-		yes|cp -rf $GOPATH/src/github.com/${repo}/gsky/templates $prefix/share/gsky/
-		yes|cp -rf $GOPATH/src/github.com/${repo}/gsky/static $prefix/share/gsky/
+		cp -rf $GOPATH/src/github.com/${repo}/gsky/*.png $prefix/share/gsky/
+		cp -rf $GOPATH/src/github.com/${repo}/gsky/templates $prefix/share/gsky/
+		cp -rf $GOPATH/src/github.com/${repo}/gsky/static $prefix/share/gsky/
 		rm -rf /local/gsky_temp
 		mkdir -p /local/gsky_temp
 		chown -R nobody:nobody /local/gsky_temp
 	)
-	echo "**** Finished installing the GSKY server. **** "
+	echo "16. Finished copying all files to final locations"
 fi
 #------------------------------------------------------------------------------------------------------------------
 if [ $dep17 ]
 then
-	echo "17. Create a sample config.json"
+	echo "17. Setup DB schemas and create the MAS database"
+	(
+		set -xeu
+		prefix=/local/gsky
+		export GOPATH=$prefix/gopath
+		export MAS=$prefix/share/mas
+		export LD_LIBRARY_PATH="/usr/local/lib:${LD_LIBRARY_PATH:-}"
+		ldconfig
+		export PGUSER=postgres
+		export PGDATA=/usr/local/pgsql/data
+		export PGHOST=${PGHOST:-''}
+		export PGPORT=${PGPORT:-5432}
+		cp $GOPATH/src/github.com/$repo/gsky/mas/api/mas.sql $MAS
+		cd $MAS
+		psql -v ON_ERROR_STOP=1 -A -t -q <<EOD
+\\i schema.sql
+\\i mas.sql
+EOD
+	)
+	echo "17. Finished setting up DB schemas and created the MAS database"
+fi
+#------------------------------------------------------------------------------------------------------------------
+if [ $dep18 ]
+then
+	echo "18. Create a sample config.json"
 	prefix=/local/gsky
 
 	if [ ! -f /usr/local/etc/config.json ] 
@@ -430,17 +456,12 @@ then
 	then
 		ln -s /local/gsky/share/gsky /usr/local/share/gsky
 	fi
-	
-#	echo "Create a soft link to the config.json from /usr/local/etc"
-#	if [ ! -L /usr/local/etc/config.json ] 
-#	then
-#		ln -s $prefix/share/gsky/config.json /usr/local/etc/config.json
-#	fi
+	echo "18. Finished creating a sample config.json"
 fi
 #------------------------------------------------------------------------------------------------------------------
-if [ $dep18 ]
+if [ $dep19 ]
 then
-	echo "18. Start the OWS server"
+	echo "19. Start the OWS server"
 	export LD_LIBRARY_PATH=/usr/local/lib:/usr/lib
 	
 	# Kill an already ruunig server, if any.
@@ -452,6 +473,7 @@ then
 	
 	# Start the server
 	/local/gsky/share/gsky/gsky -p 80&
+	echo "**** Finished installing and starting the GSKY server. **** "
 fi
 #------------------------------------------------------------------------------------------------------------------
 echo "Completed ALL steps. Exiting!"
