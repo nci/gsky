@@ -4,7 +4,7 @@
 # To read and ingest the *.nc files
 # Created on 19 Nov, 2018 by Arapaut V Sivaprasad
 # Adapted from various scripts created by Edison Guo
-# Last modified on: 19 Nov 2018
+# Last modified on: 21 Nov 2018
 #-------------------------------------------------------------------------------
 # SUMMARY OF OPERATION
 #	- Add the 'gsky' paths to $PATH
@@ -29,12 +29,26 @@
 #	- Ingest into the database table, 'ingest', using the '\copy' command
 #	- Zip and keep the crawled TSV file
 #-------------------------------------------------------------------------------
+# USAGE:
+# 1. Edit this script to insert the value for CRAWL_DIR and optionally for CRAWL_OUTPUT_DIR
+# 2. Execute as e.g. /.../gsky/crawl/crawl_and_ingest.sh 
+# 3. Watch for errors, if any.
+# 4. Connect to PSQL and check that the data has been added to the DB
+#   export PGUSER=postgres
+#   export PGDATA=/usr/local/pgsql/data
+# 	psql -d mas
+# 	set search_path to "tc43"; # (or whatever in $SHARD)
+# 	select count(*) from ingest; 
+#-------------------------------------------------------------------------------
 
 export PATH="/local/gsky/bin:/local/gsky/share/mas:/local/gsky/share/gsky:$PATH"
 export LD_LIBRARY_PATH="/usr/local/lib:${LD_LIBRARY_PATH:-}"
-export CRAWL_CONC_LIMIT=4
+export CRAWL_CONC_LIMIT=32
 
-export CRAWL_DIR=/g/data2/tc43/modis-fc/v310/tiles/8-day/cover/
+export CRAWL_DIR=/g/data2/tc43/modis-fc/v310/tiles/8-day/cover
+#export CRAWL_DIR=/g/data2/tc43/rainfall/CHIRPS-2.0/global_dekad/netcdf
+#export CRAWL_DIR=/g/data2/tc43/rainfall/CHIRPS-2.0/global_monthly/netcdf
+
 # Specify and uncomment below if required to have a fixed dir for output files.
 #export CRAWL_OUTPUT_DIR=/home/900/avs900/crawl_outputs 
 
@@ -45,8 +59,8 @@ export CRAWL_DIR=/g/data2/tc43/modis-fc/v310/tiles/8-day/cover/
 # Take the first 3 dir paths in $CRAWL_DIR as $GPATH. e.g. /g/data2/tc43
 IFS="/" read -r -a array <<< $CRAWL_DIR
 gpath="/${array[1]}/${array[2]}/${array[3]}"
-shard="${array[3]}"
 export GPATH=$gpath # /g/data2/tc43
+shard="${array[3]}"
 export SHARD=$shard # tc43
 
 export PGUSER=postgres
@@ -110,7 +124,7 @@ gdal_json() {
 # ------ END of Functions ------------------
 
 # Create the 'mas' database. No need to redo it, but no harm in it either. But, DO NOT run 'schema.sql' here.
-setup_mas
+#setup_mas
 # Check for directories, file_list, and tsv_file_gz. Create them if necessary.
 setup_crawling 
 echo "INFO: file list to crawl: $file_list"
@@ -126,32 +140,53 @@ conc_limit=${CRAWL_CONC_LIMIT:-16}
 
 #cat $file_list | concurrent -i -l $conc_limit xargs bash -c 'gdal_json "$@"' _ | gzip > $tsv_file_gz
 tail $file_list | concurrent -i -l $conc_limit xargs bash -c 'gdal_json "$@"' _ | gzip > $tsv_file_gz
+echo "shard = $shard; gpath = $gpath"
 
-# Create the PostgreSQL database schema
+#-------------------------------------------------------------------------------
+# Check whether a schema named $SHARD exists. 
+(
+psql -v ON_ERROR_STOP=0 -A -t -q -d mas <<EOD
+select true from ${shard}.paths limit 1;
+EOD
+) && ret=$(psql -v ON_ERROR_STOP=1 -A -t -q -d mas <<EOD
+select 1 from public.shards where sh_code = '${shard}' and sh_path = '${gpath}' limit 1;
+EOD
+) && [ -z "$ret" ] && export shard_exists=""
+
+(
+psql -v ON_ERROR_STOP=1 -A -t -q -d mas <<EOD
+select true from ${shard}.paths limit 1;
+EOD
+) && export shard_exists="Yes" 
+	
+# Create a schema named $SHARD, if it does not exist, and create the tables and functions	
+if [ -z $shard_exists ]
+then
 psql -v ON_ERROR_STOP=1 -A -t -q -d mas <<EOD
 set role mas;
-create schema if not exists "$SHARD";
-set search_path to "$SHARD";
-grant usage on schema "$SHARD" to public;
-alter default privileges for role mas in schema "$SHARD" grant select on tables to public;
+create schema if not exists "$shard";
+set search_path to "$shard";
+grant usage on schema "$shard" to public;
+alter default privileges for role mas in schema "$shard" grant select on tables to public;
 
-insert into public.shards (sh_code, sh_path) values ('$SHARD', '$GPATH') on conflict (sh_code) do nothing;
+insert into public.shards (sh_code, sh_path) values ('$shard', '$gpath') on conflict (sh_code) do nothing;
 
 \\i /local/gsky/share/mas/shard.sql	
 
-grant select,insert,update on "$SHARD".timestamps_cache to api;
+grant select,insert,update on "$shard".timestamps_cache to api;
 
 EOD
-
+fi
+#-------------------------------------------------------------------------------
+# Ingest the data from TSV
 # Unzip the gzipped TSV file
 res=`gunzip $tsv_file_gz`
 tsv_file=${tsv_file_gz/.gz/}
 
 # Ingest the lines in $tsv_file into the DB table, 'ingest'.
+echo "# Ingest the lines in $tsv_file into the DB table, 'ingest'."
 psql -v ON_ERROR_STOP=1 -d mas <<EOD
 set search_path to "$SHARD";
-drop trigger if exists ingest on ingest cascade;
-drop trigger if exists ingested on ingest cascade;
 \copy ingest from '$tsv_file' with (format 'csv', delimiter E'\t', quote E'\b');
 select refresh_views();
 select refresh_polygons();
