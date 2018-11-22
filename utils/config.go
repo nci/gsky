@@ -924,6 +924,15 @@ func (config *Config) LoadConfigFile(configFile string, verbose bool) error {
 	return nil
 }
 
+func DumpConfig(configs map[string]*Config) (string, error) {
+	configJson, err := json.MarshalIndent(configs, "", "    ")
+	if err != nil {
+		return "", err
+	}
+
+	return string(configJson), nil
+}
+
 func WatchConfig(infoLog, errLog *log.Logger, configMap *map[string]*Config, verbose bool) {
 	// Catch SIGHUP to automatically reload cache
 	sighup := make(chan os.Signal, 1)
