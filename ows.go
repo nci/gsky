@@ -47,6 +47,7 @@ var (
 	serverDataDir   = flag.String("data_dir", utils.DataDir, "Server data directory.")
 	serverConfigDir = flag.String("conf_dir", utils.EtcDir, "Server config directory.")
 	validateConfig  = flag.Bool("check_conf", false, "Validate server config files.")
+	dumpConfig      = flag.Bool("dump_conf", false, "Dump server config files.")
 	verbose         = flag.Bool("v", false, "Verbose mode for more server outputs.")
 )
 
@@ -97,6 +98,16 @@ func init() {
 	}
 
 	if *validateConfig {
+		os.Exit(0)
+	}
+
+	if *dumpConfig {
+		configJson, err := utils.DumpConfig(confMap)
+		if err != nil {
+			Error.Printf("Error in dumping configs: %v\n", err)
+		} else {
+			log.Print(configJson)
+		}
 		os.Exit(0)
 	}
 
