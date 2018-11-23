@@ -380,7 +380,7 @@ create materialized view polygons as
         as srtext,
       trim(geo#>>'{proj4}')
         as proj4text,
-      trim(geo#>>'{namespace}')
+      regexp_replace(trim(geo#>>'{namespace}'), '[^a-zA-Z0-9_]', '_', 'g')
         as variable,
       geo#>'{timestamps}'
         as stamps,
