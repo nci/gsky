@@ -444,7 +444,7 @@ create or replace function mas_intersects(
               'ds_name',
               geo->>'ds_name',
               'namespace',
-              geo->>'namespace',
+              regexp_replace(trim(geo->>'namespace'), '[^a-zA-Z0-9_]', '_', 'g'),
               'array_type',
               geo->'array_type',
               'timestamps',
