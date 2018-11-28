@@ -502,7 +502,11 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 		styleIdx, err := utils.GetCoverageStyleIndex(params, conf, idx)
 		if err != nil {
 			Error.Printf("%s\n", err)
-			http.Error(w, fmt.Sprintf("Malformed WMS GetMap request: %v", err), 400)
+			http.Error(w, fmt.Sprintf("Malformed WCS GetCoverage request: %v", err), 400)
+			return
+		} else if styleIdx < 0 {
+			Error.Printf("WCS style not specified")
+			http.Error(w, "WCS style not specified", 400)
 			return
 		}
 
