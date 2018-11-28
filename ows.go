@@ -47,6 +47,7 @@ var (
 	serverDataDir   = flag.String("data_dir", utils.DataDir, "Server data directory.")
 	serverConfigDir = flag.String("conf_dir", utils.EtcDir, "Server config directory.")
 	validateConfig  = flag.Bool("check_conf", false, "Validate server config files.")
+	dumpConfig      = flag.Bool("dump_conf", false, "Dump server config files.")
 	verbose         = flag.Bool("v", false, "Verbose mode for more server outputs.")
 )
 
@@ -97,6 +98,16 @@ func init() {
 	}
 
 	if *validateConfig {
+		os.Exit(0)
+	}
+
+	if *dumpConfig {
+		configJson, err := utils.DumpConfig(confMap)
+		if err != nil {
+			Error.Printf("Error in dumping configs: %v\n", err)
+		} else {
+			log.Print(configJson)
+		}
 		os.Exit(0)
 	}
 
@@ -307,14 +318,13 @@ func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r
 				}
 				w.Write(out)
 			} else {
-				emptyTile := &utils.ByteRaster{Height: *params.Height, Width: *params.Width}
-				out, err := utils.EncodePNG([]*utils.ByteRaster{emptyTile}, nil)
+				out, err := utils.GetEmptyTile("", *params.Height, *params.Width)
 				if err != nil {
-					Info.Printf("Error in the utils.EncodePNG: %v\n", err)
+					Info.Printf("Error in the utils.GetEmptyTile(): %v\n", err)
 					http.Error(w, err.Error(), 500)
-					return
+				} else {
+					w.Write(out)
 				}
-				w.Write(out)
 			}
 
 			return
@@ -338,10 +348,10 @@ func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r
 				return
 			}
 
-			if norm[0].Width == 0 || norm[0].Height == 0 {
-				out, err := utils.GetEmptyTile(utils.DataDir+"/data_unavailable.png", *params.Height, *params.Width)
+			if len(norm) == 0 || norm[0].Width == 0 || norm[0].Height == 0 {
+				out, err := utils.GetEmptyTile(conf.Layers[idx].NoDataLegendPath, *params.Height, *params.Width)
 				if err != nil {
-					Info.Printf("Error in the utils.GetEmptyTile(data_unavailable.png): %v\n", err)
+					Info.Printf("Error in the utils.GetEmptyTile(): %v\n", err)
 					http.Error(w, err.Error(), 500)
 				} else {
 					w.Write(out)
@@ -492,7 +502,11 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 		styleIdx, err := utils.GetCoverageStyleIndex(params, conf, idx)
 		if err != nil {
 			Error.Printf("%s\n", err)
-			http.Error(w, fmt.Sprintf("Malformed WMS GetMap request: %v", err), 400)
+			http.Error(w, fmt.Sprintf("Malformed WCS GetCoverage request: %v", err), 400)
+			return
+		} else if styleIdx < 0 {
+			Error.Printf("WCS style not specified")
+			http.Error(w, "WCS style not specified", 400)
 			return
 		}
 
@@ -501,8 +515,8 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 			styleLayer = &conf.Layers[idx].Styles[styleIdx]
 		}
 
-		maxXTileSize := 1024
-		maxYTileSize := 1024
+		maxXTileSize := conf.Layers[idx].WcsMaxTileWidth
+		maxYTileSize := conf.Layers[idx].WcsMaxTileHeight
 		checkpointThreshold := 300
 		minTilesPerWorker := 5
 
