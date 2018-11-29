@@ -361,7 +361,8 @@ func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r
 
 			out, err := utils.EncodePNG(norm, styleLayer.Palette)
 			if err != nil {
-				Info.Printf("Error in the utils.EncodePNG: %v\n", err)
+// AVS: err= Cannot encode other than 1 or 3 namespaces into a PNG: Received 2
+				Info.Printf("Error in the utils.EncodePNG: %v\n", err) 
 				http.Error(w, err.Error(), 500)
 				return
 			}
