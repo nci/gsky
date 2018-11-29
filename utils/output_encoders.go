@@ -108,7 +108,7 @@ func EncodePNG(br []*ByteRaster, palette *Palette) ([]byte, error) {
 		}
 
 	default:
-		return []byte{}, fmt.Errorf("Cannot encode other than 1 or 3 namespaces into a PNG: Received %d", len(br))
+		return []byte{}, fmt.Errorf("AVS: Cannot encode other than 1 or 3 namespaces into a PNG: Received %d", len(br))
 	}
 
 	err := png.Encode(buf, canvas)
