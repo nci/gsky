@@ -8,7 +8,7 @@ sysconfdir = @sysconfdir@
 srcdir = @srcdir@
 VPATH = @srcdir@
 
-BASEPATH=github.com/asivapra/gsky
+BASEPATH=github.com/nci/gsky
 LDFLAGS="-X=$(BASEPATH)/utils.LibexecDir=${libexecdir} -X=$(BASEPATH)/worker/gdalservice.LibexecDir=${libexecdir} \
 	-X=$(BASEPATH)/utils.EtcDir=$(sysconfdir) -X=$(BASEPATH)/utils.DataDir=${datarootdir}/gsky"
 GOBIN=$(shell go env GOBIN)
