@@ -125,7 +125,7 @@ func GetFeatureInfo(ctx context.Context, params utils.WMSParams, conf *utils.Con
 func getRaster(ctx context.Context, params utils.WMSParams, conf *utils.Config, verbose bool) ([]utils.Raster, []string, []string, error) {
 	idx, err := utils.GetLayerIndex(params, conf)
 	if err != nil {
-		return nil, nil, nil, fmt.Errorf("Malformed WMS GetMap request: %v", err)
+		return nil, nil, nil, fmt.Errorf("Malformed WMS GetFeatureInfo request: %v", err)
 	}
 	if params.Time == nil {
 		return nil, nil, nil, fmt.Errorf("Request should contain a valid time.")
