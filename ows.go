@@ -153,10 +153,22 @@ func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r
 			return
 		}
 
-		var timeStr string
-		if params.Time != nil {
-			timeStr = fmt.Sprintf(`"time": "%s"`, (*params.Time).Format(utils.ISOFormat))
+		if params.Time == nil {
+			idx, err := utils.GetLayerIndex(params, conf)
+			if err != nil {
+				http.Error(w, fmt.Sprintf("Malformed getFeatureInfo request: %s", reqURL), 400)
+				return
+			}
+
+			currentTime, err := utils.GetCurrentTimeStamp(conf.Layers[idx].Dates)
+			if err != nil {
+				http.Error(w, fmt.Sprintf("%v: %s", err, reqURL), 400)
+				return
+			}
+			params.Time = currentTime
 		}
+
+		timeStr := fmt.Sprintf(`"time": "%s"`, (*params.Time).Format(utils.ISOFormat))
 
 		feat_info, err := proc.GetFeatureInfo(ctx, params, conf, *verbose)
 		if err != nil {
