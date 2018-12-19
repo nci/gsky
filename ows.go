@@ -11,8 +11,9 @@ package main
    index server which registers the files involved in one operation
    and the warp server which performs the actual rendering of
    a tile. */
-
 import (
+//	"avs"
+//"encoding/xml"
 	"context"
 	"encoding/json"
 	"flag"
@@ -29,7 +30,9 @@ import (
 	"runtime"
 	"strings"
 	"time"
-
+"strconv"
+"os/exec"
+//"reflect"
 	proc "github.com/nci/gsky/processor"
 	"github.com/nci/gsky/utils"
 
@@ -49,7 +52,10 @@ var (
 	validateConfig  = flag.Bool("check_conf", false, "Validate server config files.")
 	dumpConfig      = flag.Bool("dump_conf", false, "Dump server config files.")
 	verbose         = flag.Bool("v", false, "Verbose mode for more server outputs.")
+	// AVS: Define the Thredds directory
+	ThreddsDataDir   = flag.String("thredds", "/usr/local/tds/apache-tomcat-8.5.35/content/thredds/public/gsky/", "Directory where soft links to NC files are created.")
 )
+//var ThreddsDataDir   = "/usr/local/tds/apache-tomcat-8.5.35/content/thredds/public/gsky/"
 
 var reWMSMap map[string]*regexp.Regexp
 var reWCSMap map[string]*regexp.Regexp
@@ -60,10 +66,44 @@ var (
 	Info  *log.Logger
 )
 
+
+// AVS: Debugging functions
+// AVS
+func P(text string) {
+    fmt.Printf("%+v\n", text)
+}
+func Py(n byte) {
+    fmt.Printf("%+v\n", n)
+}
+func Pf(n float64) {
+    fmt.Printf("%+f\n", n)
+}
+func Pi(n int) {
+    fmt.Printf("%+v\n", n)
+}
+func Pb(text bool) {
+    fmt.Printf("%+v\n", text)
+}
+// Pretty print a map object
+func Pm(v map[string][]string) {
+	for k := range v {
+		fmt.Printf("%+v: %+v\n", k, v[k])
+	}
+}
+
+func PU(item  *utils.Config) {
+	out, err := json.Marshal(item)
+	if err != nil {
+		panic (err)
+	}
+	P(string(out))
+}
+
 // init initialises the Error logger, checks
 // required files are in place  and sets Config struct.
 // This is the first function to be called in main.
 func init() {
+//fmt.Println("In Init:")		
 	rand.Seed(time.Now().UnixNano())
 
 	Error = log.New(os.Stderr, "OWS: ", log.Ldate|log.Ltime|log.Lshortfile)
@@ -92,6 +132,7 @@ func init() {
 	}
 
 	confMap, err := utils.LoadAllConfigFiles(utils.EtcDir, *verbose)
+
 	if err != nil {
 		Error.Printf("Error in loading config files: %v\n", err)
 		panic(err)
@@ -112,22 +153,39 @@ func init() {
 	}
 
 	configMap = confMap
-
-	utils.WatchConfig(Info, Error, &configMap, *verbose)
+//Pu(configMap)
+		utils.WatchConfig(Info, Error, &configMap, *verbose)
 
 	reWMSMap = utils.CompileWMSRegexMap()
+//fmt.Println(reWMSMap)
+//Pu(reWMSMap)
 	reWCSMap = utils.CompileWCSRegexMap()
 	reWPSMap = utils.CompileWPSRegexMap()
 
 }
-
-func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, reqURL string, w http.ResponseWriter) {
-
+// AVS: delete the *.nc files from 'thredds_dir' if this is a new call.
+func empty_thredds() {
+    thredds_last := *ThreddsDataDir + "thredds_last"
+    thredds_nc := *ThreddsDataDir + "*.nc"
+	dat, _ := ioutil.ReadFile(thredds_last)
+	old, _ := strconv.Atoi(string(dat))
+	et := time.Now().Unix() - int64(old)
+	if (et > 2) {
+		f, _ := os.Create(thredds_last)
+		defer f.Close()
+		now := strconv.FormatInt(time.Now().Unix(), 10)
+		f.WriteString(now)
+		rm_thredds_nc := "rm -f " + thredds_nc
+		exec.Command("/bin/sh", "-c", rm_thredds_nc).CombinedOutput()
+	}
+}
+func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, reqURL string, w http.ResponseWriter, r *http.Request) {
 	if params.Request == nil {
 		http.Error(w, "Malformed WMS, a Request field needs to be specified", 400)
 		return
 	}
-
+//fmt.Println(*ThreddsDataDir)
+	empty_thredds() // AVS: delete the *.nc files from 'thredds_dir' if this is a new call.
 	switch *params.Request {
 	case "GetCapabilities":
 		if params.Version != nil && !utils.CheckWMSVersion(*params.Version) {
@@ -228,7 +286,6 @@ func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r
 			eT := params.Time.Add(step)
 			endTime = &eT
 		}
-
 		if *params.Height > conf.Layers[idx].WmsMaxHeight || *params.Width > conf.Layers[idx].WmsMaxWidth {
 			http.Error(w, fmt.Sprintf("Requested width/height is too large, max width:%d, height:%d", conf.Layers[idx].WmsMaxWidth, conf.Layers[idx].WmsMaxHeight), 400)
 			return
@@ -240,7 +297,6 @@ func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r
 			http.Error(w, fmt.Sprintf("Malformed WMS GetMap request: %v", err), 400)
 			return
 		}
-
 		styleLayer := &conf.Layers[idx]
 		if styleIdx >= 0 {
 			styleLayer = &conf.Layers[idx].Styles[styleIdx]
@@ -267,8 +323,9 @@ func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r
 			StartTime:  params.Time,
 			EndTime:    endTime,
 		}
-
+//fmt.Println(geoReq)
 		ctx, ctxCancel := context.WithCancel(ctx)
+
 		defer ctxCancel()
 		errChan := make(chan error, 100)
 
@@ -278,13 +335,17 @@ func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r
 		if yRes > reqRes {
 			reqRes = yRes
 		}
-
+//reqRes = 20000.00
 		if conf.Layers[idx].ZoomLimit != 0.0 && reqRes > conf.Layers[idx].ZoomLimit {
 			indexer := proc.NewTileIndexer(ctx, conf.ServiceConfig.MASAddress, errChan)
+//fmt.Println(reflect.TypeOf(geoReq))				
 			go func() {
 				geoReq.Mask = nil
 				geoReq.QueryLimit = 1
 				indexer.In <- geoReq
+//fmt.Println(reflect.TypeOf(geoReq))				
+//t := make(chan GeoTileRequest)				
+//t <- indexer.In				
 				close(indexer.In)
 			}()
 
@@ -292,6 +353,8 @@ func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r
 
 			hasData := false
 			for geo := range indexer.Out {
+//fmt.Println("GEO:")
+//fmt.Println(geo)
 				select {
 				case <-errChan:
 					break
@@ -334,13 +397,17 @@ func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r
 		defer timeoutCancel()
 
 		tp := proc.InitTilePipeline(ctx, conf.ServiceConfig.MASAddress, conf.ServiceConfig.WorkerNodes, conf.Layers[idx].MaxGrpcRecvMsgSize, conf.Layers[idx].WmsPolygonShardConcLimit, conf.ServiceConfig.MaxGrpcBufferSize, errChan)
+//fmt.Println(geoReq.ScaleParams.Clip)
 		select {
 		case res := <-tp.Process(geoReq, *verbose):
 			scaleParams := utils.ScaleParams{Offset: geoReq.ScaleParams.Offset,
 				Scale: geoReq.ScaleParams.Scale,
 				Clip:  geoReq.ScaleParams.Clip,
 			}
-
+//fmt.Println(res[0])
+//fmt.Println(reflect.TypeOf(res))				
+//fmt.Println(scaleParams)
+//fmt.Println(res[0])
 			norm, err := utils.Scale(res, scaleParams)
 			if err != nil {
 				Info.Printf("Error in the utils.Scale: %v\n", err)
@@ -358,8 +425,9 @@ func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r
 				}
 				return
 			}
-
+//fmt.Println(len(norm))
 			out, err := utils.EncodePNG(norm, styleLayer.Palette)
+//fmt.Println(out)
 			if err != nil {
 // AVS: err= Cannot encode other than 1 or 3 namespaces into a PNG: Received 2
 				Info.Printf("Error in the utils.EncodePNG: %v\n", err) 
@@ -1118,11 +1186,14 @@ func serveWPS(ctx context.Context, params utils.WPSParams, conf *utils.Config, r
 
 // owsHandler handles every request received on /ows
 func generalHandler(conf *utils.Config, w http.ResponseWriter, r *http.Request) {
+//fmt.Println("In generalHandler:")		
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	if *verbose {
 		Info.Printf("%s\n", r.URL.String())
 	}
+//fmt.Println(r)
 	ctx := r.Context()
+//fmt.Println(ctx)
 
 	var query map[string][]string
 	var err error
@@ -1137,7 +1208,6 @@ func generalHandler(conf *utils.Config, w http.ResponseWriter, r *http.Request) 
 	case "GET":
 		query = utils.NormaliseKeys(r.URL.Query())
 	}
-
 	if _, fOK := query["service"]; !fOK {
 		canInferService := false
 		if request, hasReq := query["request"]; hasReq {
@@ -1170,7 +1240,8 @@ func generalHandler(conf *utils.Config, w http.ResponseWriter, r *http.Request) 
 			http.Error(w, fmt.Sprintf("Wrong WMS parameters on URL: %s", err), 400)
 			return
 		}
-		serveWMS(ctx, params, conf, r.URL.String(), w)
+//fmt.Println(params)
+		serveWMS(ctx, params, conf, r.URL.String(), w ,r)
 	case "WCS":
 		params, err := utils.WCSParamsChecker(query, reWCSMap)
 		if err != nil {
@@ -1192,11 +1263,13 @@ func generalHandler(conf *utils.Config, w http.ResponseWriter, r *http.Request) 
 }
 
 func owsHandler(w http.ResponseWriter, r *http.Request) {
+//fmt.Println(r.URL.Path)		
 	namespace := "."
 	if len(r.URL.Path) > len("/ows/") {
 		namespace = r.URL.Path[len("/ows/"):]
 	}
 	config, ok := configMap[namespace]
+//PU(configMap[config])		
 	if !ok {
 		Info.Printf("Invalid dataset namespace: %v for url: %v\n", namespace, r.URL.Path)
 		http.Error(w, fmt.Sprintf("Invalid dataset namespace: %v\n", namespace), 404)
@@ -1207,7 +1280,9 @@ func owsHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
+//fmt.Println("In Main:")		
 	fs := http.FileServer(http.Dir(utils.DataDir + "/static"))
+//fmt.Println(fs)		
 	http.Handle("/", fs)
 	http.HandleFunc("/ows", owsHandler)
 	http.HandleFunc("/ows/", owsHandler)

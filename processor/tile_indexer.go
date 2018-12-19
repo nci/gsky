@@ -10,7 +10,12 @@ import (
 	"strings"
 	"sync"
 	"time"
+//"strconv"
+//"reflect"
+"os/exec"
+//"os"
 )
+var	ThreddsDataDir = "/usr/local/tds/apache-tomcat-8.5.35/content/thredds/public/gsky/"
 
 type GDALDataset struct {
 	DSName       string      `json:"ds_name"`
@@ -81,6 +86,7 @@ func (p *TileIndexer) Run(verbose bool) {
 			if verbose {
 				log.Println(url)
 			}
+//fmt.Println(url)
 
 			wg.Add(1)
 			go URLIndexGet(p.Context, url, geoReq, p.Error, p.Out, &wg)
@@ -108,7 +114,6 @@ func (p *TileIndexer) Run(verbose bool) {
 		}
 	}
 }
-
 func URLIndexGet(ctx context.Context, url string, geoReq *GeoTileRequest, errChan chan error, out chan *GeoTileGranule, wg *sync.WaitGroup) {
 	defer wg.Done()
 
@@ -142,6 +147,18 @@ func URLIndexGet(ctx context.Context, url string, geoReq *GeoTileRequest, errCha
 		out <- &GeoTileGranule{ConfigPayLoad: ConfigPayLoad{NameSpaces: []string{"EmptyTile"}, ScaleParams: geoReq.ScaleParams, Palette: geoReq.Palette}, Path: "NULL", NameSpace: "EmptyTile", RasterType: "Byte", TimeStamps: nil, TimeStamp: *geoReq.StartTime, BBox: geoReq.BBox, Height: geoReq.Height, Width: geoReq.Width, OffX: geoReq.OffX, OffY: geoReq.OffY, CRS: geoReq.CRS}
 	default:
 		for _, ds := range metadata.GDALDatasets {
+// AVS: Code to get the NC filenames for Thredds and create soft links in 'thredds_dir'
+// ---------------------------------------------
+//fmt.Println(ThreddsDataDir)
+			thredds_dir := "/usr/local/tds/apache-tomcat-8.5.35/content/thredds/public/gsky/"
+			nameSpace := ds.NameSpace
+			file := strings.Replace(ds.DSName, ":", "", -1)
+			file = strings.Replace(file, "\"", "", -1)
+			file = strings.Replace(file, "NETCDF", "", -1)
+			file = strings.Replace(file, nameSpace, "", -1)
+			exec.Command("ln", "-s", file, thredds_dir).CombinedOutput()
+// ---------------------------------------------
+// AVS: End of code for Thredds    
 			for _, t := range ds.TimeStamps {
 				if t.Equal(*geoReq.StartTime) || geoReq.EndTime != nil && t.After(*geoReq.StartTime) && t.Before(*geoReq.EndTime) {
 					out <- &GeoTileGranule{ConfigPayLoad: ConfigPayLoad{NameSpaces: geoReq.NameSpaces, Mask: geoReq.Mask, ScaleParams: geoReq.ScaleParams, Palette: geoReq.Palette, GrpcConcLimit: geoReq.GrpcConcLimit}, Path: ds.DSName, NameSpace: ds.NameSpace, RasterType: ds.ArrayType, TimeStamps: ds.TimeStamps, TimeStamp: t, Polygon: ds.Polygon, BBox: geoReq.BBox, Height: geoReq.Height, Width: geoReq.Width, OffX: geoReq.OffX, OffY: geoReq.OffY, CRS: geoReq.CRS}

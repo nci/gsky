@@ -59,7 +59,6 @@ func CompileWMSRegexMap() map[string]*regexp.Regexp {
 	for key, re := range WMSRegexpMap {
 		REMap[key] = regexp.MustCompile(re)
 	}
-
 	return REMap
 }
 
@@ -243,13 +242,17 @@ func ExecuteWriteTemplateFile(w io.Writer, data interface{}, filePath string) er
 	// General template compilation, execution and writting in to
 	// a stream.
 	tplStr, err := ioutil.ReadFile(filePath)
+//fmt.Println(filePath)		
 	if err != nil {
 		return fmt.Errorf("Error trying to read %s file: %v", filePath, err)
 	}
 	tpl, err := template.New("template").Parse(string(tplStr))
+//fmt.Println(tpl)
+//Pu(tpl)
 	if err != nil {
 		return fmt.Errorf("Error trying to parse template document: %v", err)
 	}
+//fmt.Println(data)		
 	err = tpl.Execute(w, data)
 	if err != nil {
 		return fmt.Errorf("Error executing template: %v\n", err)
