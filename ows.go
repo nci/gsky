@@ -30,8 +30,8 @@ import (
 	"runtime"
 	"strings"
 	"time"
-"strconv"
-"os/exec"
+//"strconv"
+//"os/exec"
 //"reflect"
 	proc "github.com/nci/gsky/processor"
 	"github.com/nci/gsky/utils"
@@ -52,10 +52,7 @@ var (
 	validateConfig  = flag.Bool("check_conf", false, "Validate server config files.")
 	dumpConfig      = flag.Bool("dump_conf", false, "Dump server config files.")
 	verbose         = flag.Bool("v", false, "Verbose mode for more server outputs.")
-	// AVS: Define the Thredds directory
-	ThreddsDataDir   = flag.String("thredds", "/usr/local/tds/apache-tomcat-8.5.35/content/thredds/public/gsky/", "Directory where soft links to NC files are created.")
 )
-//var ThreddsDataDir   = "/usr/local/tds/apache-tomcat-8.5.35/content/thredds/public/gsky/"
 
 var reWMSMap map[string]*regexp.Regexp
 var reWCSMap map[string]*regexp.Regexp
@@ -91,7 +88,7 @@ func Pm(v map[string][]string) {
 	}
 }
 
-func PU(item  *utils.Config) {
+func Pu(item  *utils.Config) {
 	out, err := json.Marshal(item)
 	if err != nil {
 		panic (err)
@@ -103,7 +100,6 @@ func PU(item  *utils.Config) {
 // required files are in place  and sets Config struct.
 // This is the first function to be called in main.
 func init() {
-//fmt.Println("In Init:")		
 	rand.Seed(time.Now().UnixNano())
 
 	Error = log.New(os.Stderr, "OWS: ", log.Ldate|log.Ltime|log.Lshortfile)
@@ -153,39 +149,18 @@ func init() {
 	}
 
 	configMap = confMap
-//Pu(configMap)
-		utils.WatchConfig(Info, Error, &configMap, *verbose)
+	utils.WatchConfig(Info, Error, &configMap, *verbose)
 
 	reWMSMap = utils.CompileWMSRegexMap()
-//fmt.Println(reWMSMap)
-//Pu(reWMSMap)
 	reWCSMap = utils.CompileWCSRegexMap()
 	reWPSMap = utils.CompileWPSRegexMap()
 
 }
-// AVS: delete the *.nc files from 'thredds_dir' if this is a new call.
-func empty_thredds() {
-    thredds_last := *ThreddsDataDir + "thredds_last"
-    thredds_nc := *ThreddsDataDir + "*.nc"
-	dat, _ := ioutil.ReadFile(thredds_last)
-	old, _ := strconv.Atoi(string(dat))
-	et := time.Now().Unix() - int64(old)
-	if (et > 2) {
-		f, _ := os.Create(thredds_last)
-		defer f.Close()
-		now := strconv.FormatInt(time.Now().Unix(), 10)
-		f.WriteString(now)
-		rm_thredds_nc := "rm -f " + thredds_nc
-		exec.Command("/bin/sh", "-c", rm_thredds_nc).CombinedOutput()
-	}
-}
-func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, reqURL string, w http.ResponseWriter, r *http.Request) {
+func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, reqURL string, w http.ResponseWriter) {
 	if params.Request == nil {
 		http.Error(w, "Malformed WMS, a Request field needs to be specified", 400)
 		return
 	}
-//fmt.Println(*ThreddsDataDir)
-	empty_thredds() // AVS: delete the *.nc files from 'thredds_dir' if this is a new call.
 	switch *params.Request {
 	case "GetCapabilities":
 		if params.Version != nil && !utils.CheckWMSVersion(*params.Version) {
@@ -1241,7 +1216,7 @@ func generalHandler(conf *utils.Config, w http.ResponseWriter, r *http.Request) 
 			return
 		}
 //fmt.Println(params)
-		serveWMS(ctx, params, conf, r.URL.String(), w ,r)
+		serveWMS(ctx, params, conf, r.URL.String(), w)
 	case "WCS":
 		params, err := utils.WCSParamsChecker(query, reWCSMap)
 		if err != nil {
