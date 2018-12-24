@@ -156,7 +156,9 @@ func init() {
 	reWPSMap = utils.CompileWPSRegexMap()
 
 }
-func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, reqURL string, w http.ResponseWriter) {
+// AVS
+ 
+func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, reqURL string, w http.ResponseWriter, r *http.Request) {
 	if params.Request == nil {
 		http.Error(w, "Malformed WMS, a Request field needs to be specified", 400)
 		return
@@ -215,6 +217,7 @@ func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r
 		}
 
 	case "GetMap":
+		proc.Init_thredds(w, r) // AVS: Create/use teh user-specific thredds subdir
 		if params.Version == nil || !utils.CheckWMSVersion(*params.Version) {
 			http.Error(w, fmt.Sprintf("This server can only accept WMS requests compliant with version 1.1.1 and 1.3.0: %s", reqURL), 400)
 			return
@@ -1161,14 +1164,11 @@ func serveWPS(ctx context.Context, params utils.WPSParams, conf *utils.Config, r
 
 // owsHandler handles every request received on /ows
 func generalHandler(conf *utils.Config, w http.ResponseWriter, r *http.Request) {
-//fmt.Println("In generalHandler:")		
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	if *verbose {
 		Info.Printf("%s\n", r.URL.String())
 	}
-//fmt.Println(r)
 	ctx := r.Context()
-//fmt.Println(ctx)
 
 	var query map[string][]string
 	var err error
@@ -1215,8 +1215,7 @@ func generalHandler(conf *utils.Config, w http.ResponseWriter, r *http.Request) 
 			http.Error(w, fmt.Sprintf("Wrong WMS parameters on URL: %s", err), 400)
 			return
 		}
-//fmt.Println(params)
-		serveWMS(ctx, params, conf, r.URL.String(), w)
+		serveWMS(ctx, params, conf, r.URL.String(), w, r) // AVS: added ", r"
 	case "WCS":
 		params, err := utils.WCSParamsChecker(query, reWCSMap)
 		if err != nil {
