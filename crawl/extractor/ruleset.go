@@ -112,10 +112,10 @@ var CollectionRuleSets = []RuleSet{
 	},
 	RuleSet{
 		"chirps2.0",
-		NSDataset,
+		NSPath,
 		SRSWGS84,
 		Proj4WGS84,
-		`^chirps-v2.0.(?P<year>\d\d\d\d).dekads.nc$`,
+		`^(?P<namespace>chirps)-v2.0.(?P<year>\d\d\d\d).dekads.nc$`,
 	},
 	RuleSet{
 		"era-interim",
