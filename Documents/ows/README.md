@@ -8,14 +8,16 @@ GSKY was developed at [NCI](http://nci.org.au) and is a scalable, distributed
 server which presents a new approach for geospatial data discovery and delivery 
 using OGC standards. The most recent release is version 1.0 (June 2018).
 
-The documents - in Word, PowerPoint and PDF - listed in here are intended to 
+This directoy has all the documents and user guides for the GSKY system.
+
+These documents - in Word, PowerPoint and PDF - listed in here are intended to 
 be useful for a beginner as well as the expert user of GSKY. Though written
 mainly for the developers of the system(s), they will also double as user guides for the end users.
 
 The docs are the by-products of the author's very frustrating travel 
 through the GSKY code and its associate programs, and go against the new
-philosophy of "why make things simple when they can be wonderfully complex
-and un-intelligible?".
+philosophy of "*why make things simple when they can be wonderfully complex
+and un-intelligible?*".
 
 The motivation behind these docs is that no programmer, or the end user 
 for that matter, likes to read the docs before diving in. These, mainly animated pictorial docs, hopefully 
