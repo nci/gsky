@@ -25,18 +25,18 @@ through the GSKY code, and its associate programs, and go against the new
 philosophy of *"why make things simple when they can be wonderfully complex and un-intelligible?"*.
 
 The motivation behind these docs is that no programmer, or the end user 
-for that matter, likes to read the docs before diving in. These animated pictorial docs, 
-which omits Silvester from them, hopefully eliminate that requirement which, in the case of GSKY, 
+for that matter, likes to read the docs before diving in. The animated pictorial docs, 
+which omit just Silvester from them, eliminate that requirement which, in the case of GSKY, 
 was not even an option! For those who dare to RTFM, there are detailed Word/PDF documents as well.
 
-So, having alienated most of you with the intro, let us get into the details! 
+Having alienated most of you with the intro, let us get into the details! 
 
 Firstly, some mandatory statements...
 
 License
 -------
 
-Copyright 2016, 2017, 2018, 2019 National Computational Infrastructure, Australian National University
+Copyright 2016-2019 National Computational Infrastructure, Australian National University, Canberra, ACT 2601.
 
 Licensed under the Apache License, Version 2.0 (the "License"); you
 may not use this package except in compliance with the License.  A
@@ -50,7 +50,7 @@ Suggestions, enhancement requests, bug reports and patches to GSKY are
 welcome via this GitHub page. Please submit patches as a GitHub pull
 request. Authors retain copyright over their contributions.
 
-[![Build Status](https://travis-ci.org/nci/gsky.svg?branch=master)](https://travis-ci.org/nci/gsky)
+[![Build Status](https://github.com/asivapra/gsky/tree/master/Documents/ows?branch=master)](https://github.com/asivapra/gsky)
 
 Citing GSKY in publications
 ---------------------------
