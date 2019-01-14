@@ -1,5 +1,9 @@
-DOCS: For GSKY - Distributed Scalable Geospatial Data Server
+DOCS For GSKY 
 ============================================================
+(Distributed Scalable Geospatial Data Server)
+---
+
+
 
 FOREWORD
 -------------
@@ -99,7 +103,8 @@ any help with using GSKY through ArcGIS, learning about the capabilities of ArcG
 (possibly even to add further capabilities in GSKY). 
 
 This program is about as easy to learn as escaping from the path of an approaching hurricane. 
-So, we used an example that shows the best evacuation paths in a city where more than half the population has no transport.
+So, we used an example that shows the best hurricane evacuation paths in a city where more than half 
+the population has no transport.
 
 ArcGIS_Pro_Desktop_Tutorial.pptx
 ---
@@ -117,7 +122,7 @@ the area and time slices requested. The resulting display is sent back to Terria
 say which NetCDF files have contributed to it. This document describes a module added to GSKY to list the \*.nc
 files and display them as links to download from a THREDDS server.
 
-Though initially thought that such a functionality would be useful, it was later decided to be of no consequence.
+Though initially thought that such a functionality would be useful (my mistake!) it was later decided to be of no consequence.
 However, retaining this document for any possible future requirement.
 
 GSKY_Crawl_MAS (.docx, .pdf, .pptx and .ppsx)
@@ -127,8 +132,8 @@ This document describes the steps involved in setting up datasets for OWS servic
 The Word and PDF documents are detailed and list the process as well as code snippets to explain the process in detail. 
 It can be used as a reference for new developers.
 
-In current production there are seven separate shell scripts that run consecutievely. The document describes
-each separately and also a combined script that incorporates all the seven scripts.
+In the current production setup there are seven separate shell scripts that run consecutievely. The document describes
+each of them separately and also a new combined script that incorporates all the seven scripts.
 
 The PPTX and PPSX describe the process through animated graphics. Viewing these 5 min slide shows before reading the 
 Word document will help learn the process quicker.
