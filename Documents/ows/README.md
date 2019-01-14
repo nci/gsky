@@ -17,17 +17,17 @@ anything is missing or requires modifications, please contact the author directl
 the comments.
 
 These documents - in Word, PowerPoint and PDF - listed in here are intended to 
-be useful for a beginner as well as the expert user of GSKY. Though written
+be equally useful for a beginner and the expert user of GSKY. Though written
 mainly for the developers of the system(s), they will double as user guides for the end users.
 
-The docs are the by-products of the author's very frustrating travel 
+The docs are the by-products of the author's very painstaking travel 
 through the GSKY code and its associate programs, and they go against the new philosophy of 
-*"why make things simple and easily understood, when they can be wonderfully complex and un-intelligible?"*.
+*"why make things simple and easily understood, when they can be wonderfully complex, elegant and un-intelligible?"*.
 
 The motivation behind these docs is that no programmer or the end user, especially the end user, 
-likes to read the docs before diving in. These documents, especially the \*.pptx, are good alternatives to RTFM. 
-The animated presentations, that omit just Silvester from them, eliminate the requirement which, in the case of GSKY, 
-was not even an option. For those who dare to RTFM, there are detailed Word/PDF documents as well.
+likes to read the docs before diving in. These documents, in particular the \*.pptx, are good alternatives to RTFM. 
+The animated presentations, that omit just Sylvester from them, eliminate the requirement which 
+was not even an option in the case of GSKY. For those who dare to RTFM, there are detailed Word/PDF documents as well.
 
 Having alienated most of you with the intro, let us get into the details! 
 
@@ -62,26 +62,25 @@ users can also be found in this file.
 How to use the documents
 ----------------------
 There are four different types of documents for the same topic, though some may be missing, in here. 
-Given below are short instructions on how to use them 
-(not intended to be an insult to the intelligence of the knowledgeable!)
+Given below are short instructions on how to use them (not an insult to the intelligence of the knowledgeable!)
 
 - PowerPoint Presentation (\*.pptx):
-	- Open in Power Point 2016 or later.
-	- Click 'Slide Show' on menu bar.
+	- Open in PowerPoint 2016 or later.
+	- Click 'Slide Show' on menu bar and click "*From Beginning*".
 		- It will auto run the slide show, but it could be too fast or too slow to your liking.
-	- Uncheck 'Use Timings' (optional) to manually control the timings.
-	- Click "*From Beginning*" or the "*Slide show icon*" on the bottom status bar.
+		- If desired, uncheck 'Use Timings' to manually control the timings.
 	- The \*.pptx file is editable, if you wish to add anything (e.g. *AAAARRRGHHHH!*)
 
 - PowerPoint Slide Show (\*.ppsx):
-	- Open in Power Point 2016 or later. Slide show will start automatically.
+	- Open in PowerPoint 2016 or later. 
+		- Slide show will start automatically.
 		- It will run at the set speed.
 	- There is no option to uncheck the timings. 
 		- *"If you don't like duck, then you are rather stuck"* - Basil Fawlty (1975).
 	- But you can fast forward by clicking the right arrow.
-		- It will auto start the timed display if you don't click the arrow again to insult it!
+		- It will auto restart the timed display if you don't click the arrow again to insult it!
 	- Or, cancel the timing completely by pressing the left arrow.
-		- Then you MUST click the mouse or right arrow to move forward.
+		- Then you MUST click the mouse or right/left arrow to move.
 	- The \*.ppsx file is not editable.
 
 - Word document (\*.docx):
@@ -101,18 +100,18 @@ increase the user base considerably. Several such clients are being considered,
 ***e.g.*** **ArcGIS, QGIS** and **NASA WorldView**.
 
 This document gives a basic understanding of **ArcGIS Online**. Though it will not give
-any help with using GSKY through ArcGIS, learning about the capabilities of ArcGIS will be useful later 
+any help for using GSKY through ArcGIS, learning about the capabilities of ArcGIS will be useful later 
 (possibly even to add further capabilities in GSKY). 
 
 This program is about as easy to learn as escaping from the path of an approaching hurricane. 
-So, we used an example that shows the best hurricane evacuation paths in a city where more than half 
+Hence we use an example that shows the best hurricane evacuation paths in a city where more than half 
 the population has no transport.
 
 ArcGIS_Pro_Desktop_Tutorial.pptx
 ---
 
-Similar to the previous doc, this one gives a basic understanding of **ArcGIS Pro** which is a desktop variant of 
-**ArcGIS Online** (sorry, Windows only, no Mac!). We use an example of predicting the future deforestation 
+Similar to the previous doc, this one gives a basic understanding of **ArcGIS Pro** which is a desktop variant 
+(sorry! Windows only, no Mac!) of **ArcGIS Online**. We use an example of predicting the future deforestation 
 in Amazon wilderness due to the proposed new roads. It is considerably more complex than the online version, but there is 
 no need to run for your life (wild life will do it instead). 
 
@@ -124,7 +123,7 @@ the area and time slices requested. The resulting display is sent back to Terria
 say which NetCDF files have contributed to it. This document describes a module added to GSKY to list the \*.nc
 files and display them as links to download from a THREDDS server.
 
-Though initially thought that it was a required functionality (my mistake!) it was later found to be of no consequence.
+Though initially considered that it was a required functionality (my mistake!) it was later found to be of no consequence.
 Still, retaining this document for any possible future requirement.
 
 GSKY_Crawl_MAS (.docx, .pdf, .pptx and .ppsx)
@@ -135,10 +134,10 @@ The Word and PDF documents are detailed and list the process as well as code sni
 It can be used as a reference for new developers.
 
 In the current production setup there are seven separate shell scripts that run consecutively. This document describes
-each of them separately and also a new combined script that incorporates all the seven scripts.
+each of them separately and also a new consolidated script that incorporates all the seven scripts.
 
-The PPTX and PPSX describe the process through animated graphics. Viewing these 5 min slide shows before reading the 
-Word document will help learn the process quicker.
+The PPTX and PPSX describe the process through animated graphics. Viewing these 5 minute slide shows before reading the 
+Word document will help to learn the process quicker.
 
 
 
