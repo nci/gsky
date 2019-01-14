@@ -18,15 +18,15 @@ the comments.
 
 These documents - in Word, PowerPoint and PDF - listed in here are intended to 
 be useful for a beginner as well as the expert user of GSKY. Though written
-mainly for the developers of the system(s), they will also double as user guides for the end users.
+mainly for the developers of the system(s), they will double as user guides for the end users.
 
 The docs are the by-products of the author's very frustrating travel 
-through the GSKY code, and its associate programs, and they go against the new
-philosophy of *"why make things simple when they can be wonderfully complex and un-intelligible?"*.
+through the GSKY code and its associate programs, and they go against the new philosophy of 
+*"why make things simple and easily understood, when they can be wonderfully complex and un-intelligible?"*.
 
 The motivation behind these docs is that no programmer or the end user, especially the end user, 
-likes to read the docs before diving in. The animated pictorial docs, 
-that omit just Silvester from them, eliminate the requirement which, in the case of GSKY, 
+likes to read the docs before diving in. These documents, especially the \*.pptx, are good alternatives to RTFM. 
+The animated presentations, that omit just Silvester from them, eliminate the requirement which, in the case of GSKY, 
 was not even an option. For those who dare to RTFM, there are detailed Word/PDF documents as well.
 
 Having alienated most of you with the intro, let us get into the details! 
@@ -68,10 +68,10 @@ Given below are short instructions on how to use them
 - PowerPoint Presentation (\*.pptx):
 	- Open in Power Point 2016 or later.
 	- Click 'Slide Show' on menu bar.
-		- Normally it will auto run the slide show, but it could be too fast or too slow to your liking.
+		- It will auto run the slide show, but it could be too fast or too slow to your liking.
 	- Uncheck 'Use Timings' (optional) to manually control the timings.
-	- Click "From Beginning" or the "slide show icon" on the bottom status bar.
-	- The *.pptx file is editable, if you wish to add anything (e.g. *AAAARRRGHHHH!*)
+	- Click "*From Beginning*" or the "*Slide show icon*" on the bottom status bar.
+	- The \*.pptx file is editable, if you wish to add anything (e.g. *AAAARRRGHHHH!*)
 
 - PowerPoint Slide Show (\*.ppsx):
 	- Open in Power Point 2016 or later. Slide show will start automatically.
@@ -82,7 +82,7 @@ Given below are short instructions on how to use them
 		- It will auto start the timed display if you don't click the arrow again to insult it!
 	- Or, cancel the timing completely by pressing the left arrow.
 		- Then you MUST click the mouse or right arrow to move forward.
-	- The *.ppsx file is not editable.
+	- The \*.ppsx file is not editable.
 
 - Word document (\*.docx):
 	- Open in Word 2016 or later.
