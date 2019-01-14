@@ -92,7 +92,7 @@ ArcGIS_Online_Tutorial.pptx
 ---
 
 GSKY is currently delivered through TerriaMap alone. Providing another client for using GSKY might
-increase the user base considerably. Three such clients are being considered, ***viz.,*** ArcGIS, QGIS and NASA WorldView.
+increase the user base considerably. Three such clients are being considered, ***viz.,*** **ArcGIS, QGIS** and **NASA WorldView**.
 
 This document gives a basic understanding of **ArcGIS Online**. Though it is not expected to give
 any help with using GSKY through ArcGIS, learning about the capabilities of ArcGIS will be helpful later 
@@ -106,5 +106,33 @@ ArcGIS_Pro_Desktop_Tutorial.pptx
 
 Similar to the previous doc, this one gives a basic understanding about **ArcGIS Pro** which is a desktop variant of the
 ArcGIS Online (sorry, Windows only, no Mac!). This is considerably more complex than the online version, but there is 
-no need to run for your life (wild life will do it instead!). We use an example of predicting the future deforestation 
-in Amazon due to proposed new roads.
+no need to run for your life (wild life will do it instead). We use an example of predicting the future deforestation 
+in Amazon wilderness due to the proposed new roads.
+
+GSKY-Thredds_Integration (\*.pptx and \*.ppsx)
+---
+
+When a request is received from TerriaMap, GSKY aggregates the contents from several NetCDF files that constitute
+the area and time slices requested. The resulting display is sent back to TerriaMap as a \*.png image, but does not
+say which NetCDF files have contributed to it. This document describes a module added to GSKY to list the \*.nc
+files and display them as links to download from a THREDDS server.
+
+Though initially thought that such a functionality would be useful, it was later decided to be of no consequence.
+However, retaining this document for any possible future requirement.
+
+GSKY_Crawl_MAS (.docx, .pdf, .pptx and .ppsx)
+---
+
+This document describes the steps involved in setting up datasets for OWS services such as GEOGLAM. 
+The Word and PDF documents are detailed and list the process as well as code snippets to explain the process in detail. 
+It can be used as a reference for new developers.
+
+In current production there are seven separate shell scripts that run consecutievely. The document describes
+each separately and also a combined script that incorporates all the seven scripts.
+
+The PPTX and PPSX describe the process through animated graphics. Viewing these 5 min slide shows before reading the 
+Word document will help learn the process quicker.
+
+
+
+
