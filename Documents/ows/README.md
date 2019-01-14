@@ -17,15 +17,15 @@ be useful for a beginner as well as the expert user of GSKY. Though written
 mainly for the developers of the system(s), they will also double as user guides for the end users.
 
 The docs are the by-products of the author's very frustrating travel 
-through the GSKY code and its associate programs, and go against the new
+through the GSKY code, and its associate programs, and go against the new
 philosophy of *"why make things simple when they can be wonderfully complex and un-intelligible?"*.
 
 The motivation behind these docs is that no programmer, or the end user 
-for that matter, likes to read the docs before diving in. These, mainly animated pictorial docs 
+for that matter, likes to read the docs before diving in. These animated pictorial docs, 
 which omits Silvester from them, hopefully eliminate that requirement which, in the case of GSKY, 
-was not even an option! For those who dare to RTFM, there are detailed Word documents for most.
+was not even an option! For those who dare to RTFM, there are detailed Word/PDF documents as well.
 
-So, having alienated most of you with the intro, let us get into the details ! 
+So, having alienated most of you with the intro, let us get into the details! 
 
 Firstly, some mandatory statements...
 
@@ -66,14 +66,14 @@ Given below are short instructions on how to use them (which are not intended to
 		- Normally it will auto run the slide show, but it could be too fast or too slow to your liking.
 	- Uncheck 'Use Timings' (optional) to manually control the timings.
 	- Click "From Beginning" or the "slide show icon" on the bottom status bar.
-	- The *.pptx file is editable, if you wish to add anything (e.g. AAAARRRGHHHH!!!)
+	- The *.pptx file is editable, if you wish to add anything (e.g. *AAAARRRGHHHH!!!*)
 
 - Power Point Slide Show (\*.ppsx):
 	- Open in Power Point 2016 or later. Slide show will start automatically.
 		- It will run at the set speed.
 	- There is no option to uncheck the timings. 
-		- *"If you don't like duck, then you are rather stuck"* - Basil Fawlty (1975, 1979).
-	- But here you can fast forward by clicking the right arrow.
+		- *"If you don't like duck, then you are rather stuck"* - Basil Fawlty (1975).
+	- But you can fast forward by clicking the right arrow.
 		- It will auto start the timed display if you don't click the arrow again to insult it!
 	- Or, cancel the timing completely by pressing the left arrow.
 		- Then you MUST click the mouse or right arrow to move forward.
@@ -89,4 +89,22 @@ Documents in Alphabetical Order
 ---------------------------
 
 ArcGIS_Online_Tutorial.pptx
---
+---
+
+GSKY is currently delivered through TerriaMap alone. Providing another client for using GSKY might
+increase the user base considerably. Three such clients are being considered, ***viz.,*** ArcGIS, QGIS and NASA WorldView.
+
+This document gives a basic understanding of **ArcGIS Online**. Though it is not expected to give
+any help with using GSKY through ArcGIS, learning about the capabilities of ArcGIS will be helpful later 
+(possibly even to add further capabilities in GSKY). 
+
+This program is about as easy to learn as escaping from the path of an approaching hurricane. 
+So, we used an example that shows the best evacuation paths in a city where more than half the population has no transport.
+
+ArcGIS_Pro_Desktop_Tutorial.pptx
+---
+
+Similar to the previous doc, this one gives a basic understanding about **ArcGIS Pro** which is a desktop variant of the
+ArcGIS Online (sorry, Windows only, no Mac!). This is considerably more complex than the online version, but there is 
+no need to run for your life (wild life will do it instead!). We use an example of predicting the future deforestation 
+in Amazon due to proposed new roads.
