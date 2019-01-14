@@ -8,7 +8,9 @@ GSKY was developed at [NCI](http://nci.org.au) and is a scalable, distributed
 server which presents a new approach for geospatial data discovery and delivery 
 using OGC standards. The most recent release is version 1.0 (June 2018).
 
-This directoy has all the documents and user guides for the GSKY system.
+This directoy has all the documents and user guides for the GSKY system. If you find that
+anything is missing or requires modifications, please contact the author directly or through
+the comments.
 
 These documents - in Word, PowerPoint and PDF - listed in here are intended to 
 be useful for a beginner as well as the expert user of GSKY. Though written
@@ -16,13 +18,16 @@ mainly for the developers of the system(s), they will also double as user guides
 
 The docs are the by-products of the author's very frustrating travel 
 through the GSKY code and its associate programs, and go against the new
-philosophy of "*why make things simple when they can be wonderfully complex
-and un-intelligible?*".
+philosophy of *"why make things simple when they can be wonderfully complex and un-intelligible?"*.
 
 The motivation behind these docs is that no programmer, or the end user 
-for that matter, likes to read the docs before diving in. These, mainly animated pictorial docs, hopefully 
-eliminate that requirement which, in the case of GSKY, was not even an option! For those
-who dare to RTFM, there are detailed Word documents for most.
+for that matter, likes to read the docs before diving in. These, mainly animated pictorial docs 
+which omits Silvester from them, hopefully eliminate that requirement which, in the case of GSKY, 
+was not even an option! For those who dare to RTFM, there are detailed Word documents for most.
+
+So, having alienated most of you with the intro, let us get into the details ! 
+
+Firstly, some mandatory statements...
 
 License
 -------
@@ -50,75 +55,8 @@ When referring to GSKY in publications please use the citation in
 [CITATION.md](CITATION.md).  A ready-to-use BibTeX entry for LaTeX
 users can also be found in this file.
 
-Configuration Files
--------------------
+Documents in Alphabetical Order
+---------------------------
 
-1. `config.json`: Contains the list of WMS, WCS and WPS layers exposed by
-   the server. It also contains the IP address of the index API used
-   in the workflow. In addtion, it contains the list of worker nodes 
-   specifying the IP address and list of ports per worker. Several workers 
-   can be specified on a single machine by adding several entries using 
-   the same IP address and different ports. These services have to be
-   locally started at the specified machines.
-
-2. Serveral `config.json` files can be organized into directories to form
-   namespaces to group logical collection of datasets together.
-   For example, the server serves two science projects with the following
-   URLs:
-
-   ```
-   1) http://<server address>/ows/project1
-   2) http://<server address>/ows/project2
-   ```
-
-   The directory structure of the config files will be as follows:
-
-   ```
-   <config root directory>
-
-       project1
-          config.json
-
-       project2
-          config.json
-   ```
-
-How To Compile the Source
--------------------------
-
-Dependencies:
-
-+ Go > 1.6.0
-+ GDAL > 2.1.0
-+ Various Go packages (handled by the build system)
-
-```console
-$ export GOPATH=~/go
-$ go get github.com/nci/gsky
-$ cd $GOPATH/src/github.com/nci/gsky
-$ ./configure
-$ make all install
-```
-
-The `configure` script takes all of the standard GNU `configure` flags
-such as `--prefix` (to specify where to install GSKY).
-
-Overview of the Servers
------------------------
-
-GSKY mainly consists of three servers working together to deliver services. The main server (`ows.go`) is the front-end server that takes WMS/WCS/WPS HTTP requests as inputs. The main server talks to the MAS Restful API server (`mas/api/api.go`) for the data files that intersect with the polygon bounding box in the WMS/WCS/WPS requests. With those data files, the main server talks to the RPC worker nodes (`grpc-server/main.go`) for compute and IO intensive tasks and then sends the results back to the client side.
-
-How To Start the Servers
------------------------
-
-- Start the MAS Restful API server: `/opt/gsky/sbin/masapi -port 8888`
-
-	The `-port` option sets the API server listening port. The default is port 8080.
-
-- Start all the RPC worker nodes: `/opt/gsky/sbin/gsky-rpc -p 6000`
-
-	The `-p` option sets the gRPC listening port. The default is port 6000.
-
-- Start the main server: `/opt/gsky/sbin/gsky-ows -p 8080`
-
-	The `-p` option sets the main server listening port. The default is port 8080.
+ArcGIS_Online_Tutorial.pptx
+--
