@@ -21,13 +21,13 @@ be useful for a beginner as well as the expert user of GSKY. Though written
 mainly for the developers of the system(s), they will also double as user guides for the end users.
 
 The docs are the by-products of the author's very frustrating travel 
-through the GSKY code, and its associate programs, and go against the new
+through the GSKY code, and its associate programs, and they go against the new
 philosophy of *"why make things simple when they can be wonderfully complex and un-intelligible?"*.
 
-The motivation behind these docs is that no programmer, or the end user 
-for that matter, likes to read the docs before diving in. The animated pictorial docs, 
-which omit just Silvester from them, eliminate that requirement which, in the case of GSKY, 
-was not even an option! For those who dare to RTFM, there are detailed Word/PDF documents as well.
+The motivation behind these docs is that no programmer or the end user, especially the end user, 
+likes to read the docs before diving in. The animated pictorial docs, 
+that omit just Silvester from them, eliminate the requirement which, in the case of GSKY, 
+was not even an option. For those who dare to RTFM, there are detailed Word/PDF documents as well.
 
 Having alienated most of you with the intro, let us get into the details! 
 
@@ -97,8 +97,8 @@ ArcGIS_Online_Tutorial.pptx
 ---
 
 GSKY is currently delivered through TerriaMap alone. Providing another client for using GSKY might
-increase the user base considerably. Three such clients are being considered, 
-***viz.,*** **ArcGIS, QGIS** and **NASA WorldView**.
+increase the user base considerably. Several such clients are being considered, 
+***e.g.*** **ArcGIS, QGIS** and **NASA WorldView**.
 
 This document gives a basic understanding of **ArcGIS Online**. Though it will not give
 any help with using GSKY through ArcGIS, learning about the capabilities of ArcGIS will be useful later 
@@ -111,8 +111,8 @@ the population has no transport.
 ArcGIS_Pro_Desktop_Tutorial.pptx
 ---
 
-Similar to the previous doc, this one gives a basic understanding of **ArcGIS Pro** which is a desktop variant of the
-ArcGIS Online (sorry, Windows only, no Mac!). We use an example of predicting the future deforestation 
+Similar to the previous doc, this one gives a basic understanding of **ArcGIS Pro** which is a desktop variant of 
+**ArcGIS Online** (sorry, Windows only, no Mac!). We use an example of predicting the future deforestation 
 in Amazon wilderness due to the proposed new roads. It is considerably more complex than the online version, but there is 
 no need to run for your life (wild life will do it instead). 
 
