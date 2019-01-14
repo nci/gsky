@@ -55,6 +55,35 @@ When referring to GSKY in publications please use the citation in
 [CITATION.md](CITATION.md).  A ready-to-use BibTeX entry for LaTeX
 users can also be found in this file.
 
+How to use the documents
+----------------------
+There are four different types of documents for the same topic, though some may be missing, in here. 
+Given below are short instructions on how to use them (which are not intended to be an insult to intelligence!)
+
+- Power Point Presentation (\*.pptx):
+	- Open in Power Point 2016 or later.
+	- Click 'Slide Show' on menu bar.
+	- Uncheck 'Use Timings' (optional)
+		- Normally it will auto run the slide show, but it could be too fast or too slow to your liking.
+		- Uncheck 'Use Timings' to manually control the timings.
+	- Click "From Beginning" or the "slide show icon" on the bottom status bar.
+
+- Power Point Slide Show (\*.ppsx):
+	- Open in Power Point 2016 or later. Slide show will start automatically.
+	- It will run at the set speed.
+	- There is no option to uncheck the timings. 
+		- "If you don't like duck, then you are rather stuck" - Basil Fawlty (1975-79).
+	- But, here you can fast forward by clicking the right arrow.
+		- It will auto start the timed display if you don't click the arrow again to insult it!
+	- Or, cancel the timing completely by pressing the left arrow.
+		- Then you MUST click the mouse or right arrow to move forward.
+
+- Word document (\*.docx):
+	- Open in Word 2016 or later.
+
+- PDF document (\*.pdf):
+	- Open in the latest version of Adobe Acrobat.
+
 Documents in Alphabetical Order
 ---------------------------
 
