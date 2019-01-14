@@ -63,20 +63,21 @@ Given below are short instructions on how to use them (which are not intended to
 - Power Point Presentation (\*.pptx):
 	- Open in Power Point 2016 or later.
 	- Click 'Slide Show' on menu bar.
-	- Uncheck 'Use Timings' (optional)
 		- Normally it will auto run the slide show, but it could be too fast or too slow to your liking.
-		- Uncheck 'Use Timings' to manually control the timings.
+	- Uncheck 'Use Timings' (optional) to manually control the timings.
 	- Click "From Beginning" or the "slide show icon" on the bottom status bar.
+	- The *.pptx file is editable, if you wish to add anything (e.g. AAAARRRGHHHH!!!)
 
 - Power Point Slide Show (\*.ppsx):
 	- Open in Power Point 2016 or later. Slide show will start automatically.
-	- It will run at the set speed.
+		- It will run at the set speed.
 	- There is no option to uncheck the timings. 
-		- "If you don't like duck, then you are rather stuck" - Basil Fawlty (1975-79).
-	- But, here you can fast forward by clicking the right arrow.
+		- *"If you don't like duck, then you are rather stuck"* - Basil Fawlty (1975, 1979).
+	- But here you can fast forward by clicking the right arrow.
 		- It will auto start the timed display if you don't click the arrow again to insult it!
 	- Or, cancel the timing completely by pressing the left arrow.
 		- Then you MUST click the mouse or right arrow to move forward.
+	- The *.ppsx file is not editable.
 
 - Word document (\*.docx):
 	- Open in Word 2016 or later.
