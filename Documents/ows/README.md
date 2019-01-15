@@ -22,11 +22,12 @@ mainly for the developers of the system(s), they will double as user guides for 
 
 The docs are the by-products of the author's very painstaking travel 
 through the GSKY code and its associate programs, and they go against the new philosophy of 
-*"why make things simple and easily understood, when they can be wonderfully complex, elegant and un-intelligible?"*.
+*"why make things simple and easily understood, when they can be wonderfully complex, elegant and unintelligible ?"*.
 
 The motivation behind these docs is that no programmer or the end user, especially the end user, 
 likes to read the docs before diving in. These documents, in particular the \*.pptx, are good alternatives to RTFM. 
-The animated presentations, that omit just Sylvester from them, eliminate the requirement which 
+The animated presentations, that omit just Sylvester from them, run for a maximum of 10 minutes and may save you 3 hours
+to go through the detailed tutorials. They may also eliminate the need for a manual or document, which 
 was not even an option in the case of GSKY. For those who dare to RTFM, there are detailed Word/PDF documents as well.
 
 Having alienated most of you with the intro, let us get into the details! 
@@ -69,7 +70,7 @@ Given below are short instructions on how to use them (not an insult to the inte
 	- Click 'Slide Show' on menu bar and click "*From Beginning*".
 		- It will auto run the slide show, but it could be too fast or too slow to your liking.
 		- If desired, uncheck 'Use Timings' to manually control the timings.
-	- The \*.pptx file is editable, if you wish to add anything (e.g. *AAAARRRGHHHH!*)
+	- The \*.pptx file is editable, if you wish to add anything (e.g. "*AAAARRRGHHHH!!*")
 
 - PowerPoint Slide Show (\*.ppsx):
 	- Open in PowerPoint 2016 or later. 
@@ -121,7 +122,7 @@ GSKY-Thredds_Integration (\*.pptx and \*.ppsx)
 When a request is received from TerriaMap, GSKY aggregates the contents from several NetCDF files that constitute
 the area and time slices requested. The resulting display is sent back to TerriaMap as a \*.png image, but does not
 say which NetCDF files have contributed to it. This document describes a module added to GSKY to list the \*.nc
-files and display them as links to download from a THREDDS server.
+files and display them for download from a THREDDS server.
 
 Though initially considered that it was a required functionality (my mistake!) it was later found to be of no consequence.
 Still, retaining this document for any possible future requirement.
