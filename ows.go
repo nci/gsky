@@ -217,7 +217,7 @@ func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r
 		}
 
 	case "GetMap":
-		proc.Init_thredds(w, r) // AVS: Create/use teh user-specific thredds subdir
+//		proc.Init_thredds(w, r) // AVS: Create/use teh user-specific thredds subdir
 		if params.Version == nil || !utils.CheckWMSVersion(*params.Version) {
 			http.Error(w, fmt.Sprintf("This server can only accept WMS requests compliant with version 1.1.1 and 1.3.0: %s", reqURL), 400)
 			return
@@ -370,12 +370,19 @@ func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r
 
 			return
 		}
-
+//conf.Layers[idx].WmsTimeout = 200 // AVS
+//fmt.Println(conf.Layers[idx].WmsTimeout)
 		timeoutCtx, timeoutCancel := context.WithTimeout(context.Background(), time.Duration(conf.Layers[idx].WmsTimeout)*time.Second)
+//fmt.Println("AVS:0")
+//fmt.Printf("%d AND %d",timeoutCtx,timeoutCancel )
 		defer timeoutCancel()
 
 		tp := proc.InitTilePipeline(ctx, conf.ServiceConfig.MASAddress, conf.ServiceConfig.WorkerNodes, conf.Layers[idx].MaxGrpcRecvMsgSize, conf.Layers[idx].WmsPolygonShardConcLimit, conf.ServiceConfig.MaxGrpcBufferSize, errChan)
-//fmt.Println(geoReq.ScaleParams.Clip)
+//fmt.Println("AVS:1")
+//     'AU': ('Australia', (113.338953078, -43.6345972634, 153.569469029, -10.6681857235)),
+// http://130.56.242.15/ows?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap&BBOX=-43.6345972634%2C113.338953078%2C-10.6681857235%2C153.569469029&CRS=EPSG:4326&WIDTH=242&HEIGHT=250&LAYERS=LS8:NBAR:TRUE&STYLES=&FORMAT=image/png&DPI=96&MAP_RESOLUTION=96&FORMAT_OPTIONS=dpi:96&TRANSPARENT=TRUE
+// http://130.56.242.15/ows/?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap&bbox=15341217.324948017%2C-2817774.6107047386%2C15419488.841912035%2C-2739503.0937407166&CRS=EPSG:3857&WIDTH=256&HEIGHT=256&LAYERS=LS8:NBAR:TRUE&STYLES=&FORMAT=image/png&DPI=96&MAP_RESOLUTION=96&FORMAT_OPTIONS=dpi:96&TRANSPARENT=TRUE
+//fmt.Println(geoReq.BBox)
 		select {
 		case res := <-tp.Process(geoReq, *verbose):
 			scaleParams := utils.ScaleParams{Offset: geoReq.ScaleParams.Offset,
