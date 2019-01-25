@@ -22,7 +22,7 @@ mainly for the developers of the system(s), some will double as user guides for 
 
 The docs are the by-products of the author's very painstaking travels 
 through the GSKY and TerriaMap codes and other potential GSKY clients. 
-Hopefully these docs will be useful for other developers and users of GSKY. The docs do not comply with the new philosophy of 
+Hopefully they will be useful for other developers and users of GSKY. The docs do not comply with the new philosophy of 
 *"why make things simple and easily understood when they can be wonderfully complex, elegant and unintelligible?"*.
 
 The motivation behind these docs is that no programmer or the end user, especially the end user, 
