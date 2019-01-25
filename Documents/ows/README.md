@@ -17,17 +17,18 @@ anything is missing or requires modifications, please contact the author directl
 the comments.
 
 These documents - in Word, PowerPoint and PDF - listed in here are intended to 
-be equally useful for a beginner and the expert user of GSKY. Though written
-mainly for the developers of the system(s), they will double as user guides for the end users.
+be equally useful for a beginner and an expert of GSKY. Though written
+mainly for the developers of the system(s), some will double as user guides for the end users.
 
-The docs are the by-products of the author's very painstaking travel 
-through the GSKY code and its associate programs, and they go against the new philosophy of 
-*"why make things simple and easily understood, when they can be wonderfully complex, elegant and unintelligible ?"*.
+The docs are the by-products of the author's very painstaking travels 
+through the GSKY and TerriaMap codes and other potential GSKY clients. 
+Hopefully these docs will be useful for other developers and users of GSKY. The docs do not comply with the new philosophy of 
+*"why make things simple and easily understood when they can be wonderfully complex, elegant and unintelligible?"*.
 
 The motivation behind these docs is that no programmer or the end user, especially the end user, 
-likes to read the docs before diving in. These documents, in particular the \*.pptx, are good alternatives to RTFM. 
+likes to read the manuals before diving in. These documents, in particular the \*.pptx, are good alternatives to RTFM. 
 The animated presentations, that omit just Sylvester from them, run for a maximum of 10 minutes and may save you 3 hours
-to go through the detailed tutorials. They may also eliminate the need for a manual or document, which 
+that it takes to go through the text-based tutorials. They may also eliminate the need for a manual or document, which 
 was not even an option in the case of GSKY. For those who dare to RTFM, there are detailed Word/PDF documents as well.
 
 Having alienated most of you with the intro, let us get into the details! 
