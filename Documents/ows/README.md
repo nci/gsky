@@ -105,7 +105,7 @@ More documents will be added here as required.
 ArcGIS_Online_Tutorial.pptx
 ---
 
-This gives an understanding of **ArcGIS Online**. Though WMS is supported by **ArcGIS Online**,
+This gives an understanding of **ArcGIS Online**. Though WMS is supported by this browser-based service,
 there is an unresolved problem with connecting to the GSKY server. This tutorial is about other capabilities of ArcGIS and
 will be useful when GSKY server is connecting and possibly even to add further capabilities in GSKY. 
 
