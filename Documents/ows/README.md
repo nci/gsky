@@ -43,7 +43,7 @@ Copyright 2016-2019 National Computational Infrastructure, Australian National U
 Licensed under the Apache License, Version 2.0 (the "License"); you
 may not use this package except in compliance with the License.  A
 copy of the [License](http://www.apache.org/licenses/LICENSE-2.0) may
-be found in this source distribution in `LICENSE-2.0.txt`.
+be found in this source distribution in [LICENSE-2.0.txt](../../LICENSE-2.0.txt).
 
 Contributions
 -------------
@@ -66,29 +66,29 @@ How to use the documents
 There are four different types of documents for the same topic, though not in all cases, in here. 
 Given below are short instructions on how to use them (not meant to be an insult to the intelligence of the knowledgeable!)
 
-- PowerPoint Presentation (\*.pptx):
+- PowerPoint Presentation (**\*.pptx**):
 	- Open in PowerPoint 2016 or later.
 	- Click 'Slide Show' on menu bar and click "*From Beginning*".
 		- It will auto run the slide show, but it could be too fast or too slow to your liking.
 		- If desired, uncheck 'Use Timings' to manually control the timings.
-	- The \*.pptx file is editable, if you wish to add anything (e.g. "*AAAARRRGHHHH!!*")
+	- The **\*.pptx** file is editable, if you wish to add anything (e.g. "*AAAARRRGHHHH!!*")
 
-- PowerPoint Slide Show (\*.ppsx):
+- PowerPoint Slide Show (**\*.ppsx**):
 	- Open in PowerPoint 2016 or later. 
 		- Slide show will start automatically.
 		- It will run at the set speed.
 	- There is no option to uncheck the timings. 
 		- *"If you don't like duck, then you are rather stuck"* - Basil Fawlty (1975).
 	- You can fast forward by clicking the right arrow.
-		- It will auto restart the timed display if you don't click the arrow again to insult it!
+		- It will auto restart the timed display if you don't click the arrow again.
 	- Or, cancel the timing completely by pressing the left arrow.
 		- Then you MUST click the mouse or right/left arrow to move.
 	- The \*.ppsx file is not editable.
 
-- Word document (\*.docx):
+- Word document (**\*.docx**):
 	- Open in Word 2016 or later.
 
-- PDF document (\*.pdf):
+- PDF document (**\*.pdf**):
 	- Open in the latest version of Adobe Acrobat.
 
 Documents in Alphabetical Order
