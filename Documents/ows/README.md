@@ -10,8 +10,8 @@ GSKY was developed at [NCI](http://nci.org.au) and is a scalable, distributed
 server which presents a new approach for geospatial data discovery and delivery 
 using OGC standards. The most recent release is version 1.0 (June 2018).
 
-The **documents/ows** directoy has all the documents and user guides for the GSKY system. If you find that
-anything is missing or requires modifications, please contact the author directly or through the comments.
+The **documents/ows** directoy has all the currently available documents and user guides for the GSKY system. If you find that
+anything is missing or requires more info, please contact the author directly or through the comments.
 
 The documents - in Word, PowerPoint and PDF - listed in here are intended to 
 be equally useful for a beginner and an expert of GSKY. Though they were created
@@ -26,16 +26,14 @@ These docs do not comply with the new philosophy of
 The motivation behind these docs is that no programmer or the end user, especially the end user, 
 likes to read the manuals before diving in. The **\*.pptx**, are good alternatives to RTFM. 
 The animated presentations, that omit just Sylvester from them, run for a maximum of 10 minutes and will save you 3+ hours
-that it takes to go through text-based tutorials. I strongly believe that animated PowerPoint presentations are
-much better in teaching than a YouTube video, as one is less likely to fall asleep and will not get distracted by 
+that it takes to learn from text-based tutorials. Animated PowerPoint presentations are much better in teaching than 
+text-based tutorials and a YouTube video, as one is less likely to fall asleep and will not get distracted by 
 another video of a dancing girl.
 
 These \*.pptx presentations eliminate the need for a manual or text document, which was not even an option in the case of GSKY. 
 For those who dare to RTFM, there are detailed Word/PDF documents as well.
 
-Having alienated most of you with the intro, let us get into the details! 
-
-Firstly, some mandatory statements...
+Having alienated most of you with the intro, let us get into the details. Firstly, some mandatory statements...
 
 License
 -------
