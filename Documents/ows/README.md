@@ -99,13 +99,13 @@ increase the user base considerably. Several such clients are being considered,
 ***e.g.*** **ArcGIS, QGIS** and **NASA WorldView**. 
 
 Some documents in here describe the ArcGIS suite of programs that could be used as GSKY clients. Other documents
-include **GSKY User Guide**, **GSKY Developer Guide**, **Setting up GSKY server**, **Crawling data into the MAS database**, etc.
+include **"GSKY User Guide"**, **"GSKY Developer Guide"**, **"Setting up GSKY server"**, **"Crawling data into the MAS database"**, etc.
 More documents will be added here as required.
 
 ArcGIS_Online_Tutorial.pptx
 ---
 
-This gives an understanding of **ArcGIS Online**. Though WMS services are supported by **ArcGIS Online**,
+This gives an understanding of **ArcGIS Online**. Though WMS is supported by **ArcGIS Online**,
 there is an unresolved problem with connecting to the GSKY server. This tutorial is about other capabilities of ArcGIS and
 will be useful when GSKY server is connecting and possibly even to add further capabilities in GSKY. 
 
@@ -119,7 +119,9 @@ ArcGIS_Pro_Desktop_Tutorial.pptx
 Similar to the previous doc, this one gives an understanding of **ArcGIS Pro** which is a desktop variant 
 of **ArcGIS Online** (sorry! Windows only, no Mac!). It is considerably more complex than the online version but
 can display data from GSKY server. We use an example of predicting the future deforestation 
-in Amazon wilderness due to the proposed new roads. How to use **ArcGIS Pro** as a GSKY client is also explained.  
+in Amazon wilderness due to the proposed new roads. 
+
+How to use **ArcGIS Pro** as a GSKY client is also explained.  
 
 GSKY-Thredds_Integration (\*.pptx and \*.ppsx)
 ---
