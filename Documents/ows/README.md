@@ -58,7 +58,7 @@ Citing GSKY in publications
 ---------------------------
 
 When referring to GSKY in publications please use the citation in
-[CITATION.md](CITATION.md).  A ready-to-use BibTeX entry for LaTeX
+[CITATION.md](../../CITATION.md).  A ready-to-use BibTeX entry for LaTeX
 users can also be found in this file.
 
 How to use the documents
