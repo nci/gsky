@@ -96,7 +96,11 @@ Documents in Alphabetical Order
 
 GSKY is currently delivered through TerriaMap alone. Providing another client for using GSKY might
 increase the user base considerably. Several such clients are being considered, 
-***e.g.*** **ArcGIS, QGIS** and **NASA WorldView**.
+***e.g.*** **ArcGIS, QGIS** and **NASA WorldView**. 
+
+Some documents in here describe the ArcGIS suite of programs that could be used as GSKY clients. Other documents
+include **GSKY User Guide**, **GSKY Developer Guide**, **Setting up GSKY server**, **Crawling data into the MAS database**, etc.
+More documents will be added here as required.
 
 ArcGIS_Online_Tutorial.pptx
 ---
