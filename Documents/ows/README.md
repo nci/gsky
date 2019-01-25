@@ -63,8 +63,8 @@ users can also be found in this file.
 
 How to use the documents
 ----------------------
-There are four different types of documents for the same topic, though some may be missing, in here. 
-Given below are short instructions on how to use them (not an insult to the intelligence of the knowledgeable!)
+There are four different types of documents for the same topic, though not in all cases, in here. 
+Given below are short instructions on how to use them (not meant to be an insult to the intelligence of the knowledgeable!)
 
 - PowerPoint Presentation (\*.pptx):
 	- Open in PowerPoint 2016 or later.
@@ -79,7 +79,7 @@ Given below are short instructions on how to use them (not an insult to the inte
 		- It will run at the set speed.
 	- There is no option to uncheck the timings. 
 		- *"If you don't like duck, then you are rather stuck"* - Basil Fawlty (1975).
-	- But you can fast forward by clicking the right arrow.
+	- You can fast forward by clicking the right arrow.
 		- It will auto restart the timed display if you don't click the arrow again to insult it!
 	- Or, cancel the timing completely by pressing the left arrow.
 		- Then you MUST click the mouse or right/left arrow to move.
@@ -101,9 +101,9 @@ increase the user base considerably. Several such clients are being considered,
 ArcGIS_Online_Tutorial.pptx
 ---
 
-This gives a basic understanding of **ArcGIS Online**. Though WMS services are supported by **ArcGIS Online**,
-there is an apparent problem with connecting to the GSKY server. This tutorial is about other capabilities of ArcGIS and
-will be useful when GSKY is working and possibly even to add further capabilities in GSKY. 
+This gives an understanding of **ArcGIS Online**. Though WMS services are supported by **ArcGIS Online**,
+there is an unresolved problem with connecting to the GSKY server. This tutorial is about other capabilities of ArcGIS and
+will be useful when GSKY server is connecting and possibly even to add further capabilities in GSKY. 
 
 This program is about as easy to learn as escaping from the path of an approaching hurricane. 
 Hence we use an example that shows the best hurricane evacuation paths in a city where more than half 
@@ -112,10 +112,10 @@ the population has no personal transport.
 ArcGIS_Pro_Desktop_Tutorial.pptx
 ---
 
-Similar to the previous doc, this one gives a basic understanding of **ArcGIS Pro** which is a desktop variant 
-(sorry! Windows only, no Mac!) of **ArcGIS Online**. We use an example of predicting the future deforestation 
-in Amazon wilderness due to the proposed new roads. It is considerably more complex than the online version but
-can display data from GSKY server. 
+Similar to the previous doc, this one gives an understanding of **ArcGIS Pro** which is a desktop variant 
+of **ArcGIS Online** (sorry! Windows only, no Mac!). It is considerably more complex than the online version but
+can display data from GSKY server. We use an example of predicting the future deforestation 
+in Amazon wilderness due to the proposed new roads. How to use **ArcGIS Pro** as a GSKY client is also explained.  
 
 GSKY-Thredds_Integration (\*.pptx and \*.ppsx)
 ---
