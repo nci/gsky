@@ -63,7 +63,7 @@ users can also be found in this file.
 
 How to use the documents
 ----------------------
-There are four different types of documents for the same topic in here, though not in all cases. 
+There are up to four different types of documents for the same topic. 
 Given below are short instructions on how to use them, which are not meant to be an insult to the 
 intelligence of anyone.
 
@@ -71,7 +71,7 @@ intelligence of anyone.
 	- Open in PowerPoint 2016 or later.
 	- Click 'Slide Show' on menu bar and click "*From Beginning*".
 		- It will auto run the slide show, but it could be too fast or too slow to your liking.
-		- If desired, uncheck **Use Timings** to manually control the timings.
+		- If desired, uncheck **"Use Timings"** to manually control the timings.
 	- The **\*.pptx** file is editable, if you wish to add anything (e.g. "*AAAARRRGHHHH!!*")
 
 - PowerPoint Slide Show (**\*.ppsx**):
@@ -95,7 +95,7 @@ intelligence of anyone.
 List of Documents
 -----------------
 
-GSKY is currently delivered through **TerriaMap**. Providing another client for using GSKY might
+GSKY is currently delivered through **TerriaMap**. Providing another client for GSKY might
 increase the user base considerably. Several such clients are being considered, 
 *e.g.* **ArcGIS**, **QGIS** and **NASA WorldView**. 
 
