@@ -63,15 +63,15 @@ users can also be found in this file.
 
 How to use the documents
 ----------------------
-There are four different types of documents for the same topic, though not in all cases, in here. 
+There are four different types of documents for the same topic in here, though not in all cases. 
 Given below are short instructions on how to use them, which are not meant to be an insult to the 
-intelligence of the knowledgeable!
+intelligence of anyone.
 
 - PowerPoint Presentation (**\*.pptx**):
 	- Open in PowerPoint 2016 or later.
 	- Click 'Slide Show' on menu bar and click "*From Beginning*".
 		- It will auto run the slide show, but it could be too fast or too slow to your liking.
-		- If desired, uncheck 'Use Timings' to manually control the timings.
+		- If desired, uncheck **Use Timings** to manually control the timings.
 	- The **\*.pptx** file is editable, if you wish to add anything (e.g. "*AAAARRRGHHHH!!*")
 
 - PowerPoint Slide Show (**\*.ppsx**):
@@ -97,14 +97,14 @@ List of Documents
 
 GSKY is currently delivered through **TerriaMap**. Providing another client for using GSKY might
 increase the user base considerably. Several such clients are being considered, 
-*e.g.* **ArcGIS, QGIS** and **NASA WorldView**. 
+*e.g.* **ArcGIS**, **QGIS** and **NASA WorldView**. 
 
 Some documents listed here describe the ArcGIS suite of programs that could be used as GSKY clients. Others
 include **"GSKY User Guide"**, **"GSKY Developer Guide"**, **"Setting up GSKY server"**, 
 **"Adding data into MAS"**, etc. More documents will be added as required.
 
-This is an evolving README and the list of docs below may not be in alphabetical order, but the captions will
-match the names of the documents.
+This is an evolving README and the list of docs below may not be in alphabetical order, but the titles will
+match the names of the documents. To view any doc, download it from the list above and open locally.
 
 ArcGIS_Online_Tutorial (.pptx)
 ---
@@ -132,6 +132,7 @@ ArcGIS_Earth_Tutorial (.pptx)
 
 This is a free software that gets installed as part of the ArcGIS Desktop suite. It can also be downloaded separately.
 It supports WMS services and hence can be used as a GSKY client. 
+
 To use it one needs an ArcGIS Online account, either public or a time-limited free trial. The public account is free, 
 but not sure whether it too is time/feature limited. 
 
@@ -149,7 +150,7 @@ GSKY_ArcGIS_Integration (.docx)
 ---
 
 This document aims to describe the basics of the **ArcGIS** suite of programs and how they can be used as GSKY clients.
-The description based on text and images is a companion for the separate \*.pptx presentations for each app.
+The description based on text and images is a companion to the separate \*.pptx presentations for each app.
 
 GSKY-Thredds_Integration (.pptx and .ppsx)
 ---
@@ -189,7 +190,7 @@ GSKY_OWS_Server (.docx, .pdf, .pptx and .ppsx)
 ---
 
 This document is a detailed description of the code base that creates and runs the GSKY server. To understand the process, 
-the fundamental interactions at code level between TerriaMap and GSKY are explained but it is by no way a 
+the fundamental interactions at code level between TerriaMap and GSKY are explained but it is by no means a 
 comprehensive description of how TerriaMap works.
 
 The **\*.pptx** and **\*.ppsx** are animated presentations of the process flow of the GSKY server, showing code
@@ -197,19 +198,19 @@ snippets as required..
 
 It is hoped that some of the text from the Word doc will be inserted as comments within
 the code, which is is virtually without any context-specific comments.  It will make the life easier
-for a new programmer, even if s/he is a GOlang expert.
+for a new programmer, even if s/he is a **GOlang** expert.
 
 GSKY_User_Guide (.pptx and .ppsx)
 ---
 
 How to use GSKY through TerriaMap is presented through animations. This 5 minute presentation will give the end user
-a working knowledge of the GSKY Web Map Service. It does not include at present the WCS and WPS services.
+a working knowledge of the GSKY Web Map Service. It does not include the WCS and WPS services but may be added later.
 
 GSKY_build_all (.pptx and .ppsx)
 ---
 
 How to install and start a GSKY server. Includes the steps in creating a Virtual Machine on Tenjin. The doc describes
-the installation of all dependencies plus the building of GSKY server and is a companion of 'build_all.sh' which is a 
+the installation of all dependencies plus the building of GSKY server and is a companion of **build_all.sh** which is a 
 one-step installation script. Code snippet for each step is displayed.
 
 QGIS_Desktop_Tutorial (.pptx)
