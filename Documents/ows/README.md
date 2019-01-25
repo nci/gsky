@@ -93,28 +93,28 @@ Given below are short instructions on how to use them (not an insult to the inte
 Documents in Alphabetical Order
 ---------------------------
 
-ArcGIS_Online_Tutorial.pptx
----
-
 GSKY is currently delivered through TerriaMap alone. Providing another client for using GSKY might
 increase the user base considerably. Several such clients are being considered, 
 ***e.g.*** **ArcGIS, QGIS** and **NASA WorldView**.
 
-This document gives a basic understanding of **ArcGIS Online**. Though it will not give
-any help for using GSKY through ArcGIS, learning about the capabilities of ArcGIS will be useful later 
-(possibly even to add further capabilities in GSKY). 
+ArcGIS_Online_Tutorial.pptx
+---
+
+This gives a basic understanding of **ArcGIS Online**. Though WMS services are supported by **ArcGIS Online**,
+there is an apparent problem with connecting to the GSKY server. This tutorial is about other capabilities of ArcGIS and
+will be useful when GSKY is working and possibly even to add further capabilities in GSKY. 
 
 This program is about as easy to learn as escaping from the path of an approaching hurricane. 
 Hence we use an example that shows the best hurricane evacuation paths in a city where more than half 
-the population has no transport.
+the population has no personal transport.
 
 ArcGIS_Pro_Desktop_Tutorial.pptx
 ---
 
 Similar to the previous doc, this one gives a basic understanding of **ArcGIS Pro** which is a desktop variant 
 (sorry! Windows only, no Mac!) of **ArcGIS Online**. We use an example of predicting the future deforestation 
-in Amazon wilderness due to the proposed new roads. It is considerably more complex than the online version, but there is 
-no need to run for your life (wild life will do it instead). 
+in Amazon wilderness due to the proposed new roads. It is considerably more complex than the online version but
+can display data from GSKY server. 
 
 GSKY-Thredds_Integration (\*.pptx and \*.ppsx)
 ---
