@@ -3,33 +3,35 @@ DOCS For GSKY
 (Distributed Scalable Geospatial Data Server)
 ---
 
-
-
-FOREWORD
+INTRODUCTION
 -------------
 
 GSKY was developed at [NCI](http://nci.org.au) and is a scalable, distributed 
 server which presents a new approach for geospatial data discovery and delivery 
 using OGC standards. The most recent release is version 1.0 (June 2018).
 
-This directoy has all the documents and user guides for the GSKY system. If you find that
-anything is missing or requires modifications, please contact the author directly or through
-the comments.
+The **documents/ows** directoy has all the documents and user guides for the GSKY system. If you find that
+anything is missing or requires modifications, please contact the author directly or through the comments.
 
-These documents - in Word, PowerPoint and PDF - listed in here are intended to 
-be equally useful for a beginner and an expert of GSKY. Though written
-mainly for the developers of the system(s), some will double as user guides for the end users.
+The documents - in Word, PowerPoint and PDF - listed in here are intended to 
+be equally useful for a beginner and an expert of GSKY. Though they were created
+mainly for the developers of the system(s), some will function as user guides for the end users.
 
-The docs are the by-products of the author's very painstaking travels 
-through the GSKY and TerriaMap codes and other potential GSKY clients. 
-Hopefully they will be useful for other developers and users of GSKY. The docs do not comply with the new philosophy of 
-*"why make things simple and easily understood when they can be wonderfully complex, elegant and unintelligible?"*.
+These docs are the by-products of the author's very painstaking travels through the GSKY and TerriaMap codes and 
+other potential GSKY clients. Hopefully they will be useful for other developers and users of GSKY. 
+
+These docs do not comply with the new philosophy of 
+*"why make things simple and easily understood when they can be wonderfully complex, elegant and unintelligible?"* (no apologies).
 
 The motivation behind these docs is that no programmer or the end user, especially the end user, 
-likes to read the manuals before diving in. These documents, in particular the \*.pptx, are good alternatives to RTFM. 
-The animated presentations, that omit just Sylvester from them, run for a maximum of 10 minutes and may save you 3 hours
-that it takes to go through the text-based tutorials. They may also eliminate the need for a manual or document, which 
-was not even an option in the case of GSKY. For those who dare to RTFM, there are detailed Word/PDF documents as well.
+likes to read the manuals before diving in. The **\*.pptx**, are good alternatives to RTFM. 
+The animated presentations, that omit just Sylvester from them, run for a maximum of 10 minutes and will save you 3+ hours
+that it takes to go through text-based tutorials. I strongly believe that animated PowerPoint presentations are
+much better in teaching than a YouTube video, as one is less likely to fall asleep and will not get distracted by 
+another video of a dancing girl.
+
+These \*.pptx presentations eliminate the need for a manual or text document, which was not even an option in the case of GSKY. 
+For those who dare to RTFM, there are detailed Word/PDF documents as well.
 
 Having alienated most of you with the intro, let us get into the details! 
 
@@ -82,7 +84,7 @@ intelligence of the knowledgeable!
 		- *"If you don't like duck, then you are rather stuck"* - Basil Fawlty (1975).
 	- You can fast forward by clicking the right arrow.
 		- It will auto restart the timed display if you don't click the arrow again.
-	- Or, cancel the timing completely by pressing the left arrow.
+	- Or, cancel the timing entirely by pressing the left arrow.
 		- Then you MUST click the mouse or right/left arrow to move.
 	- The \*.ppsx file is not editable.
 
@@ -95,13 +97,16 @@ intelligence of the knowledgeable!
 List of Documents
 -----------------
 
-GSKY is currently delivered through **TerriaMap** alone. Providing another client for using GSKY might
+GSKY is currently delivered through **TerriaMap**. Providing another client for using GSKY might
 increase the user base considerably. Several such clients are being considered, 
 *e.g.* **ArcGIS, QGIS** and **NASA WorldView**. 
 
 Some documents listed here describe the ArcGIS suite of programs that could be used as GSKY clients. Others
 include **"GSKY User Guide"**, **"GSKY Developer Guide"**, **"Setting up GSKY server"**, 
-**"Crawling data into the MAS database"**, etc. More documents will be added as required.
+**"Adding data into MAS"**, etc. More documents will be added as required.
+
+This is an evolving README and the list of docs below may not be in alphabetical order, but the captions will
+match the names of the documents.
 
 ArcGIS_Online_Tutorial (\*.pptx)
 ---
@@ -114,7 +119,7 @@ This program is about as easy to learn as escaping from the path of an approachi
 Hence we use an example that shows the best hurricane evacuation paths in a city where more than half 
 the population has no personal transport.
 
-ArcGIS_Pro_Desktop_Tutorial (\*.pptx)
+ArcGIS_Pro_Desktop_Tutorial (.pptx)
 ---
 
 Similar to the previous doc, this one gives an understanding of **ArcGIS Pro** which is a desktop variant 
@@ -124,7 +129,7 @@ in Amazon wilderness due to the proposed new roads.
 
 How to use **ArcGIS Pro** as a GSKY client is also explained.  
 
-ArcGIS_Earth_Tutorial (\*.pptx)
+ArcGIS_Earth_Tutorial (.pptx)
 ---
 
 This is a free software that gets installed as part of the ArcGIS Desktop suite. It can also be downloaded separately.
@@ -134,7 +139,7 @@ but not sure whether it too is time/feature limited.
 
 The tutorial describes the program usage and how to display GSKY data layers.
 
-ArcMap_Tutorial (\*.pptx)
+ArcMap_Tutorial (.pptx)
 ---
 
 This standalone app does not require ArcGIS Online account. It supports WMS services and hence can be used as a GSKY client. 
@@ -142,12 +147,12 @@ It works with only 2D maps and sends the Bbox values as Lat/Lon.
 
 The tutorial describes the program usage and how to display GSKY data layers.
 
-GSKY_ArcGIS_Integration (\*.docx)
+GSKY_ArcGIS_Integration (.docx)
 ---
 
 This document aims to describe the basics of the **ArcGIS** suite of programs and how they can be used as GSKY clients.
 
-GSKY-Thredds_Integration (\*.pptx and \*.ppsx)
+GSKY-Thredds_Integration (.pptx and .ppsx)
 ---
 
 When a request is received from TerriaMap, GSKY aggregates the contents from several NetCDF files that constitute
@@ -171,7 +176,7 @@ each of them separately and also a new consolidated script that incorporates all
 The PPTX and PPSX describe the process through animated graphics. Viewing these 5 minute slide shows before reading the 
 Word document will help to learn the process quicker.
 
-GSKY_Developer_Guide (\*.pptx, \*.ppsx)
+GSKY_Developer_Guide (.pptx, .ppsx)
 ---
 
 This doc is primarily for GSKY code developers, but has a section for the end users. It lists code snippets
@@ -181,7 +186,7 @@ within the GSKY server are given as code and descriptions.
 It is a companion doc for GSKY_OWS_Server.docx which describes the code in detail so that a new programmer 
 can work with it. 
 
-GSKY_OWS_Server (\*.docx, \*.pdf, \*.pptx and \*.ppsx)
+GSKY_OWS_Server (.docx, .pdf, .pptx and .ppsx)
 ---
 
 This document is a detailed description of the code base that creates and runs the GSKY server. To understand the process, 
@@ -195,26 +200,26 @@ It is hoped that some of the text from the Word doc will be inserted as comments
 the code, which is is virtually without any context-specific comments.  It will make the life easier
 for a new programmer, even if s/he is a GOlang expert.
 
-GSKY_User_Guide (\*.pptx and \*.ppsx)
+GSKY_User_Guide (.pptx and .ppsx)
 ---
 
 How to use GSKY through TerriaMap is presented through animations. This 5 minute presentation will give the end user
 a working knowledge of the GSKY Web Map Service. It does not include at present the WCS and WPS services.
 
-GSKY_build_all (\*.pptx and \*.ppsx)
+GSKY_build_all (.pptx and .ppsx)
 ---
 
 How to install and start a GSKY server. Includes the steps in creating a Virtual Machine on Tenjin. The doc describes
 the installation of all dependencies plus the building of GSKY server and is a companion of 'build_all.sh' which is a 
 one-step installation script. Code snippet for each step is displayed.
 
-QGIS_Desktop_Tutorial (\*.pptx)
+QGIS_Desktop_Tutorial (.pptx)
 ---
 
 Basics of using QGIS. Though QGIS has WMS capabilities, currently they do not work with GSKY. This part is not
 included in this presentation.
 
-Setting_Up_Thredds_Server (\*.pptx)
+Setting_Up_Thredds_Server (.pptx)
 ---
 
 How to setup a THREDDS server on the Virtual Machine on Tenjin. It was thought to be required for adding a functionality
