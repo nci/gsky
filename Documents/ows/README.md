@@ -108,14 +108,14 @@ include **"GSKY User Guide"**, **"GSKY Developer Guide"**, **"Setting up GSKY se
 This is an evolving README and the list of docs below may not be in alphabetical order, but the captions will
 match the names of the documents.
 
-ArcGIS_Online_Tutorial (\*.pptx)
+ArcGIS_Online_Tutorial (.pptx)
 ---
 
 This gives an understanding of **ArcGIS Online**. Though WMS is supported by this browser-based service,
 there is an unresolved problem with connecting to the GSKY server. This tutorial is about other capabilities of ArcGIS and
 will be useful when GSKY server is connecting and possibly even to add further capabilities in GSKY. 
 
-This program is about as easy to learn as escaping from the path of an approaching hurricane. 
+*This program is about as easy to learn as escaping from the path of an approaching hurricane*. 
 Hence we use an example that shows the best hurricane evacuation paths in a city where more than half 
 the population has no personal transport.
 
@@ -123,11 +123,11 @@ ArcGIS_Pro_Desktop_Tutorial (.pptx)
 ---
 
 Similar to the previous doc, this one gives an understanding of **ArcGIS Pro** which is a desktop variant 
-of **ArcGIS Online** (sorry! Windows only, no Mac!). It is considerably more complex than the online version but
+of **ArcGIS Online** (sorry! Windows only; no Mac!). It is considerably more complex than the online version but
 can display data from GSKY server. We use an example of predicting the future deforestation 
 in Amazon wilderness due to the proposed new roads. 
 
-How to use **ArcGIS Pro** as a GSKY client is also explained.  
+How to use **ArcGIS Pro** as a GSKY client is explained.  
 
 ArcGIS_Earth_Tutorial (.pptx)
 ---
@@ -137,7 +137,7 @@ It supports WMS services and hence can be used as a GSKY client.
 To use it one needs an ArcGIS Online account, either public or a time-limited free trial. The public account is free, 
 but not sure whether it too is time/feature limited. 
 
-The tutorial describes the program usage and how to display GSKY data layers.
+The tutorial describes the program usage and how to use **ArcGIS Pro** as a GSKY client is explained.
 
 ArcMap_Tutorial (.pptx)
 ---
@@ -145,12 +145,13 @@ ArcMap_Tutorial (.pptx)
 This standalone app does not require ArcGIS Online account. It supports WMS services and hence can be used as a GSKY client. 
 It works with only 2D maps and sends the Bbox values as Lat/Lon. 
 
-The tutorial describes the program usage and how to display GSKY data layers.
+The tutorial describes the program usage and how to use **ArcGIS Pro** as a GSKY client is explained.
 
 GSKY_ArcGIS_Integration (.docx)
 ---
 
 This document aims to describe the basics of the **ArcGIS** suite of programs and how they can be used as GSKY clients.
+The description based on text and images is a companion for the separate \*.pptx presentations for each app.
 
 GSKY-Thredds_Integration (.pptx and .ppsx)
 ---
@@ -160,8 +161,8 @@ the area and time slices requested. The resulting display is sent back to Terria
 say which NetCDF files have contributed to it. This document describes a module added to GSKY to list the \*.nc
 files and display them for download from a THREDDS server.
 
-Though initially considered that it was a required functionality (my mistake!) it was later found to be of no consequence.
-Still, retaining this document for any possible future requirement.
+Though initially considered that it was a required functionality (my mistake!) it was later found to be a non-requirement.
+Still, retaining this document for any possible future use.
 
 GSKY_Crawl_MAS (.docx, .pdf, .pptx and .ppsx)
 ---
@@ -225,6 +226,4 @@ Setting_Up_Thredds_Server (.pptx)
 How to setup a THREDDS server on the Virtual Machine on Tenjin. It was thought to be required for adding a functionality
 to GSKY to let the component NetCDF files to be downloaded. Later it became clear that it was not an intended function.
 However, this document will serve as a reference for setting up THREDDS server on any machine.
-
-
 
