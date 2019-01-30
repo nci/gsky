@@ -6,18 +6,34 @@ package extractor
 // #include "ogr_srs_api.h" /* for SRS calls */
 // #include "cpl_string.h"
 // #cgo pkg-config: gdal
-//char *getProj4Text(char *projWKT)
+//char *getWktText(char *projWKT, int mode)
 //{
-//	char *pszProj4;
+//	char *pszProjWkt;
 //	char *result;
 //	OGRSpatialReferenceH hSRS;
 //
-//	hSRS = OSRNewSpatialReference(projWKT);
-//	OSRExportToProj4(hSRS, &pszProj4);
-//	result = strdup(pszProj4);
+//	hSRS = OSRNewSpatialReference(NULL);
+//	OGRErr err = OSRSetFromUserInput(hSRS, projWKT);
+//	if(err != OGRERR_NONE) {
+//		OSRDestroySpatialReference(hSRS);
+//		return NULL;
+//	}
+//
+//	if(mode == 0) {
+//		err = OSRExportToWkt(hSRS, &pszProjWkt);
+//	} else {
+//		err = OSRExportToProj4(hSRS, &pszProjWkt);
+//	}
+//
+//	if(err != OGRERR_NONE) {
+//		OSRDestroySpatialReference(hSRS);
+//		return NULL;
+//	}
+//
+//	result = strdup(pszProjWkt);
 //
 //	OSRDestroySpatialReference(hSRS);
-//	CPLFree(pszProj4);
+//	CPLFree(pszProjWkt);
 //
 //	return result;
 //}
@@ -103,13 +119,19 @@ func ExtractSentinel2Yaml(filename string) (*GeoFile, error) {
 		log.Printf("invalid timestamp: %v", err)
 	}
 
-	projWkt := ard.Grid_spatial.Projection.Spatial_reference
+	srs := ard.Grid_spatial.Projection.Spatial_reference
 
-	cProjWKT := C.CString(projWkt)
-	cProj4 := C.getProj4Text(cProjWKT)
-	C.free(unsafe.Pointer(cProjWKT))
+	cSrs := C.CString(srs)
+
+	cProjWkt := C.getWktText(cSrs, 0)
+	projWkt := C.GoString(cProjWkt)
+	C.free(unsafe.Pointer(cProjWkt))
+
+	cProj4 := C.getWktText(cSrs, 1)
 	proj4 := C.GoString(cProj4)
 	C.free(unsafe.Pointer(cProj4))
+
+	C.free(unsafe.Pointer(cSrs))
 
 	for ns, aband := range ard.Image.Bands {
 		ds := &GeoMetaData{
