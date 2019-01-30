@@ -517,9 +517,14 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 			http.Error(w, fmt.Sprintf("Malformed WCS GetCoverage request: %v", err), 400)
 			return
 		} else if styleIdx < 0 {
-			Error.Printf("WCS style not specified")
-			http.Error(w, "WCS style not specified", 400)
-			return
+			styleCount := len(conf.Layers[idx].Styles)
+			if styleCount > 1 {
+				Error.Printf("WCS style not specified")
+				http.Error(w, "WCS style not specified", 400)
+				return
+			} else if styleCount == 1 {
+				styleIdx = 0
+			}
 		}
 
 		styleLayer := &conf.Layers[idx]
