@@ -136,7 +136,7 @@ It supports WMS services and hence can be used as a GSKY client.
 To use it one needs an ArcGIS Online account, either public or a time-limited free trial. The public account is free, 
 but not sure whether it too is time/feature limited. 
 
-The tutorial describes the program usage and how to use **ArcGIS Pro** as a GSKY client is explained.
+The tutorial describes the program usage. How to use **ArcGIS Earth** as a GSKY client will be added (not yet!).
 
 ArcMap_Tutorial (.pptx)
 ---
@@ -144,7 +144,7 @@ ArcMap_Tutorial (.pptx)
 This standalone app does not require ArcGIS Online account. It supports WMS services and hence can be used as a GSKY client. 
 It works with only 2D maps and sends the Bbox values as Lat/Lon. 
 
-The tutorial describes the program usage and how to use **ArcGIS Pro** as a GSKY client is explained.
+The tutorial describes the program usage. How to use **ArcMap** as a GSKY client will be added (not yet!).
 
 GSKY_ArcGIS_Integration (.docx)
 ---
