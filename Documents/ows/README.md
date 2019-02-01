@@ -30,7 +30,7 @@ that it takes to learn from text-based tutorials. Animated PowerPoint presentati
 text-based tutorials and a YouTube video, as one is less likely to fall asleep and will not get distracted by 
 another video of a dancing girl.
 
-These \*.pptx presentations eliminate the need for a manual or text document, which was not even an option in the case of GSKY. 
+These **\*.pptx** presentations eliminate the need for a manual or text document. 
 For those who dare to RTFM, there are detailed Word/PDF documents as well.
 
 Having alienated most of you with the intro, let us get into the details. Firstly, some mandatory statements...
