@@ -79,12 +79,12 @@ intelligence of anyone.
 		- Slide show will start automatically.
 		- It will run at the set speed.
 	- There is no option to uncheck the timings. 
-		- *"If you don't like duck, then you are rather stuck"* - Basil Fawlty (1975).
+		- *"If you don't like duck, then you are rather stuck" - Basil Fawlty (1975)*.
 	- You can fast forward by clicking the right arrow.
-		- It will auto restart the timed display if you don't click the arrow again.
+		- It will automatically restart the timed display if you don't click the arrow again.
 	- Or, cancel the timing entirely by pressing the left arrow.
 		- Then you MUST click the mouse or right/left arrow to move.
-	- The \*.ppsx file is not editable.
+	- The **\*.ppsx** file is not editable.
 
 - Word document (**\*.docx**):
 	- Open in Word 2016 or later.
@@ -113,9 +113,9 @@ This gives an understanding of **ArcGIS Online**. Though WMS is supported by thi
 there is an unresolved problem with connecting to the GSKY server. This tutorial is about other capabilities of ArcGIS and
 will be useful when GSKY server is connecting and possibly even to add further capabilities in GSKY. 
 
-*This program is about as easy to learn as escaping from the path of an approaching hurricane*. 
+This program is about as easy to learn as escaping from the path of an approaching hurricane. 
 Hence we use an example that shows the best hurricane evacuation paths in a city where more than half 
-the population has no personal transport.
+the population do not own any transport.
 
 ArcGIS_Pro_Desktop_Tutorial (.pptx)
 ---
