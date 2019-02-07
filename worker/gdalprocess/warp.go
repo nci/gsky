@@ -1,36 +1,195 @@
 package gdalprocess
 
-// #include "gdal.h"
-// #include "gdalwarper.h"
-// #include "gdal_alg.h"
-// #include "ogr_api.h"
-// #include "ogr_srs_api.h"
-// #include "cpl_string.h"
-// #cgo pkg-config: gdal
-// int
-// warp_operation(GDALDatasetH hSrcDS, GDALDatasetH hDstDS, int band)
-// {
-//        const char *srcProjRef;
-//        int err;
-//        GDALWarpOptions *psWOptions;
-//
-//        psWOptions = GDALCreateWarpOptions();
-//        psWOptions->nBandCount = 1;
-//        psWOptions->panSrcBands = (int *) CPLMalloc(sizeof(int) * 1);
-//        psWOptions->panSrcBands[0] = band;
-//        psWOptions->panDstBands = (int *) CPLMalloc(sizeof(int) * 1);
-//        psWOptions->panDstBands[0] = 1;
-//
-//        srcProjRef = GDALGetProjectionRef(hSrcDS);
-//        if(strlen(srcProjRef) == 0) {
-//            srcProjRef = "GEOGCS[\"WGS 84\",DATUM[\"WGS_1984\",SPHEROID[\"WGS 84\",6378137,298.257223563,AUTHORITY[\"EPSG\",\"7030\"]],TOWGS84[0,0,0,0,0,0,0],AUTHORITY[\"EPSG\",\"6326\"]],PRIMEM[\"Greenwich\",0,AUTHORITY[\"EPSG\",\"8901\"]],UNIT[\"degree\",0.0174532925199433,AUTHORITY[\"EPSG\",\"9108\"]],AUTHORITY[\"EPSG\",\"4326\"]]\",\"proj4\":\"+proj=longlat +ellps=WGS84 +towgs84=0,0,0,0,0,0,0 +no_defs \"";
-//        }
-//
-//        err = GDALReprojectImage(hSrcDS, srcProjRef, hDstDS, GDALGetProjectionRef(hDstDS), GRA_NearestNeighbour, 0.0, 0.0, NULL, NULL, psWOptions);
-//        GDALDestroyWarpOptions(psWOptions);
-//
-//        return err;
-// }
+/*
+#include "gdal.h"
+#include "gdalwarper.h"
+#include "gdal_alg.h"
+#include "ogr_api.h"
+#include "ogr_srs_api.h"
+#include "cpl_string.h"
+#include "gdal_utils.h"
+#cgo pkg-config: gdal
+GDALDatasetH subsampleSrcDS(GDALDatasetH hSrcDS, const char *srcProjRef, GDALDatasetH hDstDS, const char *dstProjRef, int band, int *bSubsample)
+{
+	*bSubsample = 0;
+	void *hTransformArg = GDALCreateReprojectionTransformer(srcProjRef, dstProjRef);
+
+	double dstXSize = (double)GDALGetRasterXSize(hDstDS);
+	double dstYSize = (double)GDALGetRasterYSize(hDstDS);
+
+	double dstGeot[6];
+	GDALGetGeoTransform(hDstDS, dstGeot);
+	double dx[] = {dstGeot[0], dstGeot[0]+dstXSize*dstGeot[1]};
+	double dy[] = {dstGeot[3], dstGeot[3]+dstXSize*dstGeot[5]};
+	double dz[] = {0.0, 0.0};
+	int bSuccess[] = {0, 0};
+	GDALReprojectionTransform(hTransformArg, TRUE, 2, dx, dy, dz, bSuccess);
+	GDALDestroyReprojectionTransformer(hTransformArg);
+	if(bSuccess[0] == FALSE || bSuccess[1] == FALSE) {
+		return NULL;
+	}
+
+	double dstXRes = (dx[1] - dx[0]) / dstXSize;
+	double dstYRes = (dy[1] - dy[0]) / dstYSize;
+
+	double srcGeot[6];
+	GDALGetGeoTransform(hSrcDS, srcGeot);
+
+	double srcXSize = (double)GDALGetRasterXSize(hSrcDS);
+	double srcYSize = (double)GDALGetRasterYSize(hSrcDS);
+	int subsampleXSize = (int)(srcXSize * srcGeot[1] / dstXRes) + 1;
+	int subsampleYSize = (int)(srcYSize * srcGeot[5] / dstYRes) + 1;
+
+	*bSubsample = subsampleXSize > 1 && subsampleXSize < 0.9 * srcXSize && subsampleYSize > 1 && subsampleYSize < 0.9 * srcYSize;
+	if(!(*bSubsample)) {
+		return NULL;
+	}
+
+	char bandStr[32];
+	sprintf(bandStr, "%d", band);
+
+	char xSizeStr[32];
+	sprintf(xSizeStr, "%d", subsampleXSize);
+
+	char ySizeStr[32];
+	sprintf(ySizeStr, "%d", subsampleYSize);
+
+	char *opts = NULL;
+	opts = CSLAddString(opts, "-b");
+	opts = CSLAddString(opts, bandStr);
+	opts = CSLAddString(opts, "-outsize");
+	opts = CSLAddString(opts, xSizeStr);
+	opts = CSLAddString(opts, ySizeStr);
+
+	GDALTranslateOptions *psOptions;
+	psOptions = GDALTranslateOptionsNew(opts, NULL);
+
+	GDALDatasetH hOutDS = GDALTranslate("/vsimem/tmp.vrt", hSrcDS, psOptions, NULL);
+	GDALTranslateOptionsFree(psOptions);
+
+	if(hOutDS == NULL) {
+		*bSubsample = 0;
+		return NULL;
+	}
+
+	*bSubsample = 1;
+	return hOutDS;
+}
+
+int roundCoord(double coord, int maxExtent) {
+	int c = (int)coord;
+	if(c < 0) {
+		c = 0;
+	} else if(c > maxExtent - 1) {
+		c = maxExtent - 1;
+	}
+	return c;
+}
+
+int warp_operation_approx(GDALDatasetH hSrcDS, GDALDatasetH hDstDS, int band)
+{
+	const char *srcProjRef = GDALGetProjectionRef(hSrcDS);
+	if(strlen(srcProjRef) == 0) {
+		srcProjRef = "GEOGCS[\"WGS 84\",DATUM[\"WGS_1984\",SPHEROID[\"WGS 84\",6378137,298.257223563,AUTHORITY[\"EPSG\",\"7030\"]],TOWGS84[0,0,0,0,0,0,0],AUTHORITY[\"EPSG\",\"6326\"]],PRIMEM[\"Greenwich\",0,AUTHORITY[\"EPSG\",\"8901\"]],UNIT[\"degree\",0.0174532925199433,AUTHORITY[\"EPSG\",\"9108\"]],AUTHORITY[\"EPSG\",\"4326\"]]\",\"proj4\":\"+proj=longlat +ellps=WGS84 +towgs84=0,0,0,0,0,0,0 +no_defs \"";
+	}
+	const char *dstProjRef = GDALGetProjectionRef(hDstDS);
+
+	int bSubsample = 0;
+	GDALDatasetH hOutDS = subsampleSrcDS(hSrcDS, srcProjRef, hDstDS, dstProjRef, band, &bSubsample);
+	if(bSubsample) {
+		hSrcDS = hOutDS;
+		band = 1;
+	}
+
+	void *hTransformArg = GDALCreateGenImgProjTransformer(hSrcDS, srcProjRef, hDstDS, dstProjRef, TRUE, 0.0, 0);
+	if(hTransformArg == NULL) {
+		if(bSubsample) {
+			GDALClose(hSrcDS);
+		}
+		return 1;
+	}
+
+	double geotOut[6];
+	int nPixels;
+	int nLines;
+	double bbox[4];
+	int err = GDALSuggestedWarpOutput2(hSrcDS, GDALGenImgProjTransform, hTransformArg, geotOut, &nPixels, &nLines, bbox, 0);
+
+	int dstXOff = 0;
+	int dstYOff = 0;
+	int dstXSize = GDALGetRasterXSize(hDstDS);
+	int dstYSize = GDALGetRasterYSize(hDstDS);
+
+	if(err == CE_None) {
+		int minX, minY, maxX, maxY;
+		minX = roundCoord(bbox[0], dstXSize);
+		minY = roundCoord(bbox[1], dstYSize);
+		maxX = roundCoord(bbox[2]+0.5, dstXSize);
+		maxY = roundCoord(bbox[3]+0.5, dstYSize);
+
+		dstXOff = minX;
+		dstYOff = minY;
+		dstXSize = maxX - minX + 1;
+		dstYSize = maxY - minY + 1;
+	}
+
+	GDALWarpOptions *psWOptions;
+
+	psWOptions = GDALCreateWarpOptions();
+	psWOptions->nBandCount = 1;
+	psWOptions->panSrcBands = (int *) CPLMalloc(sizeof(int) * 1);
+	psWOptions->panSrcBands[0] = band;
+	psWOptions->panDstBands = (int *) CPLMalloc(sizeof(int) * 1);
+	psWOptions->panDstBands[0] = 1;
+
+	psWOptions->hSrcDS = hSrcDS;
+	psWOptions->hDstDS = hDstDS;
+
+	psWOptions->eResampleAlg = GRA_NearestNeighbour;
+
+	psWOptions->pTransformerArg = GDALCreateApproxTransformer(GDALGenImgProjTransform, hTransformArg, 0.25);
+        psWOptions->pfnTransformer = GDALApproxTransform;
+
+	GDALWarpOperationH warper = GDALCreateWarpOperation(psWOptions);
+	err = GDALWarpRegion(warper, dstXOff, dstYOff, dstXSize, dstYSize, 0, 0, 0, 0);
+
+	GDALDestroyApproxTransformer(psWOptions->pTransformerArg);
+	GDALDestroyGenImgProjTransformer(hTransformArg);
+	GDALDestroyWarpOptions(psWOptions);
+	GDALDestroyWarpOperation(warper);
+
+	if(bSubsample) {
+		GDALClose(hSrcDS);
+	}
+
+	return err;
+}
+
+int warp_operation(GDALDatasetH hSrcDS, GDALDatasetH hDstDS, int band)
+{
+	const char *srcProjRef;
+	int err;
+	GDALWarpOptions *psWOptions;
+
+	psWOptions = GDALCreateWarpOptions();
+	psWOptions->nBandCount = 1;
+	psWOptions->panSrcBands = (int *) CPLMalloc(sizeof(int) * 1);
+	psWOptions->panSrcBands[0] = band;
+	psWOptions->panDstBands = (int *) CPLMalloc(sizeof(int) * 1);
+	psWOptions->panDstBands[0] = 1;
+
+	srcProjRef = GDALGetProjectionRef(hSrcDS);
+	if(strlen(srcProjRef) == 0) {
+		srcProjRef = "GEOGCS[\"WGS 84\",DATUM[\"WGS_1984\",SPHEROID[\"WGS 84\",6378137,298.257223563,AUTHORITY[\"EPSG\",\"7030\"]],TOWGS84[0,0,0,0,0,0,0],AUTHORITY[\"EPSG\",\"6326\"]],PRIMEM[\"Greenwich\",0,AUTHORITY[\"EPSG\",\"8901\"]],UNIT[\"degree\",0.0174532925199433,AUTHORITY[\"EPSG\",\"9108\"]],AUTHORITY[\"EPSG\",\"4326\"]]\",\"proj4\":\"+proj=longlat +ellps=WGS84 +towgs84=0,0,0,0,0,0,0 +no_defs \"";
+	}
+
+	err = GDALReprojectImage(hSrcDS, srcProjRef, hDstDS, GDALGetProjectionRef(hDstDS), GRA_NearestNeighbour, 0.0, 0.0, NULL, NULL, psWOptions);
+	GDALDestroyWarpOptions(psWOptions);
+
+	return err;
+}
+
+*/
 import "C"
 
 import (
@@ -221,7 +380,7 @@ func WarpRaster(in *pb.GeoRPCGranule, debug bool) *pb.Result {
 
 	C.GDALSetProjection(hDstDS, projWKT)
 	C.GDALSetGeoTransform(hDstDS, (*C.double)(&in.Geot[0]))
-	cErr := C.warp_operation(hSrcDS, hDstDS, C.int(in.Bands[0]))
+	cErr := C.warp_operation_approx(hSrcDS, hDstDS, C.int(in.Bands[0]))
 	if cErr != 0 {
 		return &pb.Result{Error: dump("warp_operation() fail")}
 	}
