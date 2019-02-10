@@ -47,7 +47,7 @@ func NewDrillIndexer(ctx context.Context, apiAddr string, identityTol float64, d
 
 const DefaultMaxLogLength = 3000
 
-func (p *DrillIndexer) Run() {
+func (p *DrillIndexer) Run(verbose bool) {
 	defer close(p.Out)
 	for geoReq := range p.In {
 		var feat geo.Feature
@@ -72,7 +72,9 @@ func (p *DrillIndexer) Run() {
 		if len(postBodyStr) < DefaultMaxLogLength {
 			maxLogLen = len(postBodyStr)
 		}
-		log.Printf("mas_url:%s\tpost_body:%s", reqURL, postBodyStr[:maxLogLen])
+		if verbose {
+			log.Printf("mas_url:%s\tpost_body:%s", reqURL, postBodyStr[:maxLogLen])
+		}
 
 		resp, err := http.PostForm(reqURL, postBody)
 		if err != nil {
@@ -97,7 +99,9 @@ func (p *DrillIndexer) Run() {
 			continue
 		}
 
-		log.Printf("Indexer time: %v, gdal subdatasets: %v", indexTime, len(metadata.GDALDatasets))
+		if verbose {
+			log.Printf("Indexer time: %v, gdal subdatasets: %v", indexTime, len(metadata.GDALDatasets))
+		}
 		if len(metadata.Error) > 0 {
 			fmt.Printf("Indexer returned error: %v", string(body))
 			p.Error <- fmt.Errorf("Indexer returned error: %v", metadata.Error)
