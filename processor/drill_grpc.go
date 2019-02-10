@@ -29,7 +29,7 @@ func NewDrillGRPC(ctx context.Context, serverAddress []string, errChan chan erro
 	}
 }
 
-func (gi *GeoDrillGRPC) Run(bandStrides int) {
+func (gi *GeoDrillGRPC) Run(bandStrides int, verbose bool) {
 	defer close(gi.Out)
 	start := time.Now()
 
@@ -79,7 +79,9 @@ func (gi *GeoDrillGRPC) Run(bandStrides int) {
 	}
 
 	if len(inputsRecompute) == 0 {
-		fmt.Println("gRPC Time", time.Since(start), "Processed:", len(inputs))
+		if verbose {
+			fmt.Println("gRPC Time", time.Since(start), "Processed:", len(inputs))
+		}
 		return
 	}
 
@@ -131,7 +133,9 @@ func (gi *GeoDrillGRPC) Run(bandStrides int) {
 		}
 	}
 	cLimiter.Wait()
-	fmt.Println("gRPC Time", time.Since(start), "Processed:", i)
+	if verbose {
+		fmt.Println("gRPC Time", time.Since(start), "Processed:", i)
+	}
 }
 
 func getBands(times []time.Time) ([]int32, error) {

@@ -1030,7 +1030,9 @@ func serveWPS(ctx context.Context, params utils.WPSParams, conf *utils.Config, r
 
 		case *geo.Polygon, *geo.MultiPolygon:
 			area := utils.GetArea(geom)
-			log.Println("Requested polygon has an area of", area)
+			if *verbose {
+				log.Println("Requested polygon has an area of", area)
+			}
 			if area == 0.0 || area > process.MaxArea {
 				Info.Printf("The requested area %.02f, is too large.\n", area)
 				http.Error(w, "The requested area is too large. Please try with a smaller one.", 400)
@@ -1050,7 +1052,9 @@ func serveWPS(ctx context.Context, params utils.WPSParams, conf *utils.Config, r
 		suffix := fmt.Sprintf("_%04d", rand.Intn(1000))
 
 		for ids, dataSource := range process.DataSources {
-			log.Printf("WPS: Processing '%v' (%d of %d)", dataSource.DataSource, ids+1, len(process.DataSources))
+			if *verbose {
+				log.Printf("WPS: Processing '%v' (%d of %d)", dataSource.DataSource, ids+1, len(process.DataSources))
+			}
 
 			startDateTime := time.Time{}
 			stStartInput, errStartInput := time.Parse(utils.ISOFormat, *params.StartDateTime)
@@ -1062,7 +1066,9 @@ func serveWPS(ctx context.Context, params utils.WPSParams, conf *utils.Config, r
 				if len(startDateTimeStr) > 0 {
 					st, errStart := time.Parse(utils.ISOFormat, startDateTimeStr)
 					if errStart != nil {
-						log.Printf("WPS: Failed to parse start date '%v' into ISO format with error: %v, defaulting to no start date", startDateTimeStr, errStart)
+						if *verbose {
+							log.Printf("WPS: Failed to parse start date '%v' into ISO format with error: %v, defaulting to no start date", startDateTimeStr, errStart)
+						}
 					} else {
 						startDateTime = st
 					}
@@ -1075,13 +1081,17 @@ func serveWPS(ctx context.Context, params utils.WPSParams, conf *utils.Config, r
 			stEndInput, errEndInput := time.Parse(utils.ISOFormat, *params.EndDateTime)
 			if errEndInput != nil {
 				if len(*params.EndDateTime) > 0 {
-					log.Printf("WPS: invalid input end date '%v' with error '%v'", *params.EndDateTime, errEndInput)
+					if *verbose {
+						log.Printf("WPS: invalid input end date '%v' with error '%v'", *params.EndDateTime, errEndInput)
+					}
 				}
 				endDateTimeStr := strings.TrimSpace(dataSource.EndISODate)
 				if len(endDateTimeStr) > 0 && strings.ToLower(endDateTimeStr) != "now" {
 					dt, errEnd := time.Parse(utils.ISOFormat, endDateTimeStr)
 					if errEnd != nil {
-						log.Printf("WPS: Failed to parse end date '%s' into ISO format with error: %v, defaulting to now()", endDateTimeStr, errEnd)
+						if *verbose {
+							log.Printf("WPS: Failed to parse end date '%s' into ISO format with error: %v, defaulting to now()", endDateTimeStr, errEnd)
+						}
 					} else {
 						endDateTime = dt
 					}
@@ -1106,7 +1116,7 @@ func serveWPS(ctx context.Context, params utils.WPSParams, conf *utils.Config, r
 			if dataSource.BandStrides <= 0 {
 				dataSource.BandStrides = 1
 			}
-			proc := dp.Process(geoReq, suffix, dataSource.MetadataURL, dataSource.BandStrides, *process.Approx)
+			proc := dp.Process(geoReq, suffix, dataSource.MetadataURL, dataSource.BandStrides, *process.Approx, *verbose)
 
 			select {
 			case res := <-proc:
