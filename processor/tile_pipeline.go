@@ -55,17 +55,20 @@ func (dp *TilePipeline) Process(geoReq *GeoTileRequest, verbose bool) chan []uti
 	}()
 
 	m := NewRasterMerger(dp.Context, dp.Error)
-//fmt.Println(m)
 //Ptu(grpcTiler.Out)	
 
 	grpcTiler.In = i.Out
 	m.In = grpcTiler.Out
 //fmt.Println(dp)
 	polyLimiter := NewConcLimiter(dp.PolygonShardConcLimit)
+//fmt.Printf("\n--------geoReq.BandExpr: %v\n", geoReq.BandExpr)
+//fmt.Println(geoReq.BandExpr)
 	
 	go i.Run(verbose)
 	go grpcTiler.Run(polyLimiter, geoReq.BandExpr.VarList, verbose)
 	go m.Run(polyLimiter, geoReq.BandExpr, verbose)
+//fmt.Println("------------------")
+//fmt.Println(m.Out)
 	return m.Out
 
 }

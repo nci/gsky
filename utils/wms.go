@@ -82,6 +82,11 @@ func CheckWMSVersion(version string) bool {
 // of the parameters of a WMS request into a
 // WMSParams struct.
 func WMSParamsChecker(params map[string][]string, compREMap map[string]*regexp.Regexp) (WMSParams, error) {
+//BBoxes := strings.Split(params["bbox"][0], ",")
+
+//fmt.Println(BBoxes[0])	
+//fmt.Printf("\nhttp://epsg.io/map#srs=3857&x=%v&y=%v&z=6&layer=streets\n", BBoxes[0], BBoxes[1])
+//fmt.Printf("http://epsg.io/map#srs=3857&x=%v&y=%v&z=6&layer=streets\n", BBoxes[2], BBoxes[3])
 
 	jsonFields := []string{}
 
@@ -177,8 +182,10 @@ func WMSParamsChecker(params map[string][]string, compREMap map[string]*regexp.R
 
 	jsonParams := fmt.Sprintf("{%s}", strings.Join(jsonFields, ","))
 
+//fmt.Println("------------AVS-5")
 	var wmsParams WMSParams
 	err := json.Unmarshal([]byte(jsonParams), &wmsParams)
+//fmt.Printf("err: %v\n", err)
 	return wmsParams, err
 }
 

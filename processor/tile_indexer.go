@@ -146,7 +146,9 @@ func URLIndexGet(ctx context.Context, url string, geoReq *GeoTileRequest, errCha
 			AddToThredds = 0 // So that any request other than 'GetMap' will not call thredds.go functions.
 		}
 		for _, ds := range metadata.GDALDatasets {
-			Add_thredds_nc(ds) // AVS: Code to get the NC filenames for Thredds and create soft links in 'thredds_dir'
+			if (AddToThredds == 1) {
+				Add_thredds_nc(ds) // AVS: Code to get the NC filenames for Thredds and create soft links in 'thredds_dir'
+			}
 			for _, t := range ds.TimeStamps {
 				if t.Equal(*geoReq.StartTime) || geoReq.EndTime != nil && t.After(*geoReq.StartTime) && t.Before(*geoReq.EndTime) {
 					out <- &GeoTileGranule{ConfigPayLoad: ConfigPayLoad{NameSpaces: geoReq.NameSpaces, Mask: geoReq.Mask, ScaleParams: geoReq.ScaleParams, Palette: geoReq.Palette, GrpcConcLimit: geoReq.GrpcConcLimit}, Path: ds.DSName, NameSpace: ds.NameSpace, RasterType: ds.ArrayType, TimeStamps: ds.TimeStamps, TimeStamp: t, Polygon: ds.Polygon, BBox: geoReq.BBox, Height: geoReq.Height, Width: geoReq.Width, OffX: geoReq.OffX, OffY: geoReq.OffY, CRS: geoReq.CRS}
