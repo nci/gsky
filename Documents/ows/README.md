@@ -25,9 +25,9 @@ These docs do not comply with the new philosophy of
 
 The motivation behind these docs is that no programmer or the end user, especially the end user, 
 likes to read the manuals before diving in. The **\*.pptx**, are good alternatives to RTFM. 
-The animated presentations, that omit just Sylvester from them, run for a maximum of 10 minutes and will save you 3+ hours
+The animated presentations, that omit just Sylvester from them, run for a maximum of 10 minutes and will save you 3 hours or more
 that it takes to learn from text-based tutorials. Animated PowerPoint presentations are much better in teaching than 
-text-based tutorials and a YouTube video, as one is less likely to fall asleep and will not get distracted by 
+text-based tutorials and YouTube videos, as one is less likely to fall asleep or will not get distracted by 
 another video of a dancing girl.
 
 These **\*.pptx** presentations eliminate the need for a manual or text document. 
@@ -222,7 +222,7 @@ included in this presentation.
 Setting_Up_Thredds_Server (.pptx)
 ---
 
-How to setup a THREDDS server on the Virtual Machine on Tenjin. It was thought to be required for adding a functionality
+How to setup a THREDDS server on the Virtual Machine on Tenjin. It was initially thought of adding a functionality
 to GSKY to let the component NetCDF files to be downloaded. Later it became clear that it was not an intended function.
 However, this document will serve as a reference for setting up THREDDS server on any machine.
 
