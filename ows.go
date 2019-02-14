@@ -33,6 +33,8 @@ import (
 //"strconv"
 //"os/exec"
 //"reflect"
+"bufio"
+
 	proc "github.com/nci/gsky/processor"
 	"github.com/nci/gsky/utils"
 
@@ -52,6 +54,7 @@ var (
 	validateConfig  = flag.Bool("check_conf", false, "Validate server config files.")
 	dumpConfig      = flag.Bool("dump_conf", false, "Dump server config files.")
 	verbose         = flag.Bool("v", false, "Verbose mode for more server outputs.")
+	thredds         = flag.Bool("t", false, "Save the *.nc files on THREDDS.")
 )
 
 var reWMSMap map[string]*regexp.Regexp
@@ -88,7 +91,7 @@ func Pm(v map[string][]string) {
 	}
 }
 
-func Pu(item  *utils.Config) {
+func Pu(item  string) {
 	out, err := json.Marshal(item)
 	if err != nil {
 		panic (err)
@@ -156,16 +159,36 @@ func init() {
 	reWPSMap = utils.CompileWPSRegexMap()
 
 }
-// AVS
- 
+func list (reqURL string) { // AVS
+    s := strings.Split(reqURL, "&")
+    for i := range s {
+    	st := s[i]
+    	st = strings.Replace(st,"%3A", ":", -1)
+    	st = strings.Replace(st,"%2F", "/", -1)
+    	st = strings.Replace(st,"%2C", ",", -1)
+//fmt.Println(st)	
+    }
+
+}
 func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, reqURL string, w http.ResponseWriter, r *http.Request) {
 	if params.Request == nil {
 		http.Error(w, "Malformed WMS, a Request field needs to be specified", 400)
 		return
 	}
+//list(reqURL) // AVS	
+//*params.Version = "1.1.1"
+//fmt.Println(*params.Version)	
+//fmt.Println(*params.Service)	
+//fmt.Println(*params.Request)	
+//fmt.Println(*params.CRS)	
+////fmt.Println(*params.Format)	
+//Info.Printf("AVS-5a--------params: %+v\n", params)
+//Info.Printf("AVS-5b---------params: %+v\n", params.Version)
 	switch *params.Request {
 	case "GetCapabilities":
+//Info.Printf("AVS-6---------params: %+v\n", params)
 		if params.Version != nil && !utils.CheckWMSVersion(*params.Version) {
+//Info.Printf("AVS-6a---------params: %+v\n", params)
 			http.Error(w, fmt.Sprintf("This server can only accept WMS requests compliant with version 1.1.1 and 1.3.0: %s", reqURL), 400)
 			return
 		}
@@ -217,7 +240,9 @@ func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r
 		}
 
 	case "GetMap":
-//		proc.Init_thredds(w, r) // AVS: Create/use teh user-specific thredds subdir
+		if *thredds {
+			proc.Init_thredds(w, r) // AVS: Create/use teh user-specific thredds subdir
+		}
 		if params.Version == nil || !utils.CheckWMSVersion(*params.Version) {
 			http.Error(w, fmt.Sprintf("This server can only accept WMS requests compliant with version 1.1.1 and 1.3.0: %s", reqURL), 400)
 			return
@@ -264,9 +289,13 @@ func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r
 			eT := params.Time.Add(step)
 			endTime = &eT
 		}
+//Info.Printf("AVS-3j: GetLayerStyleIndex= %s > %s ; %s > %s", *params.Height, conf.Layers[idx].WmsMaxHeight, *params.Width, conf.Layers[idx].WmsMaxWidth)
+//*params.Height = 512		
+//*params.Width = 512		
+//Info.Printf("AVS-3j: GetLayerStyleIndex= %s > %s ; %s > %s", *params.Height, conf.Layers[idx].WmsMaxHeight, *params.Width, conf.Layers[idx].WmsMaxWidth)
 		if *params.Height > conf.Layers[idx].WmsMaxHeight || *params.Width > conf.Layers[idx].WmsMaxWidth {
 			http.Error(w, fmt.Sprintf("Requested width/height is too large, max width:%d, height:%d", conf.Layers[idx].WmsMaxWidth, conf.Layers[idx].WmsMaxHeight), 400)
-			return
+//			return // AVS commented out
 		}
 
 		styleIdx, err := utils.GetLayerStyleIndex(params, conf, idx)
@@ -279,7 +308,11 @@ func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r
 		if styleIdx >= 0 {
 			styleLayer = &conf.Layers[idx].Styles[styleIdx]
 		}
+//fmt.Printf("\nAVS-4: -------styleLayer=%+v\n", &conf.Layers[idx])
 
+//Info.Printf("AVS-4: WMS params=%s", *params.Version)
+//*params.Height = 512		
+//*params.Width = 512		
 		geoReq := &proc.GeoTileRequest{ConfigPayLoad: proc.ConfigPayLoad{NameSpaces: styleLayer.RGBExpressions.VarList,
 			BandExpr: styleLayer.RGBExpressions,
 			Mask:     styleLayer.Mask,
@@ -301,7 +334,7 @@ func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r
 			StartTime:  params.Time,
 			EndTime:    endTime,
 		}
-//fmt.Println(geoReq)
+//fmt.Println(*geoReq)
 		ctx, ctxCancel := context.WithCancel(ctx)
 
 		defer ctxCancel()
@@ -313,10 +346,15 @@ func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r
 		if yRes > reqRes {
 			reqRes = yRes
 		}
-//reqRes = 20000.00
+//fmt.Printf("&width=%v&height=%v&bbox=%f,%f,%f,%f\n", *params.Width,*params.Height,params.BBox[0],params.BBox[1],params.BBox[2],params.BBox[3]) 		
+//fmt.Println(reqRes)
+//reqRes = 2000.00
+//fmt.Println(reqRes)
+//fmt.Println(conf.Layers[idx].ZoomLimit)
+//fmt.Printf("AVS-0: ZoomLimit, reqRes: %v, %v\n", conf.Layers[idx].ZoomLimit, reqRes)				
 		if conf.Layers[idx].ZoomLimit != 0.0 && reqRes > conf.Layers[idx].ZoomLimit {
 			indexer := proc.NewTileIndexer(ctx, conf.ServiceConfig.MASAddress, errChan)
-//fmt.Println(reflect.TypeOf(geoReq))				
+//fmt.Printf("AVS-1: Zoom In Required: %v, %v\n", conf.Layers[idx].ZoomLimit, reqRes)				
 			go func() {
 				geoReq.Mask = nil
 				geoReq.QueryLimit = 1
@@ -350,6 +388,7 @@ func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r
 				}
 			}
 
+//fmt.Printf("AVS-2: hasData: %v\n", hasData)				
 			if hasData {
 				out, err := utils.GetEmptyTile(utils.DataDir+"/zoom.png", *params.Height, *params.Width)
 				if err != nil {
@@ -370,7 +409,7 @@ func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r
 
 			return
 		}
-//conf.Layers[idx].WmsTimeout = 200 // AVS
+//conf.Layers[idx].WmsTimeout = 40 // AVS
 //fmt.Println(conf.Layers[idx].WmsTimeout)
 		timeoutCtx, timeoutCancel := context.WithTimeout(context.Background(), time.Duration(conf.Layers[idx].WmsTimeout)*time.Second)
 //fmt.Println("AVS:0")
@@ -378,22 +417,28 @@ func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r
 		defer timeoutCancel()
 
 		tp := proc.InitTilePipeline(ctx, conf.ServiceConfig.MASAddress, conf.ServiceConfig.WorkerNodes, conf.Layers[idx].MaxGrpcRecvMsgSize, conf.Layers[idx].WmsPolygonShardConcLimit, conf.ServiceConfig.MaxGrpcBufferSize, errChan)
-//fmt.Println("AVS:1")
+//fmt.Printf("\n-------------AVS:tp: %v\n", tp)
 //     'AU': ('Australia', (113.338953078, -43.6345972634, 153.569469029, -10.6681857235)),
 // http://130.56.242.15/ows?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap&BBOX=-43.6345972634%2C113.338953078%2C-10.6681857235%2C153.569469029&CRS=EPSG:4326&WIDTH=242&HEIGHT=250&LAYERS=LS8:NBAR:TRUE&STYLES=&FORMAT=image/png&DPI=96&MAP_RESOLUTION=96&FORMAT_OPTIONS=dpi:96&TRANSPARENT=TRUE
 // http://130.56.242.15/ows/?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap&bbox=15341217.324948017%2C-2817774.6107047386%2C15419488.841912035%2C-2739503.0937407166&CRS=EPSG:3857&WIDTH=256&HEIGHT=256&LAYERS=LS8:NBAR:TRUE&STYLES=&FORMAT=image/png&DPI=96&MAP_RESOLUTION=96&FORMAT_OPTIONS=dpi:96&TRANSPARENT=TRUE
-//fmt.Println(geoReq.BBox)
+//Info.Printf("AVS-3i", geoReq)
 		select {
 		case res := <-tp.Process(geoReq, *verbose):
 			scaleParams := utils.ScaleParams{Offset: geoReq.ScaleParams.Offset,
 				Scale: geoReq.ScaleParams.Scale,
 				Clip:  geoReq.ScaleParams.Clip,
 			}
-//fmt.Println(res[0])
+//fmt.Printf("\n--------res: %v\n", res[0])
+//scaleParams.Offset = 25
+//scaleParams.Scale = 5
+//scaleParams.Clip = 50
+
 //fmt.Println(reflect.TypeOf(res))				
 //fmt.Println(scaleParams)
-//fmt.Println(res[0])
+fmt.Println(res[0])
+//fmt.Println(geoReq.BBox)
 			norm, err := utils.Scale(res, scaleParams)
+//fmt.Println(len(norm))
 			if err != nil {
 				Info.Printf("Error in the utils.Scale: %v\n", err)
 				http.Error(w, err.Error(), 500)
@@ -471,6 +516,9 @@ func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r
 }
 
 func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, reqURL string, w http.ResponseWriter, query map[string][]string) {
+//Info.Printf("reqURL=%s", reqURL)
+//reqURL = strings.Replace(reqURL, "GeoTIFF", "NetCDF", -1)
+//Info.Printf("reqURL=%s", reqURL)
 	if params.Request == nil {
 		http.Error(w, "Malformed WCS, a Request field needs to be specified", 400)
 	}
@@ -510,6 +558,9 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 		}
 
 	case "GetCoverage":
+//Info.Printf("In the utils.GetCoverageStyleIndex: params.Format: %v\n", *params.Format)
+//*params.Format = "NetCDF" // AVS. To save output as *.nc. This works when directly called, but does not when called from TerriaMap
+//Info.Printf("In the utils.GetCoverageStyleIndex: params.Format: %v\n", *params.Format)
 		if params.Version == nil || !utils.CheckWCSVersion(*params.Version) {
 			http.Error(w, fmt.Sprintf("This server can only accept WCS requests compliant with version 1.0.0: %s", reqURL), 400)
 			return
@@ -559,9 +610,17 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 			http.Error(w, fmt.Sprintf("Malformed WCS GetCoverage request: %v", err), 400)
 			return
 		} else if styleIdx < 0 {
-			Error.Printf("WCS style not specified")
-			http.Error(w, "WCS style not specified", 400)
-			return
+//			Error.Printf("WCS style not specified")
+//			http.Error(w, "WCS style not specified", 400)
+//			return
+			styleCount := len(conf.Layers[idx].Styles)
+			if styleCount > 1 {
+				Error.Printf("WCS style not specified")
+				http.Error(w, "WCS style not specified", 400)
+				return
+			} else if styleCount == 1 {
+				styleIdx = 0
+			}
 		}
 
 		styleLayer := &conf.Layers[idx]
@@ -604,6 +663,7 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 				OffY:       offY,
 			}
 
+//Info.Printf("geoReq: %v\n", geoReq)
 			return geoReq
 		}
 
@@ -840,6 +900,7 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 		if isWorker {
 			driverFormat = "geotiff"
 		}
+//Info.Printf("driverFormat=%s", driverFormat)
 
 		timeoutCtx, timeoutCancel := context.WithTimeout(context.Background(), time.Duration(conf.Layers[idx].WcsTimeout)*time.Second)
 		defer timeoutCancel()
@@ -978,6 +1039,7 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 		w.Header().Set("Content-Type", contentType)
 
 		fileHandle, err := os.Open(masterTempFile)
+//Info.Printf("masterTempFile=%s", masterTempFile)
 		if err != nil {
 			errMsg := fmt.Sprintf("Error opening raster file: %v", err)
 			Info.Printf(errMsg)
@@ -991,7 +1053,11 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 			Info.Printf(errMsg)
 			http.Error(w, errMsg, 500)
 		}
+//Info.Printf("fileHandle=%s", fileHandle)
 		w.Header().Set("Content-Length", fmt.Sprintf("%d", fileInfo.Size()))
+//avs_write()		
+//os.Rename(masterTempFile, "/tmp/avs_test.nc") // AVS
+os.Rename(masterTempFile, "/usr/local/tds/apache-tomcat-8.5.35/content/thredds/public/gsky/gsky_test.nc") // AVS
 
 		bytesSent, err := io.Copy(w, fileHandle)
 		if err != nil {
@@ -1003,6 +1069,8 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 		if *verbose {
 			Info.Printf("WCS: file_size:%v, bytes_sent:%v\n", fileInfo.Size(), bytesSent)
 		}
+		
+//Info.Printf("attachment; filename=%s.%s.%s", fileNameCoverages, fileNameDateTime, fileExt)
 
 		return
 
@@ -1010,6 +1078,56 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 		http.Error(w, fmt.Sprintf("%s not recognised.", *params.Request), 400)
 	}
 }
+
+// AVS --------------------------------------------
+func check(e error) {
+    if e != nil {
+        panic(e)
+    }
+}
+
+func avs_write() {
+
+    // To start, here's how to dump a string (or just
+    // bytes) into a file.
+    d1 := []byte("hello\ngo\n")
+    err := ioutil.WriteFile("/tmp/dat1", d1, 0644)
+    check(err)
+
+    // For more granular writes, open a file for writing.
+    f, err := os.Create("/tmp/dat2")
+    check(err)
+
+    // It's idiomatic to defer a `Close` immediately
+    // after opening a file.
+    defer f.Close()
+
+    // You can `Write` byte slices as you'd expect.
+    d2 := []byte{115, 111, 109, 101, 10}
+    n2, err := f.Write(d2)
+    check(err)
+    fmt.Printf("wrote %d bytes\n", n2)
+
+    // A `WriteString` is also available.
+    n3, err := f.WriteString("writes\n")
+    fmt.Printf("wrote %d bytes\n", n3)
+
+    // Issue a `Sync` to flush writes to stable storage.
+    f.Sync()
+
+    // `bufio` provides buffered writers in addition
+    // to the buffered readers we saw earlier.
+    w := bufio.NewWriter(f)
+    n4, err := w.WriteString("buffered\n")
+    fmt.Printf("wrote %d bytes\n", n4)
+
+    // Use `Flush` to ensure all buffered operations have
+    // been applied to the underlying writer.
+    w.Flush()
+
+}
+// AVS --------------------------------------------
+
 
 func serveWPS(ctx context.Context, params utils.WPSParams, conf *utils.Config, reqURL string, w http.ResponseWriter) {
 
@@ -1172,6 +1290,7 @@ func serveWPS(ctx context.Context, params utils.WPSParams, conf *utils.Config, r
 // owsHandler handles every request received on /ows
 func generalHandler(conf *utils.Config, w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "*")
+Info.Printf("URL: %s\n", r.URL.String())
 	if *verbose {
 		Info.Printf("%s\n", r.URL.String())
 	}
@@ -1189,7 +1308,11 @@ func generalHandler(conf *utils.Config, w http.ResponseWriter, r *http.Request) 
 
 	case "GET":
 		query = utils.NormaliseKeys(r.URL.Query())
+//Info.Printf("query=%s", query)
+//query["format"][0] = "NetCDF"	// AVS. To save output as *.nc. This works when directly called, but does not when called from TerriaMap
+//fmt.Println(reflect.TypeOf(query))
 	}
+//Info.Printf("query=%s", query["format"])
 	if _, fOK := query["service"]; !fOK {
 		canInferService := false
 		if request, hasReq := query["request"]; hasReq {
@@ -1218,13 +1341,16 @@ func generalHandler(conf *utils.Config, w http.ResponseWriter, r *http.Request) 
 	switch query["service"][0] {
 	case "WMS":
 		params, err := utils.WMSParamsChecker(query, reWMSMap)
+//Info.Printf("params: %+v err: %+v\n", params, err)
 		if err != nil {
 			http.Error(w, fmt.Sprintf("Wrong WMS parameters on URL: %s", err), 400)
 			return
 		}
 		serveWMS(ctx, params, conf, r.URL.String(), w, r) // AVS: added ", r"
 	case "WCS":
+//Info.Printf("query=%s", query)
 		params, err := utils.WCSParamsChecker(query, reWCSMap)
+//Info.Printf("params=%s", params)
 		if err != nil {
 			http.Error(w, fmt.Sprintf("Wrong WCS parameters on URL: %s", err), 400)
 			return
@@ -1249,6 +1375,8 @@ func owsHandler(w http.ResponseWriter, r *http.Request) {
 	if len(r.URL.Path) > len("/ows/") {
 		namespace = r.URL.Path[len("/ows/"):]
 	}
+//Info.Printf("%s\n", r.URL)
+//Info.Printf("%s\n", namespace)
 	config, ok := configMap[namespace]
 //PU(configMap[config])		
 	if !ok {
