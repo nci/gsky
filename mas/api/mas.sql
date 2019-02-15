@@ -377,15 +377,10 @@ create or replace function mas_intersects(
       dp_tol := -1.0;
     end if;
 
-    -- supplied WKT in wgs84
     if ST_NPoints(in_geom) > 100 and identity_tol >= 0 and dp_tol >= 0 then
-      mask := ST_SplitDatelineWGS84(ST_Simplify(ST_RemoveRepeatedPoints(
-        ST_Transform(in_geom, 4326), identity_tol), dp_tol)
-      );
+      mask := ST_Simplify(ST_RemoveRepeatedPoints(in_geom, identity_tol), dp_tol);
     else
-      mask := ST_SplitDatelineWGS84(
-        ST_Transform(in_geom, 4326)
-      );
+      mask := in_geom;
     end if;
 
     if mask is null then
