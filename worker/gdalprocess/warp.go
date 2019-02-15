@@ -19,8 +19,8 @@ GDALDatasetH subsampleSrcDS(GDALDatasetH hSrcDS, const char *srcProjRef, GDALDat
 
 	double dstGeot[6];
 	GDALGetGeoTransform(hDstDS, dstGeot);
-	double dx[] = {dstGeot[0], dstGeot[0]+dstXSize*dstGeot[1]};
-	double dy[] = {dstGeot[3], dstGeot[3]+dstXSize*dstGeot[5]};
+	double dx[] = {dstGeot[0], dstGeot[0]+(dstXSize+0.5)*dstGeot[1]};
+	double dy[] = {dstGeot[3], dstGeot[3]+(dstXSize+0.5)*dstGeot[5]};
 	double dz[] = {0.0, 0.0};
 	int bSuccess[] = {0, 0};
 	GDALReprojectionTransform(hTransformArg, TRUE, 2, dx, dy, dz, bSuccess);
@@ -86,7 +86,7 @@ int roundCoord(double coord, int maxExtent) {
 	return c;
 }
 
-int warp_operation_approx(GDALDatasetH hSrcDS, GDALDatasetH hDstDS, int band)
+int warp_operation_fast(GDALDatasetH hSrcDS, GDALDatasetH hDstDS, int band)
 {
 	const char *srcProjRef = GDALGetProjectionRef(hSrcDS);
 	if(strlen(srcProjRef) == 0) {
@@ -380,7 +380,7 @@ func WarpRaster(in *pb.GeoRPCGranule, debug bool) *pb.Result {
 
 	C.GDALSetProjection(hDstDS, projWKT)
 	C.GDALSetGeoTransform(hDstDS, (*C.double)(&in.Geot[0]))
-	cErr := C.warp_operation_approx(hSrcDS, hDstDS, C.int(in.Bands[0]))
+	cErr := C.warp_operation_fast(hSrcDS, hDstDS, C.int(in.Bands[0]))
 	if cErr != 0 {
 		return &pb.Result{Error: dump("warp_operation() fail")}
 	}
