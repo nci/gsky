@@ -1,6 +1,19 @@
 package gdalprocess
 
 /*
+This is a fast implementation of the GDAL warp operation.
+The performance improvements over the original warp are as follows:
+1) If the down-sampling algorithm is nearest neighbour, we will be able
+to reduce the FLOPS of the warp operation by down sampling the source
+band before warping.
+2) As a result of the downsampling at step 1), GDAL's RasterIO will
+automatically take advantage of overviews if applicable.
+3) The target window projected from the source band is likely to be
+small when we zoom out. Thus we do not have to warp over the entire
+target buffer but the subwindow projected from the source band.
+*/
+
+/*
 #include "gdal.h"
 #include "gdalwarper.h"
 #include "gdal_alg.h"
@@ -165,6 +178,8 @@ int warp_operation_fast(GDALDatasetH hSrcDS, GDALDatasetH hDstDS, int band)
 	return err;
 }
 
+// This is a reference implementation of warp.
+// We leave this code here for debugging and comparsion purposes.
 int warp_operation(GDALDatasetH hSrcDS, GDALDatasetH hDstDS, int band)
 {
 	const char *srcProjRef;
