@@ -259,9 +259,10 @@ func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r
 		}
 
 		geoReq := &proc.GeoTileRequest{ConfigPayLoad: proc.ConfigPayLoad{NameSpaces: styleLayer.RGBExpressions.VarList,
-			BandExpr: styleLayer.RGBExpressions,
-			Mask:     styleLayer.Mask,
-			Palette:  styleLayer.Palette,
+			BandExpr:       styleLayer.RGBExpressions,
+			Mask:           styleLayer.Mask,
+			Palette:        styleLayer.Palette,
+			HasScaleParams: 1,
 			ScaleParams: proc.ScaleParams{Offset: styleLayer.OffsetValue,
 				Scale: styleLayer.ScaleValue,
 				Clip:  styleLayer.ClipValue,

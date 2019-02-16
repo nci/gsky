@@ -13,12 +13,15 @@ message GeoRPCGranule {
     int32 ePSG = 6;
     repeated double geot = 7;
     int32 bandStrides = 8;
+    int32 hasScale = 9;
+    repeated double scale = 10;
 }
 
 message Raster {
     bytes data = 1;
     double noData = 2;
     string rasterType = 3;
+    repeated int32 bbox = 4;
 }
 
 message TimeSeries {

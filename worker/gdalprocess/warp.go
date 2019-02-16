@@ -11,6 +11,13 @@ automatically take advantage of overviews if applicable.
 3) The target window projected from the source band is likely to be
 small when we zoom out. Thus we do not have to warp over the entire
 target buffer but the subwindow projected from the source band.
+4) Since we now only warp over a subwindow, we will only need to send
+the subwindow of data over the network, which results in large
+reduction of overheads in grpc (de-)serialisation and network traffic.
+5) If we know the final output has a data type of byte (e.g. PNG),
+we can perform the scaling during the downsampling stage. This will
+allow warping to be performed with byte which is faster than other
+data types.
 */
 
 /*
@@ -22,10 +29,16 @@ target buffer but the subwindow projected from the source band.
 #include "cpl_string.h"
 #include "gdal_utils.h"
 #cgo pkg-config: gdal
-GDALDatasetH subsampleSrcDS(GDALDatasetH hSrcDS, const char *srcProjRef, GDALDatasetH hDstDS, const char *dstProjRef, int band, int *bSubsample)
+GDALDatasetH subsampleSrcDS(GDALDatasetH hSrcDS, const char *srcProjRef, GDALDatasetH hDstDS, const char *dstProjRef, int band, int *bSubsample, int bScale, double *scale)
 {
 	*bSubsample = 0;
 	void *hTransformArg = GDALCreateReprojectionTransformer(srcProjRef, dstProjRef);
+
+	int srcXSize = GDALGetRasterXSize(hSrcDS);
+	int srcYSize = GDALGetRasterYSize(hSrcDS);
+
+	int subsampleXSize = srcXSize;
+	int subsampleYSize = srcYSize;
 
 	double dstXSize = (double)GDALGetRasterXSize(hDstDS);
 	double dstYSize = (double)GDALGetRasterYSize(hDstDS);
@@ -38,24 +51,31 @@ GDALDatasetH subsampleSrcDS(GDALDatasetH hSrcDS, const char *srcProjRef, GDALDat
 	int bSuccess[] = {0, 0};
 	GDALReprojectionTransform(hTransformArg, TRUE, 2, dx, dy, dz, bSuccess);
 	GDALDestroyReprojectionTransformer(hTransformArg);
+
+	int success = 1;
 	if(bSuccess[0] == FALSE || bSuccess[1] == FALSE) {
-		return NULL;
+		success = 0;
 	}
 
-	double dstXRes = (dx[1] - dx[0]) / dstXSize;
-	double dstYRes = (dy[1] - dy[0]) / dstYSize;
+	if(success) {
+		double dstXRes = (dx[1] - dx[0]) / dstXSize;
+		double dstYRes = (dy[1] - dy[0]) / dstYSize;
 
-	double srcGeot[6];
-	GDALGetGeoTransform(hSrcDS, srcGeot);
+		double srcGeot[6];
+		GDALGetGeoTransform(hSrcDS, srcGeot);
 
-	double srcXSize = (double)GDALGetRasterXSize(hSrcDS);
-	double srcYSize = (double)GDALGetRasterYSize(hSrcDS);
-	int subsampleXSize = (int)(srcXSize * srcGeot[1] / dstXRes) + 1;
-	int subsampleYSize = (int)(srcYSize * srcGeot[5] / dstYRes) + 1;
+		subsampleXSize = (int)(srcXSize * srcGeot[1] / dstXRes + 0.5);
+		subsampleYSize = (int)(srcYSize * srcGeot[5] / dstYRes + 0.5);
+	}
 
-	*bSubsample = subsampleXSize > 1 && subsampleXSize < 0.9 * srcXSize && subsampleYSize > 1 && subsampleYSize < 0.9 * srcYSize;
+	*bSubsample = success && subsampleXSize > 1 && subsampleXSize < 0.9 * srcXSize && subsampleYSize > 1 && subsampleYSize < 0.9 * srcYSize;
 	if(!(*bSubsample)) {
-		return NULL;
+		if(!bScale) {
+			return NULL;
+		} else {
+			subsampleXSize = srcXSize;
+			subsampleYSize = srcYSize;
+		}
 	}
 
 	char bandStr[32];
@@ -73,6 +93,25 @@ GDALDatasetH subsampleSrcDS(GDALDatasetH hSrcDS, const char *srcProjRef, GDALDat
 	opts = CSLAddString(opts, "-outsize");
 	opts = CSLAddString(opts, xSizeStr);
 	opts = CSLAddString(opts, ySizeStr);
+
+	if(bScale) {
+		char minScaleStr[32];
+		sprintf(minScaleStr, "%f", scale[0]);
+
+		char maxScaleStr[32];
+		sprintf(maxScaleStr, "%f", scale[1]);
+
+		opts = CSLAddString(opts, "-scale");
+		opts = CSLAddString(opts, minScaleStr);
+		opts = CSLAddString(opts, maxScaleStr);
+
+		opts = CSLAddString(opts, "-ot");
+		opts = CSLAddString(opts, "Byte");
+
+		opts = CSLAddString(opts, "-a_nodata");
+		opts = CSLAddString(opts, "255");
+
+	}
 
 	GDALTranslateOptions *psOptions;
 	psOptions = GDALTranslateOptionsNew(opts, NULL);
@@ -99,7 +138,7 @@ int roundCoord(double coord, int maxExtent) {
 	return c;
 }
 
-int warp_operation_fast(GDALDatasetH hSrcDS, GDALDatasetH hDstDS, int band)
+int warp_operation_fast(GDALDatasetH hSrcDS, GDALDatasetH hDstDS, int band, int *dstBbox, int bScale, double *scale)
 {
 	const char *srcProjRef = GDALGetProjectionRef(hSrcDS);
 	if(strlen(srcProjRef) == 0) {
@@ -108,10 +147,12 @@ int warp_operation_fast(GDALDatasetH hSrcDS, GDALDatasetH hDstDS, int band)
 	const char *dstProjRef = GDALGetProjectionRef(hDstDS);
 
 	int bSubsample = 0;
-	GDALDatasetH hOutDS = subsampleSrcDS(hSrcDS, srcProjRef, hDstDS, dstProjRef, band, &bSubsample);
+	GDALDatasetH hOutDS = subsampleSrcDS(hSrcDS, srcProjRef, hDstDS, dstProjRef, band, &bSubsample, bScale, scale);
 	if(bSubsample) {
 		hSrcDS = hOutDS;
 		band = 1;
+	} else if(bScale) {
+		return -1;
 	}
 
 	void *hTransformArg = GDALCreateGenImgProjTransformer(hSrcDS, srcProjRef, hDstDS, dstProjRef, TRUE, 0.0, 0);
@@ -171,6 +212,11 @@ int warp_operation_fast(GDALDatasetH hSrcDS, GDALDatasetH hDstDS, int band)
 	GDALDestroyWarpOptions(psWOptions);
 	GDALDestroyWarpOperation(warper);
 
+	dstBbox[0] = dstXOff;
+	dstBbox[1] = dstYOff;
+	dstBbox[2] = dstXSize;
+	dstBbox[3] = dstYSize;
+
 	if(bSubsample) {
 		GDALClose(hSrcDS);
 	}
@@ -211,9 +257,8 @@ import (
 	"fmt"
 	"log"
 	"math"
-	"unsafe"
-
 	"reflect"
+	"unsafe"
 
 	pb "github.com/nci/gsky/worker/gdalservice"
 )
@@ -350,11 +395,6 @@ func WarpRaster(in *pb.GeoRPCGranule, debug bool) *pb.Result {
 		return fmt.Sprintf("%v", msg)
 	}
 
-	// TODO pass overview level in Granule
-	//ovrSel := C.CString("OVERVIEW_LEVEL=0")
-	//defer C.free(unsafe.Pointer(ovrSel))
-	//hSrcDS := C.GDALOpenEx(filePathCStr, C.GA_ReadOnly, nil, &ovrSel, nil)
-
 	hSrcDS := C.GDALOpen(filePathCStr, C.GA_ReadOnly)
 	if hSrcDS == nil {
 		return &pb.Result{Error: dump("GDALOpen() fail")}
@@ -369,16 +409,16 @@ func WarpRaster(in *pb.GeoRPCGranule, debug bool) *pb.Result {
 
 	dType := C.GDALGetRasterDataType(bandH)
 
-	// TODO Remove this code once verified all use cases work
-	// This section is in quarantine as it seems GDALWarp doesn't write outside its limits
-	// so parts of the canvas remain initialised with zero values instead of the nodata valuek
-	/* dSize := C.GDALGetDataTypeSizeBytes(dType)
-	if dSize == 0 {
-		err := fmt.Errorf("GDAL data type not implemented")
-		return &pb.Result{Error: err.Error()}
+	bScale := in.HasScale
+
+	var scaleC [2]C.double
+	if bScale != 0 {
+		scaleC[0] = C.double(in.Scale[0])
+		scaleC[1] = C.double(in.Scale[1])
+
+		dType = C.GDT_Byte
+		nodata = 255.0
 	}
-	canvas := make([]uint8, in.Width*in.Height*dSize)
-	*/
 
 	canvas := initNoDataSlice(GDALTypes[dType], nodata, in.Width*in.Height)
 	memStr := C.CString(fmt.Sprintf("MEM:::DATAPOINTER=%d,PIXELS=%d,LINES=%d,DATATYPE=%s", unsafe.Pointer(&canvas[0]), C.int(in.Width), C.int(in.Height), GDALTypes[dType]))
@@ -395,7 +435,9 @@ func WarpRaster(in *pb.GeoRPCGranule, debug bool) *pb.Result {
 
 	C.GDALSetProjection(hDstDS, projWKT)
 	C.GDALSetGeoTransform(hDstDS, (*C.double)(&in.Geot[0]))
-	cErr := C.warp_operation_fast(hSrcDS, hDstDS, C.int(in.Bands[0]))
+
+	var dstBboxC [4]C.int
+	cErr := C.warp_operation_fast(hSrcDS, hDstDS, C.int(in.Bands[0]), (*C.int)(&dstBboxC[0]), C.int(bScale), (*C.double)(&scaleC[0]))
 	if cErr != 0 {
 		return &pb.Result{Error: dump("warp_operation() fail")}
 	}
@@ -404,5 +446,21 @@ func WarpRaster(in *pb.GeoRPCGranule, debug bool) *pb.Result {
 		dump("debug")
 	}
 
-	return &pb.Result{Raster: &pb.Raster{Data: canvas, NoData: nodata, RasterType: GDALTypes[dType]}, Error: "OK"}
+	dstBbox := make([]int32, len(dstBboxC))
+	for i, v := range dstBboxC {
+		dstBbox[i] = int32(v)
+	}
+
+	bboxCanvas := canvas
+	if float64(dstBbox[2]*dstBbox[3]) < 0.95*float64(in.Width*in.Height) {
+		bboxCanvas = initNoDataSlice(GDALTypes[dType], nodata, dstBbox[2]*dstBbox[3])
+		gdalErr := C.GDALDatasetRasterIO(hDstDS, C.GF_Read, dstBboxC[0], dstBboxC[1], dstBboxC[2], dstBboxC[3], unsafe.Pointer(&bboxCanvas[0]), dstBboxC[2], dstBboxC[3], dType, 1, nil, 0, 0, 0)
+		if gdalErr != C.CE_None {
+			bboxCanvas = canvas
+		}
+	} else {
+		bboxCanvas = canvas
+	}
+
+	return &pb.Result{Raster: &pb.Raster{Data: bboxCanvas, NoData: nodata, RasterType: GDALTypes[dType], Bbox: dstBbox}, Error: "OK"}
 }
