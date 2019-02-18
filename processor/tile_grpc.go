@@ -224,13 +224,14 @@ func (gi *GeoRasterGRPC) Run(polyLimiter *ConcLimiter, varList []string, verbose
 					go func(g *GeoTileGranule, gCnt int, idx int) {
 						defer wgRpc.Done()
 						defer cLimiter.Decrease()
-						//t0 := time.Now()
 						r, err := getRPCRaster(gi.Context, g, connPool[gCnt%len(connPool)])
 						if err != nil {
 							gi.sendError(err)
-							r = &pb.Result{Raster: &pb.Raster{Data: make([]uint8, g.Width*g.Height), RasterType: "Byte", NoData: -1., Bbox: []int32{0, 0, int32(g.Width), int32(g.Height)}}}
+							r = &pb.Result{Raster: &pb.Raster{Data: make([]uint8, g.Width*g.Height), RasterType: "Byte", NoData: -1.}}
 						}
-						//log.Printf("grpc time: %v", time.Since(t0))
+						if len(r.Raster.Bbox) == 0 {
+							r.Raster.Bbox = []int32{0, 0, int32(g.Width), int32(g.Height)}
+						}
 						rOffX := int(r.Raster.Bbox[0])
 						rOffY := int(r.Raster.Bbox[1])
 						rWidth := int(r.Raster.Bbox[2])
@@ -285,7 +286,7 @@ func getRPCRaster(ctx context.Context, g *GeoTileGranule, conn *grpc.ClientConn)
 	band, err := getBand(g.TimeStamps, g.TimeStamp)
 	epsg, err := extractEPSGCode(g.CRS)
 	geot := BBox2Geot(g.Width, g.Height, g.BBox)
-	granule := &pb.GeoRPCGranule{Height: int32(g.Height), Width: int32(g.Width), Path: g.Path, EPSG: int32(epsg), Geot: geot, Bands: []int32{band}, HasScale: int32(g.HasScaleParams), Scale: []float64{g.ScaleParams.Offset, g.ScaleParams.Clip}}
+	granule := &pb.GeoRPCGranule{Height: int32(g.Height), Width: int32(g.Width), Path: g.Path, EPSG: int32(epsg), Geot: geot, Bands: []int32{band}}
 	r, err := c.Process(ctx, granule)
 	if err != nil {
 		return nil, err
