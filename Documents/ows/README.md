@@ -66,8 +66,7 @@ users can also be found in this file.
 How to use the documents
 ----------------------
 There are up to four different types of documents for the same topic. 
-Given below are short instructions, which are not meant to be insults to  
-intelligence, on how to use them.
+Given below are short instructions, which are not meant to be insults to intelligence, on how to use them.
 
 - PowerPoint Presentation (**\*.pptx**):
 	- Open in PowerPoint 2016 or later.
