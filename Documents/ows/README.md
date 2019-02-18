@@ -97,16 +97,16 @@ intelligence of anyone.
 List of Documents
 -----------------
 
+This is an evolving README and the list of docs below may not be in alphabetical order, but the titles will
+match the names of the documents. To view any doc, download it from the list above and open locally.
+
 GSKY is currently delivered through **TerriaMap**. Providing another client for GSKY might
 increase the user base considerably. Several such clients are being considered, 
 *e.g.* **ArcGIS**, **QGIS** and **NASA WorldView**. 
 
 Some documents listed here describe the ArcGIS suite of programs that could be used as GSKY clients. Others
 include **"GSKY User Guide"**, **"GSKY Developer Guide"**, **"Setting up GSKY server"**, 
-**"Adding data into MAS"**, etc. More documents will be added as required.
-
-This is an evolving README and the list of docs below may not be in alphabetical order, but the titles will
-match the names of the documents. To view any doc, download it from the list above and open locally.
+**"Adding data into MAS"**, etc. More will be added as required.
 
 ArcGIS_Online_Tutorial (.pptx)
 ---
@@ -123,11 +123,11 @@ ArcGIS_Pro_Desktop_Tutorial (.pptx)
 ---
 
 Similar to the previous doc, this one gives an understanding of **ArcGIS Pro** which is a desktop variant 
-of **ArcGIS Online** (sorry! Windows only; no Mac!). It is considerably more complex than the online version but
+of **ArcGIS Online**. It is considerably more complex than the online version but
 can display data from GSKY server. We use an example of predicting the future deforestation 
 in Amazon wilderness due to the proposed new roads. 
 
-How to use **ArcGIS Pro** as a GSKY client is explained.  
+How to use **ArcGIS Pro** as a GSKY client is explained. ArcGIS Pro is available as Windows version alone.
 
 ArcGIS_Earth_Tutorial (.pptx)
 ---
@@ -136,9 +136,10 @@ This is a free software that gets installed as part of the ArcGIS Desktop suite.
 It supports WMS services and hence can be used as a GSKY client. 
 
 To use it one needs an ArcGIS Online account, either public or a time-limited free trial. The public account is free, 
-but not sure whether it too is time/feature limited. 
+but not sure whether it too is time/feature limited. If you have an institutional licence the online account will
+not expire.
 
-The tutorial describes the program usage. How to use **ArcGIS Earth** as a GSKY client will be added (not yet!).
+The tutorial describes the program usage. How to use **ArcGIS Earth** as a GSKY client is described.
 
 ArcMap_Tutorial (.pptx)
 ---
@@ -221,8 +222,8 @@ QGIS_Desktop_Tutorial (.pptx, .ppsx, .docx and .pdf)
 QGIS is an excellent client for GSKY Map Service. This document gives the full instructions for installing a Windows 
 desktop version of QGIS, adding GSKY WMS layers and an introduction to the advanced use of QGIS.
 
-The PPTX is a 10-min slide show that will get you started. For details, see the DOCX and PDF documents. It may take
-about 1 hour to study these.
+The PPTX is a 10-min slide show that will give you a working knowledge. For more details see the DOCX and PDF documents. 
+These may take about 1 hour to study.
 
 Setting_Up_Thredds_Server (.pptx)
 ---
