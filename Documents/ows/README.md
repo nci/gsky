@@ -26,14 +26,16 @@ These docs do not comply with the new philosophy of
 The motivation behind these docs is that no programmer or the end user, especially the end user, 
 likes to read the manuals before diving in. The **\*.pptx**, are good alternatives to RTFM. 
 The animated presentations, that omit just Sylvester from them, run for a maximum of 10 minutes and will save you 3 hours or more
-that it takes to learn from text-based tutorials. Animated PowerPoint presentations are much better in teaching than 
-text-based tutorials and YouTube videos, as one is less likely to fall asleep or will not get distracted by 
+that it takes to learn from text-based tutorials. Animated PowerPoint presentations are much better in self-learning than 
+text-based tutorials and YouTube videos, as one is less likely to fall asleep or get distracted by 
 another video of a dancing girl.
 
 These **\*.pptx** presentations eliminate the need for a manual or text document. 
 For those who dare to RTFM, there are detailed Word/PDF documents as well.
 
-Having alienated most of you with the intro, let us get into the details. Firstly, some mandatory statements...
+Having alienated most of you with the intro, let us get into the details. 
+
+Firstly, some mandatory statements...
 
 License
 -------
@@ -213,11 +215,14 @@ How to install and start a GSKY server. Includes the steps in creating a Virtual
 the installation of all dependencies plus the building of GSKY server and is a companion of **build_all.sh** which is a 
 one-step installation script. Code snippet for each step is displayed.
 
-QGIS_Desktop_Tutorial (.pptx)
+QGIS_Desktop_Tutorial (.pptx, .ppsx, .docx and .pdf)
 ---
 
-Basics of using QGIS. Though QGIS has WMS capabilities, currently they do not work with GSKY. This part is not
-included in this presentation.
+QGIS is an excellent client for GSKY Map Service. This document gives the full instructions for installing a Windows 
+desktop version of QGIS, adding GSKY WMS layers and an introduction to the advanced use of QGIS.
+
+The PPTX is a 10-min slide show that will get you started. For details, see the DOCX and PDF documents. It may take
+about 1 hour to study these.
 
 Setting_Up_Thredds_Server (.pptx)
 ---
