@@ -25,56 +25,38 @@ reduction of overheads in grpc (de-)serialisation and network traffic.
 #include "cpl_string.h"
 #include "gdal_utils.h"
 #cgo pkg-config: gdal
-GDALDatasetH subsampleSrcDS(GDALDatasetH hSrcDS, const char *srcProjRef, GDALDatasetH hDstDS, const char *dstProjRef, int band, int *bSubsample)
+
+GDALDatasetH subsampleSrcDS(GDALDatasetH hSrcDS, double xScale, double yScale, int band, int *bSubsample)
 {
 	*bSubsample = 0;
-	void *hTransformArg = GDALCreateReprojectionTransformer(srcProjRef, dstProjRef);
+	if(xScale < 0) {
+		xScale = -xScale;
+	}
+	if(yScale < 0) {
+		yScale = -yScale;
+	}
+
+	if(xScale >= 0.95 || yScale >= 0.95) {
+		return NULL;
+	}
 
 	int srcXSize = GDALGetRasterXSize(hSrcDS);
 	int srcYSize = GDALGetRasterYSize(hSrcDS);
 
 	int subsampleXSize = srcXSize;
+	subsampleXSize = (int)(srcXSize * xScale + 0.5);
+
 	int subsampleYSize = srcYSize;
-
-	double dstXSize = (double)GDALGetRasterXSize(hDstDS);
-	double dstYSize = (double)GDALGetRasterYSize(hDstDS);
-
-	double dstGeot[6];
-	GDALGetGeoTransform(hDstDS, dstGeot);
-	double dx[] = {dstGeot[0], dstGeot[0]+(dstXSize+0.5)*dstGeot[1]};
-	double dy[] = {dstGeot[3], dstGeot[3]+(dstXSize+0.5)*dstGeot[5]};
-	double dz[] = {0.0, 0.0};
-	int bSuccess[] = {0, 0};
-	GDALReprojectionTransform(hTransformArg, TRUE, 2, dx, dy, dz, bSuccess);
-	GDALDestroyReprojectionTransformer(hTransformArg);
-
-	if(bSuccess[0] == FALSE || bSuccess[1] == FALSE) {
-		*bSubsample = 0;
-		return NULL;
-	}
-
-	double dstXRes = (dx[1] - dx[0]) / dstXSize;
-	double dstYRes = (dy[1] - dy[0]) / dstYSize;
-
-	double srcGeot[6];
-	GDALGetGeoTransform(hSrcDS, srcGeot);
-
-	subsampleXSize = (int)(srcXSize * srcGeot[1] / dstXRes + 0.5);
-	subsampleYSize = (int)(srcYSize * srcGeot[5] / dstYRes + 0.5);
-
-	*bSubsample = subsampleXSize > 1 && subsampleXSize < 0.9 * srcXSize && subsampleYSize > 1 && subsampleYSize < 0.9 * srcYSize;
-	if(!(*bSubsample)) {
-		return NULL;
-	}
+	subsampleYSize = (int)(srcYSize * yScale + 0.5);
 
 	char bandStr[32];
-	sprintf(bandStr, "%d", band);
+        sprintf(bandStr, "%d", band);
 
-	char xSizeStr[32];
-	sprintf(xSizeStr, "%d", subsampleXSize);
+        char xSizeStr[32];
+        sprintf(xSizeStr, "%d", subsampleXSize);
 
-	char ySizeStr[32];
-	sprintf(ySizeStr, "%d", subsampleYSize);
+        char ySizeStr[32];
+        sprintf(ySizeStr, "%d", subsampleYSize);
 
 	char *opts = NULL;
 	opts = CSLAddString(opts, "-b");
@@ -90,7 +72,6 @@ GDALDatasetH subsampleSrcDS(GDALDatasetH hSrcDS, const char *srcProjRef, GDALDat
 	GDALTranslateOptionsFree(psOptions);
 
 	if(hOutDS == NULL) {
-		*bSubsample = 0;
 		return NULL;
 	}
 
@@ -98,7 +79,7 @@ GDALDatasetH subsampleSrcDS(GDALDatasetH hSrcDS, const char *srcProjRef, GDALDat
 	return hOutDS;
 }
 
-int roundCoord(double coord, int maxExtent) {
+inline int roundCoord(double coord, int maxExtent) {
 	int c = (int)coord;
 	if(c < 0) {
 		c = 0;
@@ -116,18 +97,8 @@ int warp_operation_fast(GDALDatasetH hSrcDS, GDALDatasetH hDstDS, int band, int 
 	}
 	const char *dstProjRef = GDALGetProjectionRef(hDstDS);
 
-	int bSubsample = 0;
-	GDALDatasetH hOutDS = subsampleSrcDS(hSrcDS, srcProjRef, hDstDS, dstProjRef, band, &bSubsample);
-	if(bSubsample) {
-		hSrcDS = hOutDS;
-		band = 1;
-	}
-
 	void *hTransformArg = GDALCreateGenImgProjTransformer(hSrcDS, srcProjRef, hDstDS, dstProjRef, TRUE, 0.0, 0);
 	if(hTransformArg == NULL) {
-		if(bSubsample) {
-			GDALClose(hSrcDS);
-		}
 		return 1;
 	}
 
@@ -137,6 +108,7 @@ int warp_operation_fast(GDALDatasetH hSrcDS, GDALDatasetH hDstDS, int band, int 
 	double bbox[4];
 	int err = GDALSuggestedWarpOutput2(hSrcDS, GDALGenImgProjTransform, hTransformArg, geotOut, &nPixels, &nLines, bbox, 0);
 
+	int bSubsample = 0;
 	int dstXOff = 0;
 	int dstYOff = 0;
 	int dstXSize = GDALGetRasterXSize(hDstDS);
@@ -153,6 +125,19 @@ int warp_operation_fast(GDALDatasetH hSrcDS, GDALDatasetH hDstDS, int band, int 
 		dstYOff = minY;
 		dstXSize = maxX - minX + 1;
 		dstYSize = maxY - minY + 1;
+
+		GDALDatasetH hOutDS = subsampleSrcDS(hSrcDS, geotOut[1], geotOut[5], band, &bSubsample);
+		if(bSubsample) {
+			hSrcDS = hOutDS;
+			band = 1;
+
+			GDALDestroyGenImgProjTransformer(hTransformArg);
+			hTransformArg = GDALCreateGenImgProjTransformer(hSrcDS, srcProjRef, hDstDS, dstProjRef, TRUE, 0.0, 0);
+			if(hTransformArg == NULL) {
+				GDALClose(hSrcDS);
+				return 1;
+			}
+		}
 	}
 
 	GDALWarpOptions *psWOptions;
@@ -191,6 +176,7 @@ int warp_operation_fast(GDALDatasetH hSrcDS, GDALDatasetH hDstDS, int band, int 
 
 	return err;
 }
+
 
 // This is a reference implementation of warp.
 // We leave this code here for debugging and comparsion purposes.
