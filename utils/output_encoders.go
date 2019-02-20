@@ -67,8 +67,10 @@ func (r *Float32Raster) GetNoData() float64 {
 }
 
 func EncodePNG(br []*ByteRaster, palette *Palette) ([]byte, error) {
+//fmt.Println(palette)
 	buf := new(bytes.Buffer)
 	canvas := image.NewRGBA(image.Rect(0, 0, br[0].Width, br[0].Height))
+//fmt.Println(len(br))
 
 	switch len(br) {
 	case 1:

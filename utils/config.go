@@ -1,4 +1,4 @@
-package utils
+	package utils
 
 import (
 	"bytes"
@@ -16,7 +16,6 @@ import (
 	"strings"
 	"syscall"
 	"time"
-
 	"github.com/CloudyKit/jet"
 	goeval "github.com/edisonguo/govaluate"
 )
@@ -436,13 +435,11 @@ func LoadAllConfigFiles(rootDir string, verbose bool) (map[string]*Config, error
 			absPath, _ := filepath.Abs(path)
 			relPath, _ := filepath.Rel(rootDir, filepath.Dir(path))
 			log.Printf("Loading config file: %s under namespace: %s\n", absPath, relPath)
-
 			config := &Config{}
 			e := config.LoadConfigFile(absPath, verbose)
 			if e != nil {
 				return e
 			}
-
 			configMap[relPath] = config
 
 			for i := range config.Layers {
@@ -728,16 +725,13 @@ func ParseBandExpressions(bands []string) (*BandExpressions, error) {
 // into valid one-line JSON strings.
 func LoadConfigFileTemplate(configFile string) ([]byte, error) {
 	path := filepath.Dir(configFile)
-
 	view := jet.NewSet(jet.SafeWriter(func(w io.Writer, b []byte) {
 		w.Write(b)
 	}), path, "/")
-
 	template, err := view.GetTemplate(configFile)
 	if err != nil {
 		return nil, err
 	}
-
 	var resBuf bytes.Buffer
 	vars := make(jet.VarMap)
 	if err = template.Execute(&resBuf, vars, nil); err != nil {
@@ -800,7 +794,7 @@ func (config *Config) LoadConfigFile(configFile string, verbose bool) error {
 	if err != nil {
 		return fmt.Errorf("Error at JSON parsing config document: %v", err)
 	}
-
+	
 	if len(config.ServiceConfig.TempDir) > 0 {
 		log.Printf("Creating temp directory: %v", config.ServiceConfig.TempDir)
 		err := os.MkdirAll(config.ServiceConfig.TempDir, os.ModePerm)
@@ -815,7 +809,6 @@ func (config *Config) LoadConfigFile(configFile string, verbose bool) error {
 	}
 
 	config.ServiceConfig.MaxGrpcBufferSize = config.ServiceConfig.MaxGrpcBufferSize * 1024 * 1024
-
 	for i, layer := range config.Layers {
 		bandExpr, err := ParseBandExpressions(layer.RGBProducts)
 		if err != nil {
@@ -936,6 +929,11 @@ func DumpConfig(configs map[string]*Config) (string, error) {
 func WatchConfig(infoLog, errLog *log.Logger, configMap *map[string]*Config, verbose bool) {
 	// Catch SIGHUP to automatically reload cache
 	sighup := make(chan os.Signal, 1)
+//out, err := json.Marshal(sighup)
+//if err != nil {
+//	panic (err)
+//}
+//p(string(out))
 	signal.Notify(sighup, syscall.SIGHUP)
 	go func() {
 		for {

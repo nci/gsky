@@ -31,50 +31,6 @@ var ThreddsDataDir = baseThreddsDataDir
 var AddToThredds = 0 // Required to prevent anything other than 'request=GetMap'to call thredds
 var nc_added = 0
 var Referer = ""
-func Init_thredds_0(w http.ResponseWriter, r *http.Request) {
-	referer := r.Header.Get("Referer")
-    rr := regexp.MustCompile(`(?P<http>.*)://(?P<Domain>.*):(?P<Port>.*)/`)
-    m := rr.FindStringSubmatch(referer)
-    if (len(m) > 0) {
-    	// This is a localhost:3001 call. Have a fixed subdir name
-    	if (m[2] == "localhost" || m[2] == "127.0.0.1"){
-			ThreddsDataDir = baseThreddsDataDir + "localhost"
-			ThreddsUrl =  baseThreddsUrl +  "localhost" + "/catalog.html"
-			mkThreddsDataDir := "mkdir -p " + ThreddsDataDir
-			exec.Command("/bin/sh", "-c", mkThreddsDataDir).CombinedOutput()
-			AddToThredds = 1	
-			return
-    	}
-    }
-	// Get the cookie 
-	c, err := r.Cookie("Thredds_session")
-
-	// If no cookie has been set...
-	if err != nil {
-		// Create a 32-char alphanumeric random string as cookie value
-		rand.Seed(time.Now().UnixNano())
-		letterRunes := []rune("1234567890abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
-		rand_str := make([]rune, 32)  
-		for i := range rand_str {
-			rand_str[i] = letterRunes[rand.Intn(len(letterRunes))]
-		}
-		expiry_date := time.Date(2050, 12, 31, 23, 59, 59, 0, time.Local) // Saturday, December 31, 2050 at 11:59:59 PM
-    	cookie := &http.Cookie{
-			Name:  "Thredds_session",
-			Value: string(rand_str),
-			Expires: expiry_date,
-		}
-		http.SetCookie(w, cookie)
-		ThreddsDataDir = baseThreddsDataDir + string(rand_str)
-		ThreddsUrl =  baseThreddsUrl + string(rand_str) + "/catalog.html"
-	} else {
-		ThreddsDataDir = baseThreddsDataDir + c.Value
-		ThreddsUrl =  baseThreddsUrl + c.Value + "/catalog.html"
-	}
-	mkThreddsDataDir := "mkdir -p " + ThreddsDataDir
-	exec.Command("/bin/sh", "-c", mkThreddsDataDir).CombinedOutput()
-	AddToThredds = 1 // Tell 'tile_indexer.go' to call thredds.go functions.
-}
 func setNewTimestamp (subdir string, w http.ResponseWriter){
 		expiry_date := time.Date(2050, 12, 31, 23, 59, 59, 0, time.Local) // Saturday, December 31, 2050 at 11:59:59 PM
 		timestamp := strconv.FormatInt(time.Now().Unix(), 10)
@@ -108,9 +64,11 @@ func setNewCookie (subdir string, timestamp string, w http.ResponseWriter){
 }
 func setNewTimeStamp(subdir string, timestamp string){
 		ThreddsDataDir = baseThreddsDataDir + subdir
+//fmt.Println(ThreddsDataDir)
 		ThreddsUrl =  baseThreddsUrl + subdir + "/catalog.html"
 		thredds_last := ThreddsDataDir + "/thredds_last"
 		mkThreddsDataDir := "mkdir -p " + ThreddsDataDir
+//fmt.Println(mkThreddsDataDir)
 		exec.Command("/bin/sh", "-c", mkThreddsDataDir).CombinedOutput()
 		f, _ := os.Create(thredds_last)
 
@@ -143,34 +101,40 @@ func Init_thredds(w http.ResponseWriter, r *http.Request) {
 	// Get the cookie 
 	c, err := r.Cookie("Thredds_session")
 
-	// If no cookie has come...
-	if err != nil {
-		// Create a 32-char alphanumeric random string as cookie value
-		rand.Seed(time.Now().UnixNano())
-		letterRunes := []rune("1234567890abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
-		rand_str := make([]rune, 32)  
-		for i := range rand_str {
-			rand_str[i] = letterRunes[rand.Intn(len(letterRunes))]
-		}
-		subdir := string(rand_str)
-		timestamp := strconv.FormatInt(time.Now().Unix(), 10)
-		setNewCookie(subdir, timestamp, w)
-		setNewTimeStamp(subdir, timestamp)
-		deleteNCs(subdir)
-	} else {
-		s := strings.Split(c.Value, ":")
-		subdir := s[0]
-		ThreddsDataDir = baseThreddsDataDir + subdir
-		ThreddsUrl =  baseThreddsUrl + subdir + "/catalog.html"
-		c_timestamp := s[1]
-		ThreddsDataDir = baseThreddsDataDir + subdir
-		thredds_last := ThreddsDataDir + "/thredds_last"
-		ft, _ := ioutil.ReadFile(thredds_last)
-		f_timestamp := string(ft)
-		if (c_timestamp == f_timestamp) {
-			setNewTimestamp(subdir, w)
+	// If no cookie has come, it does not mean that this is the first round.
+	// Hence, check whether a subdir exists
+	if ThreddsUrl == baseThreddsUrl {
+//fmt.Printf("1. ThreddsUrl=%s; %s\n", ThreddsUrl, err) 
+//	if err != nil && ThreddsUrl == baseThreddsUrl {
+		if err != nil {
+//fmt.Printf("2. ThreddsUrl=%s\n", ThreddsUrl) 
+			// Create a 32-char alphanumeric random string as cookie value
+			rand.Seed(time.Now().UnixNano())
+			letterRunes := []rune("1234567890abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
+			rand_str := make([]rune, 32)  
+			for i := range rand_str {
+				rand_str[i] = letterRunes[rand.Intn(len(letterRunes))]
+			}
+			subdir := string(rand_str)
+			timestamp := strconv.FormatInt(time.Now().Unix(), 10)
+			setNewCookie(subdir, timestamp, w)
+			setNewTimeStamp(subdir, timestamp)
 			deleteNCs(subdir)
-			nc_added = 0
+		} else {
+			s := strings.Split(c.Value, ":")
+			subdir := s[0]
+			ThreddsDataDir = baseThreddsDataDir + subdir
+			ThreddsUrl =  baseThreddsUrl + subdir + "/catalog.html"
+			c_timestamp := s[1]
+			ThreddsDataDir = baseThreddsDataDir + subdir
+			thredds_last := ThreddsDataDir + "/thredds_last"
+			ft, _ := ioutil.ReadFile(thredds_last)
+			f_timestamp := string(ft)
+			if (c_timestamp == f_timestamp) {
+				setNewTimestamp(subdir, w)
+				deleteNCs(subdir)
+				nc_added = 0
+			}
 		}
 	}
 }
@@ -202,8 +166,17 @@ func Delete_thredds_nc() {
 	}
 }
 func Add_thredds_nc (ds GDALDataset) {
-    r := regexp.MustCompile(`(?P<Type>.*):"(?P<File>.*)":(?P<NameSpace>.*)`)
+// ds.DSName = NETCDF:"/g/data2/rs0/datacube/002/LS8_OLI_NBAR/-4_-35/LS8_OLI_NBAR_3577_-4_-35_2013_v1496403192.nc":red	
+// split the above string into an array, m[]
+// The regex is similar to that in Perl as e.g. m/(.*):"(.*)":(.*)/
+//  where $1, $2, and $3 hold the values, the matched string within parenthesis go in as the array elements, m[0], m[1] and m[2]
+// The names, <Type>, <File> and <NameSpace>, are for clarity alone. They are not used to address the array elements.
+// (?P<Type>.*) = NETCDF 
+// (?P<File>.*) = /g/data2/rs0/datacube/002/LS8_OLI_NBAR/-4_-35/LS8_OLI_NBAR_3577_-4_-35_2013_v1496403192.nc
+// (?P<NameSpace>.*) = red
+	r := regexp.MustCompile(`(?P<Type>.*):"(?P<File>.*)":(?P<NameSpace>.*)`)
     m := r.FindStringSubmatch(ds.DSName)
+//fmt.Printf("**** %s\n", ds.DSName)
    	if (Referer == "localhost" || m[2] == "127.0.0.1"){
    		ThreddsDataDir = baseThreddsDataDir + "localhost"
 	}

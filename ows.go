@@ -370,6 +370,7 @@ func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r
 			hasData := false
 			for geo := range indexer.Out {
 //fmt.Println("GEO:")
+//fmt.Printf("AVS-2a: geo: %+v\n", geo)				
 //fmt.Println(geo)
 				select {
 				case <-errChan:
@@ -388,7 +389,7 @@ func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r
 				}
 			}
 
-//fmt.Printf("AVS-2: hasData: %v\n", hasData)				
+//fmt.Printf("AVS-2b: hasData: %v\n", hasData)				
 			if hasData {
 				out, err := utils.GetEmptyTile(utils.DataDir+"/zoom.png", *params.Height, *params.Width)
 				if err != nil {
@@ -435,7 +436,7 @@ func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r
 
 //fmt.Println(reflect.TypeOf(res))				
 //fmt.Println(scaleParams)
-fmt.Println(res[0])
+//fmt.Println(res[0])
 //fmt.Println(geoReq.BBox)
 			norm, err := utils.Scale(res, scaleParams)
 //fmt.Println(len(norm))
@@ -516,9 +517,6 @@ fmt.Println(res[0])
 }
 
 func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, reqURL string, w http.ResponseWriter, query map[string][]string) {
-//Info.Printf("reqURL=%s", reqURL)
-//reqURL = strings.Replace(reqURL, "GeoTIFF", "NetCDF", -1)
-//Info.Printf("reqURL=%s", reqURL)
 	if params.Request == nil {
 		http.Error(w, "Malformed WCS, a Request field needs to be specified", 400)
 	}
@@ -558,9 +556,6 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 		}
 
 	case "GetCoverage":
-//Info.Printf("In the utils.GetCoverageStyleIndex: params.Format: %v\n", *params.Format)
-//*params.Format = "NetCDF" // AVS. To save output as *.nc. This works when directly called, but does not when called from TerriaMap
-//Info.Printf("In the utils.GetCoverageStyleIndex: params.Format: %v\n", *params.Format)
 		if params.Version == nil || !utils.CheckWCSVersion(*params.Version) {
 			http.Error(w, fmt.Sprintf("This server can only accept WCS requests compliant with version 1.0.0: %s", reqURL), 400)
 			return
@@ -898,7 +893,7 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 
 		driverFormat := *params.Format
 		if isWorker {
-			driverFormat = "geotiff"
+			driverFormat = "geotiff" // or "NetCDF"
 		}
 //Info.Printf("driverFormat=%s", driverFormat)
 
@@ -1027,6 +1022,7 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 			contentType = "application/geotiff"
 		case "netcdf":
 			fileExt = "nc"
+//Info.Printf("fileExt=%s", fileExt)
 			contentType = "application/netcdf"
 		}
 		ISOFormat := "2006-01-02T15:04:05.000Z"
@@ -1056,8 +1052,8 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 //Info.Printf("fileHandle=%s", fileHandle)
 		w.Header().Set("Content-Length", fmt.Sprintf("%d", fileInfo.Size()))
 //avs_write()		
-//os.Rename(masterTempFile, "/tmp/avs_test.nc") // AVS
-os.Rename(masterTempFile, "/usr/local/tds/apache-tomcat-8.5.35/content/thredds/public/gsky/gsky_test.nc") // AVS
+os.Rename(masterTempFile, "/home/900/avs900/OpenDAP/avs_test.nc") // AVS
+//os.Rename(masterTempFile, "/usr/local/tds/apache-tomcat-8.5.35/content/thredds/public/gsky/gsky_test.nc") // AVS
 
 		bytesSent, err := io.Copy(w, fileHandle)
 		if err != nil {
@@ -1290,7 +1286,7 @@ func serveWPS(ctx context.Context, params utils.WPSParams, conf *utils.Config, r
 // owsHandler handles every request received on /ows
 func generalHandler(conf *utils.Config, w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "*")
-Info.Printf("URL: %s\n", r.URL.String())
+//Info.Printf("URL: %s\n", r.URL.String())
 	if *verbose {
 		Info.Printf("%s\n", r.URL.String())
 	}
@@ -1308,11 +1304,7 @@ Info.Printf("URL: %s\n", r.URL.String())
 
 	case "GET":
 		query = utils.NormaliseKeys(r.URL.Query())
-//Info.Printf("query=%s", query)
-//query["format"][0] = "NetCDF"	// AVS. To save output as *.nc. This works when directly called, but does not when called from TerriaMap
-//fmt.Println(reflect.TypeOf(query))
 	}
-//Info.Printf("query=%s", query["format"])
 	if _, fOK := query["service"]; !fOK {
 		canInferService := false
 		if request, hasReq := query["request"]; hasReq {
@@ -1341,16 +1333,14 @@ Info.Printf("URL: %s\n", r.URL.String())
 	switch query["service"][0] {
 	case "WMS":
 		params, err := utils.WMSParamsChecker(query, reWMSMap)
-//Info.Printf("params: %+v err: %+v\n", params, err)
 		if err != nil {
 			http.Error(w, fmt.Sprintf("Wrong WMS parameters on URL: %s", err), 400)
 			return
 		}
 		serveWMS(ctx, params, conf, r.URL.String(), w, r) // AVS: added ", r"
 	case "WCS":
-//Info.Printf("query=%s", query)
+query["format"][0] = "NetCDF" // case-insensitive. changed to lower case later.
 		params, err := utils.WCSParamsChecker(query, reWCSMap)
-//Info.Printf("params=%s", params)
 		if err != nil {
 			http.Error(w, fmt.Sprintf("Wrong WCS parameters on URL: %s", err), 400)
 			return

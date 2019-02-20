@@ -154,11 +154,13 @@ func GetCoverageIndex(params WCSParams, config *Config) (int, error) {
 // GetCoverageStyleIndex returns the index of the
 // specified style inside a coverage
 func GetCoverageStyleIndex(params WCSParams, config *Config, covIdx int) (int, error) {
+//fmt.Printf("params.Styles utils.GetCoverageStyleIndex:  %v\n", params.Styles)
 	if params.Styles != nil {
 		style := strings.TrimSpace(params.Styles[0])
 		if len(style) == 0 {
 			return -1, nil
 		}
+//fmt.Printf("config.Layers:  %v\n", config.Layers)
 		for i := range config.Layers[covIdx].Styles {
 			if config.Layers[covIdx].Styles[i].Name == style {
 				return i, nil

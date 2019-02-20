@@ -2,7 +2,7 @@ package utils
 
 import (
 	"bytes"
-	//"fmt"
+//	"fmt"
 	"image"
 	"image/draw"
 	"image/png"
@@ -13,7 +13,6 @@ const tSize = 256
 
 func GetEmptyTile(imageFilename string, height, width int) ([]byte, error) {
 	canvas := image.NewNRGBA(image.Rect(0, 0, width, height))
-
 	if len(imageFilename) > 0 {
 		infile, err := os.Open(imageFilename)
 		if err != nil {
