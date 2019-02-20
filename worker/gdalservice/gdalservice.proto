@@ -13,6 +13,7 @@ message GeoRPCGranule {
     int32 ePSG = 6;
     repeated double geot = 7;
     int32 bandStrides = 8;
+    double scaleBoost = 9;
 }
 
 message Raster {

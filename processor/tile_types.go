@@ -23,6 +23,7 @@ type ConfigPayLoad struct {
 	GrpcConcLimit         int
 	PolygonSharcConcLimit int
 	QueryLimit            int
+	DownsampleBoost       float64
 }
 
 type GeoTileRequest struct {

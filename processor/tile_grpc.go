@@ -286,7 +286,7 @@ func getRPCRaster(ctx context.Context, g *GeoTileGranule, conn *grpc.ClientConn)
 	band, err := getBand(g.TimeStamps, g.TimeStamp)
 	epsg, err := extractEPSGCode(g.CRS)
 	geot := BBox2Geot(g.Width, g.Height, g.BBox)
-	granule := &pb.GeoRPCGranule{Height: int32(g.Height), Width: int32(g.Width), Path: g.Path, EPSG: int32(epsg), Geot: geot, Bands: []int32{band}}
+	granule := &pb.GeoRPCGranule{Height: int32(g.Height), Width: int32(g.Width), Path: g.Path, EPSG: int32(epsg), Geot: geot, Bands: []int32{band}, ScaleBoost: g.DownsampleBoost}
 	r, err := c.Process(ctx, granule)
 	if err != nil {
 		return nil, err

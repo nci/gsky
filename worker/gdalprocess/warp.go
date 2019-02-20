@@ -26,44 +26,20 @@ reduction of overheads in grpc (de-)serialisation and network traffic.
 #include "gdal_utils.h"
 #cgo pkg-config: gdal
 
-GDALDatasetH subsampleSrcDS(GDALDatasetH hSrcDS, double xScale, double yScale, int band, int *bSubsample)
+GDALDatasetH subsampleSrcDS(GDALDatasetH hSrcDS, double scaleRatio, int band)
 {
-	*bSubsample = 0;
-	if(xScale < 0) {
-		xScale = -xScale;
-	}
-	if(yScale < 0) {
-		yScale = -yScale;
-	}
-
-	if(xScale >= 0.95 || yScale >= 0.95) {
-		return NULL;
-	}
-
-	int srcXSize = GDALGetRasterXSize(hSrcDS);
-	int srcYSize = GDALGetRasterYSize(hSrcDS);
-
-	int subsampleXSize = srcXSize;
-	subsampleXSize = (int)(srcXSize * xScale + 0.5);
-
-	int subsampleYSize = srcYSize;
-	subsampleYSize = (int)(srcYSize * yScale + 0.5);
-
-	char bandStr[32];
+	char bandStr[16];
         sprintf(bandStr, "%d", band);
 
         char xSizeStr[32];
-        sprintf(xSizeStr, "%d", subsampleXSize);
-
-        char ySizeStr[32];
-        sprintf(ySizeStr, "%d", subsampleYSize);
+        sprintf(xSizeStr, "%f%%", scaleRatio*100);
 
 	char *opts = NULL;
 	opts = CSLAddString(opts, "-b");
 	opts = CSLAddString(opts, bandStr);
 	opts = CSLAddString(opts, "-outsize");
 	opts = CSLAddString(opts, xSizeStr);
-	opts = CSLAddString(opts, ySizeStr);
+	opts = CSLAddString(opts, "0");
 
 	GDALTranslateOptions *psOptions;
 	psOptions = GDALTranslateOptionsNew(opts, NULL);
@@ -71,11 +47,6 @@ GDALDatasetH subsampleSrcDS(GDALDatasetH hSrcDS, double xScale, double yScale, i
 	GDALDatasetH hOutDS = GDALTranslate("/vsimem/tmp.vrt", hSrcDS, psOptions, NULL);
 	GDALTranslateOptionsFree(psOptions);
 
-	if(hOutDS == NULL) {
-		return NULL;
-	}
-
-	*bSubsample = 1;
 	return hOutDS;
 }
 
@@ -89,7 +60,7 @@ inline int roundCoord(double coord, int maxExtent) {
 	return c;
 }
 
-int warp_operation_fast(GDALDatasetH hSrcDS, GDALDatasetH hDstDS, int band, int *dstBbox)
+int warp_operation_fast(GDALDatasetH hSrcDS, GDALDatasetH hDstDS, int band, double scaleBoost, int *dstBbox)
 {
 	const char *srcProjRef = GDALGetProjectionRef(hSrcDS);
 	if(strlen(srcProjRef) == 0) {
@@ -126,16 +97,27 @@ int warp_operation_fast(GDALDatasetH hSrcDS, GDALDatasetH hDstDS, int band, int 
 		dstXSize = maxX - minX + 1;
 		dstYSize = maxY - minY + 1;
 
-		GDALDatasetH hOutDS = subsampleSrcDS(hSrcDS, geotOut[1], geotOut[5], band, &bSubsample);
-		if(bSubsample) {
-			hSrcDS = hOutDS;
-			band = 1;
+		double xScale = geotOut[1];
+		double yScale = geotOut[5];
+		xScale = xScale < 0.0 ? -xScale : xScale;
+		yScale = yScale < 0.0 ? -yScale : yScale;
 
-			GDALDestroyGenImgProjTransformer(hTransformArg);
-			hTransformArg = GDALCreateGenImgProjTransformer(hSrcDS, srcProjRef, hDstDS, dstProjRef, TRUE, 0.0, 0);
-			if(hTransformArg == NULL) {
-				GDALClose(hSrcDS);
-				return 1;
+		double scaleRatio = xScale > yScale ? xScale : yScale;		
+		scaleRatio *= scaleBoost;
+
+		if(scaleRatio > 0 && scaleRatio < 0.9) {
+			GDALDatasetH hOutDS = subsampleSrcDS(hSrcDS, scaleRatio, band);
+			if(hOutDS) {
+				hSrcDS = hOutDS;
+				band = 1;
+
+				GDALDestroyGenImgProjTransformer(hTransformArg);
+				hTransformArg = GDALCreateGenImgProjTransformer(hSrcDS, srcProjRef, hDstDS, dstProjRef, TRUE, 0.0, 0);
+				if(hTransformArg == NULL) {
+					GDALClose(hSrcDS);
+					return 1;
+				}
+				bSubsample = 1;
 			}
 		}
 	}
@@ -379,8 +361,12 @@ func WarpRaster(in *pb.GeoRPCGranule, debug bool) *pb.Result {
 	C.GDALSetProjection(hDstDS, projWKT)
 	C.GDALSetGeoTransform(hDstDS, (*C.double)(&in.Geot[0]))
 
+	scaleBoost := in.ScaleBoost
+	if scaleBoost < 1.0 {
+		scaleBoost = 1.0
+	}
 	var dstBboxC [4]C.int
-	cErr := C.warp_operation_fast(hSrcDS, hDstDS, C.int(in.Bands[0]), (*C.int)(&dstBboxC[0]))
+	cErr := C.warp_operation_fast(hSrcDS, hDstDS, C.int(in.Bands[0]), C.double(scaleBoost), (*C.int)(&dstBboxC[0]))
 	if cErr != 0 {
 		return &pb.Result{Error: dump("warp_operation() fail")}
 	}
