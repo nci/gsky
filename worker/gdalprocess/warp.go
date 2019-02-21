@@ -48,12 +48,12 @@ int warp_operation_fast(GDALDatasetH hSrcDS, GDALDatasetH hDstDS, int band, void
 	const char *dstProjRef = GDALGetProjectionRef(hDstDS);
 
         GDALRasterBandH hBand = GDALGetRasterBand(hSrcDS, band);
-	if(hBand == NULL) {
+	if(!hBand) {
 		return 1;
 	}
 
 	void *hTransformArg = GDALCreateGenImgProjTransformer(hSrcDS, srcProjRef, hDstDS, dstProjRef, TRUE, 0.0, 0);
-	if(hTransformArg == NULL) {
+	if(!hTransformArg) {
 		return 2;
 	}
 
@@ -65,7 +65,7 @@ int warp_operation_fast(GDALDatasetH hSrcDS, GDALDatasetH hDstDS, int band, void
 
 	int nOverviews = GDALGetOverviewCount(hBand);
 	int useOverview = 0;
-	if(nOverviews > 0) {
+	if(err == CE_None && nOverviews > 0) {
 		double targetRatio = 1.0 / geotOut[1];
 		if(targetRatio > 1.0) {
 			int srcXSize = GDALGetRasterXSize(hSrcDS);
@@ -78,9 +78,9 @@ int warp_operation_fast(GDALDatasetH hSrcDS, GDALDatasetH hDstDS, int band, void
 
 				double ovrRatio = 1.0;
 				if(iOvr >= 0) {
-					ovrRatio = (double)srcXSize / GDALGetRasterXSize(hOvr);
+					ovrRatio = (double)srcXSize / GDALGetRasterBandXSize(hOvr);
 				}
-                        	double nextOvrRatio = (double)srcXSize / GDALGetRasterXSize(hOvrNext);
+				double nextOvrRatio = (double)srcXSize / GDALGetRasterBandXSize(hOvrNext);
 
                         	if(ovrRatio < targetRatio && nextOvrRatio > targetRatio) break;
 
@@ -101,6 +101,14 @@ int warp_operation_fast(GDALDatasetH hSrcDS, GDALDatasetH hDstDS, int band, void
                                 geot[4] *= srcYSize / (double)ovrYSize;
                                 geot[5] *= srcYSize / (double)ovrYSize;
 
+				double dstGeot[6];
+				GDALGetGeoTransform(hDstDS, dstGeot);
+
+				void *hOvrTransformArg = GDALCreateGenImgProjTransformer3(srcProjRef, geot, dstProjRef, dstGeot);
+				if(hOvrTransformArg) {
+					GDALDestroyGenImgProjTransformer(hTransformArg);
+					hTransformArg = hOvrTransformArg;
+				}
 			}
 		}
 	}
