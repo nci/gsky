@@ -89,17 +89,17 @@ int warp_operation_fast(GDALDatasetH hSrcDS, GDALDatasetH hDstDS, int band, void
 			}
 
 			if(iOvr >= 0) {
-				GDALDatasetH hSrcOvrDS = (GDALDatasetH)GDALCreateOverviewDataset(hSrcDS, iOvr, FALSE);
-				if(hSrcOvrDS) {
-        				GDALDestroyGenImgProjTransformer(hTransformArg);
-					void *hOvrTransformArg = GDALCreateGenImgProjTransformer(hSrcOvrDS, srcProjRef, hDstDS, dstProjRef, TRUE, 0.0, 0);
-					if(hOvrTransformArg) {
-						hSrcDS = hSrcOvrDS;
-						hTransformArg = hOvrTransformArg;
-						useOverview = 1;
-					}
+				double geot[6];
+				GDALGetGeoTransform(hSrcDS, geot);
 
-				}
+				hBand = GDALGetOverview(hBand, iOvr);
+				int ovrXSize = GDALGetRasterBandXSize(hBand);
+        			int ovrYSize = GDALGetRasterBandYSize(hBand);
+
+				geot[1] *= srcXSize / (double)ovrXSize;
+			        geot[2] *= srcXSize / (double)ovrXSize;
+                                geot[4] *= srcYSize / (double)ovrYSize;
+                                geot[5] *= srcYSize / (double)ovrYSize;
 
 			}
 		}
@@ -129,8 +129,8 @@ int warp_operation_fast(GDALDatasetH hSrcDS, GDALDatasetH hDstDS, int band, void
 
 	void *hApproxTransformArg = GDALCreateApproxTransformer(GDALGenImgProjTransform, hTransformArg, 0.125);
 
-        int srcXSize = GDALGetRasterXSize(hSrcDS);
-        int srcYSize = GDALGetRasterYSize(hSrcDS);
+        int srcXSize = GDALGetRasterBandXSize(hBand);
+        int srcYSize = GDALGetRasterBandYSize(hBand);
 
         int srcXBlockSize, srcYBlockSize;
         GDALGetBlockSize(hBand, &srcXBlockSize, &srcYBlockSize);
@@ -210,10 +210,6 @@ int warp_operation_fast(GDALDatasetH hSrcDS, GDALDatasetH hDstDS, int band, void
 
 	GDALDestroyApproxTransformer(hApproxTransformArg);
         GDALDestroyGenImgProjTransformer(hTransformArg);
-
-	if(useOverview) {
-		GDALClose(hSrcDS);
-	}
 
 	return 0;
 }
