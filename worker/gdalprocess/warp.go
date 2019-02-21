@@ -5,7 +5,8 @@ This is a fast implementation of the GDAL warp operation.
 The performance improvements over the original warp are as follows:
 1) If the down-sampling algorithm is nearest neighbour, we will be able
 to reduce the FLOPS of the warp operation by down sampling the source
-band before warping.
+band before warping. This is achieved by only loading the data blocks
+corresponding to the input pixel coordinates.
 2) As a result of the downsampling at step 1), GDAL's RasterIO will
 automatically take advantage of overviews if applicable.
 3) The target window projected from the source band is likely to be
@@ -25,42 +26,20 @@ reduction of overheads in grpc (de-)serialisation and network traffic.
 #include "cpl_string.h"
 #include "gdal_utils.h"
 #cgo pkg-config: gdal
-
-GDALDatasetH subsampleSrcDS(GDALDatasetH hSrcDS, double scaleRatio, int band)
-{
-	char bandStr[16];
-        sprintf(bandStr, "%d", band);
-
-        char xSizeStr[32];
-        sprintf(xSizeStr, "%f%%", scaleRatio*100);
-
-	char *opts = NULL;
-	opts = CSLAddString(opts, "-b");
-	opts = CSLAddString(opts, bandStr);
-	opts = CSLAddString(opts, "-outsize");
-	opts = CSLAddString(opts, xSizeStr);
-	opts = CSLAddString(opts, "0");
-
-	GDALTranslateOptions *psOptions;
-	psOptions = GDALTranslateOptionsNew(opts, NULL);
-
-	GDALDatasetH hOutDS = GDALTranslate("/vsimem/tmp.vrt", hSrcDS, psOptions, NULL);
-	GDALTranslateOptionsFree(psOptions);
-
-	return hOutDS;
-}
-
-inline int roundCoord(double coord, int maxExtent) {
-	int c = (int)coord;
-	if(c < 0) {
+int roundCoord(double coord, int maxExtent) {
+	int c;
+	if(coord < 0) {
 		c = 0;
-	} else if(c > maxExtent - 1) {
-		c = maxExtent - 1;
+	} else {
+		c = (int)(coord + 1e-10);
+		if(c > maxExtent - 1) {
+			c = maxExtent - 1;
+		}
 	}
 	return c;
 }
 
-int warp_operation_fast(GDALDatasetH hSrcDS, GDALDatasetH hDstDS, int band, double scaleBoost, int *dstBbox)
+int warp_operation_fast(GDALDatasetH hSrcDS, GDALDatasetH hDstDS, int band, void *dstBuf, int *dstBbox)
 {
 	const char *srcProjRef = GDALGetProjectionRef(hSrcDS);
 	if(strlen(srcProjRef) == 0) {
@@ -68,9 +47,14 @@ int warp_operation_fast(GDALDatasetH hSrcDS, GDALDatasetH hDstDS, int band, doub
 	}
 	const char *dstProjRef = GDALGetProjectionRef(hDstDS);
 
+        GDALRasterBandH hBand = GDALGetRasterBand(hSrcDS, band);
+	if(hBand == NULL) {
+		return 1;
+	}
+
 	void *hTransformArg = GDALCreateGenImgProjTransformer(hSrcDS, srcProjRef, hDstDS, dstProjRef, TRUE, 0.0, 0);
 	if(hTransformArg == NULL) {
-		return 1;
+		return 2;
 	}
 
 	double geotOut[6];
@@ -79,11 +63,56 @@ int warp_operation_fast(GDALDatasetH hSrcDS, GDALDatasetH hDstDS, int band, doub
 	double bbox[4];
 	int err = GDALSuggestedWarpOutput2(hSrcDS, GDALGenImgProjTransform, hTransformArg, geotOut, &nPixels, &nLines, bbox, 0);
 
-	int bSubsample = 0;
+	int nOverviews = GDALGetOverviewCount(hBand);
+	int useOverview = 0;
+	if(nOverviews > 0) {
+		double targetRatio = 1.0 / geotOut[1];
+		if(targetRatio > 1.0) {
+			int srcXSize = GDALGetRasterXSize(hSrcDS);
+			int srcYSize = GDALGetRasterYSize(hSrcDS);
+
+			int iOvr = -1;
+			for(; iOvr < nOverviews - 1; iOvr++) {
+				GDALRasterBandH hOvr = GDALGetOverview(hBand, iOvr);
+				GDALRasterBandH hOvrNext = GDALGetOverview(hBand, iOvr+1);
+
+				double ovrRatio = 1.0;
+				if(iOvr >= 0) {
+					ovrRatio = (double)srcXSize / GDALGetRasterXSize(hOvr);
+				}
+                        	double nextOvrRatio = (double)srcXSize / GDALGetRasterXSize(hOvrNext);
+
+                        	if(ovrRatio < targetRatio && nextOvrRatio > targetRatio) break;
+
+				double diff = ovrRatio - targetRatio;
+				if(diff > -1e-1 && diff < 1e-1) break;
+			}
+
+			if(iOvr >= 0) {
+				GDALDatasetH hSrcOvrDS = (GDALDatasetH)GDALCreateOverviewDataset(hSrcDS, iOvr, FALSE);
+				if(hSrcOvrDS) {
+        				GDALDestroyGenImgProjTransformer(hTransformArg);
+					void *hOvrTransformArg = GDALCreateGenImgProjTransformer(hSrcOvrDS, srcProjRef, hDstDS, dstProjRef, TRUE, 0.0, 0);
+					if(hOvrTransformArg) {
+						hSrcDS = hSrcOvrDS;
+						hTransformArg = hOvrTransformArg;
+						useOverview = 1;
+					}
+
+				}
+
+			}
+		}
+	}
+
 	int dstXOff = 0;
 	int dstYOff = 0;
-	int dstXSize = GDALGetRasterXSize(hDstDS);
-	int dstYSize = GDALGetRasterYSize(hDstDS);
+
+	int dstXImageSize = GDALGetRasterXSize(hDstDS);
+        int dstYImageSize = GDALGetRasterYSize(hDstDS);
+
+	int dstXSize = dstXImageSize;
+	int dstYSize = dstYImageSize;
 
 	if(err == CE_None) {
 		int minX, minY, maxX, maxY;
@@ -96,69 +125,98 @@ int warp_operation_fast(GDALDatasetH hSrcDS, GDALDatasetH hDstDS, int band, doub
 		dstYOff = minY;
 		dstXSize = maxX - minX + 1;
 		dstYSize = maxY - minY + 1;
-
-		double xScale = geotOut[1];
-		double yScale = geotOut[5];
-		xScale = xScale < 0.0 ? -xScale : xScale;
-		yScale = yScale < 0.0 ? -yScale : yScale;
-
-		double scaleRatio = xScale > yScale ? xScale : yScale;		
-		scaleRatio *= scaleBoost;
-
-		if(scaleRatio > 0 && scaleRatio < 0.9) {
-			GDALDatasetH hOutDS = subsampleSrcDS(hSrcDS, scaleRatio, band);
-			if(hOutDS) {
-				hSrcDS = hOutDS;
-				band = 1;
-
-				GDALDestroyGenImgProjTransformer(hTransformArg);
-				hTransformArg = GDALCreateGenImgProjTransformer(hSrcDS, srcProjRef, hDstDS, dstProjRef, TRUE, 0.0, 0);
-				if(hTransformArg == NULL) {
-					GDALClose(hSrcDS);
-					return 1;
-				}
-				bSubsample = 1;
-			}
-		}
 	}
 
-	GDALWarpOptions *psWOptions;
+	void *hApproxTransformArg = GDALCreateApproxTransformer(GDALGenImgProjTransform, hTransformArg, 0.125);
 
-	psWOptions = GDALCreateWarpOptions();
-	psWOptions->nBandCount = 1;
-	psWOptions->panSrcBands = (int *) CPLMalloc(sizeof(int) * 1);
-	psWOptions->panSrcBands[0] = band;
-	psWOptions->panDstBands = (int *) CPLMalloc(sizeof(int) * 1);
-	psWOptions->panDstBands[0] = 1;
+        int srcXSize = GDALGetRasterXSize(hSrcDS);
+        int srcYSize = GDALGetRasterYSize(hSrcDS);
 
-	psWOptions->hSrcDS = hSrcDS;
-	psWOptions->hDstDS = hDstDS;
+        int srcXBlockSize, srcYBlockSize;
+        GDALGetBlockSize(hBand, &srcXBlockSize, &srcYBlockSize);
 
-	psWOptions->eResampleAlg = GRA_NearestNeighbour;
+        int nXBlocks = (srcXSize + srcXBlockSize - 1) / srcXBlockSize;
+        int nYBlocks = (srcYSize + srcYBlockSize - 1) / srcYBlockSize;
 
-	psWOptions->pTransformerArg = GDALCreateApproxTransformer(GDALGenImgProjTransform, hTransformArg, 0.25);
-        psWOptions->pfnTransformer = GDALApproxTransform;
+        void **blockList = (void **)malloc(nXBlocks * nYBlocks * sizeof(void *));
+        memset(blockList, NULL, nXBlocks * nYBlocks * sizeof(void *));
 
-	GDALWarpOperationH warper = GDALCreateWarpOperation(psWOptions);
-	err = GDALWarpRegion(warper, dstXOff, dstYOff, dstXSize, dstYSize, 0, 0, 0, 0);
+        GDALDataType dType = GDALGetRasterDataType(hBand);
+        int dataSize = GDALGetDataTypeSizeBytes(dType);
 
-	GDALDestroyApproxTransformer(psWOptions->pTransformerArg);
-	GDALDestroyGenImgProjTransformer(hTransformArg);
-	GDALDestroyWarpOptions(psWOptions);
-	GDALDestroyWarpOperation(warper);
+        double *dx = (double *)malloc(2 * dstXSize * sizeof(double));
+        double *dy = (double *)malloc(dstXSize * sizeof(double));
+        double *dz = (double *)malloc(dstXSize * sizeof(double));
+        int *bSuccess = (int *)malloc(dstXSize * sizeof(int));
+
+        int iDstX, iDstY;
+        for(iDstX = 0; iDstX < dstXSize; iDstX++) {
+                dx[dstXSize+iDstX] = iDstX + 0.5 + dstXOff;
+        }
+
+	for(iDstY = 0; iDstY < dstYSize; iDstY++) {
+                memcpy(dx, dx + dstXSize, dstXSize * sizeof(double));
+                const double dfY = iDstY + 0.5 + dstYOff;
+                for(iDstX = 0; iDstX < dstXSize; iDstX++) {
+                        dy[iDstX] = dfY;
+                }
+                memset(dz, 0, dstXSize * sizeof(double));
+
+                GDALApproxTransform(hApproxTransformArg, TRUE, dstXSize, dx, dy, dz, bSuccess);
+
+                for(iDstX = 0; iDstX < dstXSize; iDstX++) {
+                        if(!bSuccess[iDstX]) continue;
+                        if(dx[iDstX] < 0 || dy[iDstX] < 0) continue;
+                        const iSrcX = (int)(dx[iDstX] + 1.0e-10);
+                        const iSrcY = (int)(dy[iDstX] + 1.0e-10);
+                        if(iSrcX >= srcXSize || iSrcY >= srcYSize) continue;
+
+                        int iXBlock = iSrcX / srcXBlockSize;
+                        int iYBlock = iSrcY / srcYBlockSize;
+                        int iBlock = iXBlock + iYBlock * nXBlocks;
+
+                        if(!blockList[iBlock]) {
+                                blockList[iBlock] = malloc(srcXBlockSize * srcYBlockSize * dataSize);
+                                GDALReadBlock(hBand, iXBlock, iYBlock, blockList[iBlock]);
+                        }
+
+                        int iXBlockOff = iSrcX % srcXBlockSize;
+                        int iYBlockOff = iSrcY % srcYBlockSize;
+                        int iBlockOff = (iXBlockOff + iYBlockOff * srcXBlockSize) * dataSize;
+
+                        int iDstOff = ((iDstY + dstYOff) * dstXImageSize + iDstX + dstXOff) * dataSize;
+                        memcpy(dstBuf + iDstOff, blockList[iBlock] + iBlockOff, dataSize);
+
+                }
+        }
 
 	dstBbox[0] = dstXOff;
-	dstBbox[1] = dstYOff;
-	dstBbox[2] = dstXSize;
-	dstBbox[3] = dstYSize;
+        dstBbox[1] = dstYOff;
+        dstBbox[2] = dstXSize;
+        dstBbox[3] = dstYSize;
 
-	if(bSubsample) {
+	int iBlock;
+        for(iBlock = 0; iBlock < nXBlocks * nYBlocks; iBlock++) {
+                if(blockList[iBlock]) {
+                        free(blockList[iBlock]);
+                }
+        }
+
+        free(blockList);
+        free(dx);
+        free(dy);
+        free(dz);
+        free(bSuccess);
+
+	GDALDestroyApproxTransformer(hApproxTransformArg);
+        GDALDestroyGenImgProjTransformer(hTransformArg);
+
+	if(useOverview) {
 		GDALClose(hSrcDS);
 	}
 
-	return err;
+	return 0;
 }
-
 
 // This is a reference implementation of warp.
 // We leave this code here for debugging and comparsion purposes.
@@ -361,12 +419,8 @@ func WarpRaster(in *pb.GeoRPCGranule, debug bool) *pb.Result {
 	C.GDALSetProjection(hDstDS, projWKT)
 	C.GDALSetGeoTransform(hDstDS, (*C.double)(&in.Geot[0]))
 
-	scaleBoost := in.ScaleBoost
-	if scaleBoost < 1.0 {
-		scaleBoost = 1.0
-	}
 	var dstBboxC [4]C.int
-	cErr := C.warp_operation_fast(hSrcDS, hDstDS, C.int(in.Bands[0]), C.double(scaleBoost), (*C.int)(&dstBboxC[0]))
+	cErr := C.warp_operation_fast(hSrcDS, hDstDS, C.int(in.Bands[0]), unsafe.Pointer(&canvas[0]), (*C.int)(&dstBboxC[0]))
 	if cErr != 0 {
 		return &pb.Result{Error: dump("warp_operation() fail")}
 	}

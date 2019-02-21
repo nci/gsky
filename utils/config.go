@@ -126,7 +126,6 @@ type Layer struct {
 	FeatureInfoBands         []string `json:"feature_info_bands"`
 	FeatureInfoExpressions   *BandExpressions
 	NoDataLegendPath         string `json:"nodata_legend_path"`
-	DownsampleBoost          float64 `json:"downsample_boost"`
 }
 
 // Process contains all the details that a WPS needs
