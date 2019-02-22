@@ -190,7 +190,8 @@ int warp_operation_fast(const char *srcPath, GDALDatasetH hSrcDS, GDALDatasetH h
                 dx[dstXSize+iDstX] = iDstX + 0.5 + dstXOff;
         }
 
-	uv_loop_t *loop = uv_default_loop();
+	uv_loop_t *loop = malloc(sizeof(uv_loop_t));
+	uv_loop_init(loop);
 
 	for(iDstY = 0; iDstY < dstYSize; iDstY++) {
                 memcpy(dx, dx + dstXSize, dstXSize * sizeof(double));
@@ -295,14 +296,14 @@ int warp_operation_fast(const char *srcPath, GDALDatasetH hSrcDS, GDALDatasetH h
                 }
         }
 
-	uv_loop_close(loop);
-	//free(loop);
-
         free(blockList);
         free(dx);
         free(dy);
         free(dz);
         free(bSuccess);
+
+	uv_loop_close(loop);
+	free(loop);
 
 	GDALDestroyApproxTransformer(hApproxTransformArg);
         GDALDestroyGenImgProjTransformer(hTransformArg);
