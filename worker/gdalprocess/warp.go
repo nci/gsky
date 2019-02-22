@@ -25,7 +25,18 @@ reduction of overheads in grpc (de-)serialisation and network traffic.
 #include "ogr_srs_api.h"
 #include "cpl_string.h"
 #include "gdal_utils.h"
-#cgo pkg-config: gdal
+#include "uv.h"
+#cgo pkg-config: gdal libuv
+
+typedef struct {
+	char *srcPath;
+	int band;
+	int iOvr;
+	int xBlock, yBlock; 
+	void *blockBuf;
+	uv_sem_t *sem;
+} AsyncBlockReq;
+
 int roundCoord(double coord, int maxExtent) {
 	int c;
 	if(coord < 0) {
@@ -39,7 +50,24 @@ int roundCoord(double coord, int maxExtent) {
 	return c;
 }
 
-int warp_operation_fast(GDALDatasetH hSrcDS, GDALDatasetH hDstDS, int band, void *dstBuf, int *dstBbox)
+void async_read_block(uv_work_t *req) {
+	AsyncBlockReq *blockReq = (AsyncBlockReq *) req->data;
+
+	GDALDatasetH hDS = GDALOpen(blockReq->srcPath, GA_ReadOnly);
+        GDALRasterBandH hBand = GDALGetRasterBand(hDS, blockReq->band);
+	if(blockReq->iOvr >= 0) {
+		hBand = GDALGetOverview(hBand, blockReq->iOvr);
+	}
+
+	GDALReadBlock(hBand, blockReq->xBlock, blockReq->yBlock, blockReq->blockBuf);
+	GDALClose(hDS);
+	
+	uv_sem_post(blockReq->sem);
+}
+
+void async_read_block_done(uv_work_t *req, int status) {}
+
+int warp_operation_fast(const char *srcPath, GDALDatasetH hSrcDS, GDALDatasetH hDstDS, int band, void *dstBuf, int *dstBbox)
 {
 	const char *srcProjRef = GDALGetProjectionRef(hSrcDS);
 	if(strlen(srcProjRef) == 0) {
@@ -63,6 +91,7 @@ int warp_operation_fast(GDALDatasetH hSrcDS, GDALDatasetH hDstDS, int band, void
 	double bbox[4];
 	int err = GDALSuggestedWarpOutput2(hSrcDS, GDALGenImgProjTransform, hTransformArg, geotOut, &nPixels, &nLines, bbox, 0);
 
+	int iOvr = -1;
 	int nOverviews = GDALGetOverviewCount(hBand);
 	int useOverview = 0;
 	if(err == CE_None && nOverviews > 0) {
@@ -71,7 +100,6 @@ int warp_operation_fast(GDALDatasetH hSrcDS, GDALDatasetH hDstDS, int band, void
 			int srcXSize = GDALGetRasterXSize(hSrcDS);
 			int srcYSize = GDALGetRasterYSize(hSrcDS);
 
-			int iOvr = -1;
 			for(; iOvr < nOverviews - 1; iOvr++) {
 				GDALRasterBandH hOvr = GDALGetOverview(hBand, iOvr);
 				GDALRasterBandH hOvrNext = GDALGetOverview(hBand, iOvr+1);
@@ -146,8 +174,8 @@ int warp_operation_fast(GDALDatasetH hSrcDS, GDALDatasetH hDstDS, int band, void
         int nXBlocks = (srcXSize + srcXBlockSize - 1) / srcXBlockSize;
         int nYBlocks = (srcYSize + srcYBlockSize - 1) / srcYBlockSize;
 
-        void **blockList = (void **)malloc(nXBlocks * nYBlocks * sizeof(void *));
-        memset(blockList, NULL, nXBlocks * nYBlocks * sizeof(void *));
+        uv_work_t **blockList = (uv_work_t **)malloc(nXBlocks * nYBlocks * sizeof(uv_work_t *));
+        memset(blockList, 0, nXBlocks * nYBlocks * sizeof(uv_work_t *));
 
         GDALDataType dType = GDALGetRasterDataType(hBand);
         int dataSize = GDALGetDataTypeSizeBytes(dType);
@@ -161,6 +189,8 @@ int warp_operation_fast(GDALDatasetH hSrcDS, GDALDatasetH hDstDS, int band, void
         for(iDstX = 0; iDstX < dstXSize; iDstX++) {
                 dx[dstXSize+iDstX] = iDstX + 0.5 + dstXOff;
         }
+
+	uv_loop_t *loop = uv_default_loop();
 
 	for(iDstY = 0; iDstY < dstYSize; iDstY++) {
                 memcpy(dx, dx + dstXSize, dstXSize * sizeof(double));
@@ -184,16 +214,69 @@ int warp_operation_fast(GDALDatasetH hSrcDS, GDALDatasetH hDstDS, int band, void
                         int iBlock = iXBlock + iYBlock * nXBlocks;
 
                         if(!blockList[iBlock]) {
-                                blockList[iBlock] = malloc(srcXBlockSize * srcYBlockSize * dataSize);
-                                GDALReadBlock(hBand, iXBlock, iYBlock, blockList[iBlock]);
+				AsyncBlockReq *blockReq = (AsyncBlockReq *)malloc(sizeof(AsyncBlockReq));
+				blockReq->srcPath = srcPath;
+				blockReq->band = band;
+				blockReq->iOvr = iOvr;
+				blockReq->xBlock = iXBlock;
+				blockReq->yBlock = iYBlock;
+				blockReq->blockBuf = malloc(srcXBlockSize * srcYBlockSize * dataSize);
+				
+				uv_sem_t *sem = (uv_sem_t *)malloc(sizeof(uv_sem_t));
+				uv_sem_init(sem, 0);
+				blockReq->sem = sem;
+
+				uv_work_t *req = (uv_work_t *)malloc(sizeof(uv_work_t));
+				req->data = (void *) blockReq;
+
+				blockList[iBlock] = req;
                         }
+                }
+        }
+
+        int iBlock;
+        for(iBlock = 0; iBlock < nXBlocks * nYBlocks; iBlock++) {
+                if(blockList[iBlock]) {
+			uv_queue_work(loop, blockList[iBlock], async_read_block, async_read_block_done);
+                }
+        }
+
+	for(iBlock = 0; iBlock < nXBlocks * nYBlocks; iBlock++) {
+                if(blockList[iBlock]) {
+			AsyncBlockReq *blockReq = (AsyncBlockReq *) blockList[iBlock]->data;
+			uv_sem_wait(blockReq->sem);
+                }
+        }
+
+	for(iDstY = 0; iDstY < dstYSize; iDstY++) {
+                memcpy(dx, dx + dstXSize, dstXSize * sizeof(double));
+                const double dfY = iDstY + 0.5 + dstYOff;
+                for(iDstX = 0; iDstX < dstXSize; iDstX++) {
+                        dy[iDstX] = dfY;
+                }
+                memset(dz, 0, dstXSize * sizeof(double));
+
+                GDALApproxTransform(hApproxTransformArg, TRUE, dstXSize, dx, dy, dz, bSuccess);
+
+                for(iDstX = 0; iDstX < dstXSize; iDstX++) {
+                        if(!bSuccess[iDstX]) continue;
+                        if(dx[iDstX] < 0 || dy[iDstX] < 0) continue;
+                        const iSrcX = (int)(dx[iDstX] + 1.0e-10);
+                        const iSrcY = (int)(dy[iDstX] + 1.0e-10);
+                        if(iSrcX >= srcXSize || iSrcY >= srcYSize) continue;
+
+                        int iXBlock = iSrcX / srcXBlockSize;
+                        int iYBlock = iSrcY / srcYBlockSize;
+                        int iBlock = iXBlock + iYBlock * nXBlocks;
 
                         int iXBlockOff = iSrcX % srcXBlockSize;
                         int iYBlockOff = iSrcY % srcYBlockSize;
                         int iBlockOff = (iXBlockOff + iYBlockOff * srcXBlockSize) * dataSize;
 
                         int iDstOff = ((iDstY + dstYOff) * dstXImageSize + iDstX + dstXOff) * dataSize;
-                        memcpy(dstBuf + iDstOff, blockList[iBlock] + iBlockOff, dataSize);
+
+			AsyncBlockReq *blockReq = (AsyncBlockReq *) blockList[iBlock]->data;
+                        memcpy(dstBuf + iDstOff, blockReq->blockBuf + iBlockOff, dataSize);
 
                 }
         }
@@ -203,12 +286,17 @@ int warp_operation_fast(GDALDatasetH hSrcDS, GDALDatasetH hDstDS, int band, void
         dstBbox[2] = dstXSize;
         dstBbox[3] = dstYSize;
 
-	int iBlock;
         for(iBlock = 0; iBlock < nXBlocks * nYBlocks; iBlock++) {
                 if(blockList[iBlock]) {
-                        free(blockList[iBlock]);
+			AsyncBlockReq *blockReq = (AsyncBlockReq *) blockList[iBlock]->data;
+                        free(blockReq->blockBuf);
+			uv_sem_destroy(blockReq->sem);
+			free(blockList[iBlock]);
                 }
         }
+
+	uv_loop_close(loop);
+	//free(loop);
 
         free(blockList);
         free(dx);
@@ -424,7 +512,7 @@ func WarpRaster(in *pb.GeoRPCGranule, debug bool) *pb.Result {
 	C.GDALSetGeoTransform(hDstDS, (*C.double)(&in.Geot[0]))
 
 	var dstBboxC [4]C.int
-	cErr := C.warp_operation_fast(hSrcDS, hDstDS, C.int(in.Bands[0]), unsafe.Pointer(&canvas[0]), (*C.int)(&dstBboxC[0]))
+	cErr := C.warp_operation_fast(filePathCStr, hSrcDS, hDstDS, C.int(in.Bands[0]), unsafe.Pointer(&canvas[0]), (*C.int)(&dstBboxC[0]))
 	if cErr != 0 {
 		return &pb.Result{Error: dump("warp_operation() fail")}
 	}
