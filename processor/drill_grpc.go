@@ -116,9 +116,8 @@ func (gi *GeoDrillGRPC) Run(bandStrides int) {
 				defer conc.Decrease()
 				c := pb.NewGDALClient(conns[(iTile+workerStart)%len(conns)])
 				bands, err := getBands(g.TimeStamps)
-				epsg, err := extractEPSGCode(g.CRS)
 
-				granule := &pb.GeoRPCGranule{Path: g.Path, EPSG: int32(epsg), Geometry: g.Geometry, Bands: bands, BandStrides: int32(bandStrides)}
+				granule := &pb.GeoRPCGranule{Operation: "drill", Path: g.Path, Geometry: g.Geometry, Bands: bands, BandStrides: int32(bandStrides)}
 				r, err := c.Process(gi.Context, granule)
 				if err != nil {
 					gi.Error <- err
