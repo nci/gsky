@@ -85,6 +85,18 @@ func EncodePNG(br []*ByteRaster, palette *Palette) ([]byte, error) {
 					}
 				}
 			}
+		} else {
+			var start int
+			for i := 0; i < br[0].Width*br[0].Height; i++ {
+				val := br[0].Data[i]
+				if val != 0xFF {
+					start = i * 4
+					canvas.Pix[start] = val
+					canvas.Pix[start+1] = val
+					canvas.Pix[start+2] = val
+					canvas.Pix[start+3] = 0xff
+				}
+			}
 		}
 
 	case 3:
