@@ -26,6 +26,39 @@ func scale(r Raster, params ScaleParams) (*ByteRaster, error) {
 		offset := uint8(params.Offset)
 		clip := uint8(params.Clip)
 
+		if params.Scale == 0.0 && params.Clip == 0.0 && params.Offset == 0.0 {
+			var minVal, maxVal float32
+			for i, value := range t.Data {
+				if value == noData {
+					continue
+				}
+
+				val := float32(value)
+				if i == 0 {
+					minVal = val
+					maxVal = val
+				} else {
+					if val < minVal {
+						minVal = val
+					}
+
+					if val > maxVal {
+						maxVal = val
+					}
+				}
+			}
+
+			if minVal == maxVal {
+				maxVal += 0.1
+			}
+
+			scale = 254.0 / (maxVal - minVal)
+			dfOffset := -minVal * scale
+
+			offset = uint8(dfOffset)
+			clip = uint8(maxVal)
+		}
+
 		for i, value := range t.Data {
 			if value == noData {
 				t.Data[i] = 0xFF
@@ -47,6 +80,40 @@ func scale(r Raster, params ScaleParams) (*ByteRaster, error) {
 		noData := int16(t.NoData)
 		offset := int16(params.Offset)
 		clip := int16(params.Clip)
+
+		if params.Scale == 0.0 && params.Clip == 0.0 && params.Offset == 0.0 {
+			var minVal, maxVal float32
+			for i, value := range t.Data {
+				if value == noData {
+					continue
+				}
+
+				val := float32(value)
+				if i == 0 {
+					minVal = val
+					maxVal = val
+				} else {
+					if val < minVal {
+						minVal = val
+					}
+
+					if val > maxVal {
+						maxVal = val
+					}
+				}
+			}
+
+			if minVal == maxVal {
+				maxVal += 0.1
+			}
+
+			scale = 254.0 / (maxVal - minVal)
+			dfOffset := -minVal * scale
+
+			offset = int16(dfOffset)
+			clip = int16(maxVal)
+		}
+
 		for i, value := range t.Data {
 			if value == noData {
 				out.Data[i] = 0xFF
@@ -68,6 +135,40 @@ func scale(r Raster, params ScaleParams) (*ByteRaster, error) {
 		noData := uint16(t.NoData)
 		offset := uint16(params.Offset)
 		clip := uint16(params.Clip)
+
+		if params.Scale == 0.0 && params.Clip == 0.0 && params.Offset == 0.0 {
+			var minVal, maxVal float32
+			for i, value := range t.Data {
+				if value == noData {
+					continue
+				}
+
+				val := float32(value)
+				if i == 0 {
+					minVal = val
+					maxVal = val
+				} else {
+					if val < minVal {
+						minVal = val
+					}
+
+					if val > maxVal {
+						maxVal = val
+					}
+				}
+			}
+
+			if minVal == maxVal {
+				maxVal += 0.1
+			}
+
+			scale = 254.0 / (maxVal - minVal)
+			dfOffset := -minVal * scale
+
+			offset = uint16(dfOffset)
+			clip = uint16(maxVal)
+		}
+
 		for i, value := range t.Data {
 			if value == noData {
 				out.Data[i] = 0xFF
@@ -89,6 +190,38 @@ func scale(r Raster, params ScaleParams) (*ByteRaster, error) {
 		noData := float32(t.NoData)
 		offset := float32(params.Offset)
 		clip := float32(params.Clip)
+
+		if params.Scale == 0.0 && params.Clip == 0.0 && params.Offset == 0.0 {
+			var minVal, maxVal float32
+			for i, value := range t.Data {
+				if value == noData {
+					continue
+				}
+
+				if i == 0 {
+					minVal = value
+					maxVal = value
+				} else {
+					if value < minVal {
+						minVal = value
+					}
+
+					if value > maxVal {
+						maxVal = value
+					}
+				}
+			}
+
+			if minVal == maxVal {
+				maxVal += 0.1
+			}
+
+			scale = 254.0 / (maxVal - minVal)
+			offset = -minVal * scale
+
+			clip = maxVal
+		}
+
 		for i, value := range t.Data {
 			if value == noData {
 				out.Data[i] = 0xFF
