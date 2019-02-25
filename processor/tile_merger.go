@@ -45,17 +45,28 @@ func MergeMaskedRaster(r *FlexRaster, canvasMap map[string]*FlexRaster, mask []b
 		data := *(*[]uint8)(unsafe.Pointer(&header))
 		nodata := uint8(r.NoData)
 
-		// Aren't we looping in ordered dates?
 		if r.TimeStamp.Before(canvasMap[r.NameSpace].TimeStamp) {
-			for i, val := range data {
-				if data[i] != nodata && !mask[i] && canvas[i] == nodata {
-					canvas[i] = val
+			iSrc := 0
+			for ir := 0; ir < r.DataHeight; ir++ {
+				for ic := 0; ic < r.DataWidth; ic++ {
+					val := data[iSrc]
+					iDst := (ir+r.OffY)*r.Width + ic + r.OffX
+					if val != nodata && !mask[iSrc] && canvas[iDst] == nodata {
+						canvas[iDst] = val
+					}
+					iSrc++
 				}
 			}
 		} else {
-			for i, val := range data {
-				if val != nodata && !mask[i] {
-					canvas[i] = val
+			iSrc := 0
+			for ir := 0; ir < r.DataHeight; ir++ {
+				for ic := 0; ic < r.DataWidth; ic++ {
+					val := data[iSrc]
+					if val != nodata && !mask[iSrc] {
+						iDst := (ir+r.OffY)*r.Width + ic + r.OffX
+						canvas[iDst] = val
+					}
+					iSrc++
 				}
 			}
 			canvasMap[r.NameSpace].TimeStamp = r.TimeStamp
@@ -73,15 +84,27 @@ func MergeMaskedRaster(r *FlexRaster, canvasMap map[string]*FlexRaster, mask []b
 		nodata := int16(r.NoData)
 
 		if r.TimeStamp.Before(canvasMap[r.NameSpace].TimeStamp) {
-			for i, val := range data {
-				if data[i] != nodata && !mask[i] && canvas[i] == nodata {
-					canvas[i] = val
+			iSrc := 0
+			for ir := 0; ir < r.DataHeight; ir++ {
+				for ic := 0; ic < r.DataWidth; ic++ {
+					val := data[iSrc]
+					iDst := (ir+r.OffY)*r.Width + ic + r.OffX
+					if val != nodata && !mask[iSrc] && canvas[iDst] == nodata {
+						canvas[iDst] = val
+					}
+					iSrc++
 				}
 			}
 		} else {
-			for i, val := range data {
-				if val != nodata && !mask[i] {
-					canvas[i] = val
+			iSrc := 0
+			for ir := 0; ir < r.DataHeight; ir++ {
+				for ic := 0; ic < r.DataWidth; ic++ {
+					val := data[iSrc]
+					if val != nodata && !mask[iSrc] {
+						iDst := (ir+r.OffY)*r.Width + ic + r.OffX
+						canvas[iDst] = val
+					}
+					iSrc++
 				}
 			}
 			canvasMap[r.NameSpace].TimeStamp = r.TimeStamp
@@ -99,15 +122,27 @@ func MergeMaskedRaster(r *FlexRaster, canvasMap map[string]*FlexRaster, mask []b
 		nodata := uint16(r.NoData)
 
 		if r.TimeStamp.Before(canvasMap[r.NameSpace].TimeStamp) {
-			for i, val := range data {
-				if data[i] != nodata && !mask[i] && canvas[i] == nodata {
-					canvas[i] = val
+			iSrc := 0
+			for ir := 0; ir < r.DataHeight; ir++ {
+				for ic := 0; ic < r.DataWidth; ic++ {
+					val := data[iSrc]
+					iDst := (ir+r.OffY)*r.Width + ic + r.OffX
+					if val != nodata && !mask[iSrc] && canvas[iDst] == nodata {
+						canvas[iDst] = val
+					}
+					iSrc++
 				}
 			}
 		} else {
-			for i, val := range data {
-				if val != nodata && !mask[i] {
-					canvas[i] = val
+			iSrc := 0
+			for ir := 0; ir < r.DataHeight; ir++ {
+				for ic := 0; ic < r.DataWidth; ic++ {
+					val := data[iSrc]
+					if val != nodata && !mask[iSrc] {
+						iDst := (ir+r.OffY)*r.Width + ic + r.OffX
+						canvas[iDst] = val
+					}
+					iSrc++
 				}
 			}
 			canvasMap[r.NameSpace].TimeStamp = r.TimeStamp
@@ -125,15 +160,27 @@ func MergeMaskedRaster(r *FlexRaster, canvasMap map[string]*FlexRaster, mask []b
 		nodata := float32(r.NoData)
 
 		if r.TimeStamp.Before(canvasMap[r.NameSpace].TimeStamp) {
-			for i, val := range data {
-				if data[i] != nodata && !mask[i] && canvas[i] == nodata {
-					canvas[i] = val
+			iSrc := 0
+			for ir := 0; ir < r.DataHeight; ir++ {
+				for ic := 0; ic < r.DataWidth; ic++ {
+					val := data[iSrc]
+					iDst := (ir+r.OffY)*r.Width + ic + r.OffX
+					if val != nodata && !mask[iSrc] && canvas[iDst] == nodata {
+						canvas[iDst] = val
+					}
+					iSrc++
 				}
 			}
 		} else {
-			for i, val := range data {
-				if val != nodata && !mask[i] {
-					canvas[i] = val
+			iSrc := 0
+			for ir := 0; ir < r.DataHeight; ir++ {
+				for ic := 0; ic < r.DataWidth; ic++ {
+					val := data[iSrc]
+					if val != nodata && !mask[iSrc] {
+						iDst := (ir+r.OffY)*r.Width + ic + r.OffX
+						canvas[iDst] = val
+					}
+					iSrc++
 				}
 			}
 			canvasMap[r.NameSpace].TimeStamp = r.TimeStamp

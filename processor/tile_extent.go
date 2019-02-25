@@ -1,5 +1,9 @@
 package processor
 
+//#include "ogr_srs_api.h"
+//#cgo pkg-config: gdal
+import "C"
+
 import (
 	"fmt"
 	"log"
@@ -63,6 +67,16 @@ func ComputeReprojectionExtent(ctx context.Context, geoReq *GeoTileRequest, masA
 		log.Printf("tile_extent: total files: %v", len(indexGrans))
 	}
 
+	hSRS := C.OSRNewSpatialReference(nil)
+	defer C.OSRDestroySpatialReference(hSRS)
+	crsC := C.CString(geoReq.CRS)
+	defer C.free(unsafe.Pointer(crsC))
+	C.OSRSetFromUserInput(hSRS, crsC)
+	var projWKTC *C.char
+	defer C.free(unsafe.Pointer(projWKTC))
+	C.OSRExportToWkt(hSRS, &projWKTC)
+	projWKT := C.GoString(projWKTC)
+
 	workerStart := rand.Intn(len(conns))
 
 	outChan := make(chan *OutputSize, len(indexGrans))
@@ -81,9 +95,8 @@ func ComputeReprojectionExtent(ctx context.Context, geoReq *GeoTileRequest, masA
 			go func(g *GeoTileGranule, conc *ConcLimiter, iTile int) {
 				defer conc.Decrease()
 				c := pb.NewGDALClient(conns[(iTile+workerStart)%len(conns)])
-				epsg, err := extractEPSGCode(g.CRS)
 
-				granule := &pb.GeoRPCGranule{Path: g.Path, EPSG: int32(epsg), Geometry: "<geometry_extent>", Geot: bbox}
+				granule := &pb.GeoRPCGranule{Operation: "extent", Path: g.Path, DstSRS: projWKT, DstGeot: bbox}
 				res, err := c.Process(ctx, granule)
 				if err != nil {
 					errChan <- err

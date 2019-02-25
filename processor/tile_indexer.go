@@ -83,7 +83,7 @@ func (p *TileIndexer) Run(verbose bool) {
 			}
 
 			wg.Add(1)
-			go URLIndexGet(p.Context, url, geoReq, p.Error, p.Out, &wg)
+			go URLIndexGet(p.Context, url, geoReq, p.Error, p.Out, &wg, verbose)
 			if geoReq.Mask != nil {
 				maskCollection := geoReq.Mask.DataSource
 				if len(maskCollection) == 0 {
@@ -101,7 +101,7 @@ func (p *TileIndexer) Run(verbose bool) {
 					}
 
 					wg.Add(1)
-					go URLIndexGet(p.Context, url, geoReq, p.Error, p.Out, &wg)
+					go URLIndexGet(p.Context, url, geoReq, p.Error, p.Out, &wg, verbose)
 				}
 			}
 			wg.Wait()
@@ -109,7 +109,7 @@ func (p *TileIndexer) Run(verbose bool) {
 	}
 }
 
-func URLIndexGet(ctx context.Context, url string, geoReq *GeoTileRequest, errChan chan error, out chan *GeoTileGranule, wg *sync.WaitGroup) {
+func URLIndexGet(ctx context.Context, url string, geoReq *GeoTileRequest, errChan chan error, out chan *GeoTileGranule, wg *sync.WaitGroup, verbose bool) {
 	defer wg.Done()
 
 	resp, err := http.Get(url)
@@ -133,6 +133,10 @@ func URLIndexGet(ctx context.Context, url string, geoReq *GeoTileRequest, errCha
 		return
 	}
 
+	if verbose {
+		log.Printf("tile indexer: %d files", len(metadata.GDALDatasets))
+	}
+
 	switch len(metadata.GDALDatasets) {
 	case 0:
 		if len(metadata.Error) > 0 {
@@ -144,7 +148,7 @@ func URLIndexGet(ctx context.Context, url string, geoReq *GeoTileRequest, errCha
 		for _, ds := range metadata.GDALDatasets {
 			for _, t := range ds.TimeStamps {
 				if t.Equal(*geoReq.StartTime) || geoReq.EndTime != nil && t.After(*geoReq.StartTime) && t.Before(*geoReq.EndTime) {
-					out <- &GeoTileGranule{ConfigPayLoad: ConfigPayLoad{NameSpaces: geoReq.NameSpaces, Mask: geoReq.Mask, ScaleParams: geoReq.ScaleParams, Palette: geoReq.Palette, GrpcConcLimit: geoReq.GrpcConcLimit}, Path: ds.DSName, NameSpace: ds.NameSpace, RasterType: ds.ArrayType, TimeStamps: ds.TimeStamps, TimeStamp: t, Polygon: ds.Polygon, BBox: geoReq.BBox, Height: geoReq.Height, Width: geoReq.Width, OffX: geoReq.OffX, OffY: geoReq.OffY, CRS: geoReq.CRS}
+					out <- &GeoTileGranule{ConfigPayLoad: geoReq.ConfigPayLoad, Path: ds.DSName, NameSpace: ds.NameSpace, RasterType: ds.ArrayType, TimeStamps: ds.TimeStamps, TimeStamp: t, Polygon: ds.Polygon, BBox: geoReq.BBox, Height: geoReq.Height, Width: geoReq.Width, OffX: geoReq.OffX, OffY: geoReq.OffY, CRS: geoReq.CRS}
 				}
 			}
 		}

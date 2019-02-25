@@ -52,22 +52,23 @@ func dataHandler(conn net.Conn, debug bool) {
 		sendOutput(out, conn)
 	}
 
-	// TODO "This is ugly"
-	if in.Geot == nil && in.Geometry == "" {
-		out = gp.ExtractGDALInfo(in)
-	} else if in.Geot == nil {
-		out = gp.DrillDataset(in)
-	} else if in.Geometry == "<geometry_extent>" {
-		out = gp.ComputeReprojectExtent(in)
-	} else {
+	switch in.Operation {
+	case "warp":
 		out = gp.WarpRaster(in, debug)
+	case "drill":
+		out = gp.DrillDataset(in)
+	case "extent":
+		out = gp.ComputeReprojectExtent(in)
+	case "info":
+		out = gp.ExtractGDALInfo(in)
+	default:
+		out.Error = fmt.Sprintf("Unknown operation: %s", in.Operation)
 	}
 
 	err = sendOutput(out, conn)
 	if err != nil {
 		log.Println(err)
 	}
-
 }
 
 func registerGDALDrivers() {
@@ -108,6 +109,10 @@ func registerGDALDrivers() {
 	if haveNetCDF {
 		C.GDALRegister_netCDF()
 	}
+	if haveGTiff {
+		C.GDALRegister_GTiff()
+	}
+
 	if haveHDF4 {
 		C.GDALRegister_HDF4()
 	}
@@ -116,9 +121,6 @@ func registerGDALDrivers() {
 	}
 	if haveJP2OpenJPEG {
 		C.GDALRegister_JP2OpenJPEG()
-	}
-	if haveGTiff {
-		C.GDALRegister_GTiff()
 	}
 	// Now register everything else
 	C.GDALAllRegister()

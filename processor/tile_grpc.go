@@ -1,14 +1,18 @@
 package processor
 
+//#include "ogr_srs_api.h"
+//#cgo pkg-config: gdal
+import "C"
+
 import (
 	"fmt"
 	"log"
 	"math"
 	"math/rand"
 	"sort"
-	"strconv"
 	"sync"
 	"time"
+	"unsafe"
 
 	pb "github.com/nci/gsky/worker/gdalservice"
 	"golang.org/x/net/context"
@@ -195,6 +199,16 @@ func (gi *GeoRasterGRPC) Run(polyLimiter *ConcLimiter, varList []string, verbose
 		return
 	}
 
+	hSRS := C.OSRNewSpatialReference(nil)
+	defer C.OSRDestroySpatialReference(hSRS)
+	crsC := C.CString(g0.CRS)
+	defer C.free(unsafe.Pointer(crsC))
+	C.OSRSetFromUserInput(hSRS, crsC)
+	var projWKTC *C.char
+	defer C.free(unsafe.Pointer(projWKTC))
+	C.OSRExportToWkt(hSRS, &projWKTC)
+	projWKT := C.GoString(projWKTC)
+
 	var wg sync.WaitGroup
 	wg.Add(len(gransByShard))
 
@@ -224,12 +238,19 @@ func (gi *GeoRasterGRPC) Run(polyLimiter *ConcLimiter, varList []string, verbose
 					go func(g *GeoTileGranule, gCnt int, idx int) {
 						defer wgRpc.Done()
 						defer cLimiter.Decrease()
-						r, err := getRPCRaster(gi.Context, g, connPool[gCnt%len(connPool)])
+						r, err := getRPCRaster(gi.Context, g, projWKT, connPool[gCnt%len(connPool)])
 						if err != nil {
 							gi.sendError(err)
 							r = &pb.Result{Raster: &pb.Raster{Data: make([]uint8, g.Width*g.Height), RasterType: "Byte", NoData: -1.}}
 						}
-						outRasters[idx] = &FlexRaster{ConfigPayLoad: g.ConfigPayLoad, Data: r.Raster.Data, Height: g.Height, Width: g.Width, OffX: g.OffX, OffY: g.OffY, Type: r.Raster.RasterType, NoData: r.Raster.NoData, NameSpace: g.NameSpace, TimeStamp: g.TimeStamp, Polygon: g.Polygon}
+						if len(r.Raster.Bbox) == 0 {
+							r.Raster.Bbox = []int32{0, 0, int32(g.Width), int32(g.Height)}
+						}
+						rOffX := int(r.Raster.Bbox[0])
+						rOffY := int(r.Raster.Bbox[1])
+						rWidth := int(r.Raster.Bbox[2])
+						rHeight := int(r.Raster.Bbox[3])
+						outRasters[idx] = &FlexRaster{ConfigPayLoad: g.ConfigPayLoad, Data: r.Raster.Data, Height: g.Height, Width: g.Width, DataHeight: rHeight, DataWidth: rWidth, OffX: rOffX, OffY: rOffY, Type: r.Raster.RasterType, NoData: r.Raster.NoData, NameSpace: g.NameSpace, TimeStamp: g.TimeStamp, Polygon: g.Polygon}
 					}(gran, granCounter+iGran, iGran)
 				}
 
@@ -274,12 +295,11 @@ func getDataSize(dataType string) (int, error) {
 	}
 }
 
-func getRPCRaster(ctx context.Context, g *GeoTileGranule, conn *grpc.ClientConn) (*pb.Result, error) {
+func getRPCRaster(ctx context.Context, g *GeoTileGranule, projWKT string, conn *grpc.ClientConn) (*pb.Result, error) {
 	c := pb.NewGDALClient(conn)
 	band, err := getBand(g.TimeStamps, g.TimeStamp)
-	epsg, err := extractEPSGCode(g.CRS)
 	geot := BBox2Geot(g.Width, g.Height, g.BBox)
-	granule := &pb.GeoRPCGranule{Height: int32(g.Height), Width: int32(g.Width), Path: g.Path, EPSG: int32(epsg), Geot: geot, Bands: []int32{band}}
+	granule := &pb.GeoRPCGranule{Operation: "warp", Height: int32(g.Height), Width: int32(g.Width), Path: g.Path, DstSRS: projWKT, DstGeot: geot, Bands: []int32{band}}
 	r, err := c.Process(ctx, granule)
 	if err != nil {
 		return nil, err
@@ -298,12 +318,6 @@ func getBand(times []time.Time, rasterTime time.Time) (int32, error) {
 		}
 	}
 	return -1, fmt.Errorf("%s dataset does not contain Unix date: %d", "Handler", rasterTime.Unix())
-}
-
-// ExtractEPSGCode parses an SRS string and gets
-// the EPSG code
-func extractEPSGCode(srs string) (int, error) {
-	return strconv.Atoi(srs[5:])
 }
 
 // BBox2Geot return the geotransform from the

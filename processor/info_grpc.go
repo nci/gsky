@@ -84,7 +84,7 @@ func (gi *GeoInfoGRPC) Run() {
 				defer cl.Decrease()
 
 				c := pb.NewGDALClient(conns[rand.Intn(len(conns))])
-				r, err := c.Process(gi.Context, &pb.GeoRPCGranule{Path: g})
+				r, err := c.Process(gi.Context, &pb.GeoRPCGranule{Operation: "info", Path: g})
 				if err != nil {
 					fmt.Println(err)
 					gi.Error <- err

@@ -52,14 +52,15 @@ type GeoTileGranule struct {
 
 type FlexRaster struct {
 	ConfigPayLoad
-	Data          []byte
-	Height, Width int
-	OffX, OffY    int
-	Type          string
-	NoData        float64
-	NameSpace     string
-	TimeStamp     time.Time
-	Polygon       string
+	Data                  []byte
+	DataHeight, DataWidth int
+	Height, Width         int
+	OffX, OffY            int
+	Type                  string
+	NoData                float64
+	NameSpace             string
+	TimeStamp             time.Time
+	Polygon               string
 }
 
 type Raster interface {
