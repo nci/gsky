@@ -150,13 +150,21 @@ int warp_operation_fast(const char *srcFilePath, const char *dstProjRef, double 
         memset(blockList, 0, nXBlocks * nYBlocks * sizeof(void *));
 
         *dType = GDALGetRasterDataType(hBand);
-        int dataSize = GDALGetDataTypeSizeBytes(*dType);
+	const GDALDataType srcDataType = *dType;
+        const int srcDataSize = GDALGetDataTypeSizeBytes(*dType);
+
+	const int supportedDataType = *dType == GDT_Byte || *dType == GDT_Int16 || *dType == GDT_UInt16 || *dType == GDT_Float32;
+	if(!supportedDataType) {
+		*dType = GDT_Float32;
+	}
+
+        const int dataSize = GDALGetDataTypeSizeBytes(*dType);
 
 	*dstBufSize = dstXSize * dstYSize * dataSize;
 	*dstBuf = malloc(*dstBufSize);
 
 	*noData = GDALGetRasterNoDataValue(hBand, NULL);
-	GDALCopyWords(noData, GDT_CFloat64, 0, *dstBuf, *dType, dataSize, dstXSize * dstYSize);
+	GDALCopyWords(noData, GDT_Float64, 0, *dstBuf, *dType, dataSize, dstXSize * dstYSize);
 
         double *dx = (double *)malloc(2 * dstXSize * sizeof(double));
         double *dy = (double *)malloc(dstXSize * sizeof(double));
@@ -181,8 +189,8 @@ int warp_operation_fast(const char *srcFilePath, const char *dstProjRef, double 
                 for(iDstX = 0; iDstX < dstXSize; iDstX++) {
                         if(!bSuccess[iDstX]) continue;
                         if(dx[iDstX] < 0 || dy[iDstX] < 0) continue;
-                        const iSrcX = (int)(dx[iDstX] + 1.0e-10);
-                        const iSrcY = (int)(dy[iDstX] + 1.0e-10);
+                        const int iSrcX = (int)(dx[iDstX] + 1.0e-10);
+                        const int iSrcY = (int)(dy[iDstX] + 1.0e-10);
                         if(iSrcX >= srcXSize || iSrcY >= srcYSize) continue;
 
                         int iXBlock = iSrcX / srcXBlockSize;
@@ -190,17 +198,21 @@ int warp_operation_fast(const char *srcFilePath, const char *dstProjRef, double 
                         int iBlock = iXBlock + iYBlock * nXBlocks;
 
                         if(!blockList[iBlock]) {
-                                blockList[iBlock] = malloc(srcXBlockSize * srcYBlockSize * dataSize);
+                                blockList[iBlock] = malloc(srcXBlockSize * srcYBlockSize * srcDataSize);
                                 err = GDALReadBlock(hBand, iXBlock, iYBlock, blockList[iBlock]);
 				if(err != CE_None) continue;
                         }
 
                         int iXBlockOff = iSrcX % srcXBlockSize;
                         int iYBlockOff = iSrcY % srcYBlockSize;
-                        int iBlockOff = (iXBlockOff + iYBlockOff * srcXBlockSize) * dataSize;
+                        int iBlockOff = (iXBlockOff + iYBlockOff * srcXBlockSize) * srcDataSize;
 
                         int iDstOff = (iDstY * dstXSize + iDstX) * dataSize;
-                        memcpy(*dstBuf + iDstOff, blockList[iBlock] + iBlockOff, dataSize);
+			if(supportedDataType) {
+				memcpy(*dstBuf + iDstOff, blockList[iBlock] + iBlockOff, dataSize);
+			} else {
+				GDALCopyWords(blockList[iBlock] + iBlockOff, srcDataType, srcDataSize, *dstBuf + iDstOff, *dType, dataSize, 1);
+			}
                 }
         }
 
