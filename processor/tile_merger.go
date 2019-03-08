@@ -9,7 +9,6 @@ import (
 	"reflect"
 	"sort"
 	"strconv"
-	"time"
 	"unsafe"
 
 	"github.com/nci/gsky/utils"
@@ -45,7 +44,7 @@ func MergeMaskedRaster(r *FlexRaster, canvasMap map[string]*FlexRaster, mask []b
 		data := *(*[]uint8)(unsafe.Pointer(&header))
 		nodata := uint8(r.NoData)
 
-		if r.TimeStamp.Before(canvasMap[r.NameSpace].TimeStamp) {
+		if r.TimeStamp < canvasMap[r.NameSpace].TimeStamp {
 			iSrc := 0
 			for ir := 0; ir < r.DataHeight; ir++ {
 				for ic := 0; ic < r.DataWidth; ic++ {
@@ -83,7 +82,7 @@ func MergeMaskedRaster(r *FlexRaster, canvasMap map[string]*FlexRaster, mask []b
 		data := *(*[]int16)(unsafe.Pointer(&header))
 		nodata := int16(r.NoData)
 
-		if r.TimeStamp.Before(canvasMap[r.NameSpace].TimeStamp) {
+		if r.TimeStamp < canvasMap[r.NameSpace].TimeStamp {
 			iSrc := 0
 			for ir := 0; ir < r.DataHeight; ir++ {
 				for ic := 0; ic < r.DataWidth; ic++ {
@@ -121,7 +120,7 @@ func MergeMaskedRaster(r *FlexRaster, canvasMap map[string]*FlexRaster, mask []b
 		data := *(*[]uint16)(unsafe.Pointer(&header))
 		nodata := uint16(r.NoData)
 
-		if r.TimeStamp.Before(canvasMap[r.NameSpace].TimeStamp) {
+		if r.TimeStamp < canvasMap[r.NameSpace].TimeStamp {
 			iSrc := 0
 			for ir := 0; ir < r.DataHeight; ir++ {
 				for ic := 0; ic < r.DataWidth; ic++ {
@@ -159,7 +158,7 @@ func MergeMaskedRaster(r *FlexRaster, canvasMap map[string]*FlexRaster, mask []b
 		data := *(*[]float32)(unsafe.Pointer(&header))
 		nodata := float32(r.NoData)
 
-		if r.TimeStamp.Before(canvasMap[r.NameSpace].TimeStamp) {
+		if r.TimeStamp < canvasMap[r.NameSpace].TimeStamp {
 			iSrc := 0
 			for ir := 0; ir < r.DataHeight; ir++ {
 				for ic := 0; ic < r.DataWidth; ic++ {
@@ -237,8 +236,8 @@ func initNoDataSlice(rType string, noDataValue float64, size int) []uint8 {
 
 }
 
-func ProcessRasterStack(rasterStack map[int64][]*FlexRaster, maskMap map[int64][]bool, canvasMap map[string]*FlexRaster) (map[string]*FlexRaster, error) {
-	var keys []int64
+func ProcessRasterStack(rasterStack map[float64][]*FlexRaster, maskMap map[float64][]bool, canvasMap map[string]*FlexRaster) (map[string]*FlexRaster, error) {
+	var keys []float64
 	for k := range rasterStack {
 		keys = append(keys, k)
 	}
@@ -249,7 +248,7 @@ func ProcessRasterStack(rasterStack map[int64][]*FlexRaster, maskMap map[int64][
 		for _, r := range rasterStack[geoStamp] {
 			if _, ok := canvasMap[r.NameSpace]; !ok {
 				// Raster namespace doesn't have a canvas yet
-				canvasMap[r.NameSpace] = &FlexRaster{TimeStamp: time.Time{}, ConfigPayLoad: r.ConfigPayLoad,
+				canvasMap[r.NameSpace] = &FlexRaster{TimeStamp: 0, ConfigPayLoad: r.ConfigPayLoad,
 					NoData: r.NoData, Data: initNoDataSlice(r.Type, r.NoData, r.Width*r.Height),
 					Height: r.Height, Width: r.Width, OffX: r.OffX, OffY: r.OffY,
 					Type: r.Type, NameSpace: r.NameSpace}
@@ -391,8 +390,8 @@ func (enc *RasterMerger) Run(polyLimiter *ConcLimiter, bandExpr *utils.BandExpre
 		default:
 		}
 
-		maskMap := map[int64][]bool{}
-		rasterStack := map[int64][]*FlexRaster{}
+		maskMap := map[float64][]bool{}
+		rasterStack := map[float64][]*FlexRaster{}
 
 		for _, r := range inRasters {
 			if r == nil {
@@ -401,7 +400,7 @@ func (enc *RasterMerger) Run(polyLimiter *ConcLimiter, bandExpr *utils.BandExpre
 
 			h := fnv.New32a()
 			h.Write([]byte(r.Polygon))
-			geoStamp := r.TimeStamp.UnixNano() + int64(h.Sum32())
+			geoStamp := r.TimeStamp + float64(h.Sum32())
 
 			// Raster namespace is identified as Mask
 			if r.Mask != nil && r.Mask.ID == r.NameSpace {

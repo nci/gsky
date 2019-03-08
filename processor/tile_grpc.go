@@ -11,7 +11,6 @@ import (
 	"math/rand"
 	"sort"
 	"sync"
-	"time"
 	"unsafe"
 
 	pb "github.com/nci/gsky/worker/gdalservice"
@@ -297,9 +296,9 @@ func getDataSize(dataType string) (int, error) {
 
 func getRPCRaster(ctx context.Context, g *GeoTileGranule, projWKT string, conn *grpc.ClientConn) (*pb.Result, error) {
 	c := pb.NewGDALClient(conn)
-	band, err := getBand(g.TimeStamps, g.TimeStamp)
+	//band, err := getBand(g.TimeStamps, g.TimeStamp)
 	geot := BBox2Geot(g.Width, g.Height, g.BBox)
-	granule := &pb.GeoRPCGranule{Operation: "warp", Height: int32(g.Height), Width: int32(g.Width), Path: g.Path, DstSRS: projWKT, DstGeot: geot, Bands: []int32{band}}
+	granule := &pb.GeoRPCGranule{Operation: "warp", Height: int32(g.Height), Width: int32(g.Width), Path: g.Path, DstSRS: projWKT, DstGeot: geot, Bands: []int32{int32(g.BandIdx)}}
 	r, err := c.Process(ctx, granule)
 	if err != nil {
 		return nil, err
@@ -308,6 +307,7 @@ func getRPCRaster(ctx context.Context, g *GeoTileGranule, projWKT string, conn *
 	return r, nil
 }
 
+/*
 func getBand(times []time.Time, rasterTime time.Time) (int32, error) {
 	if len(times) == 1 {
 		return 1, nil
@@ -319,6 +319,7 @@ func getBand(times []time.Time, rasterTime time.Time) (int32, error) {
 	}
 	return -1, fmt.Errorf("%s dataset does not contain Unix date: %d", "Handler", rasterTime.Unix())
 }
+*/
 
 // BBox2Geot return the geotransform from the
 // parameters received in a WMS GetMap request

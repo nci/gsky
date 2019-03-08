@@ -278,7 +278,7 @@ func getRaster(ctx context.Context, params utils.WMSParams, conf *utils.Config, 
 		}
 	}
 
-	sort.Slice(pixelFiles, func(i, j int) bool { return pixelFiles[i].TimeStamp.Unix() < pixelFiles[j].TimeStamp.Unix() })
+	sort.Slice(pixelFiles, func(i, j int) bool { return pixelFiles[i].TimeStamp <= pixelFiles[j].TimeStamp })
 
 	var topDsFiles []string
 	fileDedup := make(map[string]bool)

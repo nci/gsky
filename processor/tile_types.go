@@ -25,6 +25,13 @@ type ConfigPayLoad struct {
 	QueryLimit            int
 }
 
+type GeoTileAxis struct {
+	Start *float64
+	End   *float64
+	Order int
+	Aggregate int
+}
+
 type GeoTileRequest struct {
 	ConfigPayLoad
 	Collection    string
@@ -34,6 +41,7 @@ type GeoTileRequest struct {
 	OffX, OffY    int
 	StartTime     *time.Time
 	EndTime       *time.Time
+	Axes          map[string]*GeoTileAxis
 }
 
 type GeoTileGranule struct {
@@ -44,8 +52,10 @@ type GeoTileGranule struct {
 	Height, Width int
 	OffX, OffY    int
 	NameSpace     string
-	TimeStamps    []time.Time
-	TimeStamp     time.Time
+	//TimeStamps    []time.Time
+	//TimeStamp     time.Time
+	TimeStamp     float64
+	BandIdx       int
 	Polygon       string
 	RasterType    string
 }
@@ -59,7 +69,7 @@ type FlexRaster struct {
 	Type                  string
 	NoData                float64
 	NameSpace             string
-	TimeStamp             time.Time
+	TimeStamp             float64 //time.Time
 	Polygon               string
 }
 
