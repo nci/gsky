@@ -6,42 +6,42 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"math"
 	"net/http"
+	"sort"
 	"strings"
 	"sync"
 	"time"
-	"math"
-	"sort"
 )
 
 type DatasetAxis struct {
-	Name   string `json:"name"`
-	Params []float64 `json:"params"`
-	Strides []int `json:"strides"`
-	Shape  []int `json:"shape"`
-	Grid   string    `json:"grid"`
-	IntersectionIdx []int
+	Name               string    `json:"name"`
+	Params             []float64 `json:"params"`
+	Strides            []int     `json:"strides"`
+	Shape              []int     `json:"shape"`
+	Grid               string    `json:"grid"`
+	IntersectionIdx    []int
 	IntersectionValues []float64
-	Order           int
-	Aggregate       int
+	Order              int
+	Aggregate          int
 }
 
 type GDALDataset struct {
-	DSName       string      `json:"ds_name"`
-	NameSpace    string      `json:"namespace"`
-	ArrayType    string      `json:"array_type"`
-	TimeStamps   []time.Time `json:"timestamps"`
-	Polygon      string      `json:"polygon"`
-	Means        []float64   `json:"means"`
-	SampleCounts []int       `json:"sample_counts"`
-	NoData       float64     `json:"nodata"`
+	DSName       string         `json:"ds_name"`
+	NameSpace    string         `json:"namespace"`
+	ArrayType    string         `json:"array_type"`
+	TimeStamps   []time.Time    `json:"timestamps"`
+	Polygon      string         `json:"polygon"`
+	Means        []float64      `json:"means"`
+	SampleCounts []int          `json:"sample_counts"`
+	NoData       float64        `json:"nodata"`
 	Axes         []*DatasetAxis `json:"axes"`
-	IsOutRange   bool          
+	IsOutRange   bool
 }
 
 type MetadataResponse struct {
-	Error        string        `json:"error"`
-	Files        []string      `json:"files"`
+	Error        string         `json:"error"`
+	Files        []string       `json:"files"`
 	GDALDatasets []*GDALDataset `json:"gdal"`
 }
 
@@ -168,12 +168,16 @@ func URLIndexGet(ctx context.Context, url string, geoReq *GeoTileRequest, errCha
 
 		_t1 := 1100.0
 		_t2 := 5000.0
-		geoReq.Axes["level"] = &GeoTileAxis{Start: &_t1, End: &_t2, Order: 1}
+		geoReq.Axes["level"] = &GeoTileAxis{Start: &_t1, End: &_t2, Order: 1, Aggregate: 0}
 		//geoReq.Axes["level"] = &GeoTileAxis{Start: &_t1, Order: 1}
 
 		for ids, ds := range metadata.GDALDatasets {
-			if ids >= 20 { break } // debug
-			if len(ds.TimeStamps) < 32 { continue } //debug
+			if ids >= 20 {
+				break
+			} // debug
+			if len(ds.TimeStamps) < 32 {
+				continue
+			} //debug
 
 			isOutRange := false
 			for _, axis := range ds.Axes {
@@ -193,12 +197,12 @@ func URLIndexGet(ctx context.Context, url string, geoReq *GeoTileRequest, errCha
 								axisIdx := 0
 								for iv, val := range axis.Params {
 									if startVal >= val {
-										if iv == len(axis.Params) - 1 {
+										if iv == len(axis.Params)-1 {
 											axisIdx = iv
 											break
-										}							
+										}
 
-										if math.Abs(startVal - val) <= math.Abs(startVal - axis.Params[iv+1]) {
+										if math.Abs(startVal-val) <= math.Abs(startVal-axis.Params[iv+1]) {
 											axisIdx = iv
 											break
 										} else {
@@ -208,8 +212,8 @@ func URLIndexGet(ctx context.Context, url string, geoReq *GeoTileRequest, errCha
 									}
 								}
 
-								axis.IntersectionIdx = append(axis.IntersectionIdx,  axisIdx)
-								axis.IntersectionValues = append(axis.IntersectionValues,  axis.Params[axisIdx])
+								axis.IntersectionIdx = append(axis.IntersectionIdx, axisIdx)
+								axis.IntersectionValues = append(axis.IntersectionValues, axis.Params[axisIdx])
 							} else if tileAxis.Start != nil && tileAxis.End != nil {
 								startVal := *tileAxis.Start
 								endVal := *tileAxis.End
@@ -219,8 +223,8 @@ func URLIndexGet(ctx context.Context, url string, geoReq *GeoTileRequest, errCha
 								}
 								for iv, val := range axis.Params {
 									if val >= startVal && val < endVal {
-										axis.IntersectionIdx = append(axis.IntersectionIdx,  iv)
-										axis.IntersectionValues = append(axis.IntersectionValues,  axis.Params[iv])
+										axis.IntersectionIdx = append(axis.IntersectionIdx, iv)
+										axis.IntersectionValues = append(axis.IntersectionValues, axis.Params[iv])
 									}
 								}
 
@@ -230,8 +234,8 @@ func URLIndexGet(ctx context.Context, url string, geoReq *GeoTileRequest, errCha
 					} else if axis.Grid == "default" {
 						for it, t := range ds.TimeStamps {
 							if t.Equal(*geoReq.StartTime) || geoReq.EndTime != nil && t.After(*geoReq.StartTime) && t.Before(*geoReq.EndTime) {
-								axis.IntersectionIdx = append(axis.IntersectionIdx,  it)
-								axis.IntersectionValues = append(axis.IntersectionValues,  float64(ds.TimeStamps[it].Unix()))
+								axis.IntersectionIdx = append(axis.IntersectionIdx, it)
+								axis.IntersectionValues = append(axis.IntersectionValues, float64(ds.TimeStamps[it].Unix()))
 							}
 						}
 
@@ -252,16 +256,17 @@ func URLIndexGet(ctx context.Context, url string, geoReq *GeoTileRequest, errCha
 				continue
 			}
 
-
 		}
 
-		
 		bandNameSpaces := make(map[string]map[string]float64)
 		var granList []*GeoTileGranule
 		for ids, ds := range metadata.GDALDatasets {
-			if ids >= 20 { break } // debug
-			if len(ds.TimeStamps) < 32 { continue } //debug
-
+			if ids >= 20 {
+				break
+			} // debug
+			if len(ds.TimeStamps) < 32 {
+				continue
+			} //debug
 
 			if ds.IsOutRange {
 				continue
@@ -308,13 +313,13 @@ func URLIndexGet(ctx context.Context, url string, geoReq *GeoTileRequest, errCha
 						bandNameSpaces[ds.NameSpace] = make(map[string]float64)
 					}
 
-					_, bFound := bandNameSpaces[ds.NameSpace][namespace] 
+					_, bFound := bandNameSpaces[ds.NameSpace][namespace]
 					if !bFound {
 						bandNameSpaces[ds.NameSpace][namespace] = bandTimeStamp
 					}
 				}
 
-				gran :=  &GeoTileGranule{ConfigPayLoad: geoReq.ConfigPayLoad, Path: ds.DSName, NameSpace: namespace, RasterType: ds.ArrayType, TimeStamp: float64(aggTimeStamp), BandIdx: bandIdx, Polygon: ds.Polygon, BBox: geoReq.BBox, Height: geoReq.Height, Width: geoReq.Width, CRS: geoReq.CRS}
+				gran := &GeoTileGranule{ConfigPayLoad: geoReq.ConfigPayLoad, Path: ds.DSName, NameSpace: namespace, VarNameSpace: ds.NameSpace, RasterType: ds.ArrayType, TimeStamp: float64(aggTimeStamp), BandIdx: bandIdx, Polygon: ds.Polygon, BBox: geoReq.BBox, Height: geoReq.Height, Width: geoReq.Width, CRS: geoReq.CRS}
 
 				log.Printf("    %v, %v,%v,%v,%v   %v", axisIdxCnt, bandIdx, aggTimeStamp, bandTimeStamp, namespace, len(ds.TimeStamps))
 
@@ -333,31 +338,41 @@ func URLIndexGet(ctx context.Context, url string, geoReq *GeoTileRequest, errCha
 
 		type _BandNs struct {
 			Name string
-			Val float64
+			Val  float64
 		}
 
 		var sortedNameSpaces []string
 		for _, ns := range geoReq.NameSpaces {
 			bands, found := bandNameSpaces[ns]
 			if found {
-				sortedNameSpaces = append(sortedNameSpaces, ns)
 				bandNsList := make([]*_BandNs, len(bands))
 				ib := 0
 				for bns, val := range bands {
-					bandNsList[ib] = &_BandNs{Name: bns, Val :val}
+					bandNsList[ib] = &_BandNs{Name: bns, Val: val}
 					ib++
 				}
-				
+
 				sort.Slice(bandNsList, func(i, j int) bool { return bandNsList[i].Val <= bandNsList[j].Val })
 
 				for _, bns := range bandNsList {
 					sortedNameSpaces = append(sortedNameSpaces, bns.Name)
 				}
+			} else {
+				sortedNameSpaces = append(sortedNameSpaces, ns)
 			}
 		}
 
 		log.Printf("%#v", bandNameSpaces)
-
 		log.Printf("%#v", sortedNameSpaces)
+
+		newConfigPayLoad := geoReq.ConfigPayLoad
+		newConfigPayLoad.NameSpaces = sortedNameSpaces
+
+		log.Printf("%v, %v", geoReq.ConfigPayLoad, newConfigPayLoad)
+
+		for _, gran := range granList {
+			gran.ConfigPayLoad = newConfigPayLoad
+			out <- gran
+		}
 	}
 }

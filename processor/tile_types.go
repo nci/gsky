@@ -26,9 +26,9 @@ type ConfigPayLoad struct {
 }
 
 type GeoTileAxis struct {
-	Start *float64
-	End   *float64
-	Order int
+	Start     *float64
+	End       *float64
+	Order     int
 	Aggregate int
 }
 
@@ -52,12 +52,13 @@ type GeoTileGranule struct {
 	Height, Width int
 	OffX, OffY    int
 	NameSpace     string
+	VarNameSpace  string
 	//TimeStamps    []time.Time
 	//TimeStamp     time.Time
-	TimeStamp     float64
-	BandIdx       int
-	Polygon       string
-	RasterType    string
+	TimeStamp  float64
+	BandIdx    int
+	Polygon    string
+	RasterType string
 }
 
 type FlexRaster struct {

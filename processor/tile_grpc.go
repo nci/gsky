@@ -63,8 +63,8 @@ func (gi *GeoRasterGRPC) Run(polyLimiter *ConcLimiter, varList []string, verbose
 				imageSize = gran.Height * gran.Width
 			}
 
-			if _, found := availNamespaces[gran.NameSpace]; !found {
-				availNamespaces[gran.NameSpace] = true
+			if _, found := availNamespaces[gran.VarNameSpace]; !found {
+				availNamespaces[gran.VarNameSpace] = true
 			}
 
 			i++
