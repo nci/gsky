@@ -11,6 +11,7 @@ import (
 	"sync"
 	"time"
 	"math"
+	"sort"
 )
 
 type DatasetAxis struct {
@@ -330,13 +331,33 @@ func URLIndexGet(ctx context.Context, url string, geoReq *GeoTileRequest, errCha
 
 		}
 
+		type _BandNs struct {
+			Name string
+			Val float64
+		}
+
+		var sortedNameSpaces []string
 		for _, ns := range geoReq.NameSpaces {
 			bands, found := bandNameSpaces[ns]
 			if found {
-				keys := make([]float64, len(bands))	
+				sortedNameSpaces = append(sortedNameSpaces, ns)
+				bandNsList := make([]*_BandNs, len(bands))
+				ib := 0
+				for bns, val := range bands {
+					bandNsList[ib] = &_BandNs{Name: bns, Val :val}
+					ib++
+				}
+				
+				sort.Slice(bandNsList, func(i, j int) bool { return bandNsList[i].Val <= bandNsList[j].Val })
+
+				for _, bns := range bandNsList {
+					sortedNameSpaces = append(sortedNameSpaces, bns.Name)
+				}
 			}
 		}
 
 		log.Printf("%#v", bandNameSpaces)
+
+		log.Printf("%#v", sortedNameSpaces)
 	}
 }
