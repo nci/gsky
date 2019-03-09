@@ -20,6 +20,7 @@ type DatasetAxis struct {
 	Shape  []int `json:"shape"`
 	Grid   string    `json:"grid"`
 	IntersectionIdx []int
+	IntersectionValues []float64
 	Order           int
 	Aggregate       int
 }
@@ -34,12 +35,13 @@ type GDALDataset struct {
 	SampleCounts []int       `json:"sample_counts"`
 	NoData       float64     `json:"nodata"`
 	Axes         []*DatasetAxis `json:"axes"`
+	IsOutRange   bool          
 }
 
 type MetadataResponse struct {
 	Error        string        `json:"error"`
 	Files        []string      `json:"files"`
-	GDALDatasets []GDALDataset `json:"gdal"`
+	GDALDatasets []*GDALDataset `json:"gdal"`
 }
 
 type TileIndexer struct {
@@ -161,13 +163,15 @@ func URLIndexGet(ctx context.Context, url string, geoReq *GeoTileRequest, errCha
 		geoReq.Axes = make(map[string]*GeoTileAxis)
 
 		_s := 12332.22
-		geoReq.Axes["time"] = &GeoTileAxis{Start: &_s}
+		geoReq.Axes["time"] = &GeoTileAxis{Start: &_s, Aggregate: 1}
 
 		_t1 := 1100.0
 		_t2 := 5000.0
 		geoReq.Axes["level"] = &GeoTileAxis{Start: &_t1, End: &_t2, Order: 1}
+		//geoReq.Axes["level"] = &GeoTileAxis{Start: &_t1, Order: 1}
 
-		for _, ds := range metadata.GDALDatasets {
+		for ids, ds := range metadata.GDALDatasets {
+			if ids >= 20 { break } // debug
 			if len(ds.TimeStamps) < 32 { continue } //debug
 
 			isOutRange := false
@@ -204,6 +208,7 @@ func URLIndexGet(ctx context.Context, url string, geoReq *GeoTileRequest, errCha
 								}
 
 								axis.IntersectionIdx = append(axis.IntersectionIdx,  axisIdx)
+								axis.IntersectionValues = append(axis.IntersectionValues,  axis.Params[axisIdx])
 							} else if tileAxis.Start != nil && tileAxis.End != nil {
 								startVal := *tileAxis.Start
 								endVal := *tileAxis.End
@@ -214,6 +219,7 @@ func URLIndexGet(ctx context.Context, url string, geoReq *GeoTileRequest, errCha
 								for iv, val := range axis.Params {
 									if val >= startVal && val < endVal {
 										axis.IntersectionIdx = append(axis.IntersectionIdx,  iv)
+										axis.IntersectionValues = append(axis.IntersectionValues,  axis.Params[iv])
 									}
 								}
 
@@ -224,6 +230,7 @@ func URLIndexGet(ctx context.Context, url string, geoReq *GeoTileRequest, errCha
 						for it, t := range ds.TimeStamps {
 							if t.Equal(*geoReq.StartTime) || geoReq.EndTime != nil && t.After(*geoReq.StartTime) && t.Before(*geoReq.EndTime) {
 								axis.IntersectionIdx = append(axis.IntersectionIdx,  it)
+								axis.IntersectionValues = append(axis.IntersectionValues,  float64(ds.TimeStamps[it].Unix()))
 							}
 						}
 
@@ -240,42 +247,78 @@ func URLIndexGet(ctx context.Context, url string, geoReq *GeoTileRequest, errCha
 			}
 
 			if isOutRange {
+				ds.IsOutRange = true
+				continue
+			}
+
+
+		}
+
+		
+		bandNameSpaces := make(map[string]map[string]float64)
+		var granList []*GeoTileGranule
+		for ids, ds := range metadata.GDALDatasets {
+			if ids >= 20 { break } // debug
+			if len(ds.TimeStamps) < 32 { continue } //debug
+
+
+			if ds.IsOutRange {
 				continue
 			}
 
 			log.Printf("%v, %v, %v", *ds.Axes[0], *ds.Axes[1], len(ds.TimeStamps))
 			axisIdxCnt := make([]int, len(ds.Axes))
-			timeStampStrides := make([]int, len(ds.Axes))
-			timeStampStrides[len(ds.Axes)-1] = 1
-
-			for i := len(ds.Axes) - 2; i >= 0; i-- {
-				timeStampStrides[i] = timeStampStrides[i+1] * len(ds.Axes[i+1].IntersectionIdx)
-			}
-
-			totalTimeStamps := 0
-			for i := 0; i < len(ds.Axes); i++ {
-				totalTimeStamps += len(ds.Axes[i].IntersectionIdx)
-			}
 
 			for axisIdxCnt[0] < len(ds.Axes[0].IntersectionIdx) {
 				bandIdx := 1
-				timeStamp := 0
+				aggTimeStamp := 0.0
+				bandTimeStamp := 0.0
+
+				namespace := ds.NameSpace
+				isFirst := true
+				hasNonAgg := false
 				for i := 0; i < len(axisIdxCnt); i++ {
 					bandIdx += ds.Axes[i].IntersectionIdx[axisIdxCnt[i]]
 
 					iTimeStamp := axisIdxCnt[i]
+					bandTimeStamp += ds.Axes[i].IntersectionValues[iTimeStamp]
+
 					if ds.Axes[i].Order != 0 {
 						iTimeStamp = len(ds.Axes[i].IntersectionIdx) - axisIdxCnt[i] - 1
 					}
+					aggTimeStamp += ds.Axes[i].IntersectionValues[iTimeStamp]
 
-					timeStamp += iTimeStamp * timeStampStrides[i]
+					if len(ds.Axes[i].IntersectionIdx) > 1 && ds.Axes[i].Aggregate == 0 {
+						if isFirst {
+							namespace += "#"
+							isFirst = false
+						} else {
+							namespace += ","
+						}
+
+						namespace += fmt.Sprintf("%s=%v", ds.Axes[i].Name, ds.Axes[i].IntersectionValues[axisIdxCnt[i]])
+						hasNonAgg = true
+					}
 				}
 
-				timeStamp = totalTimeStamps - timeStamp
+				if hasNonAgg {
+					_, found := bandNameSpaces[ds.NameSpace]
+					if !found {
+						bandNameSpaces[ds.NameSpace] = make(map[string]float64)
+					}
 
-				log.Printf("    %v, %v, %v   %v", axisIdxCnt, bandIdx, timeStamp, len(ds.TimeStamps))
+					_, bFound := bandNameSpaces[ds.NameSpace][namespace] 
+					if !bFound {
+						bandNameSpaces[ds.NameSpace][namespace] = bandTimeStamp
+					}
+				}
 
-				out <- &GeoTileGranule{ConfigPayLoad: geoReq.ConfigPayLoad, Path: ds.DSName, NameSpace: ds.NameSpace, RasterType: ds.ArrayType, TimeStamp: float64(timeStamp), BandIdx: bandIdx, Polygon: ds.Polygon, BBox: geoReq.BBox, Height: geoReq.Height, Width: geoReq.Width, CRS: geoReq.CRS}
+				gran :=  &GeoTileGranule{ConfigPayLoad: geoReq.ConfigPayLoad, Path: ds.DSName, NameSpace: namespace, RasterType: ds.ArrayType, TimeStamp: float64(aggTimeStamp), BandIdx: bandIdx, Polygon: ds.Polygon, BBox: geoReq.BBox, Height: geoReq.Height, Width: geoReq.Width, CRS: geoReq.CRS}
+
+				log.Printf("    %v, %v,%v,%v,%v   %v", axisIdxCnt, bandIdx, aggTimeStamp, bandTimeStamp, namespace, len(ds.TimeStamps))
+
+				//out <- gran
+				granList = append(granList, gran)
 
 				ia := len(ds.Axes) - 1
 				axisIdxCnt[ia]++
@@ -285,32 +328,15 @@ func URLIndexGet(ctx context.Context, url string, geoReq *GeoTileRequest, errCha
 				}
 			}
 
-			/*
-			for _, axis := range ds.Axes {
-				if axis.Name != "time" { continue }
-
-				bandIdx := 0
-				for _, idx := range axis.IntersectionIdx {
-					bandIdx = idx + 1
-					timeStamp := float64(idx)
-					if axis.Order != 0 {
-						timeStamp = -timeStamp
-					}
-
-					out <- &GeoTileGranule{ConfigPayLoad: geoReq.ConfigPayLoad, Path: ds.DSName, NameSpace: ds.NameSpace, RasterType: ds.ArrayType, TimeStamp: timeStamp, BandIdx: bandIdx, Polygon: ds.Polygon, BBox: geoReq.BBox, Height: geoReq.Height, Width: geoReq.Width, CRS: geoReq.CRS}
-				}
-			}
-			*/
-
-			//log.Printf("%v, %v, %v", *ds.Axes[0], *ds.Axes[1], len(ds.TimeStamps))
-
-			/*
-			for _, t := range ds.TimeStamps {
-				if t.Equal(*geoReq.StartTime) || geoReq.EndTime != nil && t.After(*geoReq.StartTime) && t.Before(*geoReq.EndTime) {
-					out <- &GeoTileGranule{ConfigPayLoad: geoReq.ConfigPayLoad, Path: ds.DSName, NameSpace: ds.NameSpace, RasterType: ds.ArrayType, TimeStamps: ds.TimeStamps, TimeStamp: t, Polygon: ds.Polygon, BBox: geoReq.BBox, Height: geoReq.Height, Width: geoReq.Width, OffX: geoReq.OffX, OffY: geoReq.OffY, CRS: geoReq.CRS}
-				}
-			}
-			*/
 		}
+
+		for _, ns := range geoReq.NameSpaces {
+			bands, found := bandNameSpaces[ns]
+			if found {
+				keys := make([]float64, len(bands))	
+			}
+		}
+
+		log.Printf("%#v", bandNameSpaces)
 	}
 }
