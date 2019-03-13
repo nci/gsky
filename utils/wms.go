@@ -6,6 +6,7 @@ import (
 	"io"
 	"io/ioutil"
 	"regexp"
+	"strconv"
 	"strings"
 	"text/template"
 	"time"
@@ -13,22 +14,32 @@ import (
 
 const ISOZeroTime = "0001-01-01T00:00:00.000Z"
 
+type AxisParam struct {
+	Name      string    `json:"name"`
+	Start     *float64  `json:"start,omitempty"`
+	End       *float64  `json:"end,omitempty"`
+	InValues  []float64 `json:"in_values,omitempty"`
+	Order     int       `json:"order,omitempty"`
+	Aggregate int       `json:"aggregate,omitempty"`
+}
+
 // WMSParams contains the serialised version
 // of the parameters contained in a WMS request.
 type WMSParams struct {
-	Service *string    `json:"service,omitempty"`
-	Request *string    `json:"request,omitempty"`
-	CRS     *string    `json:"crs,omitempty"`
-	BBox    []float64  `json:"bbox,omitempty"`
-	Format  *string    `json:"format,omitempty"`
-	X       *int       `json:"x,omitempty"`
-	Y       *int       `json:"y,omitempty"`
-	Height  *int       `json:"height,omitempty"`
-	Width   *int       `json:"width,omitempty"`
-	Time    *time.Time `json:"time,omitempty"`
-	Layers  []string   `json:"layers,omitempty"`
-	Styles  []string   `json:"styles,omitempty"`
-	Version *string    `json:"version,omitempty"`
+	Service *string      `json:"service,omitempty"`
+	Request *string      `json:"request,omitempty"`
+	CRS     *string      `json:"crs,omitempty"`
+	BBox    []float64    `json:"bbox,omitempty"`
+	Format  *string      `json:"format,omitempty"`
+	X       *int         `json:"x,omitempty"`
+	Y       *int         `json:"y,omitempty"`
+	Height  *int         `json:"height,omitempty"`
+	Width   *int         `json:"width,omitempty"`
+	Time    *time.Time   `json:"time,omitempty"`
+	Layers  []string     `json:"layers,omitempty"`
+	Styles  []string     `json:"styles,omitempty"`
+	Version *string      `json:"version,omitempty"`
+	Axes    []*AxisParam `json:"axes,omitempty"`
 }
 
 // WMSRegexpMap maps WMS request parameters to
@@ -176,9 +187,34 @@ func WMSParamsChecker(params map[string][]string, compREMap map[string]*regexp.R
 		}
 	}
 
+	var wmsParams WMSParams
+
+	axesInfo := []string{}
+	for key, val := range params {
+		if strings.HasPrefix(key, "dim_") {
+			if len(key) <= len("dim_") {
+				continue
+				return wmsParams, fmt.Errorf("no dimension specified")
+			}
+
+			axisName := key[len("dim_"):]
+			valFloat64, err := strconv.ParseFloat(val[0], 64)
+			if err != nil {
+				continue
+				return wmsParams, fmt.Errorf("the value '%v' for dimension '%v' is not float64", key, val)
+			}
+
+			axisVal := valFloat64
+
+			axesInfo = append(axesInfo, fmt.Sprintf(`{"name":"%s", "start":%f, "order":1}`, axisName, axisVal))
+		}
+	}
+
+	axesInfo = append(axesInfo, `{"name":"time", "aggregate":1}`)
+	jsonFields = append(jsonFields, fmt.Sprintf(`"axes":[%s]`, strings.Join(axesInfo, ",")))
+
 	jsonParams := fmt.Sprintf("{%s}", strings.Join(jsonFields, ","))
 
-	var wmsParams WMSParams
 	err := json.Unmarshal([]byte(jsonParams), &wmsParams)
 	return wmsParams, err
 }

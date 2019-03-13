@@ -102,6 +102,11 @@
 				<BoundingBox CRS="CRS:84" minx="-180.0" miny="-90.0" maxx="180.0" maxy="90.0"/>
 				<BoundingBox CRS="EPSG:4326" minx="-90.0" miny="-180.0" maxx="90.0" maxy="180.0"/>
 				<Dimension name="time" default="current" current="True" units="ISO8601">{{ range $index, $value := .Dates }}{{if $index}},{{end}}{{ $value }}{{ end }}</Dimension>
+
+				{{ range $ia, $axis := .AxesInfo }}
+				<Dimension name="{{ $axis.Name }}" default="{{ $axis.Default }}">{{ range $iv, $value := $axis.Values }}{{if $iv}},{{end}}{{ $value }}{{ end }}</Dimension>
+				{{ end }}
+
 				<MetadataURL type="ISO19115:2003">
 					<Format>text/plain</Format>
 					<OnlineResource xlink:type="simple" xlink:href="{{ .MetadataURL }}"/>

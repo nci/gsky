@@ -161,15 +161,21 @@ func URLIndexGet(ctx context.Context, url string, geoReq *GeoTileRequest, errCha
 		}
 		out <- &GeoTileGranule{ConfigPayLoad: ConfigPayLoad{NameSpaces: []string{"EmptyTile"}, ScaleParams: geoReq.ScaleParams, Palette: geoReq.Palette}, Path: "NULL", NameSpace: "EmptyTile", RasterType: "Byte", TimeStamp: 0, BBox: geoReq.BBox, Height: geoReq.Height, Width: geoReq.Width, OffX: geoReq.OffX, OffY: geoReq.OffY, CRS: geoReq.CRS}
 	default:
-		geoReq.Axes = make(map[string]*GeoTileAxis)
+		/*
+			geoReq.Axes = make(map[string]*GeoTileAxis)
 
-		_s := 12332.22
-		geoReq.Axes["time"] = &GeoTileAxis{Start: &_s, Aggregate: 1}
+			_s := 12332.22
+			geoReq.Axes["time"] = &GeoTileAxis{Start: &_s, Aggregate: 1}
 
-		_t1 := 1100.0
-		_t2 := 5000.0
-		geoReq.Axes["level"] = &GeoTileAxis{Start: &_t1, End: &_t2, Order: 1, Aggregate: 0}
-		//geoReq.Axes["level"] = &GeoTileAxis{Start: &_t1, Order: 1}
+			_t1 := 1100.0
+			_t2 := 5000.0
+			//geoReq.Axes["level"] = &GeoTileAxis{Start: &_t1, End: &_t2, Order: 1, Aggregate: 0}
+
+			geoReq.Axes["level"] = &GeoTileAxis{Start: &_t1, End: &_t2, Order: 1, Aggregate: 0, InValues: []float64 {1100, 4000}}
+
+			//_t1 := 3500.0
+			//geoReq.Axes["level"] = &GeoTileAxis{Start: &_t1, Order: 1, Aggregate: 1}
+		*/
 
 		for ids, ds := range metadata.GDALDatasets {
 			if ids >= 20 {
@@ -182,38 +188,56 @@ func URLIndexGet(ctx context.Context, url string, geoReq *GeoTileRequest, errCha
 			isOutRange := false
 			for _, axis := range ds.Axes {
 				tileAxis, found := geoReq.Axes[axis.Name]
-				axis.Order = tileAxis.Order
-				axis.Aggregate = tileAxis.Aggregate
 				if found {
+					axis.Order = tileAxis.Order
+					axis.Aggregate = tileAxis.Aggregate
+
 					if axis.Grid == "enum" {
 						if len(axis.Params) > 1 {
-							if tileAxis.Start != nil && tileAxis.End == nil {
-								startVal := *tileAxis.Start
+							if len(tileAxis.InValues) > 0 || (tileAxis.Start != nil && tileAxis.End == nil) {
+								iVal := 0
+								var startVal float64
+								var nVals int
+
+								if len(tileAxis.InValues) > 0 {
+									sort.Slice(tileAxis.InValues, func(i, j int) bool { return tileAxis.InValues[i] <= tileAxis.InValues[j] })
+									startVal = tileAxis.InValues[0]
+									nVals = len(tileAxis.InValues)
+								} else {
+									startVal = *tileAxis.Start
+									nVals = 1
+								}
 								if startVal < axis.Params[0] || startVal > axis.Params[len(axis.Params)-1] {
 									isOutRange = true
 									break
 								}
 
-								axisIdx := 0
 								for iv, val := range axis.Params {
-									if startVal >= val {
-										if iv == len(axis.Params)-1 {
+									if val >= startVal {
+										foundVal := false
+										axisIdx := 0
+										if math.Abs(startVal-axis.Params[iv-1]) <= math.Abs(startVal-val) {
+											axisIdx = iv - 1
+											foundVal = true
+										} else {
 											axisIdx = iv
-											break
+											foundVal = true
 										}
 
-										if math.Abs(startVal-val) <= math.Abs(startVal-axis.Params[iv+1]) {
-											axisIdx = iv
-											break
-										} else {
-											axisIdx = iv + 1
-											break
+										if foundVal {
+											axis.IntersectionIdx = append(axis.IntersectionIdx, axisIdx)
+											axis.IntersectionValues = append(axis.IntersectionValues, axis.Params[axisIdx])
+
+											iVal++
+											if iVal >= nVals {
+												break
+											}
+
+											startVal = tileAxis.InValues[iVal]
 										}
 									}
 								}
 
-								axis.IntersectionIdx = append(axis.IntersectionIdx, axisIdx)
-								axis.IntersectionValues = append(axis.IntersectionValues, axis.Params[axisIdx])
 							} else if tileAxis.Start != nil && tileAxis.End != nil {
 								startVal := *tileAxis.Start
 								endVal := *tileAxis.End
@@ -243,10 +267,21 @@ func URLIndexGet(ctx context.Context, url string, geoReq *GeoTileRequest, errCha
 							isOutRange = true
 							break
 						}
+					} else {
+						errChan <- fmt.Errorf("Indexer error: unknown axis grid type: %v", axis.Grid)
+						return
 					}
 
 					for i := range axis.IntersectionIdx {
 						axis.IntersectionIdx[i] *= axis.Strides[0]
+					}
+				} else {
+					axis.IntersectionIdx = append(axis.IntersectionIdx, 0)
+					if axis.Grid == "enum" {
+						axis.IntersectionValues = append(axis.IntersectionValues, axis.Params[0])
+					} else {
+						errChan <- fmt.Errorf("Indexer error: unknown axis grid type: %v", axis.Grid)
+						return
 					}
 				}
 			}
@@ -369,6 +404,8 @@ func URLIndexGet(ctx context.Context, url string, geoReq *GeoTileRequest, errCha
 		newConfigPayLoad.NameSpaces = sortedNameSpaces
 
 		log.Printf("%v, %v", geoReq.ConfigPayLoad, newConfigPayLoad)
+
+		log.Printf("total grans: %d", len(granList))
 
 		for _, gran := range granList {
 			gran.ConfigPayLoad = newConfigPayLoad

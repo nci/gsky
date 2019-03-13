@@ -28,6 +28,7 @@ type ConfigPayLoad struct {
 type GeoTileAxis struct {
 	Start     *float64
 	End       *float64
+	InValues  []float64
 	Order     int
 	Aggregate int
 }

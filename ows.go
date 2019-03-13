@@ -280,6 +280,13 @@ func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r
 			EndTime:    endTime,
 		}
 
+		if len(params.Axes) > 0 {
+			geoReq.Axes = make(map[string]*proc.GeoTileAxis)
+			for _, axis := range params.Axes {
+				geoReq.Axes[axis.Name] = &proc.GeoTileAxis{Start: axis.Start, End: axis.End, InValues: axis.InValues, Order: axis.Order, Aggregate: axis.Aggregate}
+			}
+		}
+
 		ctx, ctxCancel := context.WithCancel(ctx)
 		defer ctxCancel()
 		errChan := make(chan error, 100)
