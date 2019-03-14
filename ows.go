@@ -574,6 +574,13 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 				OffY:       offY,
 			}
 
+			if len(params.Axes) > 0 {
+				geoReq.Axes = make(map[string]*proc.GeoTileAxis)
+				for _, axis := range params.Axes {
+					geoReq.Axes[axis.Name] = &proc.GeoTileAxis{Start: axis.Start, End: axis.End, InValues: axis.InValues, Order: axis.Order, Aggregate: axis.Aggregate}
+				}
+			}
+
 			return geoReq
 		}
 
@@ -825,7 +832,7 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 			select {
 			case res := <-tp.Process(geoReq, *verbose):
 				if !isInit {
-					hDstDS, masterTempFile, err = utils.EncodeGdalOpen(conf.ServiceConfig.TempDir, 1024, 256, driverFormat, geot, epsg, res, *params.Width, *params.Height, len(styleLayer.RGBProducts))
+					hDstDS, masterTempFile, err = utils.EncodeGdalOpen(conf.ServiceConfig.TempDir, 1024, 256, driverFormat, geot, epsg, res, *params.Width, *params.Height, len(res))
 					if err != nil {
 						os.Remove(masterTempFile)
 						errMsg := fmt.Sprintf("EncodeGdalOpen() failed: %v", err)

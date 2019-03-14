@@ -57,6 +57,7 @@ var WMSRegexpMap = map[string]string{"service": `^WMS$`,
 	"y":       `^[0-9]+$`,
 	"width":   `^[0-9]+$`,
 	"height":  `^[0-9]+$`,
+	"axis":    `^[A-Za-z_][A-Za-z0-9_]*$`,
 	"time":    `^\d{4}-(?:1[0-2]|0[1-9])-(?:3[01]|0[1-9]|[12][0-9])T[0-2]\d:[0-5]\d:[0-5]\d\.\d+Z$`}
 
 // BBox2Geot return the geotransform from the
@@ -198,6 +199,12 @@ func WMSParamsChecker(params map[string][]string, compREMap map[string]*regexp.R
 			}
 
 			axisName := key[len("dim_"):]
+			axisName = strings.TrimSpace(axisName)
+
+			if !compREMap["axis"].MatchString(axisName) {
+				return wmsParams, fmt.Errorf("invalid axis name: %v", key)
+			}
+
 			valFloat64, err := strconv.ParseFloat(val[0], 64)
 			if err != nil {
 				continue
@@ -210,12 +217,25 @@ func WMSParamsChecker(params map[string][]string, compREMap map[string]*regexp.R
 		}
 	}
 
-	axesInfo = append(axesInfo, `{"name":"time", "aggregate":1}`)
 	jsonFields = append(jsonFields, fmt.Sprintf(`"axes":[%s]`, strings.Join(axesInfo, ",")))
-
 	jsonParams := fmt.Sprintf("{%s}", strings.Join(jsonFields, ","))
 
 	err := json.Unmarshal([]byte(jsonParams), &wmsParams)
+	if err != nil {
+		return wmsParams, err
+	}
+
+	foundTime := false
+	for _, axis := range wmsParams.Axes {
+		if axis.Name == "time" {
+			foundTime = true
+		}
+	}
+
+	if !foundTime {
+		wmsParams.Axes = append(wmsParams.Axes, &AxisParam{Name: "time", Aggregate: 1})
+	}
+
 	return wmsParams, err
 }
 

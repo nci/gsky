@@ -186,9 +186,17 @@ func URLIndexGet(ctx context.Context, url string, geoReq *GeoTileRequest, errCha
 			} //debug
 
 			isOutRange := false
-			for _, axis := range ds.Axes {
+			for ia, axis := range ds.Axes {
 				tileAxis, found := geoReq.Axes[axis.Name]
 				if found {
+					if axis.Name == "time" && (tileAxis.Start != nil || len(tileAxis.InValues) > 0) {
+						axis.Grid = "enum"
+						for _, t := range ds.TimeStamps {
+							axis.Params = append(axis.Params, float64(t.Unix()))
+						}
+						ds.Axes[ia] = axis
+					}
+
 					axis.Order = tileAxis.Order
 					axis.Aggregate = tileAxis.Aggregate
 
