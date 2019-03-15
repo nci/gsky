@@ -287,6 +287,11 @@ func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r
 			}
 		}
 
+		if params.BandExpr != nil {
+			geoReq.ConfigPayLoad.NameSpaces = params.BandExpr.VarList
+			geoReq.ConfigPayLoad.BandExpr = params.BandExpr
+		}
+
 		ctx, ctxCancel := context.WithCancel(ctx)
 		defer ctxCancel()
 		errChan := make(chan error, 100)
@@ -579,6 +584,11 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 				for _, axis := range params.Axes {
 					geoReq.Axes[axis.Name] = &proc.GeoTileAxis{Start: axis.Start, End: axis.End, InValues: axis.InValues, Order: axis.Order, Aggregate: axis.Aggregate}
 				}
+			}
+
+			if params.BandExpr != nil {
+				geoReq.ConfigPayLoad.NameSpaces = params.BandExpr.VarList
+				geoReq.ConfigPayLoad.BandExpr = params.BandExpr
 			}
 
 			return geoReq
@@ -1175,7 +1185,13 @@ func generalHandler(conf *utils.Config, w http.ResponseWriter, r *http.Request) 
 		}
 
 	case "GET":
-		query = utils.NormaliseKeys(r.URL.Query())
+		query, err = utils.ParseQuery(r.URL.RawQuery)
+		if err != nil {
+			http.Error(w, fmt.Sprintf("Failed to parse query: %v", err), 400)
+			return
+		}
+
+		log.Printf("qqqqq %#v", query)
 	}
 
 	if _, fOK := query["service"]; !fOK {

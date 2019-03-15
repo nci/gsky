@@ -84,6 +84,45 @@ func (p *TileIndexer) Run(verbose bool) {
 			var wg sync.WaitGroup
 			var url string
 
+			for key, axis := range geoReq.Axes {
+				if key == "time" {
+					if len(axis.InValues) > 0 {
+						var minVal, maxVal float64
+						for i, val := range axis.InValues {
+							if i == 0 {
+								minVal = val
+								maxVal = val
+							} else {
+								if val < minVal {
+									minVal = val
+								} else if val > maxVal {
+									maxVal = val
+								}
+							}
+						}
+
+						minTime := time.Unix(int64(minVal), 0)
+						geoReq.StartTime = &minTime
+
+						maxTime := time.Unix(int64(maxVal), 0)
+						if maxVal > minVal {
+							geoReq.EndTime = &maxTime
+						}
+					} else {
+						if axis.Start != nil {
+							minTime := time.Unix(int64(*axis.Start), 0)
+							geoReq.StartTime = &minTime
+						}
+
+						if axis.End != nil {
+							maxTime := time.Unix(int64(*axis.End), 0)
+							geoReq.EndTime = &maxTime
+						}
+					}
+					break
+				}
+			}
+
 			if len(geoReq.NameSpaces) == 0 {
 				geoReq.NameSpaces = append(geoReq.NameSpaces, "")
 			}
@@ -345,7 +384,14 @@ func URLIndexGet(ctx context.Context, url string, geoReq *GeoTileRequest, errCha
 							namespace += ","
 						}
 
-						namespace += fmt.Sprintf("%s=%v", ds.Axes[i].Name, ds.Axes[i].IntersectionValues[axisIdxCnt[i]])
+						var readableNs string
+						if ds.Axes[i].Name == "time" {
+							ts := time.Unix(int64(ds.Axes[i].IntersectionValues[axisIdxCnt[i]]), 0)
+							readableNs = fmt.Sprintf("%v", ts.Format(ISOFormat))
+						} else {
+							readableNs = fmt.Sprintf("%v", ds.Axes[i].IntersectionValues[axisIdxCnt[i]])
+						}
+						namespace += fmt.Sprintf("%s=%v", ds.Axes[i].Name, readableNs)
 						hasNonAgg = true
 					}
 				}

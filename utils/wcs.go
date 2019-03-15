@@ -26,6 +26,7 @@ type WCSParams struct {
 	Format    *string      `json:"format,omitempty"`
 	Styles    []string     `json:"styles,omitempty"`
 	Axes      []*AxisParam `json:"axes,omitempty"`
+	BandExpr  *BandExpressions
 }
 
 // WCSRegexpMap maps WCS request parameters to
@@ -193,6 +194,28 @@ func WCSParamsChecker(params map[string][]string, compREMap map[string]*regexp.R
 
 	if !foundTime {
 		wcsParams.Axes = append(wcsParams.Axes, &AxisParam{Name: "time", Aggregate: 1})
+	}
+
+	if rangeSubsets, rangeSubsetsOK := params["rangesubset"]; rangeSubsetsOK {
+		sub := strings.Join(rangeSubsets, ";")
+		parts := strings.Split(sub, ";")
+
+		var rangeSubs []string
+		for _, p := range parts {
+			p = strings.TrimSpace(p)
+			if len(p) < 1 {
+				continue
+			}
+
+			rangeSubs = append(rangeSubs, p)
+		}
+
+		bandExpr, err := ParseBandExpressions(rangeSubs)
+		if err != nil {
+			return wcsParams, fmt.Errorf("parsing error in band expressions: %v", err)
+		}
+
+		wcsParams.BandExpr = bandExpr
 	}
 
 	return wcsParams, err

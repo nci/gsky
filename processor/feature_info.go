@@ -241,6 +241,11 @@ func getRaster(ctx context.Context, params utils.WMSParams, conf *utils.Config, 
 		}
 	}
 
+	if params.BandExpr != nil {
+		geoReq.ConfigPayLoad.NameSpaces = params.BandExpr.VarList
+		geoReq.ConfigPayLoad.BandExpr = params.BandExpr
+	}
+
 	ctx, ctxCancel := context.WithCancel(ctx)
 	defer ctxCancel()
 	errChan := make(chan error, 100)

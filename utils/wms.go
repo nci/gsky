@@ -26,20 +26,21 @@ type AxisParam struct {
 // WMSParams contains the serialised version
 // of the parameters contained in a WMS request.
 type WMSParams struct {
-	Service *string      `json:"service,omitempty"`
-	Request *string      `json:"request,omitempty"`
-	CRS     *string      `json:"crs,omitempty"`
-	BBox    []float64    `json:"bbox,omitempty"`
-	Format  *string      `json:"format,omitempty"`
-	X       *int         `json:"x,omitempty"`
-	Y       *int         `json:"y,omitempty"`
-	Height  *int         `json:"height,omitempty"`
-	Width   *int         `json:"width,omitempty"`
-	Time    *time.Time   `json:"time,omitempty"`
-	Layers  []string     `json:"layers,omitempty"`
-	Styles  []string     `json:"styles,omitempty"`
-	Version *string      `json:"version,omitempty"`
-	Axes    []*AxisParam `json:"axes,omitempty"`
+	Service  *string      `json:"service,omitempty"`
+	Request  *string      `json:"request,omitempty"`
+	CRS      *string      `json:"crs,omitempty"`
+	BBox     []float64    `json:"bbox,omitempty"`
+	Format   *string      `json:"format,omitempty"`
+	X        *int         `json:"x,omitempty"`
+	Y        *int         `json:"y,omitempty"`
+	Height   *int         `json:"height,omitempty"`
+	Width    *int         `json:"width,omitempty"`
+	Time     *time.Time   `json:"time,omitempty"`
+	Layers   []string     `json:"layers,omitempty"`
+	Styles   []string     `json:"styles,omitempty"`
+	Version  *string      `json:"version,omitempty"`
+	Axes     []*AxisParam `json:"axes,omitempty"`
+	BandExpr *BandExpressions
 }
 
 // WMSRegexpMap maps WMS request parameters to
@@ -73,18 +74,6 @@ func CompileWMSRegexMap() map[string]*regexp.Regexp {
 	}
 
 	return REMap
-}
-
-func NormaliseKeys(params map[string][]string) map[string][]string {
-	// As in WMS 1.1.1 spec: http://cite.opengeospatial.org/OGCTestData/wms/1.1.1/spec/wms1.1.1.html#basic_elements.param_rules.order_and_case
-	// Parameter names shall not be case sensitive, but parameter values shall be case sensitive."
-	for key, value := range params {
-		if key != strings.ToLower(key) {
-			params[strings.ToLower(key)] = value
-			delete(params, key)
-		}
-	}
-	return params
 }
 
 func CheckWMSVersion(version string) bool {
@@ -225,6 +214,18 @@ func WMSParamsChecker(params map[string][]string, compREMap map[string]*regexp.R
 		return wmsParams, err
 	}
 
+	if subsets, subsetsOK := params["subset"]; subsetsOK {
+		sub := strings.Join(subsets, ";")
+		axes, err := parseSubsetClause(sub, compREMap)
+		if err != nil {
+			return wmsParams, err
+		}
+
+		for _, axis := range axes {
+			wmsParams.Axes = append(wmsParams.Axes, axis)
+		}
+	}
+
 	foundTime := false
 	for _, axis := range wmsParams.Axes {
 		if axis.Name == "time" {
@@ -234,6 +235,28 @@ func WMSParamsChecker(params map[string][]string, compREMap map[string]*regexp.R
 
 	if !foundTime {
 		wmsParams.Axes = append(wmsParams.Axes, &AxisParam{Name: "time", Aggregate: 1})
+	}
+
+	if rangeSubsets, rangeSubsetsOK := params["rangesubset"]; rangeSubsetsOK {
+		sub := strings.Join(rangeSubsets, ";")
+		parts := strings.Split(sub, ";")
+
+		var rangeSubs []string
+		for _, p := range parts {
+			p = strings.TrimSpace(p)
+			if len(p) < 1 {
+				continue
+			}
+
+			rangeSubs = append(rangeSubs, p)
+		}
+
+		bandExpr, err := ParseBandExpressions(rangeSubs)
+		if err != nil {
+			return wmsParams, fmt.Errorf("parsing error in band expressions: %v", err)
+		}
+
+		wmsParams.BandExpr = bandExpr
 	}
 
 	return wmsParams, err
