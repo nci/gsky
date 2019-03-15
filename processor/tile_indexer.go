@@ -224,6 +224,10 @@ func URLIndexGet(ctx context.Context, url string, geoReq *GeoTileRequest, errCha
 				continue
 			} //debug
 
+			if len(ds.Axes) == 0 {
+				ds.Axes = append(ds.Axes, &DatasetAxis{Name: "time", Strides: []int{1}, Grid: "default"})
+			}
+
 			isOutRange := false
 			for ia, axis := range ds.Axes {
 				tileAxis, found := geoReq.Axes[axis.Name]

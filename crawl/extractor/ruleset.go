@@ -153,6 +153,13 @@ var CollectionRuleSets = []RuleSet{
 		`_(?P<year>\d\d\d\d)(?P<month>\d\d)(?P<day>\d\d)T(?P<hour>\d\d)(?P<minute>\d\d)(?P<second>\d\d)_.+0\d_(?P<namespace>[\w\d_]+)\.TIF`,
 	},
 	RuleSet{
+		"barra",
+		NSDataset,
+		SRSDetect,
+		Proj4Detect,
+		`(?P<year>\d\d\d\d)(?P<month>\d\d)(?P<day>\d\d)T(?P<hour>\d\d)(?P<minute>\d\d)Z\.nc`,
+	},
+	RuleSet{
 		"default",
 		NSDataset,
 		SRSDetect,

@@ -57,6 +57,8 @@ var CncDimTimeValues *C.char = C.CString("NETCDF_DIM_time_VALUES")
 var CncDimLevelValues *C.char = C.CString("NETCDF_DIM_lev_VALUES")
 var CncVarname *C.char = C.CString("NETCDF_VARNAME")
 
+var CncExtraDims *C.char = C.CString("NETCDF_DIM_EXTRA")
+
 func ExtractGDALInfo(path string, concLimit int, approx bool) (*GeoFile, error) {
 	cPath := C.CString(path)
 	defer C.free(unsafe.Pointer(cPath))
@@ -140,7 +142,7 @@ func getDataSetInfo(filename string, dsName *C.char, driverName string, approx b
 	var times []time.Time
 	if driverName == "netCDF" || driverName == "JP2OpenJPEG" {
 		ncTimes, err = getNCTime(datasetName, hSubdataset)
-		if err != nil {
+		if err != nil && timeStamp.IsZero() {
 			return &GeoMetaData{}, fmt.Errorf("Error parsing dates: %v", err)
 		}
 	}
@@ -158,9 +160,16 @@ func getDataSetInfo(filename string, dsName *C.char, driverName string, approx b
 		times = append(times, timeStamp)
 	}
 
-	var ncLevels []float64
+	/*
+		var ncLevels []float64
+		if driverName == "netCDF" || driverName == "JP2OpenJPEG" {
+			ncLevels, err = getNCLevels(datasetName, hSubdataset)
+		}
+	*/
+
+	var ncAxes []*DatasetAxis
 	if driverName == "netCDF" || driverName == "JP2OpenJPEG" {
-		ncLevels, err = getNCLevels(datasetName, hSubdataset)
+		ncAxes, err = getNCAxes(datasetName, hSubdataset)
 	}
 
 	hBand := C.GDALGetRasterBand(hSubdataset, 1)
@@ -273,7 +282,6 @@ func getDataSetInfo(filename string, dsName *C.char, driverName string, approx b
 		Type:         C.GoString(C.GDALGetDataTypeName(C.GDALGetRasterDataType(hBand))),
 		RasterCount:  int32(C.GDALGetRasterCount(hSubdataset)),
 		TimeStamps:   times,
-		Heights:      ncLevels,
 		XSize:        int32(dsWidth),
 		YSize:        int32(dsHeight),
 		Polygon:      polyWkt,
@@ -287,6 +295,7 @@ func getDataSetInfo(filename string, dsName *C.char, driverName string, approx b
 		StdDevs:      stddevs,
 		SampleCounts: sampleCounts,
 		NoData:       float64(noData),
+		Axes:         ncAxes,
 	}, nil
 }
 
@@ -405,12 +414,50 @@ func getNCTime(sdsName string, hSubdataset C.GDALDatasetH) ([]string, error) {
 	return times, fmt.Errorf("Dataset %s doesn't contain times", sdsName)
 }
 
+func getNCAxes(sdsName string, hSubdataset C.GDALDatasetH) ([]*DatasetAxis, error) {
+	var axes []*DatasetAxis
+	mObj := C.GDALMajorObjectH(hSubdataset)
+	metadata := C.GDALGetMetadata(mObj, nil)
+
+	value := C.CSLFetchNameValue(metadata, CncExtraDims)
+	if value == nil {
+		return axes, fmt.Errorf("Failed to parse dimensions", sdsName)
+	}
+
+	dimsStr := C.GoString(value)
+	for _, dim := range strings.Split(strings.Trim(dimsStr, "{}"), ",") {
+		dimValsField := fmt.Sprintf("NETCDF_DIM_%s_VALUES", dim)
+
+		dimValsFieldC := C.CString(dimValsField)
+		dimValsStrC := C.CSLFetchNameValue(metadata, dimValsFieldC)
+		C.free(unsafe.Pointer(dimValsFieldC))
+
+		dimValsStr := C.GoString(dimValsStrC)
+		dimValues := strings.Split(strings.Trim(dimValsStr, "{}"), ",")
+
+		axis := &DatasetAxis{Name: dim, Shape: []int{len(dimValues)}, Grid: "enum"}
+
+		for iv, val := range dimValues {
+			vFloat, err := strconv.ParseFloat(val, 64)
+			if err != nil {
+				return nil, fmt.Errorf("Failed to parse the values of %v: %v, err pos: %d", dimsStr, dimValsStr, iv)
+			}
+
+			axis.Params = append(axis.Params, vFloat)
+		}
+
+		axes = append(axes, axis)
+	}
+
+	return axes, nil
+}
+
 func getNCLevels(sdsName string, hSubdataset C.GDALDatasetH) ([]float64, error) {
 	levels := []float64{}
 	mObj := C.GDALMajorObjectH(hSubdataset)
 	metadata := C.GDALGetMetadata(mObj, nil)
 
-	value := C.CSLFetchNameValue(metadata, CncDimLevelValues)
+	value := C.CSLFetchNameValue(metadata, CncExtraDims)
 	if value != nil {
 
 		levelStr := C.GoString(value)
