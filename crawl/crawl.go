@@ -4,10 +4,12 @@ import (
 	"bufio"
 	"encoding/json"
 	"flag"
+	"io/ioutil"
 	"log"
 	"os"
 
 	extr "github.com/nci/gsky/crawl/extractor"
+	"github.com/nci/gsky/utils"
 )
 
 func ensure(err error) {
@@ -28,6 +30,7 @@ func main() {
 	concLimit := DefaultConcLimit
 	approx := true
 	sentinel2Yaml := false
+	var configFile string
 
 	if len(os.Args) > 2 {
 		flagSet := flag.NewFlagSet("Usage", flag.ExitOnError)
@@ -35,6 +38,7 @@ func main() {
 		var exact bool
 		flagSet.BoolVar(&exact, "exact", false, "Compute exact statistics")
 		flagSet.BoolVar(&sentinel2Yaml, "sentinel2_yaml", false, "Extract sentinel2 metadata from its yaml files")
+		flagSet.StringVar(&configFile, "conf", "", "Crawl config file")
 		flagSet.Parse(os.Args[2:])
 
 		approx = !exact
@@ -51,7 +55,14 @@ func main() {
 	if sentinel2Yaml {
 		geoFile, err = extr.ExtractSentinel2Yaml(path)
 	} else {
-		geoFile, err = extr.ExtractGDALInfo(path, concLimit, approx)
+		config := &extr.Config{}
+		if len(configFile) > 0 {
+			cfg, rErr := ioutil.ReadFile(configFile)
+			ensure(rErr)
+			err = utils.Unmarshal([]byte(cfg), config)
+			ensure(err)
+		}
+		geoFile, err = extr.ExtractGDALInfo(path, concLimit, approx, config)
 	}
 	ensure(err)
 

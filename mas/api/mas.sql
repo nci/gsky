@@ -453,7 +453,9 @@ create or replace function mas_intersects(
               'sample_counts',
               geo->'sample_counts',
               'nodata',
-              geo->'nodata'
+              geo->'nodata',
+              'axes',
+              geo->'axes'
             )
               as dataset
 

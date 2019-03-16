@@ -1,19 +1,42 @@
 package extractor
 
 const (
-	NSPath uint = iota
-	NSDataset
-	NSCombine
+	NSPath    string = "ns_path"
+	NSDataset string = "ns_dataset"
+	NSCombine string = "ns_combine"
 )
 
 type RuleSet struct {
-	Collection   string
-	NameSpace    uint
-	SRSText      string
-	Proj4Text    string
-	Pattern      string
-	ComputeStats bool
-	TimeAxis     *DatasetAxis
+	Collection   string       `json:"collection"`
+	NameSpace    string       `json:"namespace"`
+	SRSText      string       `json:"srs_text"`
+	Proj4Text    string       `json:"proj4_text"`
+	Pattern      string       `json:"pattern"`
+	ComputeStats bool         `json:"compute_stats"`
+	TimeAxis     *DatasetAxis `json:"time_axis"`
+	TimeUnits    string       `json:"time_units"`
+	BBox         []float64    `json:"bbox"`
+}
+
+/***** An example config file for the eReefs dataset
+
+{
+  "rule_sets":[
+    {
+      "namespace": "ns_dataset",
+      "srs_text": "GEOGCS[\"WGS 84\",DATUM[\"WGS_1984\",SPHEROID[\"WGS 84\",6378137,298.257223563,AUTHORITY[\"EPSG\",\"7030\"]],TOWGS84[0,0,0,0,0,0,0],AUTHORITY[\"EPSG\",\"6326\"]],PRIMEM[\"Greenwich\",0,AUTHORITY[\"EPSG\",\"8901\"]],UNIT[\"degree\",0.0174532925199433,AUTHORITY[\"EPSG\",\"9108\"]],AUTHORITY[\"EPSG\",\"4326\"]]",
+      "proj4_text": "+proj=longlat +ellps=WGS84 +towgs84=0,0,0,0,0,0,0 +no_defs ",
+      "pattern": "roms",
+      "time_axis": { "name": "ocean_time" },
+      "bbox": [-180, 90, 180, 90]
+    }
+  ]
+}
+
+*****/
+
+type Config struct {
+	RuleSets []RuleSet `json:"rule_sets"`
 }
 
 const (
@@ -183,10 +206,11 @@ var CollectionRuleSets = []RuleSet{
 	RuleSet{
 		Collection: "ereef",
 		NameSpace:  NSDataset,
-		SRSText:    SRSDetect,
-		Proj4Text:  Proj4Detect,
+		SRSText:    SRSWGS84,
+		Proj4Text:  Proj4WGS84,
 		Pattern:    `roms`,
 		TimeAxis:   &DatasetAxis{Name: "ocean_time"},
+		BBox:       []float64{-180, 90, 180, -90},
 	},
 	RuleSet{
 		Collection: "default",
