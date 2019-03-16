@@ -380,7 +380,7 @@ func URLIndexGet(ctx context.Context, url string, geoReq *GeoTileRequest, errCha
 					}
 					aggTimeStamp += ds.Axes[i].IntersectionValues[iTimeStamp]
 
-					if len(ds.Axes[i].IntersectionIdx) > 1 && ds.Axes[i].Aggregate == 0 {
+					if ds.Axes[i].Aggregate == 0 {
 						if isFirst {
 							namespace += "#"
 							isFirst = false

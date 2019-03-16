@@ -52,9 +52,6 @@ func init() {
 var dateFormats []string = []string{"2006-01-02 15:04:05.0", "2006-1-2 15:4:5"}
 var durationUnits map[string]time.Duration = map[string]time.Duration{"seconds": time.Second, "hours": time.Hour, "days": time.Hour * 24}
 var CsubDS *C.char = C.CString("SUBDATASETS")
-var CtimeUnits *C.char = C.CString("time#units")
-var CncDimTimeValues *C.char = C.CString("NETCDF_DIM_time_VALUES")
-var CncDimLevelValues *C.char = C.CString("NETCDF_DIM_lev_VALUES")
 var CncVarname *C.char = C.CString("NETCDF_VARNAME")
 
 var CncExtraDims *C.char = C.CString("NETCDF_DIM_EXTRA")
@@ -141,7 +138,7 @@ func getDataSetInfo(filename string, dsName *C.char, driverName string, approx b
 	var err error
 	var times []time.Time
 	if driverName == "netCDF" || driverName == "JP2OpenJPEG" {
-		ncTimes, err = getNCTime(datasetName, hSubdataset)
+		ncTimes, err = getNCTime(datasetName, hSubdataset, ruleSet)
 		if err != nil && timeStamp.IsZero() {
 			return &GeoMetaData{}, fmt.Errorf("Error parsing dates: %v", err)
 		}
@@ -160,16 +157,19 @@ func getDataSetInfo(filename string, dsName *C.char, driverName string, approx b
 		times = append(times, timeStamp)
 	}
 
-	/*
-		var ncLevels []float64
-		if driverName == "netCDF" || driverName == "JP2OpenJPEG" {
-			ncLevels, err = getNCLevels(datasetName, hSubdataset)
-		}
-	*/
-
 	var ncAxes []*DatasetAxis
 	if driverName == "netCDF" || driverName == "JP2OpenJPEG" {
-		ncAxes, err = getNCAxes(datasetName, hSubdataset)
+		if ruleSet.TimeAxis != nil {
+			if len(ruleSet.TimeAxis.Shape) == 0 || ruleSet.TimeAxis.Shape[0] < 0 {
+				ruleSet.TimeAxis.Shape = []int{len(times)}
+			}
+
+			if len(ruleSet.TimeAxis.Strides) == 0 || ruleSet.TimeAxis.Strides[0] < 0 {
+				ruleSet.TimeAxis.Shape = []int{1}
+			}
+
+		}
+		ncAxes, err = getNCAxes(datasetName, hSubdataset, ruleSet)
 	}
 
 	hBand := C.GDALGetRasterBand(hSubdataset, 1)
@@ -237,43 +237,45 @@ func getDataSetInfo(filename string, dsName *C.char, driverName string, approx b
 	dsWidth := int(C.GDALGetRasterXSize(hSubdataset))
 	dsHeight := int(C.GDALGetRasterYSize(hSubdataset))
 
-	bandSize := dsWidth * dsHeight
+	if ruleSet.ComputeStats {
+		bandSize := dsWidth * dsHeight
 
-	nBands := C.GDALGetRasterCount(hSubdataset)
-	for ib := 1; ib <= int(nBands); ib++ {
-		hBand := C.GDALGetRasterBand(hSubdataset, C.int(ib))
+		nBands := C.GDALGetRasterCount(hSubdataset)
+		for ib := 1; ib <= int(nBands); ib++ {
+			hBand := C.GDALGetRasterBand(hSubdataset, C.int(ib))
 
-		approxC := C.int(1)
-		if !approx {
-			approxC = C.int(0)
-		}
-
-		stats := [4]C.double{} // min, max, mean, stddev
-		cErr := C.GDALGetRasterStatistics(hBand, approxC, C.int(1), &stats[0], &stats[1], &stats[2], &stats[3])
-		if cErr != C.CE_None {
-			for i := 0; i < len(stats); i++ {
-				stats[i] = noData
+			approxC := C.int(1)
+			if !approx {
+				approxC = C.int(0)
 			}
-		}
 
-		validPercent := -1.0
-		validPercentC := C.GDALGetMetadataItem(C.GDALMajorObjectH(hBand), C.CString("STATISTICS_VALID_PERCENT"), nil)
-		if validPercentC != nil {
-			if per, e := strconv.ParseFloat(C.GoString(validPercentC), 64); e == nil {
-				validPercent = per
+			stats := [4]C.double{} // min, max, mean, stddev
+			cErr := C.GDALGetRasterStatistics(hBand, approxC, C.int(1), &stats[0], &stats[1], &stats[2], &stats[3])
+			if cErr != C.CE_None {
+				for i := 0; i < len(stats); i++ {
+					stats[i] = noData
+				}
 			}
-		}
 
-		sampleCount := -1
-		if validPercent >= 0 {
-			sampleCount = int(float64(bandSize) * validPercent)
-		}
+			validPercent := -1.0
+			validPercentC := C.GDALGetMetadataItem(C.GDALMajorObjectH(hBand), C.CString("STATISTICS_VALID_PERCENT"), nil)
+			if validPercentC != nil {
+				if per, e := strconv.ParseFloat(C.GoString(validPercentC), 64); e == nil {
+					validPercent = per
+				}
+			}
 
-		mins = append(mins, float64(stats[0]))
-		maxs = append(maxs, float64(stats[1]))
-		means = append(means, float64(stats[2]))
-		stddevs = append(stddevs, float64(stats[3]))
-		sampleCounts = append(sampleCounts, sampleCount)
+			sampleCount := -1
+			if validPercent >= 0 {
+				sampleCount = int(float64(bandSize) * validPercent)
+			}
+
+			mins = append(mins, float64(stats[0]))
+			maxs = append(maxs, float64(stats[1]))
+			means = append(means, float64(stats[2]))
+			stddevs = append(stddevs, float64(stats[3]))
+			sampleCounts = append(sampleCounts, sampleCount)
+		}
 	}
 
 	return &GeoMetaData{
@@ -373,10 +375,19 @@ func getDate(inDate string) (time.Time, error) {
 	return time.Time{}, fmt.Errorf("Could not parse time string: %s", inDate)
 }
 
-func getNCTime(sdsName string, hSubdataset C.GDALDatasetH) ([]string, error) {
+func getNCTime(sdsName string, hSubdataset C.GDALDatasetH, ruleSet *RuleSet) ([]string, error) {
 	times := []string{}
 	mObj := C.GDALMajorObjectH(hSubdataset)
 	metadata := C.GDALGetMetadata(mObj, nil)
+
+	timeDim := "time"
+	if ruleSet.TimeAxis != nil && len(ruleSet.TimeAxis.Name) > 0 && ruleSet.TimeAxis.Name != "time" {
+		timeDim = ruleSet.TimeAxis.Name
+	}
+
+	CtimeUnits := C.CString(fmt.Sprintf("%s#units", timeDim))
+	defer C.free(unsafe.Pointer(CtimeUnits))
+
 	idx := C.CSLFindName(metadata, CtimeUnits)
 	if idx == -1 {
 		return nil, fmt.Errorf("Does not contain timeUnits string")
@@ -394,6 +405,9 @@ func getNCTime(sdsName string, hSubdataset C.GDALDatasetH) ([]string, error) {
 	if err != nil {
 		return times, err
 	}
+
+	CncDimTimeValues := C.CString(fmt.Sprintf("NETCDF_DIM_%s_VALUES", timeDim))
+	defer C.free(unsafe.Pointer(CncDimTimeValues))
 
 	value := C.CSLFetchNameValue(metadata, CncDimTimeValues)
 	if value != nil {
@@ -414,7 +428,7 @@ func getNCTime(sdsName string, hSubdataset C.GDALDatasetH) ([]string, error) {
 	return times, fmt.Errorf("Dataset %s doesn't contain times", sdsName)
 }
 
-func getNCAxes(sdsName string, hSubdataset C.GDALDatasetH) ([]*DatasetAxis, error) {
+func getNCAxes(sdsName string, hSubdataset C.GDALDatasetH, ruleSet *RuleSet) ([]*DatasetAxis, error) {
 	var axes []*DatasetAxis
 	mObj := C.GDALMajorObjectH(hSubdataset)
 	metadata := C.GDALGetMetadata(mObj, nil)
@@ -424,6 +438,7 @@ func getNCAxes(sdsName string, hSubdataset C.GDALDatasetH) ([]*DatasetAxis, erro
 		return axes, fmt.Errorf("Failed to parse dimensions", sdsName)
 	}
 
+	foundTimeAxis := false
 	dimsStr := C.GoString(value)
 	for _, dim := range strings.Split(strings.Trim(dimsStr, "{}"), ",") {
 		dimValsField := fmt.Sprintf("NETCDF_DIM_%s_VALUES", dim)
@@ -434,6 +449,15 @@ func getNCAxes(sdsName string, hSubdataset C.GDALDatasetH) ([]*DatasetAxis, erro
 
 		dimValsStr := C.GoString(dimValsStrC)
 		dimValues := strings.Split(strings.Trim(dimValsStr, "{}"), ",")
+
+		if ruleSet.TimeAxis != nil {
+			if dim == "time" || dim == ruleSet.TimeAxis.Name {
+				axis := &DatasetAxis{Name: "time", Shape: []int{len(dimValues)}, Grid: "default"}
+				axes = append(axes, axis)
+				foundTimeAxis = true
+				continue
+			}
+		}
 
 		axis := &DatasetAxis{Name: dim, Shape: []int{len(dimValues)}, Grid: "enum"}
 
@@ -449,27 +473,20 @@ func getNCAxes(sdsName string, hSubdataset C.GDALDatasetH) ([]*DatasetAxis, erro
 		axes = append(axes, axis)
 	}
 
-	return axes, nil
-}
-
-func getNCLevels(sdsName string, hSubdataset C.GDALDatasetH) ([]float64, error) {
-	levels := []float64{}
-	mObj := C.GDALMajorObjectH(hSubdataset)
-	metadata := C.GDALGetMetadata(mObj, nil)
-
-	value := C.CSLFetchNameValue(metadata, CncExtraDims)
-	if value != nil {
-
-		levelStr := C.GoString(value)
-		for _, lStr := range strings.Split(strings.Trim(levelStr, "{}"), ",") {
-			lF, err := strconv.ParseFloat(lStr, 64)
-			if err != nil {
-				return levels, fmt.Errorf("Problem parsing levels with dataset %s", sdsName)
-			}
-			levels = append(levels, lF)
-		}
-
-		return levels, nil
+	if !foundTimeAxis && ruleSet.TimeAxis != nil {
+		axis := &DatasetAxis{Name: "time", Shape: ruleSet.TimeAxis.Shape, Strides: ruleSet.TimeAxis.Strides, Grid: "default"}
+		axes = append(axes, axis)
 	}
-	return levels, fmt.Errorf("Dataset %s doesn't contain levels", sdsName)
+
+	if len(axes[len(axes)-1].Strides) == 0 {
+		axes[len(axes)-1].Strides = []int{1}
+	}
+
+	accumStrides := 1
+	for i := len(axes) - 2; i >= 0; i-- {
+		accumStrides *= axes[i+1].Shape[0]
+		axes[i].Strides = []int{accumStrides}
+	}
+
+	return axes, nil
 }
