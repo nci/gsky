@@ -288,9 +288,16 @@ func getDataSize(dataType string) (int, error) {
 		return 2, nil
 	case "Float32":
 		return 4, nil
+
+	// grpc workers convert any real data types other than the above to float32
+	case "Float64":
+		return 4, nil
+	case "Int32":
+		return 4, nil
+	case "UInt32":
+		return 4, nil
 	default:
 		return -1, fmt.Errorf("Unsupported raster type %s", dataType)
-
 	}
 }
 

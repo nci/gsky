@@ -202,7 +202,7 @@ func WMSParamsChecker(params map[string][]string, compREMap map[string]*regexp.R
 
 			axisVal := valFloat64
 
-			axesInfo = append(axesInfo, fmt.Sprintf(`{"name":"%s", "start":%f, "order":1}`, axisName, axisVal))
+			axesInfo = append(axesInfo, fmt.Sprintf(`{"name":"%s", "start":%f, "order":1, "aggregate": 1}`, axisName, axisVal))
 		}
 	}
 

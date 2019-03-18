@@ -1190,8 +1190,6 @@ func generalHandler(conf *utils.Config, w http.ResponseWriter, r *http.Request) 
 			http.Error(w, fmt.Sprintf("Failed to parse query: %v", err), 400)
 			return
 		}
-
-		log.Printf("qqqqq %#v", query)
 	}
 
 	if _, fOK := query["service"]; !fOK {

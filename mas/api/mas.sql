@@ -419,7 +419,7 @@ create or replace function mas_intersects(
     -- &metadata=gdal - bundle some raw GDAL metadata for GSKY
     if raw_metadata = 'gdal' then
 
-      result := result || jsonb_build_object('gdal', coalesce((
+      result := jsonb_build_object('gdal', coalesce((
 
         select
           jsonb_agg(dataset)
@@ -436,6 +436,8 @@ create or replace function mas_intersects(
 
           select
             jsonb_build_object(
+              'file_path',
+              path.value,
               'ds_name',
               geo->>'ds_name',
               'namespace',

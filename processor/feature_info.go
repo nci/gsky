@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"github.com/nci/gsky/utils"
-	"regexp"
 	"sort"
 	"strings"
 	"time"
@@ -294,16 +293,10 @@ func getRaster(ctx context.Context, params utils.WMSParams, conf *utils.Config, 
 
 	var topDsFiles []string
 	fileDedup := make(map[string]bool)
-	reGdalDs := regexp.MustCompile(`[a-zA-Z0-9\-_]+:"(.*)":.*`)
 	for i, ds := range pixelFiles {
-		dsFile := ds.Path
+		dsFile := ds.RawPath
 		if len(dsFile) == 0 {
 			continue
-		}
-
-		matches := reGdalDs.FindStringSubmatch(ds.Path)
-		if len(matches) > 1 {
-			dsFile = matches[1]
 		}
 
 		_, found := fileDedup[dsFile]

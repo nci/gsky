@@ -47,6 +47,7 @@ type GeoTileRequest struct {
 
 type GeoTileGranule struct {
 	ConfigPayLoad
+	RawPath       string
 	Path          string
 	CRS           string
 	BBox          []float64

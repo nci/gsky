@@ -157,7 +157,7 @@ func WCSParamsChecker(params map[string][]string, compREMap map[string]*regexp.R
 
 			axisVal := valFloat64
 
-			axesInfo = append(axesInfo, fmt.Sprintf(`{"name":"%s", "start":%f, "order":1}`, axisName, axisVal))
+			axesInfo = append(axesInfo, fmt.Sprintf(`{"name":"%s", "start":%f, "order":1, "aggregate": 1}`, axisName, axisVal))
 		}
 	}
 
@@ -169,7 +169,10 @@ func WCSParamsChecker(params map[string][]string, compREMap map[string]*regexp.R
 		return wcsParams, err
 	}
 
-	params["subset"] = []string{"time(2013-03-19T00:00:00.000Z, 2013-03-21T00:00:00.000Z)order=desc; aa1_ (12,12.5) order = desc, agg= (union ),  ;  ;a2 ((22)); a3(*)", "b((12.333, ));", " c (*,*); d (*,111)"}
+	/**** An example subset query
+	//params["subset"] = []string{"time(2013-03-19T00:00:00.000Z, 2013-03-21T00:00:00.000Z)order=desc; aa1_ (12,12.5) order = desc, agg= (union ),  ;  ;a2 ((22)); a3(*)", "b((12.333, ));", " c (*,*); d (*,111)"}
+	*/
+
 	if subsets, subsetsOK := params["subset"]; subsetsOK {
 		sub := strings.Join(subsets, ";")
 		axes, err := parseSubsetClause(sub, compREMap)
