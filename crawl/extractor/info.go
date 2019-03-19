@@ -24,6 +24,7 @@ package extractor
 import "C"
 
 import (
+	"bytes"
 	"fmt"
 	"log"
 	"math"
@@ -33,6 +34,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"text/template"
 	"time"
 	"unsafe"
 )
@@ -172,6 +174,16 @@ func getDataSetInfo(filename string, dsName *C.char, driverName string, approx b
 		ncAxes, err = getNCAxes(datasetName, hSubdataset, ruleSet)
 	}
 
+	var geoLocation *GeoLocInfo
+	if ruleSet.GeoLoc != nil {
+		geoLocTmp, err := getGeoLocation(ruleSet.GeoLoc, filename)
+		if err != nil {
+			log.Println(err)
+		} else {
+			geoLocation = geoLocTmp
+		}
+	}
+
 	hBand := C.GDALGetRasterBand(hSubdataset, 1)
 	nOvr := C.GDALGetOverviewCount(hBand)
 	ovrs := make([]*Overview, int(nOvr))
@@ -298,6 +310,7 @@ func getDataSetInfo(filename string, dsName *C.char, driverName string, approx b
 		SampleCounts: sampleCounts,
 		NoData:       float64(noData),
 		Axes:         ncAxes,
+		GeoLocation:  geoLocation,
 	}, nil
 }
 
@@ -339,6 +352,79 @@ func parseName(path string, config *Config) (*RuleSet, map[string]string, time.T
 		}
 	}
 	return nil, nil, time.Time{}
+}
+
+func getRegexMatches(source string, pattern string) map[string]string {
+	result := make(map[string]string)
+	re := regexp.MustCompile(pattern)
+	if re.MatchString(source) {
+		match := re.FindStringSubmatch(source)
+		for i, name := range re.SubexpNames() {
+			if i != 0 {
+				result[name] = match[i]
+			}
+		}
+	}
+
+	return result
+}
+
+func instantiateTemplate(tplText string, data interface{}) (string, error) {
+	tpl, err := template.New("template").Parse(tplText)
+	if err != nil {
+		return "", fmt.Errorf("Error trying to parse template document: %v", err)
+	}
+
+	buf := new(bytes.Buffer)
+	err = tpl.Execute(buf, data)
+	if err != nil {
+		return "", fmt.Errorf("Error executing template: %v\n", err)
+	}
+
+	return buf.String(), nil
+
+}
+
+func getGeoLocation(geoLoc *GeoLocRule, path string) (*GeoLocInfo, error) {
+	xMatches := getRegexMatches(path, geoLoc.XDatasetPattern)
+	xDataset, err := instantiateTemplate(geoLoc.XDatasetTemplate, xMatches)
+	if err != nil {
+		return nil, err
+	}
+
+	yMatches := getRegexMatches(path, geoLoc.YDatasetPattern)
+	yDataset, err := instantiateTemplate(geoLoc.YDatasetTemplate, yMatches)
+	if err != nil {
+		return nil, err
+	}
+
+	locInfo := &GeoLocInfo{XDataSetName: xDataset, XBand: 1, YDataSetName: yDataset, YBand: 1, LineOffset: 0, PixelOffset: 0, LineStep: 1, PixelStep: 1}
+
+	if geoLoc.XBand != nil {
+		locInfo.XBand = *geoLoc.XBand
+	}
+
+	if geoLoc.YBand != nil {
+		locInfo.YBand = *geoLoc.YBand
+	}
+
+	if geoLoc.LineOffset != nil {
+		locInfo.LineOffset = *geoLoc.LineOffset
+	}
+
+	if geoLoc.PixelOffset != nil {
+		locInfo.PixelOffset = *geoLoc.PixelOffset
+	}
+
+	if geoLoc.LineStep != nil {
+		locInfo.LineStep = *geoLoc.LineStep
+	}
+
+	if geoLoc.PixelStep != nil {
+		locInfo.PixelStep = *geoLoc.PixelStep
+	}
+
+	return locInfo, nil
 }
 
 func parseTime(nameFields map[string]string) time.Time {

@@ -6,6 +6,19 @@ const (
 	NSCombine string = "ns_combine"
 )
 
+type GeoLocRule struct {
+	XDatasetPattern  string `json:"x_dataset_pattern"`
+	XDatasetTemplate string `json:"x_dataset_template"`
+	XBand            *int   `json:"x_band"`
+	YDatasetPattern  string `json:"y_dataset_pattern"`
+	YDatasetTemplate string `json:"y_dataset_template"`
+	YBand            *int   `json:"y_band"`
+	LineOffset       *int   `json:"line_offset"`
+	PixelOffset      *int   `json:"pixel_offset"`
+	PixelStep        *int   `json:"pixel_step"`
+	LineStep         *int   `json:"line_step"`
+}
+
 type RuleSet struct {
 	Collection   string       `json:"collection"`
 	NameSpace    string       `json:"namespace"`
@@ -16,6 +29,7 @@ type RuleSet struct {
 	TimeAxis     *DatasetAxis `json:"time_axis"`
 	TimeUnits    string       `json:"time_units"`
 	BBox         []float64    `json:"bbox"`
+	GeoLoc       *GeoLocRule  `json:"geo_loc"`
 }
 
 /***** An example config file for the eReefs dataset
@@ -211,6 +225,7 @@ var CollectionRuleSets = []RuleSet{
 		Pattern:    `roms`,
 		TimeAxis:   &DatasetAxis{Name: "ocean_time"},
 		BBox:       []float64{-180, 90, 180, -90},
+		GeoLoc:     &GeoLocRule{XDatasetPattern: `(?P<filename>.*)`, XDatasetTemplate: `NETCDF:"{{ .filename }}":lon_v`, YDatasetPattern: `(?P<filename>.*)`, YDatasetTemplate: `NETCDF:"{{ .filename }}":lat_v`},
 	},
 	RuleSet{
 		Collection: "default",

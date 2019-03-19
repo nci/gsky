@@ -444,6 +444,10 @@ create or replace function mas_intersects(
               regexp_replace(trim(geo->>'namespace'), '[^a-zA-Z0-9_]', '_', 'g'),
               'array_type',
               geo->'array_type',
+              'srs',
+              geo->'proj_wkt',
+              'geo_transform',
+              geo->'geotransform',
               'timestamps',
               geo->'timestamps',
               'polygon',
@@ -457,7 +461,9 @@ create or replace function mas_intersects(
               'nodata',
               geo->'nodata',
               'axes',
-              geo->'axes'
+              geo->'axes',
+              'geo_loc',
+              geo->'geo_loc'
             )
               as dataset
 

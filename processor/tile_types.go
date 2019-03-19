@@ -23,6 +23,8 @@ type ConfigPayLoad struct {
 	GrpcConcLimit         int
 	PolygonSharcConcLimit int
 	QueryLimit            int
+	UserSrcGeoTransform   int
+	UserSrcSRS            int
 }
 
 type GeoTileAxis struct {
@@ -47,20 +49,21 @@ type GeoTileRequest struct {
 
 type GeoTileGranule struct {
 	ConfigPayLoad
-	RawPath       string
-	Path          string
-	CRS           string
-	BBox          []float64
-	Height, Width int
-	OffX, OffY    int
-	NameSpace     string
-	VarNameSpace  string
-	//TimeStamps    []time.Time
-	//TimeStamp     time.Time
-	TimeStamp  float64
-	BandIdx    int
-	Polygon    string
-	RasterType string
+	RawPath         string
+	Path            string
+	CRS             string
+	SrcSRS          string
+	SrcGeoTransform []float64
+	BBox            []float64
+	Height, Width   int
+	OffX, OffY      int
+	NameSpace       string
+	VarNameSpace    string
+	TimeStamp       float64
+	BandIdx         int
+	Polygon         string
+	RasterType      string
+	GeoLocation     *GeoLocInfo
 }
 
 type FlexRaster struct {
@@ -72,7 +75,7 @@ type FlexRaster struct {
 	Type                  string
 	NoData                float64
 	NameSpace             string
-	TimeStamp             float64 //time.Time
+	TimeStamp             float64
 	Polygon               string
 }
 

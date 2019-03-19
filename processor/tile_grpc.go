@@ -306,6 +306,30 @@ func getRPCRaster(ctx context.Context, g *GeoTileGranule, projWKT string, conn *
 	//band, err := getBand(g.TimeStamps, g.TimeStamp)
 	geot := BBox2Geot(g.Width, g.Height, g.BBox)
 	granule := &pb.GeoRPCGranule{Operation: "warp", Height: int32(g.Height), Width: int32(g.Width), Path: g.Path, DstSRS: projWKT, DstGeot: geot, Bands: []int32{int32(g.BandIdx)}}
+	if g.GeoLocation != nil {
+		granule.GeoLocOpts = []string{
+			fmt.Sprintf("X_DATASET=%s", g.GeoLocation.XDSName),
+			fmt.Sprintf("Y_DATASET=%s", g.GeoLocation.YDSName),
+
+			fmt.Sprintf("X_BAND=%d", g.GeoLocation.XBand),
+			fmt.Sprintf("Y_BAND=%d", g.GeoLocation.YBand),
+
+			fmt.Sprintf("LINE_OFFSET=%d", g.GeoLocation.LineOffset),
+			fmt.Sprintf("PIXEL_OFFSET=%d", g.GeoLocation.PixelOffset),
+			fmt.Sprintf("LINE_STEP=%d", g.GeoLocation.LineStep),
+			fmt.Sprintf("PIXEL_STEP=%d", g.GeoLocation.PixelStep),
+		}
+
+	}
+
+	if g.UserSrcSRS > 0 {
+		granule.SrcSRS = g.SrcSRS
+	}
+
+	if g.UserSrcGeoTransform > 0 {
+		granule.SrcGeot = g.SrcGeoTransform
+	}
+
 	r, err := c.Process(ctx, granule)
 	if err != nil {
 		return nil, err

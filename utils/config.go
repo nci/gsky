@@ -133,6 +133,8 @@ type Layer struct {
 	FeatureInfoExpressions   *BandExpressions
 	NoDataLegendPath         string       `json:"nodata_legend_path"`
 	AxesInfo                 []*LayerAxis `json:"axes"`
+	UserSrcSRS               int          `json:"src_srs"`
+	UserSrcGeoTransform      int          `json:"src_geo_transform"`
 }
 
 // Process contains all the details that a WPS needs

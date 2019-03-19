@@ -27,6 +27,18 @@ type GeoMetaData struct {
 	SampleCounts []int          `json:"sample_counts,omitempty"`
 	NoData       float64        `json:"nodata,omitempty"`
 	Axes         []*DatasetAxis `json:"axes,omitempty"`
+	GeoLocation  *GeoLocInfo    `json:"geo_loc,omitempty"`
+}
+
+type GeoLocInfo struct {
+	XDataSetName string `json:"x_ds_name"`
+	XBand        int    `json:"x_band"`
+	YDataSetName string `json:"y_ds_name"`
+	YBand        int    `json:"y_band"`
+	LineOffset   int    `json:"line_offset"`
+	PixelOffset  int    `json:"pixel_offset"`
+	PixelStep    int    `json:"pixel_step"`
+	LineStep     int    `json:"line_step"`
 }
 
 type DatasetAxis struct {

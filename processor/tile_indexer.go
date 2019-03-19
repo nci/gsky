@@ -26,17 +26,31 @@ type DatasetAxis struct {
 	Aggregate          int
 }
 
+type GeoLocInfo struct {
+	XDSName     string `json:"x_ds_name"`
+	XBand       int    `json:"x_band"`
+	YDSName     string `json:"y_ds_name"`
+	YBand       int    `json:"y_band"`
+	LineOffset  int    `json:"line_offset"`
+	PixelOffset int    `json:"pixel_offset"`
+	LineStep    int    `json:"line_step"`
+	PixelStep   int    `json:"pixel_step"`
+}
+
 type GDALDataset struct {
 	RawPath      string         `json:"file_path"`
 	DSName       string         `json:"ds_name"`
 	NameSpace    string         `json:"namespace"`
 	ArrayType    string         `json:"array_type"`
+	SRS          string         `json:"srs"`
+	GeoTransform []float64      `json:"geo_transform"`
 	TimeStamps   []time.Time    `json:"timestamps"`
 	Polygon      string         `json:"polygon"`
 	Means        []float64      `json:"means"`
 	SampleCounts []int          `json:"sample_counts"`
 	NoData       float64        `json:"nodata"`
 	Axes         []*DatasetAxis `json:"axes"`
+	GeoLocation  *GeoLocInfo    `json:"geo_loc"`
 	IsOutRange   bool
 }
 
@@ -331,12 +345,12 @@ func URLIndexGet(ctx context.Context, url string, geoReq *GeoTileRequest, errCha
 			}
 
 			/*
-			for iia, ax := range ds.Axes {
-				if ax != nil {
-					fmt.Printf("axis(%d): %v ", iia, *ax)
+				for iia, ax := range ds.Axes {
+					if ax != nil {
+						fmt.Printf("axis(%d): %v ", iia, *ax)
+					}
 				}
-			}
-			fmt.Printf("%v\n", len(ds.TimeStamps))
+				fmt.Printf("%v\n", len(ds.TimeStamps))
 			*/
 
 			axisIdxCnt := make([]int, len(ds.Axes))
@@ -392,7 +406,7 @@ func URLIndexGet(ctx context.Context, url string, geoReq *GeoTileRequest, errCha
 					}
 				}
 
-				gran := &GeoTileGranule{ConfigPayLoad: geoReq.ConfigPayLoad, RawPath: ds.RawPath, Path: ds.DSName, NameSpace: namespace, VarNameSpace: ds.NameSpace, RasterType: ds.ArrayType, TimeStamp: float64(aggTimeStamp), BandIdx: bandIdx, Polygon: ds.Polygon, BBox: geoReq.BBox, Height: geoReq.Height, Width: geoReq.Width, CRS: geoReq.CRS}
+				gran := &GeoTileGranule{ConfigPayLoad: geoReq.ConfigPayLoad, RawPath: ds.RawPath, Path: ds.DSName, NameSpace: namespace, VarNameSpace: ds.NameSpace, RasterType: ds.ArrayType, TimeStamp: float64(aggTimeStamp), BandIdx: bandIdx, Polygon: ds.Polygon, BBox: geoReq.BBox, Height: geoReq.Height, Width: geoReq.Width, CRS: geoReq.CRS, SrcSRS: ds.SRS, SrcGeoTransform: ds.GeoTransform, GeoLocation: ds.GeoLocation}
 
 				//log.Printf("    %v, %v,%v,%v,%v   %v", axisIdxCnt, bandIdx, aggTimeStamp, bandTimeStamp, namespace, len(ds.TimeStamps))
 
