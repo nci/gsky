@@ -51,8 +51,7 @@ echo "INFO: crawl output file: $crawl_file"
 
 gdal_json() {
 	src_file="$1"
-
-	json=$(gsky-crawl $src_file)
+	json=$(gsky-crawl $src_file $CRAWL_EXTRA_ARGS)
 	echo -e "$src_file\tgdal\t$json"
 }
 
