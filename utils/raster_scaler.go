@@ -53,10 +53,10 @@ func scale(r Raster, params ScaleParams) (*ByteRaster, error) {
 			}
 
 			scale = 254.0 / (maxVal - minVal)
-			dfOffset := -minVal * scale
+			dfOffset := -minVal
 
 			offset = uint8(dfOffset)
-			clip = uint8(maxVal)
+			clip = uint8(maxVal + dfOffset)
 		}
 
 		for i, value := range t.Data {
@@ -108,10 +108,10 @@ func scale(r Raster, params ScaleParams) (*ByteRaster, error) {
 			}
 
 			scale = 254.0 / (maxVal - minVal)
-			dfOffset := -minVal * scale
+			dfOffset := -minVal
 
 			offset = int16(dfOffset)
-			clip = int16(maxVal)
+			clip = int16(maxVal + dfOffset)
 		}
 
 		for i, value := range t.Data {
@@ -163,10 +163,10 @@ func scale(r Raster, params ScaleParams) (*ByteRaster, error) {
 			}
 
 			scale = 254.0 / (maxVal - minVal)
-			dfOffset := -minVal * scale
+			dfOffset := -minVal
 
 			offset = uint16(dfOffset)
-			clip = uint16(maxVal)
+			clip = uint16(maxVal + dfOffset)
 		}
 
 		for i, value := range t.Data {
@@ -217,9 +217,9 @@ func scale(r Raster, params ScaleParams) (*ByteRaster, error) {
 			}
 
 			scale = 254.0 / (maxVal - minVal)
-			offset = -minVal * scale
+			offset = -minVal
 
-			clip = maxVal
+			clip = maxVal + offset
 		}
 
 		for i, value := range t.Data {

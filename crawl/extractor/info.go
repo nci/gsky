@@ -325,6 +325,8 @@ func getGeometryWKT(geot []float64, xSize, ySize int, ruleSet *RuleSet) string {
 		ulY = C.double(ruleSet.BBox[1])
 		lrX = C.double(ruleSet.BBox[2])
 		lrY = C.double(ruleSet.BBox[3])
+		geot[0] = ruleSet.BBox[0]
+		geot[3] = ruleSet.BBox[1]
 	}
 	return fmt.Sprintf("POLYGON ((%f %f,%f %f,%f %f,%f %f,%f %f))", ulX, ulY, ulX, lrY, lrX, lrY, lrX, ulY, ulX, ulY)
 }
@@ -502,7 +504,8 @@ func getNCTime(sdsName string, hSubdataset C.GDALDatasetH, ruleSet *RuleSet) ([]
 	if len(timeUnitsWords) == 3 {
 		timeUnitsWords = append(timeUnitsWords, "00:00:00.0")
 	}
-	stepUnit := durationUnits[strings.Trim(timeUnitsWords[0], " ")]
+	stepUnitStr := strings.Trim(timeUnitsWords[0], " ")
+	stepUnit := durationUnits[stepUnitStr]
 	startDate, err := getDate(strings.Join(timeUnitsWords[2:], " "))
 	if err != nil {
 		return times, err
@@ -520,8 +523,17 @@ func getNCTime(sdsName string, hSubdataset C.GDALDatasetH, ruleSet *RuleSet) ([]
 			if err != nil {
 				return times, fmt.Errorf("Problem parsing dates with dataset %s", sdsName)
 			}
-			secs, _ := math.Modf(tF)
-			t := startDate.Add(time.Duration(secs) * stepUnit)
+			d, _ := math.Modf(tF)
+			var t time.Time
+			if stepUnitStr == "days" {
+				t = startDate.AddDate(0, 0, int(d))
+			} else if stepUnitStr == "months" {
+				t = startDate.AddDate(0, int(d), 0)
+			} else if stepUnitStr == "years" {
+				t = startDate.AddDate(int(d), 0, 0)
+			} else {
+				t = startDate.Add(time.Duration(d) * stepUnit)
+			}
 			times = append(times, t.Format("2006-01-02T15:04:05Z"))
 		}
 
