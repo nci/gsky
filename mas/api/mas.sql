@@ -378,7 +378,10 @@ create or replace function mas_intersects(
     end if;
 
     if ST_NPoints(in_geom) > 100 and identity_tol >= 0 and dp_tol >= 0 then
-      mask := ST_Simplify(ST_RemoveRepeatedPoints(in_geom, identity_tol), dp_tol);
+      mask := ST_SimplifyPreserveTopology(ST_RemoveRepeatedPoints(in_geom, identity_tol), dp_tol);
+      if mask is null then
+        mask := in_geom;
+      end if;
     else
       mask := in_geom;
     end if;
