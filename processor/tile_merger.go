@@ -568,18 +568,9 @@ func (enc *RasterMerger) Run(polyLimiter *ConcLimiter, bandExpr *utils.BandExpre
 	}
 
 	if hasExpr {
-		//parameters := make(map[string]interface{}, len(bandVars))
-
 		width := canvasMap[nameSpaces[0]].Width
 		height := canvasMap[nameSpaces[0]].Height
 		noData := bandVars[0].NoData
-
-		/*
-			noDataMasks := make([]bool, width*height)
-			for i := 0; i < len(noDataMasks); i++ {
-				noDataMasks[i] = true
-			}
-		*/
 
 		iOut := 0
 		for iv := range bandExpr.Expressions {
@@ -655,62 +646,6 @@ func (enc *RasterMerger) Run(polyLimiter *ConcLimiter, bandExpr *utils.BandExpre
 
 			}
 		}
-
-		/*
-			for i, ns := range nameSpaces {
-				parameters[ns] = bandVars[i].Data
-
-				for j := 0; j < len(noDataMasks); j++ {
-					if float64(bandVars[i].Data[j]) == bandVars[i].NoData {
-						noDataMasks[j] = false
-					}
-				}
-			}
-
-			for iv := range bandExpr.Expressions {
-				result, err := bandExpr.Expressions[iv].Evaluate(parameters)
-				if err != nil {
-					enc.sendError(fmt.Errorf("bandExpr '%v' error: %v", bandExpr.ExprText[iv], err))
-					return
-				}
-
-				outRaster := &utils.Float32Raster{NoData: noData, Data: make([]float32, len(noDataMasks)),
-					Width: width, Height: height, NameSpace: bandExpr.ExprNames[iv]}
-				out[iv] = outRaster
-
-				resScal, isScal := result.(float32)
-				if isScal {
-					for i := range outRaster.Data {
-						if noDataMasks[i] {
-							outRaster.Data[i] = resScal
-						} else {
-							outRaster.Data[i] = float32(noData)
-						}
-					}
-					continue
-				}
-
-				resArr, isArr := result.([]float32)
-				if isArr {
-					for i := range outRaster.Data {
-						if noDataMasks[i] {
-							if math.IsInf(float64(resArr[i]), 0) || math.IsNaN(float64(resArr[i])) {
-								outRaster.Data[i] = float32(noData)
-							} else {
-								outRaster.Data[i] = resArr[i]
-							}
-						} else {
-							outRaster.Data[i] = float32(noData)
-						}
-					}
-					continue
-				}
-
-				enc.sendError(fmt.Errorf("unknown data type for returned value '%v' for expression '%v'", result, bandExpr.ExprText[iv]))
-				return
-			}
-		*/
-
 	}
 
 	enc.Out <- out
