@@ -484,14 +484,6 @@ func (enc *RasterMerger) Run(polyLimiter *ConcLimiter, bandExpr *utils.BandExpre
 
 		}
 
-		/*
-			for n, v := range axisNsLookup {
-				for _, val := range v {
-					log.Printf("aaa  %v, %#v", n, val)
-				}
-			}
-		*/
-
 		nAxis := len(axisNsLookup)
 		nOut = len(bandExpr.Expressions) * nAxis
 	}
@@ -591,8 +583,7 @@ func (enc *RasterMerger) Run(polyLimiter *ConcLimiter, bandExpr *utils.BandExpre
 							noDataMasks[j] = false
 						}
 					}
-
-					log.Printf("   %v: %v, %v", axisNs, v.Name, v.Idx)
+					//log.Printf("   %v: %v, %v", axisNs, v.Name, v.Idx)
 				}
 
 				result, err := bandExpr.Expressions[iv].Evaluate(parameters)
@@ -605,8 +596,7 @@ func (enc *RasterMerger) Run(polyLimiter *ConcLimiter, bandExpr *utils.BandExpre
 				if axisNs != "singular" {
 					outNameSpace += "#" + axisNs
 				}
-
-				log.Printf(" %v, %v, %v, uuuu %v", iv, iOut, len(out), outNameSpace)
+				//log.Printf(" %v, %v, %v, uuuu %v", iv, iOut, len(out), outNameSpace)
 
 				outRaster := &utils.Float32Raster{NoData: noData, Data: make([]float32, len(noDataMasks)),
 					Width: width, Height: height, NameSpace: outNameSpace}

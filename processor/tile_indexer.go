@@ -344,15 +344,6 @@ func URLIndexGet(ctx context.Context, url string, geoReq *GeoTileRequest, errCha
 				continue
 			}
 
-			/*
-				for iia, ax := range ds.Axes {
-					if ax != nil {
-						fmt.Printf("axis(%d): %v ", iia, *ax)
-					}
-				}
-				fmt.Printf("%v\n", len(ds.TimeStamps))
-			*/
-
 			axisIdxCnt := make([]int, len(ds.Axes))
 
 			for axisIdxCnt[0] < len(ds.Axes[0].IntersectionIdx) {
@@ -407,10 +398,9 @@ func URLIndexGet(ctx context.Context, url string, geoReq *GeoTileRequest, errCha
 				}
 
 				gran := &GeoTileGranule{ConfigPayLoad: geoReq.ConfigPayLoad, RawPath: ds.RawPath, Path: ds.DSName, NameSpace: namespace, VarNameSpace: ds.NameSpace, RasterType: ds.ArrayType, TimeStamp: float64(aggTimeStamp), BandIdx: bandIdx, Polygon: ds.Polygon, BBox: geoReq.BBox, Height: geoReq.Height, Width: geoReq.Width, CRS: geoReq.CRS, SrcSRS: ds.SRS, SrcGeoTransform: ds.GeoTransform, GeoLocation: ds.GeoLocation}
+				granList = append(granList, gran)
 
 				//log.Printf("    %v, %v,%v,%v,%v   %v", axisIdxCnt, bandIdx, aggTimeStamp, bandTimeStamp, namespace, len(ds.TimeStamps))
-
-				granList = append(granList, gran)
 
 				ia := len(ds.Axes) - 1
 				axisIdxCnt[ia]++
@@ -451,17 +441,12 @@ func URLIndexGet(ctx context.Context, url string, geoReq *GeoTileRequest, errCha
 			}
 		}
 
-		//log.Printf("%#v", bandNameSpaces)
-		//log.Printf("%#v", sortedNameSpaces)
-
 		var newConfigPayLoad ConfigPayLoad
 		if hasNewNs {
 			newConfigPayLoad = geoReq.ConfigPayLoad
 			newConfigPayLoad.NameSpaces = sortedNameSpaces
 		}
-
 		//log.Printf("%#v, %#v", geoReq.ConfigPayLoad, newConfigPayLoad)
-		//log.Printf("total grans: %d", len(granList))
 
 		for _, gran := range granList {
 			if hasNewNs {
