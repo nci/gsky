@@ -69,6 +69,12 @@ type BandExpressions struct {
 	ExprVarRef  [][]string
 }
 
+type LayerAxis struct {
+	Name    string   `json:"name"`
+	Default string   `json:"default"`
+	Values  []string `json:"values"`
+}
+
 // Layer contains all the details that a layer needs
 // to be published and rendered
 type Layer struct {
@@ -125,7 +131,10 @@ type Layer struct {
 	FeatureInfoDataLinkUrl   string   `json:"feature_info_data_link_url"`
 	FeatureInfoBands         []string `json:"feature_info_bands"`
 	FeatureInfoExpressions   *BandExpressions
-	NoDataLegendPath         string `json:"nodata_legend_path"`
+	NoDataLegendPath         string       `json:"nodata_legend_path"`
+	AxesInfo                 []*LayerAxis `json:"axes"`
+	UserSrcSRS               int          `json:"src_srs"`
+	UserSrcGeoTransform      int          `json:"src_geo_transform"`
 }
 
 // Process contains all the details that a WPS needs
@@ -363,6 +372,9 @@ func GenerateDatesMas(start, end string, masAddress string, collection string, n
 		}
 		refDates = append(refDates, endDate)
 
+		if len(refDates) > len(timestamps.Timestamps) {
+			refDates = refDates[:len(timestamps.Timestamps)]
+		}
 		aggregatedTimestamps := make([]string, len(refDates))
 
 		iBgn := 0

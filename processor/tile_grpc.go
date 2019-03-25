@@ -11,7 +11,6 @@ import (
 	"math/rand"
 	"sort"
 	"sync"
-	"time"
 	"unsafe"
 
 	pb "github.com/nci/gsky/worker/gdalservice"
@@ -64,8 +63,8 @@ func (gi *GeoRasterGRPC) Run(polyLimiter *ConcLimiter, varList []string, verbose
 				imageSize = gran.Height * gran.Width
 			}
 
-			if _, found := availNamespaces[gran.NameSpace]; !found {
-				availNamespaces[gran.NameSpace] = true
+			if _, found := availNamespaces[gran.VarNameSpace]; !found {
+				availNamespaces[gran.VarNameSpace] = true
 			}
 
 			i++
@@ -289,17 +288,48 @@ func getDataSize(dataType string) (int, error) {
 		return 2, nil
 	case "Float32":
 		return 4, nil
+
+	// grpc workers convert any real data types other than the above to float32
+	case "Float64":
+		return 4, nil
+	case "Int32":
+		return 4, nil
+	case "UInt32":
+		return 4, nil
 	default:
 		return -1, fmt.Errorf("Unsupported raster type %s", dataType)
-
 	}
 }
 
 func getRPCRaster(ctx context.Context, g *GeoTileGranule, projWKT string, conn *grpc.ClientConn) (*pb.Result, error) {
 	c := pb.NewGDALClient(conn)
-	band, err := getBand(g.TimeStamps, g.TimeStamp)
+	//band, err := getBand(g.TimeStamps, g.TimeStamp)
 	geot := BBox2Geot(g.Width, g.Height, g.BBox)
-	granule := &pb.GeoRPCGranule{Operation: "warp", Height: int32(g.Height), Width: int32(g.Width), Path: g.Path, DstSRS: projWKT, DstGeot: geot, Bands: []int32{band}}
+	granule := &pb.GeoRPCGranule{Operation: "warp", Height: int32(g.Height), Width: int32(g.Width), Path: g.Path, DstSRS: projWKT, DstGeot: geot, Bands: []int32{int32(g.BandIdx)}}
+	if g.GeoLocation != nil {
+		granule.GeoLocOpts = []string{
+			fmt.Sprintf("X_DATASET=%s", g.GeoLocation.XDSName),
+			fmt.Sprintf("Y_DATASET=%s", g.GeoLocation.YDSName),
+
+			fmt.Sprintf("X_BAND=%d", g.GeoLocation.XBand),
+			fmt.Sprintf("Y_BAND=%d", g.GeoLocation.YBand),
+
+			fmt.Sprintf("LINE_OFFSET=%d", g.GeoLocation.LineOffset),
+			fmt.Sprintf("PIXEL_OFFSET=%d", g.GeoLocation.PixelOffset),
+			fmt.Sprintf("LINE_STEP=%d", g.GeoLocation.LineStep),
+			fmt.Sprintf("PIXEL_STEP=%d", g.GeoLocation.PixelStep),
+		}
+
+	}
+
+	if g.UserSrcSRS > 0 {
+		granule.SrcSRS = g.SrcSRS
+	}
+
+	if g.UserSrcGeoTransform > 0 {
+		granule.SrcGeot = g.SrcGeoTransform
+	}
+
 	r, err := c.Process(ctx, granule)
 	if err != nil {
 		return nil, err
@@ -308,6 +338,7 @@ func getRPCRaster(ctx context.Context, g *GeoTileGranule, projWKT string, conn *
 	return r, nil
 }
 
+/*
 func getBand(times []time.Time, rasterTime time.Time) (int32, error) {
 	if len(times) == 1 {
 		return 1, nil
@@ -319,6 +350,7 @@ func getBand(times []time.Time, rasterTime time.Time) (int32, error) {
 	}
 	return -1, fmt.Errorf("%s dataset does not contain Unix date: %d", "Handler", rasterTime.Unix())
 }
+*/
 
 // BBox2Geot return the geotransform from the
 // parameters received in a WMS GetMap request

@@ -26,6 +26,45 @@ reduction of overheads in grpc (de-)serialisation and network traffic.
 #include "cpl_string.h"
 #include "gdal_utils.h"
 #cgo pkg-config: gdal
+
+typedef struct {
+
+    GDALTransformerInfo sTI;
+
+    double   adfSrcGeoTransform[6];
+    double   adfSrcInvGeoTransform[6];
+
+    void     *pSrcTransformArg;
+    GDALTransformerFunc pSrcTransformer;
+
+    void     *pReprojectArg;
+    GDALTransformerFunc pReproject;
+
+    double   adfDstGeoTransform[6];
+    double   adfDstInvGeoTransform[6];
+
+    void     *pDstTransformArg;
+    GDALTransformerFunc pDstTransformer;
+
+} GenImgProjTransformInfo;
+
+void *createGeoLocTransformer(const char *srcProjRef, const char **geoLocOpts, const char *dstProjRef, double *dstGeot) {
+	GenImgProjTransformInfo *psInfo = (GenImgProjTransformInfo *)GDALCreateGenImgProjTransformer3(srcProjRef, NULL, dstProjRef, dstGeot);
+	if(!psInfo) {
+		return NULL;
+	}
+
+	psInfo->pSrcTransformArg = GDALCreateGeoLocTransformer(NULL, (char **)geoLocOpts, 0);
+	if(psInfo->pSrcTransformArg == NULL)
+        {
+            GDALDestroyGenImgProjTransformer(psInfo);
+            return NULL;
+        }
+        psInfo->pSrcTransformer = GDALGeoLocTransform;
+
+	return psInfo;
+}
+
 int roundCoord(double coord, int maxExtent) {
 	int c;
 	if(coord < 0) {
@@ -39,16 +78,18 @@ int roundCoord(double coord, int maxExtent) {
 	return c;
 }
 
-int warp_operation_fast(const char *srcFilePath, const char *dstProjRef, double *dstGeot, int dstXImageSize, int dstYImageSize, int band, void **dstBuf, int *dstBufSize, int *dstBbox, double *noData, GDALDataType *dType)
+int warp_operation_fast(const char *srcFilePath, char *srcProjRef, double *srcGeot, const char **geoLocOpts, const char *dstProjRef, double *dstGeot, int dstXImageSize, int dstYImageSize, int band, void **dstBuf, int *dstBufSize, int *dstBbox, double *noData, GDALDataType *dType)
 {
 	GDALDatasetH hSrcDS = GDALOpen(srcFilePath, GA_ReadOnly);
         if(!hSrcDS) {
                 return 1;
         }
 
-	const char *srcProjRef = GDALGetProjectionRef(hSrcDS);
-	if(strlen(srcProjRef) == 0) {
-		srcProjRef = "GEOGCS[\"WGS 84\",DATUM[\"WGS_1984\",SPHEROID[\"WGS 84\",6378137,298.257223563,AUTHORITY[\"EPSG\",\"7030\"]],TOWGS84[0,0,0,0,0,0,0],AUTHORITY[\"EPSG\",\"6326\"]],PRIMEM[\"Greenwich\",0,AUTHORITY[\"EPSG\",\"8901\"]],UNIT[\"degree\",0.0174532925199433,AUTHORITY[\"EPSG\",\"9108\"]],AUTHORITY[\"EPSG\",\"4326\"]]\",\"proj4\":\"+proj=longlat +ellps=WGS84 +towgs84=0,0,0,0,0,0,0 +no_defs \"";
+	if(srcProjRef == NULL) {
+		srcProjRef = (char *)GDALGetProjectionRef(hSrcDS);
+		if(strlen(srcProjRef) == 0) {
+			srcProjRef = "GEOGCS[\"WGS 84\",DATUM[\"WGS_1984\",SPHEROID[\"WGS 84\",6378137,298.257223563,AUTHORITY[\"EPSG\",\"7030\"]],TOWGS84[0,0,0,0,0,0,0],AUTHORITY[\"EPSG\",\"6326\"]],PRIMEM[\"Greenwich\",0,AUTHORITY[\"EPSG\",\"8901\"]],UNIT[\"degree\",0.0174532925199433,AUTHORITY[\"EPSG\",\"9108\"]],AUTHORITY[\"EPSG\",\"4326\"]]\",\"proj4\":\"+proj=longlat +ellps=WGS84 +towgs84=0,0,0,0,0,0,0 +no_defs \"";
+		}
 	}
 
         GDALRasterBandH hBand = GDALGetRasterBand(hSrcDS, band);
@@ -57,24 +98,38 @@ int warp_operation_fast(const char *srcFilePath, const char *dstProjRef, double 
 		return 2;
 	}
 
-	double srcGeot[6];
+	double _srcGeot[6];
+	if(srcGeot == NULL) {
+		srcGeot = _srcGeot;
+	}
 	GDALGetGeoTransform(hSrcDS, srcGeot);
 
-	void *hTransformArg = GDALCreateGenImgProjTransformer3(srcProjRef, srcGeot, dstProjRef, dstGeot);
-	if(!hTransformArg) {
-		GDALClose(hSrcDS);
-		return 3;
+	void *hTransformArg  = NULL;
+	GDALTransformerFunc pTransFunc = GDALGenImgProjTransform;
+	int hasGeoLoc = geoLocOpts != NULL;
+	if(!hasGeoLoc) {
+		hTransformArg = GDALCreateGenImgProjTransformer3(srcProjRef, srcGeot, dstProjRef, dstGeot);
+		if(!hTransformArg) {
+			GDALClose(hSrcDS);
+			return 3;
+		}
+	} else {
+		hTransformArg = createGeoLocTransformer(srcProjRef, geoLocOpts, dstProjRef, dstGeot);
+		if(!hTransformArg) {
+			GDALClose(hSrcDS);
+			return 3;
+		}
 	}
 
 	double geotOut[6];
 	int nPixels;
 	int nLines;
 	double bbox[4];
-	int err = GDALSuggestedWarpOutput2(hSrcDS, GDALGenImgProjTransform, hTransformArg, geotOut, &nPixels, &nLines, bbox, 0);
+	int err = GDALSuggestedWarpOutput2(hSrcDS, pTransFunc, hTransformArg, geotOut, &nPixels, &nLines, bbox, 0);
 
 	int nOverviews = GDALGetOverviewCount(hBand);
 	int useOverview = 0;
-	if(err == CE_None && nOverviews > 0) {
+	if(!hasGeoLoc && err == CE_None && nOverviews > 0) {
 		double targetRatio = 1.0 / geotOut[1];
 		if(targetRatio > 1.0) {
 			int srcXSize = GDALGetRasterXSize(hSrcDS);
@@ -135,7 +190,7 @@ int warp_operation_fast(const char *srcFilePath, const char *dstProjRef, double 
 		dstYSize = maxY - minY + 1;
 	}
 
-	void *hApproxTransformArg = GDALCreateApproxTransformer(GDALGenImgProjTransform, hTransformArg, 0.125);
+	void *hApproxTransformArg = GDALCreateApproxTransformer(pTransFunc, hTransformArg, 0.125);
 
         int srcXSize = GDALGetRasterBandXSize(hBand);
         int srcYSize = GDALGetRasterBandYSize(hBand);
@@ -235,7 +290,7 @@ int warp_operation_fast(const char *srcFilePath, const char *dstProjRef, double 
         free(bSuccess);
 
 	GDALDestroyApproxTransformer(hApproxTransformArg);
-        GDALDestroyGenImgProjTransformer(hTransformArg);
+       	GDALDestroyGenImgProjTransformer(hTransformArg);
 
 	GDALClose(hSrcDS);
 	return 0;
@@ -365,12 +420,44 @@ func WarpRaster(in *pb.GeoRPCGranule, debug bool) *pb.Result {
 		return fmt.Sprintf("%v", msg)
 	}
 
+	var geoLocOpts []*C.char
+	var pGeoLoc **C.char
+	if len(in.GeoLocOpts) > 0 {
+		for _, opt := range in.GeoLocOpts {
+			geoLocOpts = append(geoLocOpts, C.CString(opt))
+		}
+
+		for _, opt := range geoLocOpts {
+			defer C.free(unsafe.Pointer(opt))
+		}
+		geoLocOpts = append(geoLocOpts, nil)
+
+		pGeoLoc = &geoLocOpts[0]
+	} else {
+		pGeoLoc = nil
+	}
+
+	var srcProjRefC *C.char
+	if len(in.SrcSRS) > 0 {
+		srcProjRefC = C.CString(in.SrcSRS)
+		defer C.free(unsafe.Pointer(srcProjRefC))
+	} else {
+		srcProjRefC = nil
+	}
+
+	var pSrcGeot *C.double
+	if len(in.SrcGeot) > 0 {
+		pSrcGeot = (*C.double)(&in.SrcGeot[0])
+	} else {
+		pSrcGeot = nil
+	}
+
 	var dstBboxC [4]C.int
 	var dstBufSize C.int
 	var dstBufC unsafe.Pointer
 	var noData float64
 	var dType C.GDALDataType
-	cErr := C.warp_operation_fast(filePathC, dstProjRefC, (*C.double)(&in.DstGeot[0]), C.int(in.Width), C.int(in.Height), C.int(in.Bands[0]), (*unsafe.Pointer)(&dstBufC), (*C.int)(&dstBufSize), (*C.int)(&dstBboxC[0]), (*C.double)(&noData), (*C.GDALDataType)(&dType))
+	cErr := C.warp_operation_fast(filePathC, srcProjRefC, pSrcGeot, pGeoLoc, dstProjRefC, (*C.double)(&in.DstGeot[0]), C.int(in.Width), C.int(in.Height), C.int(in.Bands[0]), (*unsafe.Pointer)(&dstBufC), (*C.int)(&dstBufSize), (*C.int)(&dstBboxC[0]), (*C.double)(&noData), (*C.GDALDataType)(&dType))
 	if cErr != 0 {
 		return &pb.Result{Error: dump(fmt.Sprintf("warp_operation() fail: %v", int(cErr)))}
 	}

@@ -6,6 +6,7 @@ import (
 	"io"
 	"io/ioutil"
 	"regexp"
+	"strconv"
 	"strings"
 	"text/template"
 	"time"
@@ -13,22 +14,33 @@ import (
 
 const ISOZeroTime = "0001-01-01T00:00:00.000Z"
 
+type AxisParam struct {
+	Name      string    `json:"name"`
+	Start     *float64  `json:"start,omitempty"`
+	End       *float64  `json:"end,omitempty"`
+	InValues  []float64 `json:"in_values,omitempty"`
+	Order     int       `json:"order,omitempty"`
+	Aggregate int       `json:"aggregate,omitempty"`
+}
+
 // WMSParams contains the serialised version
 // of the parameters contained in a WMS request.
 type WMSParams struct {
-	Service *string    `json:"service,omitempty"`
-	Request *string    `json:"request,omitempty"`
-	CRS     *string    `json:"crs,omitempty"`
-	BBox    []float64  `json:"bbox,omitempty"`
-	Format  *string    `json:"format,omitempty"`
-	X       *int       `json:"x,omitempty"`
-	Y       *int       `json:"y,omitempty"`
-	Height  *int       `json:"height,omitempty"`
-	Width   *int       `json:"width,omitempty"`
-	Time    *time.Time `json:"time,omitempty"`
-	Layers  []string   `json:"layers,omitempty"`
-	Styles  []string   `json:"styles,omitempty"`
-	Version *string    `json:"version,omitempty"`
+	Service  *string      `json:"service,omitempty"`
+	Request  *string      `json:"request,omitempty"`
+	CRS      *string      `json:"crs,omitempty"`
+	BBox     []float64    `json:"bbox,omitempty"`
+	Format   *string      `json:"format,omitempty"`
+	X        *int         `json:"x,omitempty"`
+	Y        *int         `json:"y,omitempty"`
+	Height   *int         `json:"height,omitempty"`
+	Width    *int         `json:"width,omitempty"`
+	Time     *time.Time   `json:"time,omitempty"`
+	Layers   []string     `json:"layers,omitempty"`
+	Styles   []string     `json:"styles,omitempty"`
+	Version  *string      `json:"version,omitempty"`
+	Axes     []*AxisParam `json:"axes,omitempty"`
+	BandExpr *BandExpressions
 }
 
 // WMSRegexpMap maps WMS request parameters to
@@ -46,6 +58,7 @@ var WMSRegexpMap = map[string]string{"service": `^WMS$`,
 	"y":       `^[0-9]+$`,
 	"width":   `^[0-9]+$`,
 	"height":  `^[0-9]+$`,
+	"axis":    `^[A-Za-z_][A-Za-z0-9_]*$`,
 	"time":    `^\d{4}-(?:1[0-2]|0[1-9])-(?:3[01]|0[1-9]|[12][0-9])T[0-2]\d:[0-5]\d:[0-5]\d\.\d+Z$`}
 
 // BBox2Geot return the geotransform from the
@@ -61,18 +74,6 @@ func CompileWMSRegexMap() map[string]*regexp.Regexp {
 	}
 
 	return REMap
-}
-
-func NormaliseKeys(params map[string][]string) map[string][]string {
-	// As in WMS 1.1.1 spec: http://cite.opengeospatial.org/OGCTestData/wms/1.1.1/spec/wms1.1.1.html#basic_elements.param_rules.order_and_case
-	// Parameter names shall not be case sensitive, but parameter values shall be case sensitive."
-	for key, value := range params {
-		if key != strings.ToLower(key) {
-			params[strings.ToLower(key)] = value
-			delete(params, key)
-		}
-	}
-	return params
 }
 
 func CheckWMSVersion(version string) bool {
@@ -176,10 +177,88 @@ func WMSParamsChecker(params map[string][]string, compREMap map[string]*regexp.R
 		}
 	}
 
+	var wmsParams WMSParams
+
+	axesInfo := []string{}
+	for key, val := range params {
+		if strings.HasPrefix(key, "dim_") {
+			if len(key) <= len("dim_") {
+				continue
+				return wmsParams, fmt.Errorf("no dimension specified")
+			}
+
+			axisName := key[len("dim_"):]
+			axisName = strings.TrimSpace(axisName)
+
+			if !compREMap["axis"].MatchString(axisName) {
+				return wmsParams, fmt.Errorf("invalid axis name: %v", key)
+			}
+
+			valFloat64, err := strconv.ParseFloat(val[0], 64)
+			if err != nil {
+				continue
+				return wmsParams, fmt.Errorf("the value '%v' for dimension '%v' is not float64", key, val)
+			}
+
+			axisVal := valFloat64
+
+			axesInfo = append(axesInfo, fmt.Sprintf(`{"name":"%s", "start":%f, "order":1, "aggregate": 1}`, axisName, axisVal))
+		}
+	}
+
+	jsonFields = append(jsonFields, fmt.Sprintf(`"axes":[%s]`, strings.Join(axesInfo, ",")))
 	jsonParams := fmt.Sprintf("{%s}", strings.Join(jsonFields, ","))
 
-	var wmsParams WMSParams
 	err := json.Unmarshal([]byte(jsonParams), &wmsParams)
+	if err != nil {
+		return wmsParams, err
+	}
+
+	if subsets, subsetsOK := params["subset"]; subsetsOK {
+		sub := strings.Join(subsets, ";")
+		axes, err := parseSubsetClause(sub, compREMap)
+		if err != nil {
+			return wmsParams, err
+		}
+
+		for _, axis := range axes {
+			wmsParams.Axes = append(wmsParams.Axes, axis)
+		}
+	}
+
+	foundTime := false
+	for _, axis := range wmsParams.Axes {
+		if axis.Name == "time" {
+			foundTime = true
+		}
+	}
+
+	if !foundTime {
+		wmsParams.Axes = append(wmsParams.Axes, &AxisParam{Name: "time", Aggregate: 1})
+	}
+
+	if rangeSubsets, rangeSubsetsOK := params["rangesubset"]; rangeSubsetsOK {
+		sub := strings.Join(rangeSubsets, ";")
+		parts := strings.Split(sub, ";")
+
+		var rangeSubs []string
+		for _, p := range parts {
+			p = strings.TrimSpace(p)
+			if len(p) < 1 {
+				continue
+			}
+
+			rangeSubs = append(rangeSubs, p)
+		}
+
+		bandExpr, err := ParseBandExpressions(rangeSubs)
+		if err != nil {
+			return wmsParams, fmt.Errorf("parsing error in band expressions: %v", err)
+		}
+
+		wmsParams.BandExpr = bandExpr
+	}
+
 	return wmsParams, err
 }
 

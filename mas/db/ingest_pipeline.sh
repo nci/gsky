@@ -82,23 +82,6 @@ then
 	assert_gpath $?
 fi
 
-idx=0
-for crawl_file in "$@"
-do
-	idx=$((idx+1))
-	if [ $idx -eq 1 ]
-	then
-		continue
-	fi
-
-	gpath_other=$(get_gpath "$crawl_file")
-	if [ "$gpath_other" != "$gpath" ]
-	then
-		echo "FATAL: different gpath, first gpath: ${gpath}, other gpath: ${gpath_other}"
-		exit 4
-	fi
-done
-
 export PGUSER=${PGUSER:-postgres}
 export PGHOST=${PGHOST:-''}
 export PGPORT=${PGPORT:-5432}

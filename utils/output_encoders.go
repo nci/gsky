@@ -318,6 +318,9 @@ func EncodeGdal(hDstDS C.GDALDatasetH, rs []Raster, xOff int, yOff int) error {
 		return fmt.Errorf("Error validating raster: %v", err)
 	}
 
+	resNameSpaceC := C.CString("long_name")
+	defer C.free(unsafe.Pointer(resNameSpaceC))
+
 	for i, r := range rs {
 		hBand := C.GDALGetRasterBand(hDstDS, C.int(i+1))
 		gerr := C.CPLErr(0)
@@ -327,6 +330,10 @@ func EncodeGdal(hDstDS C.GDALDatasetH, rs []Raster, xOff int, yOff int) error {
 				continue
 			}
 			C.GDALSetRasterNoDataValue(hBand, C.double(t.NoData))
+			varNameC := C.CString(t.NameSpace)
+			C.GDALSetMetadataItem(C.GDALMajorObjectH(hBand), resNameSpaceC, varNameC, nil)
+			C.free(unsafe.Pointer(varNameC))
+
 			gerr = C.GDALRasterIO(hBand, C.GF_Write, C.int(xOff), C.int(yOff), C.int(t.Width), C.int(t.Height), unsafe.Pointer(&t.Data[0]), C.int(t.Width), C.int(t.Height), C.GDT_Byte, 0, 0)
 
 		case *Int16Raster:
@@ -334,6 +341,10 @@ func EncodeGdal(hDstDS C.GDALDatasetH, rs []Raster, xOff int, yOff int) error {
 				continue
 			}
 			C.GDALSetRasterNoDataValue(hBand, C.double(t.NoData))
+			varNameC := C.CString(t.NameSpace)
+			C.GDALSetMetadataItem(C.GDALMajorObjectH(hBand), resNameSpaceC, varNameC, nil)
+			C.free(unsafe.Pointer(varNameC))
+
 			gerr = C.GDALRasterIO(hBand, C.GF_Write, C.int(xOff), C.int(yOff), C.int(t.Width), C.int(t.Height), unsafe.Pointer(&t.Data[0]), C.int(t.Width), C.int(t.Height), C.GDT_Int16, 0, 0)
 
 		case *UInt16Raster:
@@ -341,6 +352,10 @@ func EncodeGdal(hDstDS C.GDALDatasetH, rs []Raster, xOff int, yOff int) error {
 				continue
 			}
 			C.GDALSetRasterNoDataValue(hBand, C.double(t.NoData))
+			varNameC := C.CString(t.NameSpace)
+			C.GDALSetMetadataItem(C.GDALMajorObjectH(hBand), resNameSpaceC, varNameC, nil)
+			C.free(unsafe.Pointer(varNameC))
+
 			gerr = C.GDALRasterIO(hBand, C.GF_Write, C.int(xOff), C.int(yOff), C.int(t.Width), C.int(t.Height), unsafe.Pointer(&t.Data[0]), C.int(t.Width), C.int(t.Height), C.GDT_UInt16, 0, 0)
 
 		case *Float32Raster:
@@ -348,6 +363,10 @@ func EncodeGdal(hDstDS C.GDALDatasetH, rs []Raster, xOff int, yOff int) error {
 				continue
 			}
 			C.GDALSetRasterNoDataValue(hBand, C.double(t.NoData))
+			varNameC := C.CString(t.NameSpace)
+			C.GDALSetMetadataItem(C.GDALMajorObjectH(hBand), resNameSpaceC, varNameC, nil)
+			C.free(unsafe.Pointer(varNameC))
+
 			gerr = C.GDALRasterIO(hBand, C.GF_Write, C.int(xOff), C.int(yOff), C.int(t.Width), C.int(t.Height), unsafe.Pointer(&t.Data[0]), C.int(t.Width), C.int(t.Height), C.GDT_Float32, 0, 0)
 
 		default:

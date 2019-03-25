@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"github.com/nci/gsky/utils"
-	"regexp"
 	"sort"
 	"strings"
 	"time"
@@ -218,12 +217,14 @@ func getRaster(ctx context.Context, params utils.WMSParams, conf *utils.Config, 
 	params.BBox = []float64{xmin, ymin, xmax, ymax}
 
 	geoReq := &GeoTileRequest{ConfigPayLoad: ConfigPayLoad{NameSpaces: namespaces,
-		BandExpr:        bandExpr,
-		Mask:            styleLayer.Mask,
-		ZoomLimit:       conf.Layers[idx].ZoomLimit,
-		PolygonSegments: conf.Layers[idx].WmsPolygonSegments,
-		GrpcConcLimit:   conf.Layers[idx].GrpcWmsConcPerNode,
-		QueryLimit:      -1,
+		BandExpr:            bandExpr,
+		Mask:                styleLayer.Mask,
+		ZoomLimit:           conf.Layers[idx].ZoomLimit,
+		PolygonSegments:     conf.Layers[idx].WmsPolygonSegments,
+		GrpcConcLimit:       conf.Layers[idx].GrpcWmsConcPerNode,
+		QueryLimit:          -1,
+		UserSrcSRS:          conf.Layers[idx].UserSrcSRS,
+		UserSrcGeoTransform: conf.Layers[idx].UserSrcGeoTransform,
 	},
 		Collection: styleLayer.DataSource,
 		CRS:        *params.CRS,
@@ -232,6 +233,18 @@ func getRaster(ctx context.Context, params utils.WMSParams, conf *utils.Config, 
 		Width:      *params.Width,
 		StartTime:  params.Time,
 		EndTime:    endTime,
+	}
+
+	if len(params.Axes) > 0 {
+		geoReq.Axes = make(map[string]*GeoTileAxis)
+		for _, axis := range params.Axes {
+			geoReq.Axes[axis.Name] = &GeoTileAxis{Start: axis.Start, End: axis.End, InValues: axis.InValues, Order: axis.Order, Aggregate: axis.Aggregate}
+		}
+	}
+
+	if params.BandExpr != nil {
+		geoReq.ConfigPayLoad.NameSpaces = params.BandExpr.VarList
+		geoReq.ConfigPayLoad.BandExpr = params.BandExpr
 	}
 
 	ctx, ctxCancel := context.WithCancel(ctx)
@@ -278,20 +291,14 @@ func getRaster(ctx context.Context, params utils.WMSParams, conf *utils.Config, 
 		}
 	}
 
-	sort.Slice(pixelFiles, func(i, j int) bool { return pixelFiles[i].TimeStamp.Unix() < pixelFiles[j].TimeStamp.Unix() })
+	sort.Slice(pixelFiles, func(i, j int) bool { return pixelFiles[i].TimeStamp <= pixelFiles[j].TimeStamp })
 
 	var topDsFiles []string
 	fileDedup := make(map[string]bool)
-	reGdalDs := regexp.MustCompile(`[a-zA-Z0-9\-_]+:"(.*)":.*`)
 	for i, ds := range pixelFiles {
-		dsFile := ds.Path
+		dsFile := ds.RawPath
 		if len(dsFile) == 0 {
 			continue
-		}
-
-		matches := reGdalDs.FindStringSubmatch(ds.Path)
-		if len(matches) > 1 {
-			dsFile = matches[1]
 		}
 
 		_, found := fileDedup[dsFile]

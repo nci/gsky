@@ -1,17 +1,56 @@
 package extractor
 
 const (
-	NSPath uint = iota
-	NSDataset
-	NSCombine
+	NSPath    string = "ns_path"
+	NSDataset string = "ns_dataset"
+	NSCombine string = "ns_combine"
 )
 
+type GeoLocRule struct {
+	XDatasetPattern  string `json:"x_dataset_pattern"`
+	XDatasetTemplate string `json:"x_dataset_template"`
+	XBand            *int   `json:"x_band"`
+	YDatasetPattern  string `json:"y_dataset_pattern"`
+	YDatasetTemplate string `json:"y_dataset_template"`
+	YBand            *int   `json:"y_band"`
+	LineOffset       *int   `json:"line_offset"`
+	PixelOffset      *int   `json:"pixel_offset"`
+	PixelStep        *int   `json:"pixel_step"`
+	LineStep         *int   `json:"line_step"`
+}
+
 type RuleSet struct {
-	Collection string
-	NameSpace  uint
-	SRSText    string
-	Proj4Text  string
-	Pattern    string
+	Collection   string       `json:"collection"`
+	NameSpace    string       `json:"namespace"`
+	SRSText      string       `json:"srs_text"`
+	Proj4Text    string       `json:"proj4_text"`
+	Pattern      string       `json:"pattern"`
+	ComputeStats bool         `json:"compute_stats"`
+	TimeAxis     *DatasetAxis `json:"time_axis"`
+	TimeUnits    string       `json:"time_units"`
+	BBox         []float64    `json:"bbox"`
+	GeoLoc       *GeoLocRule  `json:"geo_loc"`
+}
+
+/***** An example config file for the eReefs dataset
+
+{
+  "rule_sets":[
+    {
+      "namespace": "ns_dataset",
+      "srs_text": "GEOGCS[\"WGS 84\",DATUM[\"WGS_1984\",SPHEROID[\"WGS 84\",6378137,298.257223563,AUTHORITY[\"EPSG\",\"7030\"]],TOWGS84[0,0,0,0,0,0,0],AUTHORITY[\"EPSG\",\"6326\"]],PRIMEM[\"Greenwich\",0,AUTHORITY[\"EPSG\",\"8901\"]],UNIT[\"degree\",0.0174532925199433,AUTHORITY[\"EPSG\",\"9108\"]],AUTHORITY[\"EPSG\",\"4326\"]]",
+      "proj4_text": "+proj=longlat +ellps=WGS84 +towgs84=0,0,0,0,0,0,0 +no_defs ",
+      "pattern": "roms",
+      "time_axis": { "name": "ocean_time" },
+      "bbox": [-180, 90, 180, 90]
+    }
+  ]
+}
+
+*****/
+
+type Config struct {
+	RuleSets []RuleSet `json:"rule_sets"`
 }
 
 const (
@@ -27,136 +66,173 @@ const (
 
 var CollectionRuleSets = []RuleSet{
 	RuleSet{
-		"landsat",
-		NSDataset,
-		SRSDetect,
-		Proj4Detect,
-		`LC(?P<mission>\d)(?P<path>\d\d\d)(?P<row>\d\d\d)(?P<year>\d\d\d\d)(?P<julian_day>\d\d\d)(?P<processing_level>[a-zA-Z0-9]+)_(?P<band>[a-zA-Z0-9]+)`,
+		Collection: "landsat",
+		NameSpace:  NSDataset,
+		SRSText:    SRSDetect,
+		Proj4Text:  Proj4Detect,
+		Pattern:    `LC(?P<mission>\d)(?P<path>\d\d\d)(?P<row>\d\d\d)(?P<year>\d\d\d\d)(?P<julian_day>\d\d\d)(?P<processing_level>[a-zA-Z0-9]+)_(?P<band>[a-zA-Z0-9]+)`,
+		TimeAxis:   &DatasetAxis{},
 	},
 	RuleSet{
-		"modis43A4",
-		NSDataset,
-		SRSDetect,
-		Proj4Detect,
-		`^LHTC_(?P<year>\d\d\d\d)(?P<julian_day>\d\d\d).(?P<horizontal>h\d\d)(?P<vertical>v\d\d).(?P<resolution>\d\d\d).[0-9]+`,
+		Collection: "modis43A4",
+		NameSpace:  NSDataset,
+		SRSText:    SRSDetect,
+		Proj4Text:  Proj4Detect,
+		Pattern:    `^LHTC_(?P<year>\d\d\d\d)(?P<julian_day>\d\d\d).(?P<horizontal>h\d\d)(?P<vertical>v\d\d).(?P<resolution>\d\d\d).[0-9]+`,
+		TimeAxis:   &DatasetAxis{},
 	},
 	RuleSet{
-		"lhtc",
-		NSCombine,
-		SRSDetect,
-		Proj4Detect,
-		`^COMPOSITE_(?P<namespace>LOW|HIGH).+_PER_20.nc$`,
+		Collection: "lhtc",
+		NameSpace:  NSCombine,
+		SRSText:    SRSDetect,
+		Proj4Text:  Proj4Detect,
+		Pattern:    `^COMPOSITE_(?P<namespace>LOW|HIGH).+_PER_20.nc$`,
+		TimeAxis:   &DatasetAxis{},
 	},
 	RuleSet{
-		"modis1",
-		NSDataset,
-		SRSDetect,
-		Proj4Detect,
-		`^(?P<product>MCD\d\d[A-Z]\d).A(?P<year>\d\d\d\d)(?P<julian_day>\d\d\d).(?P<horizontal>h\d\d)(?P<vertical>v\d\d).(?P<resolution>\d\d\d).[0-9]+`,
+		Collection: "modis1",
+		NameSpace:  NSDataset,
+		SRSText:    SRSDetect,
+		Proj4Text:  Proj4Detect,
+		Pattern:    `^(?P<product>MCD\d\d[A-Z]\d).A(?P<year>\d\d\d\d)(?P<julian_day>\d\d\d).(?P<horizontal>h\d\d)(?P<vertical>v\d\d).(?P<resolution>\d\d\d).[0-9]+`,
+		TimeAxis:   &DatasetAxis{},
 	},
 	RuleSet{
-		"modis-fc",
-		NSPath,
-		SRSDetect,
-		Proj4Detect,
-		`^(?P<product>FC).v302.(?P<collection>MCD43A4).h(?P<horizontal>\d\d)v(?P<vertical>\d\d).(?P<year>\d\d\d\d).(?P<resolution>\d\d\d).(?P<namespace>[A-Z0-9]+).jp2$`,
+		Collection: "modis-fc",
+		NameSpace:  NSPath,
+		SRSText:    SRSDetect,
+		Proj4Text:  Proj4Detect,
+		Pattern:    `^(?P<product>FC).v302.(?P<collection>MCD43A4).h(?P<horizontal>\d\d)v(?P<vertical>\d\d).(?P<year>\d\d\d\d).(?P<resolution>\d\d\d).(?P<namespace>[A-Z0-9]+).jp2$`,
+		TimeAxis:   &DatasetAxis{},
 	},
 	RuleSet{
-		"modis2",
-		NSDataset,
-		SRSDetect,
-		Proj4Detect,
-		`M(?P<satellite>[OD|YD])(?P<product>[0-9]+_[A-Z0-9]+).A[0-9]+.[0-9]+.(?P<collection_version>\d\d\d).(?P<year>\d\d\d\d)(?P<julian_day>\d\d\d)(?P<hour>\d\d)(?P<minute>\d\d)(?P<second>\d\d)`,
+		Collection: "modis2",
+		NameSpace:  NSDataset,
+		SRSText:    SRSDetect,
+		Proj4Text:  Proj4Detect,
+		Pattern:    `M(?P<satellite>[OD|YD])(?P<product>[0-9]+_[A-Z0-9]+).A[0-9]+.[0-9]+.(?P<collection_version>\d\d\d).(?P<year>\d\d\d\d)(?P<julian_day>\d\d\d)(?P<hour>\d\d)(?P<minute>\d\d)(?P<second>\d\d)`,
+		TimeAxis:   &DatasetAxis{},
 	},
 	RuleSet{
-		"modisJP",
-		NSDataset,
-		SRSDetect,
-		Proj4Detect,
-		`^(?P<product>FC).v302.(?P<root_product>MCD\d\d[A-Z]\d).h(?P<horizontal>\d\d)v(?P<vertical>\d\d).(?P<year>\d\d\d\d).(?P<resolution>\d\d\d).`,
+		Collection: "modisJP",
+		NameSpace:  NSDataset,
+		SRSText:    SRSDetect,
+		Proj4Text:  Proj4Detect,
+		Pattern:    `^(?P<product>FC).v302.(?P<root_product>MCD\d\d[A-Z]\d).h(?P<horizontal>\d\d)v(?P<vertical>\d\d).(?P<year>\d\d\d\d).(?P<resolution>\d\d\d).`,
+		TimeAxis:   &DatasetAxis{},
 	},
 	RuleSet{
-		"sentinel2",
-		NSPath,
-		SRSDetect,
-		Proj4Detect,
-		`^T(?P<zone>\d\d)(?P<sensor>[A-Z]+)_(?P<year>\d\d\d\d)(?P<month>\d\d)(?P<day>\d\d)T(?P<hour>\d\d)(?P<minute>\d\d)(?P<second>\d\d)_(?P<namespace>B\d\d).jp2$`,
+		Collection: "sentinel2",
+		NameSpace:  NSPath,
+		SRSText:    SRSDetect,
+		Proj4Text:  Proj4Detect,
+		Pattern:    `^T(?P<zone>\d\d)(?P<sensor>[A-Z]+)_(?P<year>\d\d\d\d)(?P<month>\d\d)(?P<day>\d\d)T(?P<hour>\d\d)(?P<minute>\d\d)(?P<second>\d\d)_(?P<namespace>B\d\d).jp2$`,
+		TimeAxis:   &DatasetAxis{},
 	},
 	RuleSet{
-		"modisJP_LR",
-		NSDataset,
-		SRSDetect,
-		Proj4Detect,
-		`^(?P<product>FC_LR).v302.(?P<root_product>MCD\d\d[A-Z]\d).h(?P<horizontal>\d\d)v(?P<vertical>\d\d).(?P<year>\d\d\d\d).(?P<resolution>\d\d\d).`,
+		Collection: "modisJP_LR",
+		NameSpace:  NSDataset,
+		SRSText:    SRSDetect,
+		Proj4Text:  Proj4Detect,
+		Pattern:    `^(?P<product>FC_LR).v302.(?P<root_product>MCD\d\d[A-Z]\d).h(?P<horizontal>\d\d)v(?P<vertical>\d\d).(?P<year>\d\d\d\d).(?P<resolution>\d\d\d).`,
+		TimeAxis:   &DatasetAxis{},
 	},
 	RuleSet{
-		"himawari8",
-		NSDataset,
-		SRSDetect,
-		Proj4Detect,
-		`^(?P<year>\d\d\d\d)(?P<month>\d\d)(?P<day>\d\d)(?P<hour>\d\d)(?P<minute>\d\d)(?P<second>\d\d)-P1S-(?P<product>ABOM[0-9A-Z_]+)-PRJ_GEOS141_(?P<resolution>\d+)-HIMAWARI8-AHI`,
+		Collection: "himawari8",
+		NameSpace:  NSDataset,
+		SRSText:    SRSDetect,
+		Proj4Text:  Proj4Detect,
+		Pattern:    `^(?P<year>\d\d\d\d)(?P<month>\d\d)(?P<day>\d\d)(?P<hour>\d\d)(?P<minute>\d\d)(?P<second>\d\d)-P1S-(?P<product>ABOM[0-9A-Z_]+)-PRJ_GEOS141_(?P<resolution>\d+)-HIMAWARI8-AHI`,
+		TimeAxis:   &DatasetAxis{},
 	},
 	RuleSet{
-		"agdc_landsat1",
-		NSDataset,
-		SRSDetect,
-		Proj4Detect,
-		`LS(?P<mission>\d)_(?P<sensor>[A-Z]+)_(?P<correction>[A-Z]+)_(?P<epsg>\d+)_(?P<x_coord>-?\d+)_(?P<y_coord>-?\d+)_(?P<year>\d\d\d\d).`,
+		Collection: "agdc_landsat1",
+		NameSpace:  NSDataset,
+		SRSText:    SRSDetect,
+		Proj4Text:  Proj4Detect,
+		Pattern:    `LS(?P<mission>\d)_(?P<sensor>[A-Z]+)_(?P<correction>[A-Z]+)_(?P<epsg>\d+)_(?P<x_coord>-?\d+)_(?P<y_coord>-?\d+)_(?P<year>\d\d\d\d).`,
+		TimeAxis:   &DatasetAxis{},
 	},
 	RuleSet{
-		"elevation_ga",
-		NSDataset,
-		SRSDetect,
-		Proj4Detect,
-		`^Elevation_1secSRTM_DEMs_v1.0_DEM-S_Tiles_e(?P<longitude>\d+)s(?P<latitude>\d+)dems.nc$`,
+		Collection: "elevation_ga",
+		NameSpace:  NSDataset,
+		SRSText:    SRSDetect,
+		Proj4Text:  Proj4Detect,
+		Pattern:    `^Elevation_1secSRTM_DEMs_v1.0_DEM-S_Tiles_e(?P<longitude>\d+)s(?P<latitude>\d+)dems.nc$`,
+		TimeAxis:   &DatasetAxis{},
 	},
 	RuleSet{
-		"chirps2.0",
-		NSPath,
-		SRSWGS84,
-		Proj4WGS84,
-		`^(?P<namespace>chirps)-v2.0.(?P<year>\d\d\d\d).dekads.nc$`,
+		Collection: "chirps2.0",
+		NameSpace:  NSPath,
+		SRSText:    SRSWGS84,
+		Proj4Text:  Proj4WGS84,
+		Pattern:    `^(?P<namespace>chirps)-v2.0.(?P<year>\d\d\d\d).dekads.nc$`,
+		TimeAxis:   &DatasetAxis{},
 	},
 	RuleSet{
-		"era-interim",
-		NSPath,
-		SRSDetect,
-		Proj4Detect,
-		`^(?P<namespace>[a-z0-9]+)_(?P<accum>\dhrs)_ERAI_historical_(?P<levels>[a-z\-]+)_(?P<start_year>\d\d\d\d)(?P<start_month>\d\d)(?P<start_day>\d\d)_(?P<end_year>\d\d\d\d)(?P<end_month>\d\d)(?P<end_day>\d\d).nc$`,
+		Collection: "era-interim",
+		NameSpace:  NSPath,
+		SRSText:    SRSDetect,
+		Proj4Text:  Proj4Detect,
+		Pattern:    `^(?P<namespace>[a-z0-9]+)_(?P<accum>\dhrs)_ERAI_historical_(?P<levels>[a-z\-]+)_(?P<start_year>\d\d\d\d)(?P<start_month>\d\d)(?P<start_day>\d\d)_(?P<end_year>\d\d\d\d)(?P<end_month>\d\d)(?P<end_day>\d\d).nc$`,
+		TimeAxis:   &DatasetAxis{},
 	},
 	RuleSet{
-		"agdc_landsat2",
-		NSDataset,
-		SRSDetect,
-		Proj4Detect,
-		`LS(?P<mission>\d)_OLI_(?P<sensor>[A-Z]+)_(?P<product>[A-Z]+)_(?P<epsg>\d+)_(?P<x_coord>-?\d+)_(?P<y_coord>-?\d+)_(?P<year>\d\d\d\d).`,
+		Collection: "agdc_landsat2",
+		NameSpace:  NSDataset,
+		SRSText:    SRSDetect,
+		Proj4Text:  Proj4Detect,
+		Pattern:    `LS(?P<mission>\d)_OLI_(?P<sensor>[A-Z]+)_(?P<product>[A-Z]+)_(?P<epsg>\d+)_(?P<x_coord>-?\d+)_(?P<y_coord>-?\d+)_(?P<year>\d\d\d\d).`,
+		TimeAxis:   &DatasetAxis{},
 	},
 	RuleSet{
-		"agdc_dem",
-		NSDataset,
-		SRSDetect,
-		Proj4Detect,
-		`SRTM_(?P<product>[A-Z]+)_(?P<x_coord>-?\d+)_(?P<y_coord>-?\d+)_(?P<year>\d\d\d\d)(?P<month>\d\d)(?P<day>\d\d)(?P<hour>\d\d)(?P<minute>\d\d)(?P<second>\d\d)`,
+		Collection: "agdc_dem",
+		NameSpace:  NSDataset,
+		SRSText:    SRSDetect,
+		Proj4Text:  Proj4Detect,
+		Pattern:    `SRTM_(?P<product>[A-Z]+)_(?P<x_coord>-?\d+)_(?P<y_coord>-?\d+)_(?P<year>\d\d\d\d)(?P<month>\d\d)(?P<day>\d\d)(?P<hour>\d\d)(?P<minute>\d\d)(?P<second>\d\d)`,
+		TimeAxis:   &DatasetAxis{},
 	},
 	RuleSet{
-		"sentinel2_ard_nbar_nbart",
-		NSPath,
-		SRSDetect,
-		Proj4Detect,
-		`_(?P<year>\d\d\d\d)(?P<month>\d\d)(?P<day>\d\d)T(?P<hour>\d\d)(?P<minute>\d\d)(?P<second>\d\d).*_(?P<namespace>NBART?[\w\d_]+)\.TIF`,
+		Collection: "sentinel2_ard_nbar_nbart",
+		NameSpace:  NSPath,
+		SRSText:    SRSDetect,
+		Proj4Text:  Proj4Detect,
+		Pattern:    `_(?P<year>\d\d\d\d)(?P<month>\d\d)(?P<day>\d\d)T(?P<hour>\d\d)(?P<minute>\d\d)(?P<second>\d\d).*_(?P<namespace>NBART?[\w\d_]+)\.TIF`,
+		TimeAxis:   &DatasetAxis{},
 	},
 	RuleSet{
-		"sentinel2_ard_qa_supp",
-		NSPath,
-		SRSDetect,
-		Proj4Detect,
-		`_(?P<year>\d\d\d\d)(?P<month>\d\d)(?P<day>\d\d)T(?P<hour>\d\d)(?P<minute>\d\d)(?P<second>\d\d)_.+0\d_(?P<namespace>[\w\d_]+)\.TIF`,
+		Collection: "sentinel2_ard_qa_supp",
+		NameSpace:  NSPath,
+		SRSText:    SRSDetect,
+		Proj4Text:  Proj4Detect,
+		Pattern:    `_(?P<year>\d\d\d\d)(?P<month>\d\d)(?P<day>\d\d)T(?P<hour>\d\d)(?P<minute>\d\d)(?P<second>\d\d)_.+0\d_(?P<namespace>[\w\d_]+)\.TIF`,
+		TimeAxis:   &DatasetAxis{},
 	},
 	RuleSet{
-		"default",
-		NSDataset,
-		SRSDetect,
-		Proj4Detect,
-		`.+`,
+		Collection: "barra",
+		NameSpace:  NSDataset,
+		SRSText:    SRSDetect,
+		Proj4Text:  Proj4Detect,
+		Pattern:    `(?P<year>\d\d\d\d)(?P<month>\d\d)(?P<day>\d\d)T(?P<hour>\d\d)(?P<minute>\d\d)Z\.nc`,
+		TimeAxis:   &DatasetAxis{Shape: []int{1}, Strides: []int{0}},
+	},
+	RuleSet{
+		Collection: "ereef",
+		NameSpace:  NSDataset,
+		SRSText:    SRSWGS84,
+		Proj4Text:  Proj4WGS84,
+		Pattern:    `roms`,
+		TimeAxis:   &DatasetAxis{Name: "ocean_time"},
+		BBox:       []float64{-180, 90, 180, -90},
+		GeoLoc:     &GeoLocRule{XDatasetPattern: `(?P<filename>.*)`, XDatasetTemplate: `NETCDF:"{{ .filename }}":lon_v`, YDatasetPattern: `(?P<filename>.*)`, YDatasetTemplate: `NETCDF:"{{ .filename }}":lat_v`},
+	},
+	RuleSet{
+		Collection: "default",
+		NameSpace:  NSDataset,
+		SRSText:    SRSDetect,
+		Proj4Text:  Proj4Detect,
+		Pattern:    `.+`,
+		TimeAxis:   &DatasetAxis{},
 	},
 }

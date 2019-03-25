@@ -16,6 +16,7 @@ message GeoRPCGranule {
     string dstSRS = 9;
     repeated double dstGeot = 10;
     int32 bandStrides = 11;
+    repeated string geoLocOpts = 12;
 }
 
 message Raster {

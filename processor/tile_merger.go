@@ -9,7 +9,7 @@ import (
 	"reflect"
 	"sort"
 	"strconv"
-	"time"
+	"strings"
 	"unsafe"
 
 	"github.com/nci/gsky/utils"
@@ -45,7 +45,7 @@ func MergeMaskedRaster(r *FlexRaster, canvasMap map[string]*FlexRaster, mask []b
 		data := *(*[]uint8)(unsafe.Pointer(&header))
 		nodata := uint8(r.NoData)
 
-		if r.TimeStamp.Before(canvasMap[r.NameSpace].TimeStamp) {
+		if r.TimeStamp < canvasMap[r.NameSpace].TimeStamp {
 			iSrc := 0
 			for ir := 0; ir < r.DataHeight; ir++ {
 				for ic := 0; ic < r.DataWidth; ic++ {
@@ -83,7 +83,7 @@ func MergeMaskedRaster(r *FlexRaster, canvasMap map[string]*FlexRaster, mask []b
 		data := *(*[]int16)(unsafe.Pointer(&header))
 		nodata := int16(r.NoData)
 
-		if r.TimeStamp.Before(canvasMap[r.NameSpace].TimeStamp) {
+		if r.TimeStamp < canvasMap[r.NameSpace].TimeStamp {
 			iSrc := 0
 			for ir := 0; ir < r.DataHeight; ir++ {
 				for ic := 0; ic < r.DataWidth; ic++ {
@@ -121,7 +121,7 @@ func MergeMaskedRaster(r *FlexRaster, canvasMap map[string]*FlexRaster, mask []b
 		data := *(*[]uint16)(unsafe.Pointer(&header))
 		nodata := uint16(r.NoData)
 
-		if r.TimeStamp.Before(canvasMap[r.NameSpace].TimeStamp) {
+		if r.TimeStamp < canvasMap[r.NameSpace].TimeStamp {
 			iSrc := 0
 			for ir := 0; ir < r.DataHeight; ir++ {
 				for ic := 0; ic < r.DataWidth; ic++ {
@@ -159,7 +159,7 @@ func MergeMaskedRaster(r *FlexRaster, canvasMap map[string]*FlexRaster, mask []b
 		data := *(*[]float32)(unsafe.Pointer(&header))
 		nodata := float32(r.NoData)
 
-		if r.TimeStamp.Before(canvasMap[r.NameSpace].TimeStamp) {
+		if r.TimeStamp < canvasMap[r.NameSpace].TimeStamp {
 			iSrc := 0
 			for ir := 0; ir < r.DataHeight; ir++ {
 				for ic := 0; ic < r.DataWidth; ic++ {
@@ -237,8 +237,8 @@ func initNoDataSlice(rType string, noDataValue float64, size int) []uint8 {
 
 }
 
-func ProcessRasterStack(rasterStack map[int64][]*FlexRaster, maskMap map[int64][]bool, canvasMap map[string]*FlexRaster) (map[string]*FlexRaster, error) {
-	var keys []int64
+func ProcessRasterStack(rasterStack map[float64][]*FlexRaster, maskMap map[float64][]bool, canvasMap map[string]*FlexRaster) (map[string]*FlexRaster, error) {
+	var keys []float64
 	for k := range rasterStack {
 		keys = append(keys, k)
 	}
@@ -249,7 +249,7 @@ func ProcessRasterStack(rasterStack map[int64][]*FlexRaster, maskMap map[int64][
 		for _, r := range rasterStack[geoStamp] {
 			if _, ok := canvasMap[r.NameSpace]; !ok {
 				// Raster namespace doesn't have a canvas yet
-				canvasMap[r.NameSpace] = &FlexRaster{TimeStamp: time.Time{}, ConfigPayLoad: r.ConfigPayLoad,
+				canvasMap[r.NameSpace] = &FlexRaster{TimeStamp: 0, ConfigPayLoad: r.ConfigPayLoad,
 					NoData: r.NoData, Data: initNoDataSlice(r.Type, r.NoData, r.Width*r.Height),
 					Height: r.Height, Width: r.Width, OffX: r.OffX, OffY: r.OffY,
 					Type: r.Type, NameSpace: r.NameSpace}
@@ -391,8 +391,8 @@ func (enc *RasterMerger) Run(polyLimiter *ConcLimiter, bandExpr *utils.BandExpre
 		default:
 		}
 
-		maskMap := map[int64][]bool{}
-		rasterStack := map[int64][]*FlexRaster{}
+		maskMap := map[float64][]bool{}
+		rasterStack := map[float64][]*FlexRaster{}
 
 		for _, r := range inRasters {
 			if r == nil {
@@ -401,7 +401,7 @@ func (enc *RasterMerger) Run(polyLimiter *ConcLimiter, bandExpr *utils.BandExpre
 
 			h := fnv.New32a()
 			h.Write([]byte(r.Polygon))
-			geoStamp := r.TimeStamp.UnixNano() + int64(h.Sum32())
+			geoStamp := r.TimeStamp + float64(h.Sum32())
 
 			// Raster namespace is identified as Mask
 			if r.Mask != nil && r.Mask.ID == r.NameSpace {
@@ -452,8 +452,40 @@ func (enc *RasterMerger) Run(polyLimiter *ConcLimiter, bandExpr *utils.BandExpre
 	hasExpr := (nameSpaces[0] != "EmptyTile") && (len(bandExpr.Expressions) > 0)
 
 	nOut := len(nameSpaces)
+
+	type Axis2BandVar struct {
+		Name string
+		Idx  int
+	}
+
+	axisNsLookup := make(map[string][]*Axis2BandVar)
+	axisList := make([]string, 0)
+
 	if hasExpr {
-		nOut = len(bandExpr.Expressions)
+		for i, ns := range nameSpaces {
+			parts := strings.Split(ns, "#")
+
+			var varNs, axisNs string
+			if len(parts) > 1 {
+				varNs = parts[0]
+				axisNs = parts[1]
+			} else {
+				varNs = ns
+				axisNs = "singular"
+			}
+
+			_, found := axisNsLookup[axisNs]
+			if !found {
+				axisNsLookup[axisNs] = make([]*Axis2BandVar, 0)
+				axisList = append(axisList, axisNs)
+			}
+
+			axisNsLookup[axisNs] = append(axisNsLookup[axisNs], &Axis2BandVar{Name: varNs, Idx: i})
+
+		}
+
+		nAxis := len(axisNsLookup)
+		nOut = len(bandExpr.Expressions) * nAxis
 	}
 
 	out := make([]utils.Raster, nOut)
@@ -528,69 +560,82 @@ func (enc *RasterMerger) Run(polyLimiter *ConcLimiter, bandExpr *utils.BandExpre
 	}
 
 	if hasExpr {
-		parameters := make(map[string]interface{}, len(bandVars))
-
 		width := canvasMap[nameSpaces[0]].Width
 		height := canvasMap[nameSpaces[0]].Height
 		noData := bandVars[0].NoData
-		noDataMasks := make([]bool, width*height)
-		for i := 0; i < len(noDataMasks); i++ {
-			noDataMasks[i] = true
-		}
 
-		for i, ns := range nameSpaces {
-			parameters[ns] = bandVars[i].Data
-
-			for j := 0; j < len(noDataMasks); j++ {
-				if float64(bandVars[i].Data[j]) == bandVars[i].NoData {
-					noDataMasks[j] = false
-				}
-			}
-		}
-
+		iOut := 0
 		for iv := range bandExpr.Expressions {
-			result, err := bandExpr.Expressions[iv].Evaluate(parameters)
-			if err != nil {
-				enc.sendError(fmt.Errorf("bandExpr '%v' error: %v", bandExpr.ExprText[iv], err))
-				return
-			}
+			for _, axisNs := range axisList {
+				axisVars := axisNsLookup[axisNs]
 
-			outRaster := &utils.Float32Raster{NoData: noData, Data: make([]float32, len(noDataMasks)),
-				Width: width, Height: height, NameSpace: bandExpr.ExprNames[iv]}
-			out[iv] = outRaster
-
-			resScal, isScal := result.(float32)
-			if isScal {
-				for i := range outRaster.Data {
-					if noDataMasks[i] {
-						outRaster.Data[i] = resScal
-					} else {
-						outRaster.Data[i] = float32(noData)
-					}
+				noDataMasks := make([]bool, width*height)
+				for i := 0; i < len(noDataMasks); i++ {
+					noDataMasks[i] = true
 				}
-				continue
-			}
 
-			resArr, isArr := result.([]float32)
-			if isArr {
-				for i := range outRaster.Data {
-					if noDataMasks[i] {
-						if math.IsInf(float64(resArr[i]), 0) || math.IsNaN(float64(resArr[i])) {
-							outRaster.Data[i] = float32(noData)
-						} else {
-							outRaster.Data[i] = resArr[i]
+				parameters := make(map[string]interface{})
+				for _, v := range axisVars {
+					parameters[v.Name] = bandVars[v.Idx].Data
+
+					for j := 0; j < len(noDataMasks); j++ {
+						if float64(bandVars[v.Idx].Data[j]) == bandVars[v.Idx].NoData {
+							noDataMasks[j] = false
 						}
-					} else {
-						outRaster.Data[i] = float32(noData)
 					}
+					//log.Printf("   %v: %v, %v", axisNs, v.Name, v.Idx)
 				}
-				continue
+
+				result, err := bandExpr.Expressions[iv].Evaluate(parameters)
+				if err != nil {
+					enc.sendError(fmt.Errorf("bandExpr '%v' error: %v", bandExpr.ExprText[iv], err))
+					return
+				}
+
+				outNameSpace := bandExpr.ExprNames[iv]
+				if axisNs != "singular" {
+					outNameSpace += "#" + axisNs
+				}
+				//log.Printf(" %v, %v, %v, uuuu %v", iv, iOut, len(out), outNameSpace)
+
+				outRaster := &utils.Float32Raster{NoData: noData, Data: make([]float32, len(noDataMasks)),
+					Width: width, Height: height, NameSpace: outNameSpace}
+				out[iOut] = outRaster
+				iOut++
+
+				resScal, isScal := result.(float32)
+				if isScal {
+					for i := range outRaster.Data {
+						if noDataMasks[i] {
+							outRaster.Data[i] = resScal
+						} else {
+							outRaster.Data[i] = float32(noData)
+						}
+					}
+					continue
+				}
+
+				resArr, isArr := result.([]float32)
+				if isArr {
+					for i := range outRaster.Data {
+						if noDataMasks[i] {
+							if math.IsInf(float64(resArr[i]), 0) || math.IsNaN(float64(resArr[i])) {
+								outRaster.Data[i] = float32(noData)
+							} else {
+								outRaster.Data[i] = resArr[i]
+							}
+						} else {
+							outRaster.Data[i] = float32(noData)
+						}
+					}
+					continue
+				}
+
+				enc.sendError(fmt.Errorf("unknown data type for returned value '%v' for expression '%v'", result, bandExpr.ExprText[iv]))
+				return
+
 			}
-
-			enc.sendError(fmt.Errorf("unknown data type for returned value '%v' for expression '%v'", result, bandExpr.ExprText[iv]))
-			return
 		}
-
 	}
 
 	enc.Out <- out

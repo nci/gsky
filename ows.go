@@ -266,10 +266,12 @@ func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r
 				Scale: styleLayer.ScaleValue,
 				Clip:  styleLayer.ClipValue,
 			},
-			ZoomLimit:       conf.Layers[idx].ZoomLimit,
-			PolygonSegments: conf.Layers[idx].WmsPolygonSegments,
-			GrpcConcLimit:   conf.Layers[idx].GrpcWmsConcPerNode,
-			QueryLimit:      -1,
+			ZoomLimit:           conf.Layers[idx].ZoomLimit,
+			PolygonSegments:     conf.Layers[idx].WmsPolygonSegments,
+			GrpcConcLimit:       conf.Layers[idx].GrpcWmsConcPerNode,
+			QueryLimit:          -1,
+			UserSrcSRS:          conf.Layers[idx].UserSrcSRS,
+			UserSrcGeoTransform: conf.Layers[idx].UserSrcGeoTransform,
 		},
 			Collection: styleLayer.DataSource,
 			CRS:        *params.CRS,
@@ -278,6 +280,18 @@ func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r
 			Width:      *params.Width,
 			StartTime:  params.Time,
 			EndTime:    endTime,
+		}
+
+		if len(params.Axes) > 0 {
+			geoReq.Axes = make(map[string]*proc.GeoTileAxis)
+			for _, axis := range params.Axes {
+				geoReq.Axes[axis.Name] = &proc.GeoTileAxis{Start: axis.Start, End: axis.End, InValues: axis.InValues, Order: axis.Order, Aggregate: axis.Aggregate}
+			}
+		}
+
+		if params.BandExpr != nil {
+			geoReq.ConfigPayLoad.NameSpaces = params.BandExpr.VarList
+			geoReq.ConfigPayLoad.BandExpr = params.BandExpr
 		}
 
 		ctx, ctxCancel := context.WithCancel(ctx)
@@ -518,7 +532,7 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 			return
 		} else if styleIdx < 0 {
 			styleCount := len(conf.Layers[idx].Styles)
-			if styleCount > 1 {
+			if styleCount > 1 && params.BandExpr == nil {
 				Error.Printf("WCS style not specified")
 				http.Error(w, "WCS style not specified", 400)
 				return
@@ -551,10 +565,12 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 					Scale: styleLayer.ScaleValue,
 					Clip:  styleLayer.ClipValue,
 				},
-				ZoomLimit:       0.0,
-				PolygonSegments: conf.Layers[idx].WcsPolygonSegments,
-				GrpcConcLimit:   conf.Layers[idx].GrpcWcsConcPerNode,
-				QueryLimit:      -1,
+				ZoomLimit:           0.0,
+				PolygonSegments:     conf.Layers[idx].WcsPolygonSegments,
+				GrpcConcLimit:       conf.Layers[idx].GrpcWcsConcPerNode,
+				QueryLimit:          -1,
+				UserSrcSRS:          conf.Layers[idx].UserSrcSRS,
+				UserSrcGeoTransform: conf.Layers[idx].UserSrcGeoTransform,
 			},
 				Collection: styleLayer.DataSource,
 				CRS:        *params.CRS,
@@ -565,6 +581,18 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 				EndTime:    endTime,
 				OffX:       offX,
 				OffY:       offY,
+			}
+
+			if len(params.Axes) > 0 {
+				geoReq.Axes = make(map[string]*proc.GeoTileAxis)
+				for _, axis := range params.Axes {
+					geoReq.Axes[axis.Name] = &proc.GeoTileAxis{Start: axis.Start, End: axis.End, InValues: axis.InValues, Order: axis.Order, Aggregate: axis.Aggregate}
+				}
+			}
+
+			if params.BandExpr != nil {
+				geoReq.ConfigPayLoad.NameSpaces = params.BandExpr.VarList
+				geoReq.ConfigPayLoad.BandExpr = params.BandExpr
 			}
 
 			return geoReq
@@ -818,7 +846,7 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 			select {
 			case res := <-tp.Process(geoReq, *verbose):
 				if !isInit {
-					hDstDS, masterTempFile, err = utils.EncodeGdalOpen(conf.ServiceConfig.TempDir, 1024, 256, driverFormat, geot, epsg, res, *params.Width, *params.Height, len(styleLayer.RGBProducts))
+					hDstDS, masterTempFile, err = utils.EncodeGdalOpen(conf.ServiceConfig.TempDir, 1024, 256, driverFormat, geot, epsg, res, *params.Width, *params.Height, len(res))
 					if err != nil {
 						os.Remove(masterTempFile)
 						errMsg := fmt.Sprintf("EncodeGdalOpen() failed: %v", err)
@@ -1161,7 +1189,11 @@ func generalHandler(conf *utils.Config, w http.ResponseWriter, r *http.Request) 
 		}
 
 	case "GET":
-		query = utils.NormaliseKeys(r.URL.Query())
+		query, err = utils.ParseQuery(r.URL.RawQuery)
+		if err != nil {
+			http.Error(w, fmt.Sprintf("Failed to parse query: %v", err), 400)
+			return
+		}
 	}
 
 	if _, fOK := query["service"]; !fOK {

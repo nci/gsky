@@ -6,27 +6,57 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"math"
 	"net/http"
+	"sort"
 	"strings"
 	"sync"
 	"time"
 )
 
+type DatasetAxis struct {
+	Name               string    `json:"name"`
+	Params             []float64 `json:"params"`
+	Strides            []int     `json:"strides"`
+	Shape              []int     `json:"shape"`
+	Grid               string    `json:"grid"`
+	IntersectionIdx    []int
+	IntersectionValues []float64
+	Order              int
+	Aggregate          int
+}
+
+type GeoLocInfo struct {
+	XDSName     string `json:"x_ds_name"`
+	XBand       int    `json:"x_band"`
+	YDSName     string `json:"y_ds_name"`
+	YBand       int    `json:"y_band"`
+	LineOffset  int    `json:"line_offset"`
+	PixelOffset int    `json:"pixel_offset"`
+	LineStep    int    `json:"line_step"`
+	PixelStep   int    `json:"pixel_step"`
+}
+
 type GDALDataset struct {
-	DSName       string      `json:"ds_name"`
-	NameSpace    string      `json:"namespace"`
-	ArrayType    string      `json:"array_type"`
-	TimeStamps   []time.Time `json:"timestamps"`
-	Polygon      string      `json:"polygon"`
-	Means        []float64   `json:"means"`
-	SampleCounts []int       `json:"sample_counts"`
-	NoData       float64     `json:"nodata"`
+	RawPath      string         `json:"file_path"`
+	DSName       string         `json:"ds_name"`
+	NameSpace    string         `json:"namespace"`
+	ArrayType    string         `json:"array_type"`
+	SRS          string         `json:"srs"`
+	GeoTransform []float64      `json:"geo_transform"`
+	TimeStamps   []time.Time    `json:"timestamps"`
+	Polygon      string         `json:"polygon"`
+	Means        []float64      `json:"means"`
+	SampleCounts []int          `json:"sample_counts"`
+	NoData       float64        `json:"nodata"`
+	Axes         []*DatasetAxis `json:"axes"`
+	GeoLocation  *GeoLocInfo    `json:"geo_loc"`
+	IsOutRange   bool
 }
 
 type MetadataResponse struct {
-	Error        string        `json:"error"`
-	Files        []string      `json:"files"`
-	GDALDatasets []GDALDataset `json:"gdal"`
+	Error        string         `json:"error"`
+	GDALDatasets []*GDALDataset `json:"gdal"`
 }
 
 type TileIndexer struct {
@@ -67,6 +97,45 @@ func (p *TileIndexer) Run(verbose bool) {
 		default:
 			var wg sync.WaitGroup
 			var url string
+
+			for key, axis := range geoReq.Axes {
+				if key == "time" {
+					if len(axis.InValues) > 0 {
+						var minVal, maxVal float64
+						for i, val := range axis.InValues {
+							if i == 0 {
+								minVal = val
+								maxVal = val
+							} else {
+								if val < minVal {
+									minVal = val
+								} else if val > maxVal {
+									maxVal = val
+								}
+							}
+						}
+
+						minTime := time.Unix(int64(minVal), 0)
+						geoReq.StartTime = &minTime
+
+						maxTime := time.Unix(int64(maxVal), 0)
+						if maxVal > minVal {
+							geoReq.EndTime = &maxTime
+						}
+					} else {
+						if axis.Start != nil {
+							minTime := time.Unix(int64(*axis.Start), 0)
+							geoReq.StartTime = &minTime
+						}
+
+						if axis.End != nil {
+							maxTime := time.Unix(int64(*axis.End), 0)
+							geoReq.EndTime = &maxTime
+						}
+					}
+					break
+				}
+			}
 
 			if len(geoReq.NameSpaces) == 0 {
 				geoReq.NameSpaces = append(geoReq.NameSpaces, "")
@@ -115,21 +184,21 @@ func URLIndexGet(ctx context.Context, url string, geoReq *GeoTileRequest, errCha
 	resp, err := http.Get(url)
 	if err != nil {
 		errChan <- fmt.Errorf("GET request to %s failed. Error: %v", url, err)
-		out <- &GeoTileGranule{ConfigPayLoad: ConfigPayLoad{NameSpaces: []string{"EmptyTile"}, ScaleParams: geoReq.ScaleParams, Palette: geoReq.Palette}, Path: "NULL", NameSpace: "EmptyTile", RasterType: "Byte", TimeStamps: nil, TimeStamp: *geoReq.StartTime, BBox: geoReq.BBox, Height: geoReq.Height, Width: geoReq.Width, OffX: geoReq.OffX, OffY: geoReq.OffY, CRS: geoReq.CRS}
+		out <- &GeoTileGranule{ConfigPayLoad: ConfigPayLoad{NameSpaces: []string{"EmptyTile"}, ScaleParams: geoReq.ScaleParams, Palette: geoReq.Palette}, Path: "NULL", NameSpace: "EmptyTile", RasterType: "Byte", TimeStamp: 0, BBox: geoReq.BBox, Height: geoReq.Height, Width: geoReq.Width, OffX: geoReq.OffX, OffY: geoReq.OffY, CRS: geoReq.CRS}
 		return
 	}
 	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		errChan <- fmt.Errorf("Error parsing response body from %s. Error: %v", url, err)
-		out <- &GeoTileGranule{ConfigPayLoad: ConfigPayLoad{NameSpaces: []string{"EmptyTile"}, ScaleParams: geoReq.ScaleParams, Palette: geoReq.Palette}, Path: "NULL", NameSpace: "EmptyTile", RasterType: "Byte", TimeStamps: nil, TimeStamp: *geoReq.StartTime, BBox: geoReq.BBox, Height: geoReq.Height, Width: geoReq.Width, OffX: geoReq.OffX, OffY: geoReq.OffY, CRS: geoReq.CRS}
+		out <- &GeoTileGranule{ConfigPayLoad: ConfigPayLoad{NameSpaces: []string{"EmptyTile"}, ScaleParams: geoReq.ScaleParams, Palette: geoReq.Palette}, Path: "NULL", NameSpace: "EmptyTile", RasterType: "Byte", TimeStamp: 0, BBox: geoReq.BBox, Height: geoReq.Height, Width: geoReq.Width, OffX: geoReq.OffX, OffY: geoReq.OffY, CRS: geoReq.CRS}
 		return
 	}
 	var metadata MetadataResponse
 	err = json.Unmarshal(body, &metadata)
 	if err != nil {
 		errChan <- fmt.Errorf("Problem parsing JSON response from %s. Error: %v", url, err)
-		out <- &GeoTileGranule{ConfigPayLoad: ConfigPayLoad{NameSpaces: []string{"EmptyTile"}, ScaleParams: geoReq.ScaleParams, Palette: geoReq.Palette}, Path: "NULL", NameSpace: "EmptyTile", RasterType: "Byte", TimeStamps: nil, TimeStamp: *geoReq.StartTime, BBox: geoReq.BBox, Height: geoReq.Height, Width: geoReq.Width, OffX: geoReq.OffX, OffY: geoReq.OffY, CRS: geoReq.CRS}
+		out <- &GeoTileGranule{ConfigPayLoad: ConfigPayLoad{NameSpaces: []string{"EmptyTile"}, ScaleParams: geoReq.ScaleParams, Palette: geoReq.Palette}, Path: "NULL", NameSpace: "EmptyTile", RasterType: "Byte", TimeStamp: 0, BBox: geoReq.BBox, Height: geoReq.Height, Width: geoReq.Width, OffX: geoReq.OffX, OffY: geoReq.OffY, CRS: geoReq.CRS}
 		return
 	}
 
@@ -141,16 +210,246 @@ func URLIndexGet(ctx context.Context, url string, geoReq *GeoTileRequest, errCha
 	case 0:
 		if len(metadata.Error) > 0 {
 			log.Printf("Indexer returned error: %v", string(body))
-			errChan <- fmt.Errorf("Indexer returned error: %v", metadata.Error)
 		}
-		out <- &GeoTileGranule{ConfigPayLoad: ConfigPayLoad{NameSpaces: []string{"EmptyTile"}, ScaleParams: geoReq.ScaleParams, Palette: geoReq.Palette}, Path: "NULL", NameSpace: "EmptyTile", RasterType: "Byte", TimeStamps: nil, TimeStamp: *geoReq.StartTime, BBox: geoReq.BBox, Height: geoReq.Height, Width: geoReq.Width, OffX: geoReq.OffX, OffY: geoReq.OffY, CRS: geoReq.CRS}
+		out <- &GeoTileGranule{ConfigPayLoad: ConfigPayLoad{NameSpaces: []string{"EmptyTile"}, ScaleParams: geoReq.ScaleParams, Palette: geoReq.Palette}, Path: "NULL", NameSpace: "EmptyTile", RasterType: "Byte", TimeStamp: 0, BBox: geoReq.BBox, Height: geoReq.Height, Width: geoReq.Width, OffX: geoReq.OffX, OffY: geoReq.OffY, CRS: geoReq.CRS}
 	default:
 		for _, ds := range metadata.GDALDatasets {
-			for _, t := range ds.TimeStamps {
-				if t.Equal(*geoReq.StartTime) || geoReq.EndTime != nil && t.After(*geoReq.StartTime) && t.Before(*geoReq.EndTime) {
-					out <- &GeoTileGranule{ConfigPayLoad: geoReq.ConfigPayLoad, Path: ds.DSName, NameSpace: ds.NameSpace, RasterType: ds.ArrayType, TimeStamps: ds.TimeStamps, TimeStamp: t, Polygon: ds.Polygon, BBox: geoReq.BBox, Height: geoReq.Height, Width: geoReq.Width, OffX: geoReq.OffX, OffY: geoReq.OffY, CRS: geoReq.CRS}
+			if len(ds.Axes) == 0 {
+				ds.Axes = append(ds.Axes, &DatasetAxis{Name: "time", Strides: []int{1}, Grid: "default"})
+			}
+
+			isOutRange := false
+			for ia, axis := range ds.Axes {
+				tileAxis, found := geoReq.Axes[axis.Name]
+				if found {
+					if axis.Name == "time" && ((tileAxis.Start != nil && tileAxis.End == nil) || len(tileAxis.InValues) > 0) {
+						axis.Grid = "enum"
+						for _, t := range ds.TimeStamps {
+							axis.Params = append(axis.Params, float64(t.Unix()))
+						}
+						ds.Axes[ia] = axis
+					}
+
+					axis.Order = tileAxis.Order
+					axis.Aggregate = tileAxis.Aggregate
+
+					if axis.Grid == "enum" {
+						if len(axis.Params) > 0 {
+							if len(tileAxis.InValues) > 0 || (tileAxis.Start != nil && tileAxis.End == nil) {
+								iVal := 0
+								var startVal float64
+								var nVals int
+
+								if len(tileAxis.InValues) > 0 {
+									sort.Slice(tileAxis.InValues, func(i, j int) bool { return tileAxis.InValues[i] <= tileAxis.InValues[j] })
+									startVal = tileAxis.InValues[0]
+									nVals = len(tileAxis.InValues)
+								} else {
+									startVal = *tileAxis.Start
+									nVals = 1
+								}
+								if startVal < axis.Params[0] || startVal > axis.Params[len(axis.Params)-1] {
+									isOutRange = true
+									break
+								}
+
+								for iv, val := range axis.Params {
+									if val >= startVal {
+										axisIdx := 0
+										if iv >= 1 && math.Abs(startVal-axis.Params[iv-1]) <= math.Abs(startVal-val) {
+											axisIdx = iv - 1
+										} else {
+											axisIdx = iv
+										}
+
+										axis.IntersectionIdx = append(axis.IntersectionIdx, axisIdx)
+										axis.IntersectionValues = append(axis.IntersectionValues, axis.Params[axisIdx])
+
+										iVal++
+										if iVal >= nVals {
+											break
+										}
+
+										startVal = tileAxis.InValues[iVal]
+									}
+								}
+
+							} else if tileAxis.Start != nil && tileAxis.End != nil {
+								startVal := *tileAxis.Start
+								endVal := *tileAxis.End
+								if endVal < axis.Params[0] || startVal > axis.Params[len(axis.Params)-1] {
+									isOutRange = true
+									break
+								}
+								for iv, val := range axis.Params {
+									if val >= startVal && val < endVal {
+										axis.IntersectionIdx = append(axis.IntersectionIdx, iv)
+										axis.IntersectionValues = append(axis.IntersectionValues, axis.Params[iv])
+									}
+								}
+
+							}
+
+						} else {
+							errChan <- fmt.Errorf("Indexer error: empty params for 'enum' grid: %v", axis.Name)
+							return
+						}
+					} else if axis.Grid == "default" {
+						for it, t := range ds.TimeStamps {
+							if t.Equal(*geoReq.StartTime) || geoReq.EndTime != nil && t.After(*geoReq.StartTime) && t.Before(*geoReq.EndTime) {
+								axis.IntersectionIdx = append(axis.IntersectionIdx, it)
+								axis.IntersectionValues = append(axis.IntersectionValues, float64(ds.TimeStamps[it].Unix()))
+							}
+						}
+
+						if len(axis.IntersectionIdx) == 0 {
+							isOutRange = true
+							break
+						}
+					} else {
+						errChan <- fmt.Errorf("Indexer error: unknown axis grid type: %v", axis.Grid)
+						return
+					}
+
+					for i := range axis.IntersectionIdx {
+						axis.IntersectionIdx[i] *= axis.Strides[0]
+					}
+				} else {
+					axis.IntersectionIdx = append(axis.IntersectionIdx, 0)
+					axis.Order = 1
+					axis.Aggregate = 1
+					if axis.Grid == "enum" {
+						axis.IntersectionValues = append(axis.IntersectionValues, axis.Params[0])
+					} else {
+						errChan <- fmt.Errorf("Indexer error: unknown axis grid type: %v", axis.Grid)
+						return
+					}
 				}
 			}
+
+			if isOutRange {
+				ds.IsOutRange = true
+				continue
+			}
+
+		}
+
+		bandNameSpaces := make(map[string]map[string]float64)
+		var granList []*GeoTileGranule
+		for _, ds := range metadata.GDALDatasets {
+			if ds.IsOutRange {
+				continue
+			}
+
+			axisIdxCnt := make([]int, len(ds.Axes))
+
+			for axisIdxCnt[0] < len(ds.Axes[0].IntersectionIdx) {
+				bandIdx := 1
+				aggTimeStamp := 0.0
+				bandTimeStamp := 0.0
+
+				namespace := ds.NameSpace
+				isFirst := true
+				hasNonAgg := false
+				for i := 0; i < len(axisIdxCnt); i++ {
+					bandIdx += ds.Axes[i].IntersectionIdx[axisIdxCnt[i]]
+
+					iTimeStamp := axisIdxCnt[i]
+					bandTimeStamp += ds.Axes[i].IntersectionValues[iTimeStamp]
+
+					if ds.Axes[i].Order != 0 {
+						iTimeStamp = len(ds.Axes[i].IntersectionIdx) - axisIdxCnt[i] - 1
+					}
+					aggTimeStamp += ds.Axes[i].IntersectionValues[iTimeStamp]
+
+					if ds.Axes[i].Aggregate == 0 {
+						if isFirst {
+							namespace += "#"
+							isFirst = false
+						} else {
+							namespace += ","
+						}
+
+						var readableNs string
+						if ds.Axes[i].Name == "time" {
+							ts := time.Unix(int64(ds.Axes[i].IntersectionValues[axisIdxCnt[i]]), 0)
+							readableNs = fmt.Sprintf("%v", ts.Format(ISOFormat))
+						} else {
+							readableNs = fmt.Sprintf("%v", ds.Axes[i].IntersectionValues[axisIdxCnt[i]])
+						}
+						namespace += fmt.Sprintf("%s=%v", ds.Axes[i].Name, readableNs)
+						hasNonAgg = true
+					}
+				}
+
+				if hasNonAgg {
+					_, found := bandNameSpaces[ds.NameSpace]
+					if !found {
+						bandNameSpaces[ds.NameSpace] = make(map[string]float64)
+					}
+
+					_, bFound := bandNameSpaces[ds.NameSpace][namespace]
+					if !bFound {
+						bandNameSpaces[ds.NameSpace][namespace] = bandTimeStamp
+					}
+				}
+
+				gran := &GeoTileGranule{ConfigPayLoad: geoReq.ConfigPayLoad, RawPath: ds.RawPath, Path: ds.DSName, NameSpace: namespace, VarNameSpace: ds.NameSpace, RasterType: ds.ArrayType, TimeStamp: float64(aggTimeStamp), BandIdx: bandIdx, Polygon: ds.Polygon, BBox: geoReq.BBox, Height: geoReq.Height, Width: geoReq.Width, CRS: geoReq.CRS, SrcSRS: ds.SRS, SrcGeoTransform: ds.GeoTransform, GeoLocation: ds.GeoLocation}
+				granList = append(granList, gran)
+
+				//log.Printf("    %v, %v,%v,%v,%v   %v", axisIdxCnt, bandIdx, aggTimeStamp, bandTimeStamp, namespace, len(ds.TimeStamps))
+
+				ia := len(ds.Axes) - 1
+				axisIdxCnt[ia]++
+				for ; ia > 0 && axisIdxCnt[ia] >= len(ds.Axes[ia].IntersectionIdx); ia-- {
+					axisIdxCnt[ia] = 0
+					axisIdxCnt[ia-1]++
+				}
+			}
+
+		}
+
+		type _BandNs struct {
+			Name string
+			Val  float64
+		}
+
+		var sortedNameSpaces []string
+		hasNewNs := false
+		for _, ns := range geoReq.NameSpaces {
+			bands, found := bandNameSpaces[ns]
+			if found {
+				bandNsList := make([]*_BandNs, len(bands))
+				ib := 0
+				for bns, val := range bands {
+					bandNsList[ib] = &_BandNs{Name: bns, Val: val}
+					ib++
+				}
+
+				sort.Slice(bandNsList, func(i, j int) bool { return bandNsList[i].Val <= bandNsList[j].Val })
+
+				for _, bns := range bandNsList {
+					sortedNameSpaces = append(sortedNameSpaces, bns.Name)
+				}
+
+				hasNewNs = true
+			} else {
+				sortedNameSpaces = append(sortedNameSpaces, ns)
+			}
+		}
+
+		var newConfigPayLoad ConfigPayLoad
+		if hasNewNs {
+			newConfigPayLoad = geoReq.ConfigPayLoad
+			newConfigPayLoad.NameSpaces = sortedNameSpaces
+		}
+		//log.Printf("%#v, %#v", geoReq.ConfigPayLoad, newConfigPayLoad)
+
+		for _, gran := range granList {
+			if hasNewNs {
+				gran.ConfigPayLoad = newConfigPayLoad
+			}
+			out <- gran
 		}
 	}
 }
