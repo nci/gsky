@@ -532,7 +532,7 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 			return
 		} else if styleIdx < 0 {
 			styleCount := len(conf.Layers[idx].Styles)
-			if styleCount > 1 {
+			if styleCount > 1 && params.BandExpr == nil {
 				Error.Printf("WCS style not specified")
 				http.Error(w, "WCS style not specified", 400)
 				return

@@ -372,6 +372,9 @@ func GenerateDatesMas(start, end string, masAddress string, collection string, n
 		}
 		refDates = append(refDates, endDate)
 
+		if len(refDates) > len(timestamps.Timestamps) {
+			refDates = refDates[:len(timestamps.Timestamps)]
+		}
 		aggregatedTimestamps := make([]string, len(refDates))
 
 		iBgn := 0

@@ -13,6 +13,7 @@ import (
 	"log"
 	"net"
 	"os"
+	"runtime"
 
 	"github.com/golang/protobuf/proto"
 	gp "github.com/nci/gsky/worker/gdalprocess"
@@ -124,6 +125,21 @@ func registerGDALDrivers() {
 	}
 	// Now register everything else
 	C.GDALAllRegister()
+}
+
+func setDefaultEnv(envVar string, defaultVal string) {
+	if _, ok := os.LookupEnv(envVar); !ok {
+		os.Setenv(envVar, defaultVal)
+	}
+}
+
+func init() {
+	if _, ok := os.LookupEnv("GOMAXPROCS"); !ok {
+		runtime.GOMAXPROCS(2)
+	}
+
+	setDefaultEnv("GDAL_NETCDF_VERIFY_DIMS", "NO")
+	setDefaultEnv("GDAL_PAM_ENABLED", "NO")
 }
 
 func main() {

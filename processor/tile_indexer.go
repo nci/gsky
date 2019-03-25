@@ -210,7 +210,6 @@ func URLIndexGet(ctx context.Context, url string, geoReq *GeoTileRequest, errCha
 	case 0:
 		if len(metadata.Error) > 0 {
 			log.Printf("Indexer returned error: %v", string(body))
-			errChan <- fmt.Errorf("Indexer returned error: %v", metadata.Error)
 		}
 		out <- &GeoTileGranule{ConfigPayLoad: ConfigPayLoad{NameSpaces: []string{"EmptyTile"}, ScaleParams: geoReq.ScaleParams, Palette: geoReq.Palette}, Path: "NULL", NameSpace: "EmptyTile", RasterType: "Byte", TimeStamp: 0, BBox: geoReq.BBox, Height: geoReq.Height, Width: geoReq.Width, OffX: geoReq.OffX, OffY: geoReq.OffY, CRS: geoReq.CRS}
 	default:
@@ -223,7 +222,7 @@ func URLIndexGet(ctx context.Context, url string, geoReq *GeoTileRequest, errCha
 			for ia, axis := range ds.Axes {
 				tileAxis, found := geoReq.Axes[axis.Name]
 				if found {
-					if axis.Name == "time" && (tileAxis.Start != nil || len(tileAxis.InValues) > 0) {
+					if axis.Name == "time" && ((tileAxis.Start != nil && tileAxis.End == nil) || len(tileAxis.InValues) > 0) {
 						axis.Grid = "enum"
 						for _, t := range ds.TimeStamps {
 							axis.Params = append(axis.Params, float64(t.Unix()))
@@ -235,7 +234,7 @@ func URLIndexGet(ctx context.Context, url string, geoReq *GeoTileRequest, errCha
 					axis.Aggregate = tileAxis.Aggregate
 
 					if axis.Grid == "enum" {
-						if len(axis.Params) > 1 {
+						if len(axis.Params) > 0 {
 							if len(tileAxis.InValues) > 0 || (tileAxis.Start != nil && tileAxis.End == nil) {
 								iVal := 0
 								var startVal float64
@@ -256,27 +255,22 @@ func URLIndexGet(ctx context.Context, url string, geoReq *GeoTileRequest, errCha
 
 								for iv, val := range axis.Params {
 									if val >= startVal {
-										foundVal := false
 										axisIdx := 0
-										if math.Abs(startVal-axis.Params[iv-1]) <= math.Abs(startVal-val) {
+										if iv >= 1 && math.Abs(startVal-axis.Params[iv-1]) <= math.Abs(startVal-val) {
 											axisIdx = iv - 1
-											foundVal = true
 										} else {
 											axisIdx = iv
-											foundVal = true
 										}
 
-										if foundVal {
-											axis.IntersectionIdx = append(axis.IntersectionIdx, axisIdx)
-											axis.IntersectionValues = append(axis.IntersectionValues, axis.Params[axisIdx])
+										axis.IntersectionIdx = append(axis.IntersectionIdx, axisIdx)
+										axis.IntersectionValues = append(axis.IntersectionValues, axis.Params[axisIdx])
 
-											iVal++
-											if iVal >= nVals {
-												break
-											}
-
-											startVal = tileAxis.InValues[iVal]
+										iVal++
+										if iVal >= nVals {
+											break
 										}
+
+										startVal = tileAxis.InValues[iVal]
 									}
 								}
 
@@ -296,6 +290,9 @@ func URLIndexGet(ctx context.Context, url string, geoReq *GeoTileRequest, errCha
 
 							}
 
+						} else {
+							errChan <- fmt.Errorf("Indexer error: empty params for 'enum' grid: %v", axis.Name)
+							return
 						}
 					} else if axis.Grid == "default" {
 						for it, t := range ds.TimeStamps {
