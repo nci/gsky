@@ -70,6 +70,11 @@ func unescapeUrl(s string) (string, error) {
 }
 
 func ParseQuery(query string) (m url.Values, err error) {
+	specialKeyLookup := make(map[string]bool)
+	specialKeyLookup["rangesubset"] = true
+	specialKeyLookup["subset"] = true
+	specialKeyLookup["dap4.ce"] = true
+
 	m = make(url.Values)
 	for query != "" {
 		key := query
@@ -105,7 +110,7 @@ func ParseQuery(query string) (m url.Values, err error) {
 		}
 		key = strings.ToLower(key)
 
-		if key == "rangesubset" || key == "subset" {
+		if _, found := specialKeyLookup[key]; found {
 			value, err1 = unescapeUrl(value)
 		} else {
 			value, err1 = url.QueryUnescape(value)

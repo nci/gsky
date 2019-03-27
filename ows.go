@@ -119,6 +119,7 @@ func init() {
 	reWCSMap = utils.CompileWCSRegexMap()
 	reWPSMap = utils.CompileWPSRegexMap()
 
+	utils.InitGdal()
 }
 
 func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, reqURL string, w http.ResponseWriter) {
@@ -1273,5 +1274,13 @@ func main() {
 	http.HandleFunc("/dap", dapHandler)
 	http.HandleFunc("/dap/", dapHandler)
 	Info.Printf("GSKY is ready")
+
+	query, err := utils.ParseQuery("dap4.ce=xxxx{a[11, 22:, 11:33, 12:22:, 12:22:33];b; c[,,, ,, ]}| bb < 1")
+	log.Printf("%#v", query)
+        _, err = utils.ParseDap4ConstraintExpr(query["dap4.ce"][0])
+	if err != nil {
+		log.Printf("%v", err)
+	}
+
 	log.Fatal(http.ListenAndServe(fmt.Sprintf("0.0.0.0:%d", *port), nil))
 }

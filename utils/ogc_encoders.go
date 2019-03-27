@@ -276,7 +276,6 @@ func EncodeGdalOpen(tempDir string, blockXSize int, blockYSize int, format strin
 
 	// NULL pointer is used to terminate the point array by gdal
 	driverOptions = append(driverOptions, nil)
-	C.GDALAllRegister()
 
 	var driverNameC = C.CString(driverName)
 	hDriver := C.GDALGetDriverByName(driverNameC)

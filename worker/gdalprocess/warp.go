@@ -101,8 +101,8 @@ int warp_operation_fast(const char *srcFilePath, char *srcProjRef, double *srcGe
 	double _srcGeot[6];
 	if(srcGeot == NULL) {
 		srcGeot = _srcGeot;
+		GDALGetGeoTransform(hSrcDS, srcGeot);
 	}
-	GDALGetGeoTransform(hSrcDS, srcGeot);
 
 	void *hTransformArg  = NULL;
 	GDALTransformerFunc pTransFunc = GDALGenImgProjTransform;
