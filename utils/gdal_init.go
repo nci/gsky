@@ -13,7 +13,7 @@ func InitGdal() {
 	setDefaultEnv("GDAL_NETCDF_VERIFY_DIMS", "NO")
 	setDefaultEnv("GDAL_PAM_ENABLED", "NO")
 
-	registerGDALDrivers() 
+	registerGDALDrivers()
 }
 
 func setDefaultEnv(envVar string, defaultVal string) {
@@ -76,4 +76,3 @@ func registerGDALDrivers() {
 	// Now register everything else
 	C.GDALAllRegister()
 }
-

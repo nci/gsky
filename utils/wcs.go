@@ -45,7 +45,7 @@ var WCSRegexpMap = map[string]string{"service": `^WCS$`,
 	"width":    `^[-+]?[0-9]+$`,
 	"height":   `^[-+]?[0-9]+$`,
 	"axis":     `^[A-Za-z_][A-Za-z0-9_]*$`,
-	"format":   `^(?i)(GeoTIFF|NetCDF)$`}
+	"format":   `^(?i)(GeoTIFF|NetCDF|DAP4)$`}
 
 func CompileWCSRegexMap() map[string]*regexp.Regexp {
 	REMap := make(map[string]*regexp.Regexp)

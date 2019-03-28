@@ -1,12 +1,12 @@
 package utils
 
 import (
-	"log"
 	"fmt"
-	"strings"
+	"log"
+	"math"
 	"regexp"
 	"strconv"
-	"math"
+	"strings"
 	"time"
 )
 
@@ -19,20 +19,81 @@ type DapIdxSelector struct {
 }
 
 type DapVarParam struct {
-	Name string
-	ValStart   *float64
-	ValEnd     *float64
+	Name         string
+	ValStart     *float64
+	ValEnd       *float64
 	IdxSelectors []*DapIdxSelector
-	IsAxis     bool
+	IsAxis       bool
 }
 
 type DapConstraints struct {
+	Dataset   string
 	VarParams []*DapVarParam
 }
 
 var varNameRegex = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*$`)
-func ParseDap4ConstraintExpr(ceStr string) (*DapConstraints, error) {
 
+func DumpDap4CE(ce *DapConstraints) {
+	var vpStr string
+	for ivp, vp := range ce.VarParams {
+		vpStr += vp.Name + ", valStart="
+		if vp.ValStart != nil {
+			vpStr += fmt.Sprintf("%.8e", *vp.ValStart)
+		} else {
+			vpStr += "nil"
+		}
+
+		vpStr += ", valEnd="
+		if vp.ValEnd != nil {
+			vpStr += fmt.Sprintf("%.8e", *vp.ValEnd)
+		} else {
+			vpStr += "nil"
+		}
+
+		vpStr += ", sels="
+
+		for iss, sel := range vp.IdxSelectors {
+			if sel.IsAll {
+				vpStr += "all"
+			} else {
+				if !sel.IsRange {
+					vpStr += fmt.Sprintf("singleton:%d", *sel.Start)
+				} else {
+					if sel.Start != nil {
+						vpStr += fmt.Sprintf("start:%d", *sel.Start)
+					}
+
+					if sel.Step != nil {
+						vpStr += fmt.Sprintf(",step:%d", *sel.Step)
+					}
+
+					if sel.End != nil {
+						vpStr += fmt.Sprintf(",end:%d", *sel.End)
+					}
+				}
+			}
+
+			if iss < len(vp.IdxSelectors)-1 {
+				vpStr += "; "
+			}
+		}
+
+		vpStr += ", isAxis="
+		if vp.IsAxis {
+			vpStr += "true"
+		} else {
+			vpStr += "false"
+		}
+
+		if ivp < len(ce.VarParams)-1 {
+			vpStr += "\n"
+		}
+
+	}
+	log.Printf("%s", vpStr)
+}
+
+func ParseDap4ConstraintExpr(ceStr string) (*DapConstraints, error) {
 	selection := strings.Split(strings.TrimSpace(ceStr), "|")
 	if len(selection) > 2 {
 		return nil, fmt.Errorf("only a single filter expression is supported")
@@ -43,7 +104,7 @@ func ParseDap4ConstraintExpr(ceStr string) (*DapConstraints, error) {
 
 	var filters string
 	if len(selection) == 2 {
-		filters = strings.TrimSpace(selection[1])	
+		filters = strings.TrimSpace(selection[1])
 	}
 
 	var dataset string
@@ -60,12 +121,13 @@ func ParseDap4ConstraintExpr(ceStr string) (*DapConstraints, error) {
 	if iDs < 0 || len(dataset) == 0 {
 		return nil, fmt.Errorf("dataset not found")
 	}
+	ce.Dataset = dataset
 
 	if subset[len(subset)-1] != '}' {
 		return nil, fmt.Errorf("missing }")
 	}
 
-	varStr := subset[iDs+1:len(subset)-1]
+	varStr := subset[iDs+1 : len(subset)-1]
 	err := parseVariables(varStr, ce)
 	if err != nil {
 		return nil, err
@@ -82,11 +144,10 @@ func ParseDap4ConstraintExpr(ceStr string) (*DapConstraints, error) {
 		if !found {
 			varLookup[vp.Name] = true
 		} else {
-			return nil, fmt.Errorf("duplicated dimension variable: %v", vp.Name)
+			return nil, fmt.Errorf("duplicated constraint for variable: %v", vp.Name)
 		}
 	}
 
-	dumpCE(ce)
 	return ce, nil
 }
 
@@ -105,7 +166,7 @@ func parseVariables(varStr string, ce *DapConstraints) error {
 			}
 		}
 
-		varParam := &DapVarParam{}		
+		varParam := &DapVarParam{}
 		if iVa < 0 {
 			if !varNameRegex.MatchString(va) {
 				return fmt.Errorf("invalid variable name: %v", va)
@@ -130,7 +191,7 @@ func parseVariables(varStr string, ce *DapConstraints) error {
 		}
 		varParam.IsAxis = true
 
-		idxSel := va[iVa+1:len(va)-1]	
+		idxSel := va[iVa+1 : len(va)-1]
 		selectors, err := parseVarSelectors(idxSel)
 		if err != nil {
 			return err
@@ -147,7 +208,7 @@ func parseVariables(varStr string, ce *DapConstraints) error {
 func parseVarSelectors(idxSel string) ([]*DapIdxSelector, error) {
 	var selectors []*DapIdxSelector
 
-	idxPartsRaw := strings.Split(idxSel, ",") 
+	idxPartsRaw := strings.Split(idxSel, ",")
 	var idxParts []string
 	for _, idxS := range idxPartsRaw {
 		idxS = strings.TrimSpace(idxS)
@@ -168,7 +229,7 @@ func parseVarSelectors(idxSel string) ([]*DapIdxSelector, error) {
 			continue
 		}
 
-		sels := &DapIdxSelector{IsRange: true} 		
+		sels := &DapIdxSelector{IsRange: true}
 
 		selParts := strings.Split(idxS, ":")
 		if len(selParts) > 3 {
@@ -241,17 +302,17 @@ func parseFilters(fltStr string, ce *DapConstraints) error {
 		}
 
 		if iRel+1 < len(flt) && flt[iRel+1] == '=' {
-			relOp = string(flt[iRel:iRel+1])
+			relOp = string(flt[iRel : iRel+1])
 			iRel++
 		}
 
 		iRel2 := -1
 		var relOp2 string
-		for i := iRel+1; i < len(flt); i++ {
+		for i := iRel + 1; i < len(flt); i++ {
 			_, found := relOps[string(flt[i])]
 			if found {
 				iRel2 = i
-				relOp2 = string(flt[i]) 
+				relOp2 = string(flt[i])
 				break
 			}
 		}
@@ -263,9 +324,13 @@ func parseFilters(fltStr string, ce *DapConstraints) error {
 			}
 			rightOp = strings.TrimSpace(flt[iRel+1:])
 		} else {
-			midOp = strings.TrimSpace(flt[iRel+1:iRel2])
+			midOp = strings.TrimSpace(flt[iRel+1 : iRel2])
+			if len(midOp) == 0 {
+				return fmt.Errorf("invalid filter expression: %v", flt)
+			}
+
 			if iRel2+1 < len(flt) && flt[iRel2+1] == '=' {
-				relOp2 = string(flt[iRel2:iRel2+1]) 
+				relOp2 = string(flt[iRel2 : iRel2+1])
 				iRel2++
 			}
 
@@ -274,10 +339,9 @@ func parseFilters(fltStr string, ce *DapConstraints) error {
 			}
 			rightOp = strings.TrimSpace(flt[iRel2+1:])
 		}
+		//log.Printf("%s, %s, %s   %d, %d", leftOp, midOp, rightOp, iRel, iRel2)
 
-		log.Printf("%s, %s, %s", leftOp, midOp, rightOp)
-
-		varParam := &DapVarParam{IsAxis: true}		
+		varParam := &DapVarParam{IsAxis: true}
 		if len(midOp) == 0 {
 			if !varNameRegex.MatchString(leftOp) {
 				return fmt.Errorf("invalid variable name for the left op: %v", leftOp)
@@ -335,7 +399,7 @@ func parseFilters(fltStr string, ce *DapConstraints) error {
 				return err2
 			}
 
-			if relOps[relOp] == 1 {
+			if relOps[relOp] == 0 {
 				tmp := fVal1
 				fVal1 = fVal2
 				fVal2 = tmp
@@ -370,59 +434,3 @@ func parseEndpoint(valStr string) (float64, error) {
 
 	return fVal, nil
 }
-
-func dumpCE(ce *DapConstraints) {
-	for _, vp := range ce.VarParams {
-		vpStr := vp.Name + ", valStart="
-		if vp.ValStart != nil {
-			vpStr += fmt.Sprintf("%.8e", *vp.ValStart)
-		} else {
-			vpStr += "nil"
-		}
-
-		vpStr += ", valEnd="
-		if vp.ValEnd != nil {
-			vpStr += fmt.Sprintf("%.8e", *vp.ValEnd)
-		} else {
-			vpStr += "nil"
-		}
-
-		vpStr += ", sels="
-
-		for iss, sel := range vp.IdxSelectors {
-			if sel.IsAll {
-				vpStr += "all"
-			} else {
-				if !sel.IsRange {
-					vpStr += fmt.Sprintf("singleton:%d", *sel.Start)
-				} else {
-					if sel.Start != nil {
-						vpStr += fmt.Sprintf("start:%d", *sel.Start)
-					}
-
-					if sel.Step != nil {
-						vpStr += fmt.Sprintf(",step:%d", *sel.Step)
-					}
-
-					if sel.End != nil {
-						vpStr += fmt.Sprintf(",end:%d", *sel.End)
-					}
-				}
-			}
-
-			if iss < len(vp.IdxSelectors) - 1 {
-				vpStr += "; "
-			}
-		}
-
-		vpStr += ", isAxis="
-		if vp.IsAxis {
-			vpStr += "true"
-		} else {
-			vpStr += "false"
-		}
-
-		log.Printf("%s", vpStr)
-	}
-}
-

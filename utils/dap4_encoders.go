@@ -11,12 +11,12 @@ import (
 	"log"
 	"net/http"
 	"reflect"
+	"regexp"
 	"strconv"
 	"strings"
 	"text/template"
 	"time"
 	"unsafe"
-	"regexp"
 )
 
 func WriteDap4(w http.ResponseWriter, dataFile string, verbose bool) error {
@@ -245,7 +245,7 @@ func getDimensions(dims []string) ([]string, []string, map[string][]float64, err
 	axisVals := make(map[string][]float64)
 	axisNames := make([]string, 0)
 
-	varNameRegex :=  regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*$`)
+	varNameRegex := regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*$`)
 	iVar := 0
 	for _, dim := range dims {
 		parts := strings.Split(dim, "#")
@@ -262,7 +262,7 @@ func getDimensions(dims []string) ([]string, []string, map[string][]float64, err
 				varName = fmt.Sprintf("var%d", iVar)
 			}
 			varNames = append(varNames, varName)
-		}	
+		}
 
 		if len(parts) == 1 {
 			continue

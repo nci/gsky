@@ -829,7 +829,7 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 		geot := utils.BBox2Geot(*params.Width, *params.Height, params.BBox)
 
 		driverFormat := *params.Format
-		if isWorker {
+		if isWorker || driverFormat == "dap4" {
 			driverFormat = "geotiff"
 		}
 
@@ -949,6 +949,16 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 
 		utils.EncodeGdalClose(&hDstDS)
 		hDstDS = nil
+
+		if *params.Format == "dap4" {
+			err := utils.WriteDap4(w, masterTempFile, *verbose)
+			if err != nil {
+				errMsg := fmt.Sprintf("SendFile failed: %v", err)
+				Info.Printf(errMsg)
+				http.Error(w, errMsg, 500)
+			}
+			return
+		}
 
 		fileExt := "wcs"
 		contentType := "application/wcs"
@@ -1197,6 +1207,15 @@ func generalHandler(conf *utils.Config, w http.ResponseWriter, r *http.Request) 
 		}
 	}
 
+	if _, fOK := query["dap4.ce"]; fOK {
+		if len(query["dap4.ce"]) == 0 {
+			http.Error(w, "Failed to parse dap4.ce", 400)
+			return
+		}
+		serveDap(ctx, conf, r.URL.String(), w, query)
+		return
+	}
+
 	if _, fOK := query["service"]; !fOK {
 		canInferService := false
 		if request, hasReq := query["request"]; hasReq {
@@ -1254,6 +1273,10 @@ func owsHandler(w http.ResponseWriter, r *http.Request) {
 	namespace := "."
 	if len(r.URL.Path) > len("/ows/") {
 		namespace = r.URL.Path[len("/ows/"):]
+		dapExt := ".dap"
+		if len(namespace) >= len(dapExt) && namespace[len(namespace)-len(dapExt):] == dapExt {
+			namespace = namespace[:len(namespace)-len(dapExt)]
+		}
 	}
 	config, ok := configMap[namespace]
 	if !ok {
@@ -1271,16 +1294,6 @@ func main() {
 	http.HandleFunc("/ows", owsHandler)
 	http.HandleFunc("/ows/", owsHandler)
 
-	http.HandleFunc("/dap", dapHandler)
-	http.HandleFunc("/dap/", dapHandler)
 	Info.Printf("GSKY is ready")
-
-	query, err := utils.ParseQuery("dap4.ce=xxxx{a[11, 22:, 11:33, 12:22:, 12:22:33];b; c[,,, ,, ]}| bb < 1")
-	log.Printf("%#v", query)
-        _, err = utils.ParseDap4ConstraintExpr(query["dap4.ce"][0])
-	if err != nil {
-		log.Printf("%v", err)
-	}
-
 	log.Fatal(http.ListenAndServe(fmt.Sprintf("0.0.0.0:%d", *port), nil))
 }
