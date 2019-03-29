@@ -100,7 +100,11 @@ func ComputeReprojectionExtent(ctx context.Context, geoReq *GeoTileRequest, masA
 				defer conc.Decrease()
 				c := pb.NewGDALClient(conns[(iTile+workerStart)%len(conns)])
 
-				granule := &pb.GeoRPCGranule{Operation: "extent", Path: g.Path, DstSRS: projWKT, DstGeot: bbox}
+				dsPath := g.Path
+				if dsPath == "NULL" {
+					dsPath = g.RawPath
+				}
+				granule := &pb.GeoRPCGranule{Operation: "extent", Path: dsPath, DstSRS: projWKT, DstGeot: bbox}
 				res, err := c.Process(ctx, granule)
 				if err != nil {
 					errChan <- err

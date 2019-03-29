@@ -135,6 +135,8 @@ type Layer struct {
 	AxesInfo                 []*LayerAxis `json:"axes"`
 	UserSrcSRS               int          `json:"src_srs"`
 	UserSrcGeoTransform      int          `json:"src_geo_transform"`
+	DefaultGeoBbox           []float64    `json:"default_geo_bbox"`
+	DefaultGeoSize           []int        `json:"default_geo_size"`
 }
 
 // Process contains all the details that a WPS needs

@@ -251,6 +251,9 @@ func parseVarSelectors(idxSel string) ([]*DapIdxSelector, error) {
 					return selectors, fmt.Errorf("invalid selector: %v", idxS)
 				}
 				selVals[iss] = int(val64)
+				if selVals[iss] < 0 {
+					return selectors, fmt.Errorf("index must be non-negative: %v", idxS)
+				}
 
 				if iss == 0 {
 					sels.Start = &selVals[iss]
@@ -357,11 +360,11 @@ func parseFilters(fltStr string, ce *DapConstraints) error {
 			upperVal := math.MaxFloat64
 
 			if relOps[relOp] == 0 {
-				upperVal = fVal
+				lowerVal = fVal
 				varParam.ValStart = &lowerVal
 				varParam.ValEnd = &upperVal
 			} else if relOps[relOp] == 1 {
-				lowerVal = fVal
+				upperVal = fVal
 				varParam.ValStart = &lowerVal
 				varParam.ValEnd = &upperVal
 			} else if relOps[relOp] == 2 {

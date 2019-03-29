@@ -449,7 +449,7 @@ func (enc *RasterMerger) Run(polyLimiter *ConcLimiter, bandExpr *utils.BandExpre
 		return
 	}
 
-	hasExpr := (nameSpaces[0] != "EmptyTile") && (len(bandExpr.Expressions) > 0)
+	hasExpr := (nameSpaces[0] != utils.EmptyTileNS) && (len(bandExpr.Expressions) > 0)
 
 	nOut := len(nameSpaces)
 

@@ -325,7 +325,7 @@ func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r
 				case <-ctx.Done():
 					break
 				default:
-					if geo.NameSpace != "EmptyTile" {
+					if geo.NameSpace != utils.EmptyTileNS {
 						hasData = true
 						break
 					}
@@ -572,6 +572,8 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 				QueryLimit:          -1,
 				UserSrcSRS:          conf.Layers[idx].UserSrcSRS,
 				UserSrcGeoTransform: conf.Layers[idx].UserSrcGeoTransform,
+				NoReprojection:      params.NoReprojection,
+				AxisMapping:         params.AxisMapping,
 			},
 				Collection: styleLayer.DataSource,
 				CRS:        *params.CRS,
@@ -837,6 +839,7 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 		defer timeoutCancel()
 
 		isInit := false
+		var bandNames []string
 
 		tp := proc.InitTilePipeline(ctx, conf.ServiceConfig.MASAddress, conf.ServiceConfig.WorkerNodes, conf.Layers[idx].MaxGrpcRecvMsgSize, conf.Layers[idx].WcsPolygonShardConcLimit, conf.ServiceConfig.MaxGrpcBufferSize, errChan)
 		for ir, geoReq := range workerTileRequests[0] {
@@ -849,24 +852,25 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 				if !isInit {
 					hDstDS, masterTempFile, err = utils.EncodeGdalOpen(conf.ServiceConfig.TempDir, 1024, 256, driverFormat, geot, epsg, res, *params.Width, *params.Height, len(res))
 					if err != nil {
-						os.Remove(masterTempFile)
+						utils.RemoveGdalTempFile(masterTempFile)
 						errMsg := fmt.Sprintf("EncodeGdalOpen() failed: %v", err)
 						Info.Printf(errMsg)
 						http.Error(w, errMsg, 500)
 						return
 					}
 					defer utils.EncodeGdalClose(&hDstDS)
-					defer os.Remove(masterTempFile)
+					defer utils.RemoveGdalTempFile(masterTempFile)
 
 					isInit = true
 				}
 
-				err := utils.EncodeGdal(hDstDS, res, geoReq.OffX, geoReq.OffY)
+				bn, err := utils.EncodeGdal(hDstDS, res, geoReq.OffX, geoReq.OffY)
 				if err != nil {
 					Info.Printf("Error in the utils.EncodeGdal: %v\n", err)
 					http.Error(w, err.Error(), 500)
 					return
 				}
+				bandNames = bn
 
 			case err := <-errChan:
 				Info.Printf("WCS: error in the pipeline: %v\n", err)
@@ -951,9 +955,9 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 		hDstDS = nil
 
 		if *params.Format == "dap4" {
-			err := utils.WriteDap4(w, masterTempFile, *verbose)
+			err := utils.EncodeDap4(w, masterTempFile, bandNames, *verbose)
 			if err != nil {
-				errMsg := fmt.Sprintf("SendFile failed: %v", err)
+				errMsg := fmt.Sprintf("DAP: error: %v", err)
 				Info.Printf(errMsg)
 				http.Error(w, errMsg, 500)
 			}

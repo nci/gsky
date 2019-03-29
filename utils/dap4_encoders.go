@@ -19,9 +19,15 @@ import (
 	"unsafe"
 )
 
-func WriteDap4(w http.ResponseWriter, dataFile string, verbose bool) error {
+func EncodeDap4(w http.ResponseWriter, dataFile string, bandNames []string, verbose bool) error {
 	w.Header().Set("Content-Type", "application/vnd.opendap.org.dap4.data")
 	defer writeLastChunk(w)
+
+	varNames, axisNames, axisVals, err := getDimensions(bandNames)
+	if err != nil {
+		handleError(w)
+		return err
+	}
 
 	dataFileC := C.CString(dataFile)
 	defer C.free(unsafe.Pointer(dataFileC))
@@ -36,30 +42,6 @@ func WriteDap4(w http.ResponseWriter, dataFile string, verbose bool) error {
 		return fmt.Errorf("Failed to open data file: %v", dataFile)
 	}
 	defer C.GDALClose(hSrcDS)
-
-	nBands := int(C.GDALGetRasterCount(hSrcDS))
-
-	nameSpaceC := C.CString("long_name")
-	defer C.free(unsafe.Pointer(nameSpaceC))
-
-	var dimsList []string
-	for ib := 0; ib < nBands; ib++ {
-		hBand := C.GDALGetRasterBand(hSrcDS, C.int(ib+1))
-		dimStrC := C.GDALGetMetadataItem(C.GDALMajorObjectH(hBand), nameSpaceC, nil)
-		if dimStrC == nil {
-			dimsList = []string{}
-			break
-		}
-
-		dimStr := C.GoString(dimStrC)
-		dimsList = append(dimsList, dimStr)
-	}
-
-	varNames, axisNames, axisVals, err := getDimensions(dimsList)
-	if err != nil {
-		handleError(w)
-		return err
-	}
 
 	hBand := C.GDALGetRasterBand(hSrcDS, C.int(1))
 
@@ -101,6 +83,10 @@ func WriteDap4(w http.ResponseWriter, dataFile string, verbose bool) error {
 		}
 	}
 
+	if len(varNames) == 0 {
+		return nil
+	}
+
 	dataSize := int(C.GDALGetDataTypeSizeBytes(dataType))
 
 	var blockXSizeC, blockYSizeC C.int
@@ -114,6 +100,7 @@ func WriteDap4(w http.ResponseWriter, dataFile string, verbose bool) error {
 	}
 	blockYSize *= nYBlocks
 
+	nBands := int(C.GDALGetRasterCount(hSrcDS))
 	for ib := 0; ib < nBands; ib++ {
 		hBand := C.GDALGetRasterBand(hSrcDS, C.int(ib+1))
 		xOff := 0
@@ -176,8 +163,10 @@ func buildMdr(axisNames []string, axisVals map[string][]float64, varNames []stri
 {{ range $index, $value := .Axes }}
 <Dimension name="{{ .Name }}" size="{{ .Size }}"/>
 {{ end }}
+{{ $length := len .VarNames }} {{ if ne $length 0 }}
 <Dimension name="y" size="{{ .VarHeight }}"/>
 <Dimension name="x" size="{{ .VarWidth }}"/>
+{{ end }}
 {{ range $index, $value := .Axes }}
 <Float64 name="{{ .Name }}">
 <Dim name="{{ .Name }}"/>
@@ -255,13 +244,15 @@ func getDimensions(dims []string) ([]string, []string, map[string][]float64, err
 
 		varPart := parts[0]
 		if _, found := varLookup[varPart]; !found {
-			varLookup[varPart] = true
-			varName := varPart
-			if !varNameRegex.MatchString(varName) {
-				iVar++
-				varName = fmt.Sprintf("var%d", iVar)
+			if varPart != EmptyTileNS {
+				varLookup[varPart] = true
+				varName := varPart
+				if !varNameRegex.MatchString(varName) {
+					iVar++
+					varName = fmt.Sprintf("var%d", iVar)
+				}
+				varNames = append(varNames, varName)
 			}
-			varNames = append(varNames, varName)
 		}
 
 		if len(parts) == 1 {

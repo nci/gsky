@@ -121,6 +121,13 @@ int warp_operation_fast(const char *srcFilePath, char *srcProjRef, double *srcGe
 		}
 	}
 
+	if(!dstProjRef) {
+		GenImgProjTransformInfo *psInfo = (GenImgProjTransformInfo *)hTransformArg;
+		psInfo->pReprojectArg = NULL;
+		psInfo->pReproject = NULL;
+		psInfo->pDstTransformer = psInfo->pSrcTransformer;
+	}
+
 	double geotOut[6];
 	int nPixels;
 	int nLines;
@@ -404,8 +411,13 @@ func WarpRaster(in *pb.GeoRPCGranule, debug bool) *pb.Result {
 	filePathC := C.CString(in.Path)
 	defer C.free(unsafe.Pointer(filePathC))
 
-	dstProjRefC := C.CString(in.DstSRS)
-	defer C.free(unsafe.Pointer(dstProjRefC))
+	var dstProjRefC *C.char
+	if len(in.DstSRS) > 0 {
+		dstProjRefC = C.CString(in.DstSRS)
+		defer C.free(unsafe.Pointer(dstProjRefC))
+	} else {
+		dstProjRefC = nil
+	}
 
 	dump := func(msg interface{}) string {
 		log.Println(

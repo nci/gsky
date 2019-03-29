@@ -25,6 +25,8 @@ type ConfigPayLoad struct {
 	QueryLimit            int
 	UserSrcGeoTransform   int
 	UserSrcSRS            int
+	NoReprojection        bool
+	AxisMapping           int
 }
 
 type GeoTileAxis struct {
