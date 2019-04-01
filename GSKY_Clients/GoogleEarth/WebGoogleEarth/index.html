@@ -1,0 +1,1124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<title>GSKY via Google Earth</title>
+    <!--NOTE: Most Web WorldWind examples use jquery, Bootstrap and requirejs but those technologies are NOT-->
+    <!--required by Web WorldWind. See SimplestExample.html for an example of using Web WorldWind without them.-->
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.4/css/bootstrap.min.css">
+<!--    <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.3/jquery.min.js" type="text/javascript"></script>-->
+<!--    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.4/js/bootstrap.min.js"></script>-->
+<!--    <script data-main="geoglam" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.1.17/require.min.js"></script>-->
+    <link rel="stylesheet" href="custom.css"> <!-- AVS: Added to change the styles of buttons -->
+	<script type="text/javascript">
+	function InsertTimes(item)
+	{
+		var i = item.selectedIndex;
+		var times = "times_"+i;
+		showHide(times,'block');
+	}
+	function showHide(id,type,state)
+	{
+		if (state == undefined) state = 'block';
+		if(id)
+		{
+			var style = document.getElementById(id).style.display;
+			document.getElementById(id).style.display=""+state;
+		}
+	}
+	function Fin()
+	{
+		showHide('avs_waiting_circle','span','none');
+	}
+	function GetCoordinates(form,item)
+	{
+		var region = [];
+		region["Aus_ALL"] = "112.324219,-44.087585,153.984375,-10.919618";
+		region["WA"] = "113.378906,-35.137879,129.067383,-13.539201";
+		region["NT"] = "128.979492,-26.076521,137.988281,-11.005904";
+		region["SA"] = "129.023438,-37.996163,141.064453,-25.958045";
+		region["QLD"] = "138.032227,-28.998532,154.467773,-10.919618";
+		region["NSW"] = "140.888672,-38.891033,154.160156,-27.994401";
+		region["ACT"] = "148.699951,-35.942436,149.479980,-35.119909";
+		region["VIC"] = "140.756836,-38.925229,151.435547,-34.415973";
+		region["TAS"] = "143.525391,-43.644026,148.623047,-39.504041";
+		region["NZ"] = "166.333008,-47.368594,178.989258,-34.198173";
+		region["US_ALL"] = "-125.859375,25.165173,-60.468750,48.458352";
+		region["US_WC"] = "-124.628906,31.802893,-110.039063,48.806863";
+		region["US_CEN"] = "-109.160156,26.902477,-95.097656,48.922499";
+		region["US_EAST"] = "-94.746094,25.482951,-62.753906,47.517201";
+		region["West_Europe"] = "-11.250000,35.889050,18.808594,58.722599";
+		region["Eest_Europe"] = "19.511719,37.020098,40.429688,59.445075";
+		var bbox = region[item.value];
+		if (bbox)
+		{
+			coords = bbox.split(",");
+			form.west.value = coords[0];
+			form.south.value = coords[1];
+			form.east.value = coords[2];
+			form.north.value = coords[3];
+		}
+//alert(coords[0]);		
+	}
+	</script>
+</head>
+<body>
+<div class="container">
+    <table class="jumbotron hidden-xs" style="width:100%">
+		<tr>
+			<td style="width:20%">
+				<img src="https://nci.org.au/wp-content/uploads/2018/09/NCI-Australia-and-Text-website-2-2.png" style="width:300px">
+			</td>
+			<td style="text-align:right">
+				<img src="https://gsky.nci.org.au/img/logo.svg" width="150">
+			</td>
+			<td nowrap>
+				<h2>GSKY Web Map Service</h2><br><h6>Powered by: Google Earth</h6>
+			</td>
+		</tr>
+    </table>
+    <div>
+    <hr>
+    <table style="width:100%; font-size:16px">
+		<tr>
+		<td>
+    <small>
+<p>
+		<h2>INTRODUCTION</h2>
+        This is a wrapper to work with <b>Google Earth Web</b> (<b>GE</b>) to display GSKY layers.
+        It creates the required <b>KML</b> files (Keyhole Markup Language) that can be opened in both.
+        The purpose is to extend the functionality of these programs to display GSKY layers in both spatial and temporal dimensions.
+        
+        <br><br> 
+        <b>Notes:</b><br>
+        <ul>
+        <li>
+        GE  currently works only in Google Chrome.
+        </li>
+        <li>
+        The selectable geographical regions available are limited to Australa, NZ, USA and Europe. We may add more regions in the future. 
+        You can manually specify the Lat/Lon coordinates of any region.
+        </li>
+        <li>
+        Scroll down to see details about the program and its usage.
+        </li>
+        <li>
+        Or, <b>dig right in below!</b>
+        </li>
+        </ul>
+        <hr>
+        <h3>TL;DR</h3>
+        <ol>
+        <li>
+        	Choose the required GSKY layer.
+        </li>
+        <li>
+        	Choose the geographical region. 
+        	<ul>
+        	<li>
+        		If the required region is not listed, choose '<b>Unlisted</b>' and manually enter its coordinates.
+        	</li>
+				<ul>
+				<li>
+					Use <a href="http://epsg.io/map#srs=4326&x=46.406250&y=11.695273&z=3&layer=streets" target="_blank"><b>this site</b></a> to get its coordinates.
+				</li>
+				</ul>
+        	</ul>
+        </li>
+        <li>
+        	Choose the date to show. Default is the latest date.
+        </li>
+        <li>
+        	Click '<b>Create KML</b>' and click again on the link that appears.
+        </li>
+        <li>
+        	Save the <b>*.kml</b> file on your computer and open it with GE or GEW.
+        </li>
+        </ol>
+        
+</p> 
+<p>
+	<div align="center" style="text-align:left; width:90%">
+	<form id="google_earth" name="google_earth">
+    <table class="jumbotron hidden-xs" style="width:100%">
+		<tr>
+			<td style="width:20%; text-align:right; font-weight:bold; padding-right:10px">
+				GSKY Layer
+			</td>
+			<td style="width:80%; padding-top:0px">
+				<select name="layer" style="width:300px;" onchange="InsertTimes(this)">
+					<option value="">Choose Below</option>
+					<option value="global:c6:frac_cover|GEOGLAM Fractional Cover C6">GEOGLAM Fractional Cover C6</option>
+					<option value="global:c6:total_cover|GEOGLAM Total Cover C6">GEOGLAM Total Cover C6</option>
+					<option value="global:c6:monthly_frac_cover|GEOGLAM Monthly Fractional Cover C6">GEOGLAM Monthly Fractional Cover C6</option>
+					<option value="global:c6:monthly_total_cover|GEOGLAM Monthly Total Cover C6">GEOGLAM Monthly Total Cover C6</option>
+					<option value="global:c6:monthly_decile_total_cover|GEOGLAM Monthly Decile Total Cover C6">GEOGLAM Monthly Decile Total Cover C6</option>
+					<option value="global:c6:monthly_anom_frac_cover|GEOGLAM Anomaly Fractional Cover C6">GEOGLAM Anomaly Fractional Cover C6</option>
+					<option value="LS8:NBAR:TRUE|DEA Landsat 8 surface reflectance">DEA Landsat 8 surface reflectance true colour</option>
+				</select>
+			</td>
+		</tr>
+		<tr>
+			<td style="width:20%; text-align:right; font-weight:bold; padding-right:10px">
+				Region
+			</td>
+			<td style="width:80%; padding-top:10px">
+				<select name="region" style="width:300px;" onchange="GetCoordinates(this.form,this)">
+					<option value="">Choose Below</option>
+					<option value="Aus_ALL">Australia</option>
+					<option value="WA"> Western Australia</option>
+					<option value="NT">Northern Territory</option>
+					<option value="SA">South Australia</option>
+					<option value="QLD">Queensland</option>
+					<option value="NSW">NSW</option>
+					<option value="ACT">ACT</option>
+					<option value="VIC">Victoria</option>
+					<option value="TAS">Tasmania</option>
+					<option value="">---------------------------</option>
+					<option value="NZ">New Zealand</option>
+					<option value="">---------------------------</option>
+					<option value="US_ALL">USA</option>
+					<option value="US_WC">USA West Coast</option>
+					<option value="US_CEN">USA Central</option>
+					<option value="US_EAST">USA East Coast</option>
+					<option value="">---------------------------</option>
+					<option value="West_Europe">Western Europe</option>
+					<option value="Eest_Europe">Western Europe</option>
+					<option value="">---------------------------</option>
+					<option value="UNLISTED">Unlisted Region</option>
+				</select>
+			</td>
+		</tr>
+		<tr>
+			<td style="width:20%; text-align:right; font-weight:bold; padding-right:10px">
+				Co-ordinates
+			</td>
+			<td style="width:80%; padding-top:10px">
+				<small>W: <input type="text" name="west" value="" style="width:100px"></small>
+				<small>S: <input type="text" name="south" value="" style="width:100px"></small>
+				<small>E: <input type="text" name="east" value="" style="width:100px"></small>
+				<small>N: <input type="text" name="north" value="" style="width:100px"></small>
+			</td>
+		</tr>
+		<tr>
+			<td style="width:20%; text-align:right; font-weight:bold; padding-right:10px">
+				Time
+			</td>
+			<td style="width:80%; padding-top:10px">
+				<span id="times" style="display:none">
+			<select name="time">
+				<option value="">Latest</option>
+				<option value="2000-12-26T00:00:00.000Z">2000-12-26</option>
+<option value="2001-01-01T00:00:00.000Z">2001-01-01</option>
+<option value="2001-01-09T00:00:00.000Z">2001-01-09</option>
+<option value="2001-01-17T00:00:00.000Z">2001-01-17</option>
+<option value="2001-01-25T00:00:00.000Z">2001-01-25</option>
+<option value="2001-02-02T00:00:00.000Z">2001-02-02</option>
+<option value="2001-02-10T00:00:00.000Z">2001-02-10</option>
+<option value="2001-02-18T00:00:00.000Z">2001-02-18</option>
+<option value="2001-02-26T00:00:00.000Z">2001-02-26</option>
+<option value="2001-03-06T00:00:00.000Z">2001-03-06</option>
+<option value="2001-03-14T00:00:00.000Z">2001-03-14</option>
+<option value="2001-03-22T00:00:00.000Z">2001-03-22</option>
+<option value="2001-03-30T00:00:00.000Z">2001-03-30</option>
+<option value="2001-04-07T00:00:00.000Z">2001-04-07</option>
+<option value="2001-04-15T00:00:00.000Z">2001-04-15</option>
+<option value="2001-04-23T00:00:00.000Z">2001-04-23</option>
+<option value="2001-05-01T00:00:00.000Z">2001-05-01</option>
+<option value="2001-05-09T00:00:00.000Z">2001-05-09</option>
+<option value="2001-05-17T00:00:00.000Z">2001-05-17</option>
+<option value="2001-05-25T00:00:00.000Z">2001-05-25</option>
+<option value="2001-06-02T00:00:00.000Z">2001-06-02</option>
+<option value="2001-06-10T00:00:00.000Z">2001-06-10</option>
+<option value="2001-06-18T00:00:00.000Z">2001-06-18</option>
+<option value="2001-06-26T00:00:00.000Z">2001-06-26</option>
+<option value="2001-07-04T00:00:00.000Z">2001-07-04</option>
+<option value="2001-07-12T00:00:00.000Z">2001-07-12</option>
+<option value="2001-07-20T00:00:00.000Z">2001-07-20</option>
+<option value="2001-07-28T00:00:00.000Z">2001-07-28</option>
+<option value="2001-08-05T00:00:00.000Z">2001-08-05</option>
+<option value="2001-08-13T00:00:00.000Z">2001-08-13</option>
+<option value="2001-08-21T00:00:00.000Z">2001-08-21</option>
+<option value="2001-08-29T00:00:00.000Z">2001-08-29</option>
+<option value="2001-09-06T00:00:00.000Z">2001-09-06</option>
+<option value="2001-09-14T00:00:00.000Z">2001-09-14</option>
+<option value="2001-09-22T00:00:00.000Z">2001-09-22</option>
+<option value="2001-09-30T00:00:00.000Z">2001-09-30</option>
+<option value="2001-10-08T00:00:00.000Z">2001-10-08</option>
+<option value="2001-10-16T00:00:00.000Z">2001-10-16</option>
+<option value="2001-10-24T00:00:00.000Z">2001-10-24</option>
+<option value="2001-11-01T00:00:00.000Z">2001-11-01</option>
+<option value="2001-11-09T00:00:00.000Z">2001-11-09</option>
+<option value="2001-11-17T00:00:00.000Z">2001-11-17</option>
+<option value="2001-11-25T00:00:00.000Z">2001-11-25</option>
+<option value="2001-12-03T00:00:00.000Z">2001-12-03</option>
+<option value="2001-12-11T00:00:00.000Z">2001-12-11</option>
+<option value="2001-12-19T00:00:00.000Z">2001-12-19</option>
+<option value="2001-12-27T00:00:00.000Z">2001-12-27</option>
+<option value="2002-01-01T00:00:00.000Z">2002-01-01</option>
+<option value="2002-01-09T00:00:00.000Z">2002-01-09</option>
+<option value="2002-01-17T00:00:00.000Z">2002-01-17</option>
+<option value="2002-01-25T00:00:00.000Z">2002-01-25</option>
+<option value="2002-02-02T00:00:00.000Z">2002-02-02</option>
+<option value="2002-02-10T00:00:00.000Z">2002-02-10</option>
+<option value="2002-02-18T00:00:00.000Z">2002-02-18</option>
+<option value="2002-02-26T00:00:00.000Z">2002-02-26</option>
+<option value="2002-03-06T00:00:00.000Z">2002-03-06</option>
+<option value="2002-03-14T00:00:00.000Z">2002-03-14</option>
+<option value="2002-03-22T00:00:00.000Z">2002-03-22</option>
+<option value="2002-03-30T00:00:00.000Z">2002-03-30</option>
+<option value="2002-04-07T00:00:00.000Z">2002-04-07</option>
+<option value="2002-04-15T00:00:00.000Z">2002-04-15</option>
+<option value="2002-04-23T00:00:00.000Z">2002-04-23</option>
+<option value="2002-05-01T00:00:00.000Z">2002-05-01</option>
+<option value="2002-05-09T00:00:00.000Z">2002-05-09</option>
+<option value="2002-05-17T00:00:00.000Z">2002-05-17</option>
+<option value="2002-05-25T00:00:00.000Z">2002-05-25</option>
+<option value="2002-06-02T00:00:00.000Z">2002-06-02</option>
+<option value="2002-06-10T00:00:00.000Z">2002-06-10</option>
+<option value="2002-06-18T00:00:00.000Z">2002-06-18</option>
+<option value="2002-06-26T00:00:00.000Z">2002-06-26</option>
+<option value="2002-07-04T00:00:00.000Z">2002-07-04</option>
+<option value="2002-07-12T00:00:00.000Z">2002-07-12</option>
+<option value="2002-07-20T00:00:00.000Z">2002-07-20</option>
+<option value="2002-07-28T00:00:00.000Z">2002-07-28</option>
+<option value="2002-08-05T00:00:00.000Z">2002-08-05</option>
+<option value="2002-08-13T00:00:00.000Z">2002-08-13</option>
+<option value="2002-08-21T00:00:00.000Z">2002-08-21</option>
+<option value="2002-08-29T00:00:00.000Z">2002-08-29</option>
+<option value="2002-09-06T00:00:00.000Z">2002-09-06</option>
+<option value="2002-09-14T00:00:00.000Z">2002-09-14</option>
+<option value="2002-09-22T00:00:00.000Z">2002-09-22</option>
+<option value="2002-09-30T00:00:00.000Z">2002-09-30</option>
+<option value="2002-10-08T00:00:00.000Z">2002-10-08</option>
+<option value="2002-10-16T00:00:00.000Z">2002-10-16</option>
+<option value="2002-10-24T00:00:00.000Z">2002-10-24</option>
+<option value="2002-11-01T00:00:00.000Z">2002-11-01</option>
+<option value="2002-11-09T00:00:00.000Z">2002-11-09</option>
+<option value="2002-11-17T00:00:00.000Z">2002-11-17</option>
+<option value="2002-11-25T00:00:00.000Z">2002-11-25</option>
+<option value="2002-12-03T00:00:00.000Z">2002-12-03</option>
+<option value="2002-12-11T00:00:00.000Z">2002-12-11</option>
+<option value="2002-12-19T00:00:00.000Z">2002-12-19</option>
+<option value="2002-12-27T00:00:00.000Z">2002-12-27</option>
+<option value="2003-01-01T00:00:00.000Z">2003-01-01</option>
+<option value="2003-01-09T00:00:00.000Z">2003-01-09</option>
+<option value="2003-01-17T00:00:00.000Z">2003-01-17</option>
+<option value="2003-01-25T00:00:00.000Z">2003-01-25</option>
+<option value="2003-02-02T00:00:00.000Z">2003-02-02</option>
+<option value="2003-02-10T00:00:00.000Z">2003-02-10</option>
+<option value="2003-02-18T00:00:00.000Z">2003-02-18</option>
+<option value="2003-02-26T00:00:00.000Z">2003-02-26</option>
+<option value="2003-03-06T00:00:00.000Z">2003-03-06</option>
+<option value="2003-03-14T00:00:00.000Z">2003-03-14</option>
+<option value="2003-03-22T00:00:00.000Z">2003-03-22</option>
+<option value="2003-03-30T00:00:00.000Z">2003-03-30</option>
+<option value="2003-04-07T00:00:00.000Z">2003-04-07</option>
+<option value="2003-04-15T00:00:00.000Z">2003-04-15</option>
+<option value="2003-04-23T00:00:00.000Z">2003-04-23</option>
+<option value="2003-05-01T00:00:00.000Z">2003-05-01</option>
+<option value="2003-05-09T00:00:00.000Z">2003-05-09</option>
+<option value="2003-05-17T00:00:00.000Z">2003-05-17</option>
+<option value="2003-05-25T00:00:00.000Z">2003-05-25</option>
+<option value="2003-06-02T00:00:00.000Z">2003-06-02</option>
+<option value="2003-06-10T00:00:00.000Z">2003-06-10</option>
+<option value="2003-06-18T00:00:00.000Z">2003-06-18</option>
+<option value="2003-06-26T00:00:00.000Z">2003-06-26</option>
+<option value="2003-07-04T00:00:00.000Z">2003-07-04</option>
+<option value="2003-07-12T00:00:00.000Z">2003-07-12</option>
+<option value="2003-07-20T00:00:00.000Z">2003-07-20</option>
+<option value="2003-07-28T00:00:00.000Z">2003-07-28</option>
+<option value="2003-08-05T00:00:00.000Z">2003-08-05</option>
+<option value="2003-08-13T00:00:00.000Z">2003-08-13</option>
+<option value="2003-08-21T00:00:00.000Z">2003-08-21</option>
+<option value="2003-08-29T00:00:00.000Z">2003-08-29</option>
+<option value="2003-09-06T00:00:00.000Z">2003-09-06</option>
+<option value="2003-09-14T00:00:00.000Z">2003-09-14</option>
+<option value="2003-09-22T00:00:00.000Z">2003-09-22</option>
+<option value="2003-09-30T00:00:00.000Z">2003-09-30</option>
+<option value="2003-10-08T00:00:00.000Z">2003-10-08</option>
+<option value="2003-10-16T00:00:00.000Z">2003-10-16</option>
+<option value="2003-10-24T00:00:00.000Z">2003-10-24</option>
+<option value="2003-11-01T00:00:00.000Z">2003-11-01</option>
+<option value="2003-11-09T00:00:00.000Z">2003-11-09</option>
+<option value="2003-11-17T00:00:00.000Z">2003-11-17</option>
+<option value="2003-11-25T00:00:00.000Z">2003-11-25</option>
+<option value="2003-12-03T00:00:00.000Z">2003-12-03</option>
+<option value="2003-12-11T00:00:00.000Z">2003-12-11</option>
+<option value="2003-12-19T00:00:00.000Z">2003-12-19</option>
+<option value="2003-12-27T00:00:00.000Z">2003-12-27</option>
+<option value="2004-01-01T00:00:00.000Z">2004-01-01</option>
+<option value="2004-01-09T00:00:00.000Z">2004-01-09</option>
+<option value="2004-01-17T00:00:00.000Z">2004-01-17</option>
+<option value="2004-01-25T00:00:00.000Z">2004-01-25</option>
+<option value="2004-02-02T00:00:00.000Z">2004-02-02</option>
+<option value="2004-02-10T00:00:00.000Z">2004-02-10</option>
+<option value="2004-02-18T00:00:00.000Z">2004-02-18</option>
+<option value="2004-02-26T00:00:00.000Z">2004-02-26</option>
+<option value="2004-03-05T00:00:00.000Z">2004-03-05</option>
+<option value="2004-03-13T00:00:00.000Z">2004-03-13</option>
+<option value="2004-03-21T00:00:00.000Z">2004-03-21</option>
+<option value="2004-03-29T00:00:00.000Z">2004-03-29</option>
+<option value="2004-04-06T00:00:00.000Z">2004-04-06</option>
+<option value="2004-04-14T00:00:00.000Z">2004-04-14</option>
+<option value="2004-04-22T00:00:00.000Z">2004-04-22</option>
+<option value="2004-04-30T00:00:00.000Z">2004-04-30</option>
+<option value="2004-05-08T00:00:00.000Z">2004-05-08</option>
+<option value="2004-05-16T00:00:00.000Z">2004-05-16</option>
+<option value="2004-05-24T00:00:00.000Z">2004-05-24</option>
+<option value="2004-06-01T00:00:00.000Z">2004-06-01</option>
+<option value="2004-06-09T00:00:00.000Z">2004-06-09</option>
+<option value="2004-06-17T00:00:00.000Z">2004-06-17</option>
+<option value="2004-06-25T00:00:00.000Z">2004-06-25</option>
+<option value="2004-07-03T00:00:00.000Z">2004-07-03</option>
+<option value="2004-07-11T00:00:00.000Z">2004-07-11</option>
+<option value="2004-07-19T00:00:00.000Z">2004-07-19</option>
+<option value="2004-07-27T00:00:00.000Z">2004-07-27</option>
+<option value="2004-08-04T00:00:00.000Z">2004-08-04</option>
+<option value="2004-08-12T00:00:00.000Z">2004-08-12</option>
+<option value="2004-08-20T00:00:00.000Z">2004-08-20</option>
+<option value="2004-08-28T00:00:00.000Z">2004-08-28</option>
+<option value="2004-09-05T00:00:00.000Z">2004-09-05</option>
+<option value="2004-09-13T00:00:00.000Z">2004-09-13</option>
+<option value="2004-09-21T00:00:00.000Z">2004-09-21</option>
+<option value="2004-09-29T00:00:00.000Z">2004-09-29</option>
+<option value="2004-10-07T00:00:00.000Z">2004-10-07</option>
+<option value="2004-10-15T00:00:00.000Z">2004-10-15</option>
+<option value="2004-10-23T00:00:00.000Z">2004-10-23</option>
+<option value="2004-10-31T00:00:00.000Z">2004-10-31</option>
+<option value="2004-11-08T00:00:00.000Z">2004-11-08</option>
+<option value="2004-11-16T00:00:00.000Z">2004-11-16</option>
+<option value="2004-11-24T00:00:00.000Z">2004-11-24</option>
+<option value="2004-12-02T00:00:00.000Z">2004-12-02</option>
+<option value="2004-12-10T00:00:00.000Z">2004-12-10</option>
+<option value="2004-12-18T00:00:00.000Z">2004-12-18</option>
+<option value="2004-12-26T00:00:00.000Z">2004-12-26</option>
+<option value="2005-01-01T00:00:00.000Z">2005-01-01</option>
+<option value="2005-01-09T00:00:00.000Z">2005-01-09</option>
+<option value="2005-01-17T00:00:00.000Z">2005-01-17</option>
+<option value="2005-01-25T00:00:00.000Z">2005-01-25</option>
+<option value="2005-02-02T00:00:00.000Z">2005-02-02</option>
+<option value="2005-02-10T00:00:00.000Z">2005-02-10</option>
+<option value="2005-02-18T00:00:00.000Z">2005-02-18</option>
+<option value="2005-02-26T00:00:00.000Z">2005-02-26</option>
+<option value="2005-03-06T00:00:00.000Z">2005-03-06</option>
+<option value="2005-03-14T00:00:00.000Z">2005-03-14</option>
+<option value="2005-03-22T00:00:00.000Z">2005-03-22</option>
+<option value="2005-03-30T00:00:00.000Z">2005-03-30</option>
+<option value="2005-04-07T00:00:00.000Z">2005-04-07</option>
+<option value="2005-04-15T00:00:00.000Z">2005-04-15</option>
+<option value="2005-04-23T00:00:00.000Z">2005-04-23</option>
+<option value="2005-05-01T00:00:00.000Z">2005-05-01</option>
+<option value="2005-05-09T00:00:00.000Z">2005-05-09</option>
+<option value="2005-05-17T00:00:00.000Z">2005-05-17</option>
+<option value="2005-05-25T00:00:00.000Z">2005-05-25</option>
+<option value="2005-06-02T00:00:00.000Z">2005-06-02</option>
+<option value="2005-06-10T00:00:00.000Z">2005-06-10</option>
+<option value="2005-06-18T00:00:00.000Z">2005-06-18</option>
+<option value="2005-06-26T00:00:00.000Z">2005-06-26</option>
+<option value="2005-07-04T00:00:00.000Z">2005-07-04</option>
+<option value="2005-07-12T00:00:00.000Z">2005-07-12</option>
+<option value="2005-07-20T00:00:00.000Z">2005-07-20</option>
+<option value="2005-07-28T00:00:00.000Z">2005-07-28</option>
+<option value="2005-08-05T00:00:00.000Z">2005-08-05</option>
+<option value="2005-08-13T00:00:00.000Z">2005-08-13</option>
+<option value="2005-08-21T00:00:00.000Z">2005-08-21</option>
+<option value="2005-08-29T00:00:00.000Z">2005-08-29</option>
+<option value="2005-09-06T00:00:00.000Z">2005-09-06</option>
+<option value="2005-09-14T00:00:00.000Z">2005-09-14</option>
+<option value="2005-09-22T00:00:00.000Z">2005-09-22</option>
+<option value="2005-09-30T00:00:00.000Z">2005-09-30</option>
+<option value="2005-10-08T00:00:00.000Z">2005-10-08</option>
+<option value="2005-10-16T00:00:00.000Z">2005-10-16</option>
+<option value="2005-10-24T00:00:00.000Z">2005-10-24</option>
+<option value="2005-11-01T00:00:00.000Z">2005-11-01</option>
+<option value="2005-11-09T00:00:00.000Z">2005-11-09</option>
+<option value="2005-11-17T00:00:00.000Z">2005-11-17</option>
+<option value="2005-11-25T00:00:00.000Z">2005-11-25</option>
+<option value="2005-12-03T00:00:00.000Z">2005-12-03</option>
+<option value="2005-12-11T00:00:00.000Z">2005-12-11</option>
+<option value="2005-12-19T00:00:00.000Z">2005-12-19</option>
+<option value="2005-12-27T00:00:00.000Z">2005-12-27</option>
+<option value="2006-01-01T00:00:00.000Z">2006-01-01</option>
+<option value="2006-01-09T00:00:00.000Z">2006-01-09</option>
+<option value="2006-01-17T00:00:00.000Z">2006-01-17</option>
+<option value="2006-01-25T00:00:00.000Z">2006-01-25</option>
+<option value="2006-02-02T00:00:00.000Z">2006-02-02</option>
+<option value="2006-02-10T00:00:00.000Z">2006-02-10</option>
+<option value="2006-02-18T00:00:00.000Z">2006-02-18</option>
+<option value="2006-02-26T00:00:00.000Z">2006-02-26</option>
+<option value="2006-03-06T00:00:00.000Z">2006-03-06</option>
+<option value="2006-03-14T00:00:00.000Z">2006-03-14</option>
+<option value="2006-03-22T00:00:00.000Z">2006-03-22</option>
+<option value="2006-03-30T00:00:00.000Z">2006-03-30</option>
+<option value="2006-04-07T00:00:00.000Z">2006-04-07</option>
+<option value="2006-04-15T00:00:00.000Z">2006-04-15</option>
+<option value="2006-04-23T00:00:00.000Z">2006-04-23</option>
+<option value="2006-05-01T00:00:00.000Z">2006-05-01</option>
+<option value="2006-05-09T00:00:00.000Z">2006-05-09</option>
+<option value="2006-05-17T00:00:00.000Z">2006-05-17</option>
+<option value="2006-05-25T00:00:00.000Z">2006-05-25</option>
+<option value="2006-06-02T00:00:00.000Z">2006-06-02</option>
+<option value="2006-06-10T00:00:00.000Z">2006-06-10</option>
+<option value="2006-06-18T00:00:00.000Z">2006-06-18</option>
+<option value="2006-06-26T00:00:00.000Z">2006-06-26</option>
+<option value="2006-07-04T00:00:00.000Z">2006-07-04</option>
+<option value="2006-07-12T00:00:00.000Z">2006-07-12</option>
+<option value="2006-07-20T00:00:00.000Z">2006-07-20</option>
+<option value="2006-07-28T00:00:00.000Z">2006-07-28</option>
+<option value="2006-08-05T00:00:00.000Z">2006-08-05</option>
+<option value="2006-08-13T00:00:00.000Z">2006-08-13</option>
+<option value="2006-08-21T00:00:00.000Z">2006-08-21</option>
+<option value="2006-08-29T00:00:00.000Z">2006-08-29</option>
+<option value="2006-09-06T00:00:00.000Z">2006-09-06</option>
+<option value="2006-09-14T00:00:00.000Z">2006-09-14</option>
+<option value="2006-09-22T00:00:00.000Z">2006-09-22</option>
+<option value="2006-09-30T00:00:00.000Z">2006-09-30</option>
+<option value="2006-10-08T00:00:00.000Z">2006-10-08</option>
+<option value="2006-10-16T00:00:00.000Z">2006-10-16</option>
+<option value="2006-10-24T00:00:00.000Z">2006-10-24</option>
+<option value="2006-11-01T00:00:00.000Z">2006-11-01</option>
+<option value="2006-11-09T00:00:00.000Z">2006-11-09</option>
+<option value="2006-11-17T00:00:00.000Z">2006-11-17</option>
+<option value="2006-11-25T00:00:00.000Z">2006-11-25</option>
+<option value="2006-12-03T00:00:00.000Z">2006-12-03</option>
+<option value="2006-12-11T00:00:00.000Z">2006-12-11</option>
+<option value="2006-12-19T00:00:00.000Z">2006-12-19</option>
+<option value="2006-12-27T00:00:00.000Z">2006-12-27</option>
+<option value="2007-01-01T00:00:00.000Z">2007-01-01</option>
+<option value="2007-01-09T00:00:00.000Z">2007-01-09</option>
+<option value="2007-01-17T00:00:00.000Z">2007-01-17</option>
+<option value="2007-01-25T00:00:00.000Z">2007-01-25</option>
+<option value="2007-02-02T00:00:00.000Z">2007-02-02</option>
+<option value="2007-02-10T00:00:00.000Z">2007-02-10</option>
+<option value="2007-02-18T00:00:00.000Z">2007-02-18</option>
+<option value="2007-02-26T00:00:00.000Z">2007-02-26</option>
+<option value="2007-03-06T00:00:00.000Z">2007-03-06</option>
+<option value="2007-03-14T00:00:00.000Z">2007-03-14</option>
+<option value="2007-03-22T00:00:00.000Z">2007-03-22</option>
+<option value="2007-03-30T00:00:00.000Z">2007-03-30</option>
+<option value="2007-04-07T00:00:00.000Z">2007-04-07</option>
+<option value="2007-04-15T00:00:00.000Z">2007-04-15</option>
+<option value="2007-04-23T00:00:00.000Z">2007-04-23</option>
+<option value="2007-05-01T00:00:00.000Z">2007-05-01</option>
+<option value="2007-05-09T00:00:00.000Z">2007-05-09</option>
+<option value="2007-05-17T00:00:00.000Z">2007-05-17</option>
+<option value="2007-05-25T00:00:00.000Z">2007-05-25</option>
+<option value="2007-06-02T00:00:00.000Z">2007-06-02</option>
+<option value="2007-06-10T00:00:00.000Z">2007-06-10</option>
+<option value="2007-06-18T00:00:00.000Z">2007-06-18</option>
+<option value="2007-06-26T00:00:00.000Z">2007-06-26</option>
+<option value="2007-07-04T00:00:00.000Z">2007-07-04</option>
+<option value="2007-07-12T00:00:00.000Z">2007-07-12</option>
+<option value="2007-07-20T00:00:00.000Z">2007-07-20</option>
+<option value="2007-07-28T00:00:00.000Z">2007-07-28</option>
+<option value="2007-08-05T00:00:00.000Z">2007-08-05</option>
+<option value="2007-08-13T00:00:00.000Z">2007-08-13</option>
+<option value="2007-08-21T00:00:00.000Z">2007-08-21</option>
+<option value="2007-08-29T00:00:00.000Z">2007-08-29</option>
+<option value="2007-09-06T00:00:00.000Z">2007-09-06</option>
+<option value="2007-09-14T00:00:00.000Z">2007-09-14</option>
+<option value="2007-09-22T00:00:00.000Z">2007-09-22</option>
+<option value="2007-09-30T00:00:00.000Z">2007-09-30</option>
+<option value="2007-10-08T00:00:00.000Z">2007-10-08</option>
+<option value="2007-10-16T00:00:00.000Z">2007-10-16</option>
+<option value="2007-10-24T00:00:00.000Z">2007-10-24</option>
+<option value="2007-11-01T00:00:00.000Z">2007-11-01</option>
+<option value="2007-11-09T00:00:00.000Z">2007-11-09</option>
+<option value="2007-11-17T00:00:00.000Z">2007-11-17</option>
+<option value="2007-11-25T00:00:00.000Z">2007-11-25</option>
+<option value="2007-12-03T00:00:00.000Z">2007-12-03</option>
+<option value="2007-12-11T00:00:00.000Z">2007-12-11</option>
+<option value="2007-12-19T00:00:00.000Z">2007-12-19</option>
+<option value="2007-12-27T00:00:00.000Z">2007-12-27</option>
+<option value="2008-01-01T00:00:00.000Z">2008-01-01</option>
+<option value="2008-01-09T00:00:00.000Z">2008-01-09</option>
+<option value="2008-01-17T00:00:00.000Z">2008-01-17</option>
+<option value="2008-01-25T00:00:00.000Z">2008-01-25</option>
+<option value="2008-02-02T00:00:00.000Z">2008-02-02</option>
+<option value="2008-02-10T00:00:00.000Z">2008-02-10</option>
+<option value="2008-02-18T00:00:00.000Z">2008-02-18</option>
+<option value="2008-02-26T00:00:00.000Z">2008-02-26</option>
+<option value="2008-03-05T00:00:00.000Z">2008-03-05</option>
+<option value="2008-03-13T00:00:00.000Z">2008-03-13</option>
+<option value="2008-03-21T00:00:00.000Z">2008-03-21</option>
+<option value="2008-03-29T00:00:00.000Z">2008-03-29</option>
+<option value="2008-04-06T00:00:00.000Z">2008-04-06</option>
+<option value="2008-04-14T00:00:00.000Z">2008-04-14</option>
+<option value="2008-04-22T00:00:00.000Z">2008-04-22</option>
+<option value="2008-04-30T00:00:00.000Z">2008-04-30</option>
+<option value="2008-05-08T00:00:00.000Z">2008-05-08</option>
+<option value="2008-05-16T00:00:00.000Z">2008-05-16</option>
+<option value="2008-05-24T00:00:00.000Z">2008-05-24</option>
+<option value="2008-06-01T00:00:00.000Z">2008-06-01</option>
+<option value="2008-06-09T00:00:00.000Z">2008-06-09</option>
+<option value="2008-06-17T00:00:00.000Z">2008-06-17</option>
+<option value="2008-06-25T00:00:00.000Z">2008-06-25</option>
+<option value="2008-07-03T00:00:00.000Z">2008-07-03</option>
+<option value="2008-07-11T00:00:00.000Z">2008-07-11</option>
+<option value="2008-07-19T00:00:00.000Z">2008-07-19</option>
+<option value="2008-07-27T00:00:00.000Z">2008-07-27</option>
+<option value="2008-08-04T00:00:00.000Z">2008-08-04</option>
+<option value="2008-08-12T00:00:00.000Z">2008-08-12</option>
+<option value="2008-08-20T00:00:00.000Z">2008-08-20</option>
+<option value="2008-08-28T00:00:00.000Z">2008-08-28</option>
+<option value="2008-09-05T00:00:00.000Z">2008-09-05</option>
+<option value="2008-09-13T00:00:00.000Z">2008-09-13</option>
+<option value="2008-09-21T00:00:00.000Z">2008-09-21</option>
+<option value="2008-09-29T00:00:00.000Z">2008-09-29</option>
+<option value="2008-10-07T00:00:00.000Z">2008-10-07</option>
+<option value="2008-10-15T00:00:00.000Z">2008-10-15</option>
+<option value="2008-10-23T00:00:00.000Z">2008-10-23</option>
+<option value="2008-10-31T00:00:00.000Z">2008-10-31</option>
+<option value="2008-11-08T00:00:00.000Z">2008-11-08</option>
+<option value="2008-11-16T00:00:00.000Z">2008-11-16</option>
+<option value="2008-11-24T00:00:00.000Z">2008-11-24</option>
+<option value="2008-12-02T00:00:00.000Z">2008-12-02</option>
+<option value="2008-12-10T00:00:00.000Z">2008-12-10</option>
+<option value="2008-12-18T00:00:00.000Z">2008-12-18</option>
+<option value="2008-12-26T00:00:00.000Z">2008-12-26</option>
+<option value="2009-01-01T00:00:00.000Z">2009-01-01</option>
+<option value="2009-01-09T00:00:00.000Z">2009-01-09</option>
+<option value="2009-01-17T00:00:00.000Z">2009-01-17</option>
+<option value="2009-01-25T00:00:00.000Z">2009-01-25</option>
+<option value="2009-02-02T00:00:00.000Z">2009-02-02</option>
+<option value="2009-02-10T00:00:00.000Z">2009-02-10</option>
+<option value="2009-02-18T00:00:00.000Z">2009-02-18</option>
+<option value="2009-02-26T00:00:00.000Z">2009-02-26</option>
+<option value="2009-03-06T00:00:00.000Z">2009-03-06</option>
+<option value="2009-03-14T00:00:00.000Z">2009-03-14</option>
+<option value="2009-03-22T00:00:00.000Z">2009-03-22</option>
+<option value="2009-03-30T00:00:00.000Z">2009-03-30</option>
+<option value="2009-04-07T00:00:00.000Z">2009-04-07</option>
+<option value="2009-04-15T00:00:00.000Z">2009-04-15</option>
+<option value="2009-04-23T00:00:00.000Z">2009-04-23</option>
+<option value="2009-05-01T00:00:00.000Z">2009-05-01</option>
+<option value="2009-05-09T00:00:00.000Z">2009-05-09</option>
+<option value="2009-05-17T00:00:00.000Z">2009-05-17</option>
+<option value="2009-05-25T00:00:00.000Z">2009-05-25</option>
+<option value="2009-06-02T00:00:00.000Z">2009-06-02</option>
+<option value="2009-06-10T00:00:00.000Z">2009-06-10</option>
+<option value="2009-06-18T00:00:00.000Z">2009-06-18</option>
+<option value="2009-06-26T00:00:00.000Z">2009-06-26</option>
+<option value="2009-07-04T00:00:00.000Z">2009-07-04</option>
+<option value="2009-07-12T00:00:00.000Z">2009-07-12</option>
+<option value="2009-07-20T00:00:00.000Z">2009-07-20</option>
+<option value="2009-07-28T00:00:00.000Z">2009-07-28</option>
+<option value="2009-08-05T00:00:00.000Z">2009-08-05</option>
+<option value="2009-08-13T00:00:00.000Z">2009-08-13</option>
+<option value="2009-08-21T00:00:00.000Z">2009-08-21</option>
+<option value="2009-08-29T00:00:00.000Z">2009-08-29</option>
+<option value="2009-09-06T00:00:00.000Z">2009-09-06</option>
+<option value="2009-09-14T00:00:00.000Z">2009-09-14</option>
+<option value="2009-09-22T00:00:00.000Z">2009-09-22</option>
+<option value="2009-09-30T00:00:00.000Z">2009-09-30</option>
+<option value="2009-10-08T00:00:00.000Z">2009-10-08</option>
+<option value="2009-10-16T00:00:00.000Z">2009-10-16</option>
+<option value="2009-10-24T00:00:00.000Z">2009-10-24</option>
+<option value="2009-11-01T00:00:00.000Z">2009-11-01</option>
+<option value="2009-11-09T00:00:00.000Z">2009-11-09</option>
+<option value="2009-11-17T00:00:00.000Z">2009-11-17</option>
+<option value="2009-11-25T00:00:00.000Z">2009-11-25</option>
+<option value="2009-12-03T00:00:00.000Z">2009-12-03</option>
+<option value="2009-12-11T00:00:00.000Z">2009-12-11</option>
+<option value="2009-12-19T00:00:00.000Z">2009-12-19</option>
+<option value="2009-12-27T00:00:00.000Z">2009-12-27</option>
+<option value="2010-01-01T00:00:00.000Z">2010-01-01</option>
+<option value="2010-01-09T00:00:00.000Z">2010-01-09</option>
+<option value="2010-01-17T00:00:00.000Z">2010-01-17</option>
+<option value="2010-01-25T00:00:00.000Z">2010-01-25</option>
+<option value="2010-02-02T00:00:00.000Z">2010-02-02</option>
+<option value="2010-02-10T00:00:00.000Z">2010-02-10</option>
+<option value="2010-02-18T00:00:00.000Z">2010-02-18</option>
+<option value="2010-02-26T00:00:00.000Z">2010-02-26</option>
+<option value="2010-03-06T00:00:00.000Z">2010-03-06</option>
+<option value="2010-03-14T00:00:00.000Z">2010-03-14</option>
+<option value="2010-03-22T00:00:00.000Z">2010-03-22</option>
+<option value="2010-03-30T00:00:00.000Z">2010-03-30</option>
+<option value="2010-04-07T00:00:00.000Z">2010-04-07</option>
+<option value="2010-04-15T00:00:00.000Z">2010-04-15</option>
+<option value="2010-04-23T00:00:00.000Z">2010-04-23</option>
+<option value="2010-05-01T00:00:00.000Z">2010-05-01</option>
+<option value="2010-05-09T00:00:00.000Z">2010-05-09</option>
+<option value="2010-05-17T00:00:00.000Z">2010-05-17</option>
+<option value="2010-05-25T00:00:00.000Z">2010-05-25</option>
+<option value="2010-06-02T00:00:00.000Z">2010-06-02</option>
+<option value="2010-06-10T00:00:00.000Z">2010-06-10</option>
+<option value="2010-06-18T00:00:00.000Z">2010-06-18</option>
+<option value="2010-06-26T00:00:00.000Z">2010-06-26</option>
+<option value="2010-07-04T00:00:00.000Z">2010-07-04</option>
+<option value="2010-07-12T00:00:00.000Z">2010-07-12</option>
+<option value="2010-07-20T00:00:00.000Z">2010-07-20</option>
+<option value="2010-07-28T00:00:00.000Z">2010-07-28</option>
+<option value="2010-08-05T00:00:00.000Z">2010-08-05</option>
+<option value="2010-08-13T00:00:00.000Z">2010-08-13</option>
+<option value="2010-08-21T00:00:00.000Z">2010-08-21</option>
+<option value="2010-08-29T00:00:00.000Z">2010-08-29</option>
+<option value="2010-09-06T00:00:00.000Z">2010-09-06</option>
+<option value="2010-09-14T00:00:00.000Z">2010-09-14</option>
+<option value="2010-09-22T00:00:00.000Z">2010-09-22</option>
+<option value="2010-09-30T00:00:00.000Z">2010-09-30</option>
+<option value="2010-10-08T00:00:00.000Z">2010-10-08</option>
+<option value="2010-10-16T00:00:00.000Z">2010-10-16</option>
+<option value="2010-10-24T00:00:00.000Z">2010-10-24</option>
+<option value="2010-11-01T00:00:00.000Z">2010-11-01</option>
+<option value="2010-11-09T00:00:00.000Z">2010-11-09</option>
+<option value="2010-11-17T00:00:00.000Z">2010-11-17</option>
+<option value="2010-11-25T00:00:00.000Z">2010-11-25</option>
+<option value="2010-12-03T00:00:00.000Z">2010-12-03</option>
+<option value="2010-12-11T00:00:00.000Z">2010-12-11</option>
+<option value="2010-12-19T00:00:00.000Z">2010-12-19</option>
+<option value="2010-12-27T00:00:00.000Z">2010-12-27</option>
+<option value="2011-01-01T00:00:00.000Z">2011-01-01</option>
+<option value="2011-01-09T00:00:00.000Z">2011-01-09</option>
+<option value="2011-01-17T00:00:00.000Z">2011-01-17</option>
+<option value="2011-01-25T00:00:00.000Z">2011-01-25</option>
+<option value="2011-02-02T00:00:00.000Z">2011-02-02</option>
+<option value="2011-02-10T00:00:00.000Z">2011-02-10</option>
+<option value="2011-02-18T00:00:00.000Z">2011-02-18</option>
+<option value="2011-02-26T00:00:00.000Z">2011-02-26</option>
+<option value="2011-03-06T00:00:00.000Z">2011-03-06</option>
+<option value="2011-03-14T00:00:00.000Z">2011-03-14</option>
+<option value="2011-03-22T00:00:00.000Z">2011-03-22</option>
+<option value="2011-03-30T00:00:00.000Z">2011-03-30</option>
+<option value="2011-04-07T00:00:00.000Z">2011-04-07</option>
+<option value="2011-04-15T00:00:00.000Z">2011-04-15</option>
+<option value="2011-04-23T00:00:00.000Z">2011-04-23</option>
+<option value="2011-05-01T00:00:00.000Z">2011-05-01</option>
+<option value="2011-05-09T00:00:00.000Z">2011-05-09</option>
+<option value="2011-05-17T00:00:00.000Z">2011-05-17</option>
+<option value="2011-05-25T00:00:00.000Z">2011-05-25</option>
+<option value="2011-06-02T00:00:00.000Z">2011-06-02</option>
+<option value="2011-06-10T00:00:00.000Z">2011-06-10</option>
+<option value="2011-06-18T00:00:00.000Z">2011-06-18</option>
+<option value="2011-06-26T00:00:00.000Z">2011-06-26</option>
+<option value="2011-07-04T00:00:00.000Z">2011-07-04</option>
+<option value="2011-07-12T00:00:00.000Z">2011-07-12</option>
+<option value="2011-07-20T00:00:00.000Z">2011-07-20</option>
+<option value="2011-07-28T00:00:00.000Z">2011-07-28</option>
+<option value="2011-08-05T00:00:00.000Z">2011-08-05</option>
+<option value="2011-08-13T00:00:00.000Z">2011-08-13</option>
+<option value="2011-08-21T00:00:00.000Z">2011-08-21</option>
+<option value="2011-08-29T00:00:00.000Z">2011-08-29</option>
+<option value="2011-09-06T00:00:00.000Z">2011-09-06</option>
+<option value="2011-09-14T00:00:00.000Z">2011-09-14</option>
+<option value="2011-09-22T00:00:00.000Z">2011-09-22</option>
+<option value="2011-09-30T00:00:00.000Z">2011-09-30</option>
+<option value="2011-10-08T00:00:00.000Z">2011-10-08</option>
+<option value="2011-10-16T00:00:00.000Z">2011-10-16</option>
+<option value="2011-10-24T00:00:00.000Z">2011-10-24</option>
+<option value="2011-11-01T00:00:00.000Z">2011-11-01</option>
+<option value="2011-11-09T00:00:00.000Z">2011-11-09</option>
+<option value="2011-11-17T00:00:00.000Z">2011-11-17</option>
+<option value="2011-11-25T00:00:00.000Z">2011-11-25</option>
+<option value="2011-12-03T00:00:00.000Z">2011-12-03</option>
+<option value="2011-12-11T00:00:00.000Z">2011-12-11</option>
+<option value="2011-12-19T00:00:00.000Z">2011-12-19</option>
+<option value="2011-12-27T00:00:00.000Z">2011-12-27</option>
+<option value="2012-01-01T00:00:00.000Z">2012-01-01</option>
+<option value="2012-01-09T00:00:00.000Z">2012-01-09</option>
+<option value="2012-01-17T00:00:00.000Z">2012-01-17</option>
+<option value="2012-01-25T00:00:00.000Z">2012-01-25</option>
+<option value="2012-02-02T00:00:00.000Z">2012-02-02</option>
+<option value="2012-02-10T00:00:00.000Z">2012-02-10</option>
+<option value="2012-02-18T00:00:00.000Z">2012-02-18</option>
+<option value="2012-02-26T00:00:00.000Z">2012-02-26</option>
+<option value="2012-03-05T00:00:00.000Z">2012-03-05</option>
+<option value="2012-03-13T00:00:00.000Z">2012-03-13</option>
+<option value="2012-03-21T00:00:00.000Z">2012-03-21</option>
+<option value="2012-03-29T00:00:00.000Z">2012-03-29</option>
+<option value="2012-04-06T00:00:00.000Z">2012-04-06</option>
+<option value="2012-04-14T00:00:00.000Z">2012-04-14</option>
+<option value="2012-04-22T00:00:00.000Z">2012-04-22</option>
+<option value="2012-04-30T00:00:00.000Z">2012-04-30</option>
+<option value="2012-05-08T00:00:00.000Z">2012-05-08</option>
+<option value="2012-05-16T00:00:00.000Z">2012-05-16</option>
+<option value="2012-05-24T00:00:00.000Z">2012-05-24</option>
+<option value="2012-06-01T00:00:00.000Z">2012-06-01</option>
+<option value="2012-06-09T00:00:00.000Z">2012-06-09</option>
+<option value="2012-06-17T00:00:00.000Z">2012-06-17</option>
+<option value="2012-06-25T00:00:00.000Z">2012-06-25</option>
+<option value="2012-07-03T00:00:00.000Z">2012-07-03</option>
+<option value="2012-07-11T00:00:00.000Z">2012-07-11</option>
+<option value="2012-07-19T00:00:00.000Z">2012-07-19</option>
+<option value="2012-07-27T00:00:00.000Z">2012-07-27</option>
+<option value="2012-08-04T00:00:00.000Z">2012-08-04</option>
+<option value="2012-08-12T00:00:00.000Z">2012-08-12</option>
+<option value="2012-08-20T00:00:00.000Z">2012-08-20</option>
+<option value="2012-08-28T00:00:00.000Z">2012-08-28</option>
+<option value="2012-09-05T00:00:00.000Z">2012-09-05</option>
+<option value="2012-09-13T00:00:00.000Z">2012-09-13</option>
+<option value="2012-09-21T00:00:00.000Z">2012-09-21</option>
+<option value="2012-09-29T00:00:00.000Z">2012-09-29</option>
+<option value="2012-10-07T00:00:00.000Z">2012-10-07</option>
+<option value="2012-10-15T00:00:00.000Z">2012-10-15</option>
+<option value="2012-10-23T00:00:00.000Z">2012-10-23</option>
+<option value="2012-10-31T00:00:00.000Z">2012-10-31</option>
+<option value="2012-11-08T00:00:00.000Z">2012-11-08</option>
+<option value="2012-11-16T00:00:00.000Z">2012-11-16</option>
+<option value="2012-11-24T00:00:00.000Z">2012-11-24</option>
+<option value="2012-12-02T00:00:00.000Z">2012-12-02</option>
+<option value="2012-12-10T00:00:00.000Z">2012-12-10</option>
+<option value="2012-12-18T00:00:00.000Z">2012-12-18</option>
+<option value="2012-12-26T00:00:00.000Z">2012-12-26</option>
+<option value="2013-01-01T00:00:00.000Z">2013-01-01</option>
+<option value="2013-01-09T00:00:00.000Z">2013-01-09</option>
+<option value="2013-01-17T00:00:00.000Z">2013-01-17</option>
+<option value="2013-01-25T00:00:00.000Z">2013-01-25</option>
+<option value="2013-02-02T00:00:00.000Z">2013-02-02</option>
+<option value="2013-02-10T00:00:00.000Z">2013-02-10</option>
+<option value="2013-02-18T00:00:00.000Z">2013-02-18</option>
+<option value="2013-02-26T00:00:00.000Z">2013-02-26</option>
+<option value="2013-03-06T00:00:00.000Z">2013-03-06</option>
+<option value="2013-03-14T00:00:00.000Z">2013-03-14</option>
+<option value="2013-03-22T00:00:00.000Z">2013-03-22</option>
+<option value="2013-03-30T00:00:00.000Z">2013-03-30</option>
+<option value="2013-04-07T00:00:00.000Z">2013-04-07</option>
+<option value="2013-04-15T00:00:00.000Z">2013-04-15</option>
+<option value="2013-04-23T00:00:00.000Z">2013-04-23</option>
+<option value="2013-05-01T00:00:00.000Z">2013-05-01</option>
+<option value="2013-05-09T00:00:00.000Z">2013-05-09</option>
+<option value="2013-05-17T00:00:00.000Z">2013-05-17</option>
+<option value="2013-05-25T00:00:00.000Z">2013-05-25</option>
+<option value="2013-06-02T00:00:00.000Z">2013-06-02</option>
+<option value="2013-06-10T00:00:00.000Z">2013-06-10</option>
+<option value="2013-06-18T00:00:00.000Z">2013-06-18</option>
+<option value="2013-06-26T00:00:00.000Z">2013-06-26</option>
+<option value="2013-07-04T00:00:00.000Z">2013-07-04</option>
+<option value="2013-07-12T00:00:00.000Z">2013-07-12</option>
+<option value="2013-07-20T00:00:00.000Z">2013-07-20</option>
+<option value="2013-07-28T00:00:00.000Z">2013-07-28</option>
+<option value="2013-08-05T00:00:00.000Z">2013-08-05</option>
+<option value="2013-08-13T00:00:00.000Z">2013-08-13</option>
+<option value="2013-08-21T00:00:00.000Z">2013-08-21</option>
+<option value="2013-08-29T00:00:00.000Z">2013-08-29</option>
+<option value="2013-09-06T00:00:00.000Z">2013-09-06</option>
+<option value="2013-09-14T00:00:00.000Z">2013-09-14</option>
+<option value="2013-09-22T00:00:00.000Z">2013-09-22</option>
+<option value="2013-09-30T00:00:00.000Z">2013-09-30</option>
+<option value="2013-10-08T00:00:00.000Z">2013-10-08</option>
+<option value="2013-10-16T00:00:00.000Z">2013-10-16</option>
+<option value="2013-10-24T00:00:00.000Z">2013-10-24</option>
+<option value="2013-11-01T00:00:00.000Z">2013-11-01</option>
+<option value="2013-11-09T00:00:00.000Z">2013-11-09</option>
+<option value="2013-11-17T00:00:00.000Z">2013-11-17</option>
+<option value="2013-11-25T00:00:00.000Z">2013-11-25</option>
+<option value="2013-12-03T00:00:00.000Z">2013-12-03</option>
+<option value="2013-12-11T00:00:00.000Z">2013-12-11</option>
+<option value="2013-12-19T00:00:00.000Z">2013-12-19</option>
+<option value="2013-12-27T00:00:00.000Z">2013-12-27</option>
+<option value="2014-01-01T00:00:00.000Z">2014-01-01</option>
+<option value="2014-01-09T00:00:00.000Z">2014-01-09</option>
+<option value="2014-01-17T00:00:00.000Z">2014-01-17</option>
+<option value="2014-01-25T00:00:00.000Z">2014-01-25</option>
+<option value="2014-02-02T00:00:00.000Z">2014-02-02</option>
+<option value="2014-02-10T00:00:00.000Z">2014-02-10</option>
+<option value="2014-02-18T00:00:00.000Z">2014-02-18</option>
+<option value="2014-02-26T00:00:00.000Z">2014-02-26</option>
+<option value="2014-03-06T00:00:00.000Z">2014-03-06</option>
+<option value="2014-03-14T00:00:00.000Z">2014-03-14</option>
+<option value="2014-03-22T00:00:00.000Z">2014-03-22</option>
+<option value="2014-03-30T00:00:00.000Z">2014-03-30</option>
+<option value="2014-04-07T00:00:00.000Z">2014-04-07</option>
+<option value="2014-04-15T00:00:00.000Z">2014-04-15</option>
+<option value="2014-04-23T00:00:00.000Z">2014-04-23</option>
+<option value="2014-05-01T00:00:00.000Z">2014-05-01</option>
+<option value="2014-05-09T00:00:00.000Z">2014-05-09</option>
+<option value="2014-05-17T00:00:00.000Z">2014-05-17</option>
+<option value="2014-05-25T00:00:00.000Z">2014-05-25</option>
+<option value="2014-06-02T00:00:00.000Z">2014-06-02</option>
+<option value="2014-06-10T00:00:00.000Z">2014-06-10</option>
+<option value="2014-06-18T00:00:00.000Z">2014-06-18</option>
+<option value="2014-06-26T00:00:00.000Z">2014-06-26</option>
+<option value="2014-07-04T00:00:00.000Z">2014-07-04</option>
+<option value="2014-07-12T00:00:00.000Z">2014-07-12</option>
+<option value="2014-07-20T00:00:00.000Z">2014-07-20</option>
+<option value="2014-07-28T00:00:00.000Z">2014-07-28</option>
+<option value="2014-08-05T00:00:00.000Z">2014-08-05</option>
+<option value="2014-08-13T00:00:00.000Z">2014-08-13</option>
+<option value="2014-08-21T00:00:00.000Z">2014-08-21</option>
+<option value="2014-08-29T00:00:00.000Z">2014-08-29</option>
+<option value="2014-09-06T00:00:00.000Z">2014-09-06</option>
+<option value="2014-09-14T00:00:00.000Z">2014-09-14</option>
+<option value="2014-09-22T00:00:00.000Z">2014-09-22</option>
+<option value="2014-09-30T00:00:00.000Z">2014-09-30</option>
+<option value="2014-10-08T00:00:00.000Z">2014-10-08</option>
+<option value="2014-10-16T00:00:00.000Z">2014-10-16</option>
+<option value="2014-10-24T00:00:00.000Z">2014-10-24</option>
+<option value="2014-11-01T00:00:00.000Z">2014-11-01</option>
+<option value="2014-11-09T00:00:00.000Z">2014-11-09</option>
+<option value="2014-11-17T00:00:00.000Z">2014-11-17</option>
+<option value="2014-11-25T00:00:00.000Z">2014-11-25</option>
+<option value="2014-12-03T00:00:00.000Z">2014-12-03</option>
+<option value="2014-12-11T00:00:00.000Z">2014-12-11</option>
+<option value="2014-12-19T00:00:00.000Z">2014-12-19</option>
+<option value="2014-12-27T00:00:00.000Z">2014-12-27</option>
+<option value="2015-01-01T00:00:00.000Z">2015-01-01</option>
+<option value="2015-01-09T00:00:00.000Z">2015-01-09</option>
+<option value="2015-01-17T00:00:00.000Z">2015-01-17</option>
+<option value="2015-01-25T00:00:00.000Z">2015-01-25</option>
+<option value="2015-02-02T00:00:00.000Z">2015-02-02</option>
+<option value="2015-02-10T00:00:00.000Z">2015-02-10</option>
+<option value="2015-02-18T00:00:00.000Z">2015-02-18</option>
+<option value="2015-02-26T00:00:00.000Z">2015-02-26</option>
+<option value="2015-03-06T00:00:00.000Z">2015-03-06</option>
+<option value="2015-03-14T00:00:00.000Z">2015-03-14</option>
+<option value="2015-03-22T00:00:00.000Z">2015-03-22</option>
+<option value="2015-03-30T00:00:00.000Z">2015-03-30</option>
+<option value="2015-04-07T00:00:00.000Z">2015-04-07</option>
+<option value="2015-04-15T00:00:00.000Z">2015-04-15</option>
+<option value="2015-04-23T00:00:00.000Z">2015-04-23</option>
+<option value="2015-05-01T00:00:00.000Z">2015-05-01</option>
+<option value="2015-05-09T00:00:00.000Z">2015-05-09</option>
+<option value="2015-05-17T00:00:00.000Z">2015-05-17</option>
+<option value="2015-05-25T00:00:00.000Z">2015-05-25</option>
+<option value="2015-06-02T00:00:00.000Z">2015-06-02</option>
+<option value="2015-06-10T00:00:00.000Z">2015-06-10</option>
+<option value="2015-06-18T00:00:00.000Z">2015-06-18</option>
+<option value="2015-06-26T00:00:00.000Z">2015-06-26</option>
+<option value="2015-07-04T00:00:00.000Z">2015-07-04</option>
+<option value="2015-07-12T00:00:00.000Z">2015-07-12</option>
+<option value="2015-07-20T00:00:00.000Z">2015-07-20</option>
+<option value="2015-07-28T00:00:00.000Z">2015-07-28</option>
+<option value="2015-08-05T00:00:00.000Z">2015-08-05</option>
+<option value="2015-08-13T00:00:00.000Z">2015-08-13</option>
+<option value="2015-08-21T00:00:00.000Z">2015-08-21</option>
+<option value="2015-08-29T00:00:00.000Z">2015-08-29</option>
+<option value="2015-09-06T00:00:00.000Z">2015-09-06</option>
+<option value="2015-09-14T00:00:00.000Z">2015-09-14</option>
+<option value="2015-09-22T00:00:00.000Z">2015-09-22</option>
+<option value="2015-09-30T00:00:00.000Z">2015-09-30</option>
+<option value="2015-10-08T00:00:00.000Z">2015-10-08</option>
+<option value="2015-10-16T00:00:00.000Z">2015-10-16</option>
+<option value="2015-10-24T00:00:00.000Z">2015-10-24</option>
+<option value="2015-11-01T00:00:00.000Z">2015-11-01</option>
+<option value="2015-11-09T00:00:00.000Z">2015-11-09</option>
+<option value="2015-11-17T00:00:00.000Z">2015-11-17</option>
+<option value="2015-11-25T00:00:00.000Z">2015-11-25</option>
+<option value="2015-12-03T00:00:00.000Z">2015-12-03</option>
+<option value="2015-12-11T00:00:00.000Z">2015-12-11</option>
+<option value="2015-12-19T00:00:00.000Z">2015-12-19</option>
+<option value="2015-12-27T00:00:00.000Z">2015-12-27</option>
+<option value="2016-01-01T00:00:00.000Z">2016-01-01</option>
+<option value="2016-01-09T00:00:00.000Z">2016-01-09</option>
+<option value="2016-01-17T00:00:00.000Z">2016-01-17</option>
+<option value="2016-01-25T00:00:00.000Z">2016-01-25</option>
+<option value="2016-02-02T00:00:00.000Z">2016-02-02</option>
+<option value="2016-02-10T00:00:00.000Z">2016-02-10</option>
+<option value="2016-02-18T00:00:00.000Z">2016-02-18</option>
+<option value="2016-02-26T00:00:00.000Z">2016-02-26</option>
+<option value="2016-03-05T00:00:00.000Z">2016-03-05</option>
+<option value="2016-03-13T00:00:00.000Z">2016-03-13</option>
+<option value="2016-03-21T00:00:00.000Z">2016-03-21</option>
+<option value="2016-03-29T00:00:00.000Z">2016-03-29</option>
+<option value="2016-04-06T00:00:00.000Z">2016-04-06</option>
+<option value="2016-04-14T00:00:00.000Z">2016-04-14</option>
+<option value="2016-04-22T00:00:00.000Z">2016-04-22</option>
+<option value="2016-04-30T00:00:00.000Z">2016-04-30</option>
+<option value="2016-05-08T00:00:00.000Z">2016-05-08</option>
+<option value="2016-05-16T00:00:00.000Z">2016-05-16</option>
+<option value="2016-05-24T00:00:00.000Z">2016-05-24</option>
+<option value="2016-06-01T00:00:00.000Z">2016-06-01</option>
+<option value="2016-06-09T00:00:00.000Z">2016-06-09</option>
+<option value="2016-06-17T00:00:00.000Z">2016-06-17</option>
+<option value="2016-06-25T00:00:00.000Z">2016-06-25</option>
+<option value="2016-07-03T00:00:00.000Z">2016-07-03</option>
+<option value="2016-07-11T00:00:00.000Z">2016-07-11</option>
+<option value="2016-07-19T00:00:00.000Z">2016-07-19</option>
+<option value="2016-07-27T00:00:00.000Z">2016-07-27</option>
+<option value="2016-08-04T00:00:00.000Z">2016-08-04</option>
+<option value="2016-08-12T00:00:00.000Z">2016-08-12</option>
+<option value="2016-08-20T00:00:00.000Z">2016-08-20</option>
+<option value="2016-08-28T00:00:00.000Z">2016-08-28</option>
+<option value="2016-09-05T00:00:00.000Z">2016-09-05</option>
+<option value="2016-09-13T00:00:00.000Z">2016-09-13</option>
+<option value="2016-09-21T00:00:00.000Z">2016-09-21</option>
+<option value="2016-09-29T00:00:00.000Z">2016-09-29</option>
+<option value="2016-10-07T00:00:00.000Z">2016-10-07</option>
+<option value="2016-10-15T00:00:00.000Z">2016-10-15</option>
+<option value="2016-10-23T00:00:00.000Z">2016-10-23</option>
+<option value="2016-10-31T00:00:00.000Z">2016-10-31</option>
+<option value="2016-11-08T00:00:00.000Z">2016-11-08</option>
+<option value="2016-11-16T00:00:00.000Z">2016-11-16</option>
+<option value="2016-11-24T00:00:00.000Z">2016-11-24</option>
+<option value="2016-12-02T00:00:00.000Z">2016-12-02</option>
+<option value="2016-12-10T00:00:00.000Z">2016-12-10</option>
+<option value="2016-12-18T00:00:00.000Z">2016-12-18</option>
+<option value="2016-12-26T00:00:00.000Z">2016-12-26</option>
+<option value="2017-01-01T00:00:00.000Z">2017-01-01</option>
+<option value="2017-01-09T00:00:00.000Z">2017-01-09</option>
+<option value="2017-01-17T00:00:00.000Z">2017-01-17</option>
+<option value="2017-01-25T00:00:00.000Z">2017-01-25</option>
+<option value="2017-02-02T00:00:00.000Z">2017-02-02</option>
+<option value="2017-02-10T00:00:00.000Z">2017-02-10</option>
+<option value="2017-02-18T00:00:00.000Z">2017-02-18</option>
+<option value="2017-02-26T00:00:00.000Z">2017-02-26</option>
+<option value="2017-03-06T00:00:00.000Z">2017-03-06</option>
+<option value="2017-03-14T00:00:00.000Z">2017-03-14</option>
+			</select>
+				</span>
+			</td>
+		</tr>
+<!--		
+		<tr>
+			<td style="width:20%; text-align:right; font-weight:bold; padding-right:10px">
+				Time
+			</td>
+			<td style="width:80%; padding-top:10px">
+				<select name="year" style="width:100px;">
+					<option value="">Year</option>
+					<option value="2001">2001</option>
+					<option value="2002">2002</option>
+					<option value="2003">2003</option>
+					<option value="2004">2004</option>
+					<option value="2005">2005</option>
+					<option value="2006">2006</option>
+					<option value="2007">2007</option>
+					<option value="2008">2008</option>
+					<option value="2009">2009</option>
+					<option value="2010">2010</option>
+					<option value="2011">2011</option>
+					<option value="2012">2012</option>
+					<option value="2013">2013</option>
+					<option value="2014">2014</option>
+					<option value="2015">2015</option>
+					<option value="2016">2016</option>
+					<option value="2017">2017</option>
+					<option value="2018" selected=selected>2018</option>
+					<option value="2019">2019</option>
+				</select>
+				<select name="month" style="width:100px;">
+					<option value="">Month</option>
+					<option value="01">Jan</option>
+					<option value="02">Feb</option>
+					<option value="03">Mar</option>
+					<option value="04">Apr</option>
+					<option value="05">May</option>
+					<option value="06">Jun</option>
+					<option value="07">Jul</option>
+					<option value="08">Aug</option>
+					<option value="09" selected=selected>Sep</option>
+					<option value="10">Oct</option>
+					<option value="11">Nov</option>
+					<option value="12">Dec</option>
+				</select>
+				<select name="date" style="width:93px;">
+					<option value="">Date</option>
+					<option value=1>1</option>
+					<option value=2>2</option>
+					<option value=3>3</option>
+					<option value=4>4</option>
+					<option value=5>5</option>
+					<option value=6>6</option>
+					<option value=7>7</option>
+					<option value=8>8</option>
+					<option value=9>9</option>
+					<option value=10>10</option>
+					<option value=11>11</option>
+					<option value=12>12</option>
+					<option value=13>13</option>
+					<option value=14>14</option>
+					<option value=15>15</option>
+					<option value=16>16</option>
+					<option value=17>17</option>
+					<option value=18>18</option>
+					<option value=19>19</option>
+					<option value=20>20</option>
+					<option value=21>21</option>
+					<option value=22>22</option>
+					<option value=23>23</option>
+					<option value=24>24</option>
+					<option value=25>25</option>
+					<option value=26 selected=selected>26</option>
+					<option value=27>27</option>
+					<option value=28>28</option>
+					<option value=29>29</option>
+					<option value=30>30</option>
+					<option value=31>31</option>
+				</select>
+			
+			</td>
+		</tr>
+-->		
+		<tr>
+			<td style="width:100%; text-align:left; font-weight:bold; padding-right:10px" colspan="2">
+				<input type="button" value="Create KML" onclick="showHide('kml','none'); ajaxFunction(1,document.forms.google_earth)">
+				<span id="kml" style="display: none">KML</span>
+			</td>
+		</tr>
+	</table>
+	</form>
+	</div>
+</p>	
+<p><hr>
+		<h2>Details</h2>
+		Many GIS clients such as <b>TerriaMap, ArcGIS, QGIS, NASA WorldWind</b> and <b>Google Earth Desktop (GE)</b> support the WMS services.
+		They request the Capability statement via a GSKY server URL. Thereafter the "GetMap" requests are sent
+		based on the visible Lat/Lon coordinates on the screen. 
+		<br>
+		<br>
+		The GEW does not have a WMS support as above. However, it can send the GetMap requests
+		via a KML file and get the GSKY layers. 
+		<br>
+		<br>
+		While GE works almost similar to TerriaMap, it lacks the ability to display time layers as in TerriaMap.
+		Only the latest time layer is displayed. When using their WMS service there is no way to specify a time layer as e.g. <i>TIME=2001-01-01T00:00:00.000Z</i>.
+		The only way to do so requires to use a manually created/edited KML file. It is time consuming and error prone, even if one knows
+		the KML syntax.
+		
+		<br>
+		<br>
+		Here we provide a way to create functional KML files where the time and Lat/Lon coordinates are coded
+		via web-based controls. Such KML files can be opened in either GE or GEW.
+		
+		<h2>Usage</h2>
+		<OL>
+		<li>
+		Have a GEW page or GE desktop program opened alongside this page.
+		</li>
+		<br>
+		<li>
+		Create a KML file using the dropdown lists and inputs above and save locally or on your Google Drive.		
+		</li>
+		<br>
+		<li>
+		For GE, double click on the file. For GEW, open the file via the "<b>IMPORT KML File</b>" link.		
+		</li>
+		<br>
+		<li>
+		<b>That is it!</b><br>You will see a GSKY layer for each KML file imported. The layers will stay permanently and hence
+		you do not have to recreate the files every time. 
+		<br>
+		<br>
+		You will, however, need to create a new KML file to see another time layer or
+		another bounding box. Unlike in the WMS service, you cannot simply pan to a different part of the globe and get the layers
+		re-displayed as you move. 
+		<br>
+		<br>
+		You can zoom in/out, and the GSKY layers will get smaller/bigger but their resolution will not change. To see a smaller region,
+		select from the "Region" dropdown.
+		</li>
+
+		</ol>
+</p>        
+        
+        
+    </small>
+		</td>
+		</tr>
+    </table>
+<small><small>
+<hr>
+Copyright &copy; 2019, National Computational Infrastructure (<a href="http://nci.org.au/">NCI</a>), Canberra, ACT 2601, Australia.
+<br>
+Author: Dr. Arapaut V. Sivaprasad. Created on: 31 March, 2019.
+</small></small>
+<hr>
+    </div>
+</div>
+<script src="ajax.js"></script>
+<script src="times.js"></script>
+</script>
+</body>
+</html>

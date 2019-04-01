@@ -1,0 +1,211 @@
+{
+  "service_config":{
+    "ows_hostname":"130.56.242.15",
+    "mas_address": "10.0.1.210:8888",
+      "worker_nodes":["127.0.0.1:6000"]
+},
+  "layers":
+  [
+    {
+  "name":"global:c6:frac_cover",
+  "title":"GEOGLAM Fractional Cover C6",
+  "abstract":"Fractional Cover - MODIS, CSIRO Land and Water algorithm, Australia coverage. Vegetation fractional cover represents the exposed proportion of Photosynthetic Vegetation (PV), Non-Photosynthetic Vegetation (NPV) and Bare Soil (BS) within each pixel. In forested canopies the photosynthetic or non-photosynthetic portions of trees may obscure those of the grass layer and/or bare soil. The MODIS Fractional Cover product is derived from the MODIS Nadir BRDF-Adjusted Reflectance product MCD43A4). A suite of derivative are also produced, namely total vegetation cover (PV+NPV), monthly fractional cover and total vegetation cover, monthly anomaly of total cover against the time series, and three-monthly total cover difference. MODIS fractional cover has been validated for Australia. A global product is also produced with the same algorithm using the MCD43C1 (0.05 degrees spatial resolution).",
+  "data_source":"/g/data2/tc43/modis-fc/v310/tiles/8-day/cover",
+  "start_isodate":"2001-01-01T00:00:00.000Z",
+  "end_isodate":"2018-09-26T00:00:00.000Z",
+  "step_days":8,
+  "accum":true,
+  "time_generator":"geoglam",
+  "rgb_products":[
+    "bare_soil",
+    "phot_veg",
+    "nphot_veg"
+  ],
+  "offset_value":0,
+  "clip_value":100,
+  "scale_value":2.54,
+  "legend_path":"/local/gsky/share/gsky/static/legend/MODIS_FC_Triangle.png",
+  "zoom_limit":15000
+},
+    {
+  "name":"global:c6:total_cover",
+  "title":"GEOGLAM Total Cover C6",
+  "abstract":"Total Cover- MODIS, CSIRO Land and Water algorithm, Australia coverage. Vegetation fractional cover represents the exposed proportion of Photosynthetic Vegetation (PV), Non-Photosynthetic Vegetation (NPV) and Bare Soil (BS) within each pixel. In forested canopies the photosynthetic or non-photosynthetic portions of trees may obscure those of the grass layer and/or bare soil. The MODIS Fractional Cover product is derived from the MODIS Nadir BRDF-Adjusted Reflectance product MCD43A4). A suite of derivative are also produced, namely total vegetation cover (PV+NPV), monthly fractional cover and total vegetation cover, monthly anomaly of total cover against the time series, and three-monthly total cover difference. MODIS fractional cover has been validated for Australia. A global product is also produced with the same algorithm using the MCD43C1 (0.05 degrees spatial resolution).",
+  "data_source":"/g/data2/tc43/modis-fc/v310/tiles/8-day/cover",
+  "start_isodate":"2001-01-01T00:00:00.000Z",
+  "end_isodate":"2018-09-26T00:00:00.000Z",
+  "step_days":8,
+  "accum":true,
+  "time_generator":"geoglam",
+  "rgb_products":[
+    "bare_soil"
+  ],
+  "offset_value":0,
+  "clip_value":100,
+  "scale_value":2.54,
+  "palette":{
+    "interpolate":true,
+    "colours":[
+      {"R":0,"G":100,"B":0,"A":255},
+      {"R":255,"G":255,"B":0,"A":255},
+      {"R":160,"G":82,"B":45,"A":255}
+    ]
+  },
+  "legend_path":"/local/gsky/share/gsky/static/legend/TotCover_Legend.png",
+  "zoom_limit":15000
+},
+    {
+  "name":"global:c6:monthly_frac_cover",
+  "title":"GEOGLAM Monthly Fractional Cover C6",
+  "abstract":"Monthly Cover - MODIS, CSIRO Land and Water algorithm, Australia coverage. Vegetation monthly cover represents the exposed proportion of Photosynthetic Vegetation (PV), Non-Photosynthetic Vegetation (NPV) and Bare Soil (BS) within each pixel. In forested canopies the photosynthetic or non-photosynthetic portions of trees may obscure those of the grass layer and/or bare soil. The MODIS Fractional Cover product is derived from the MODIS Nadir BRDF-Adjusted Reflectance product MCD43A4). A suite of derivative are also produced, namely total vegetation cover (PV+NPV), monthly fractional cover and total vegetation cover, monthly anomaly of total cover against the time series, and three-monthly total cover difference. MODIS fractional cover has been validated for Australia. A global product is also produced with the same algorithm using the MCD43C1 (0.05 degrees spatial resolution).",
+  "data_source":"/g/data2/tc43/modis-fc/v310/tiles/monthly/cover",
+  "start_isodate":"2001-01-01T00:00:00.000Z",
+  "end_isodate":"2018-09-01T00:00:00.000Z",
+  "accum":true,
+  "step_days":32,
+  "time_generator":"monthly",
+  "rgb_products":[
+    "bare_soil",
+    "phot_veg",
+    "nphot_veg"
+  ],
+  "offset_value":0,
+  "clip_value":100,
+  "scale_value":2.54,
+  "legend_path":"/local/gsky/share/gsky/static/legend/MODIS_FC_Triangle.png",
+  "zoom_limit":15000
+},
+    {
+  "name":"global:c6:monthly_total_cover",
+  "title":"GEOGLAM Monthly Total Cover C6",
+  "abstract":"Total Cover- MODIS, CSIRO Land and Water algorithm, Australia coverage. Vegetation fractional cover represents the exposed proportion of Photosynthetic Vegetation (PV), Non-Photosynthetic Vegetation (NPV) and Bare Soil (BS) within each pixel. In forested canopies the photosynthetic or non-photosynthetic portions of trees may obscure those of the grass layer and/or bare soil. The MODIS Fractional Cover product is derived from the MODIS Nadir BRDF-Adjusted Reflectance product MCD43A4). A suite of derivative are also produced, namely total vegetation cover (PV+NPV), monthly fractional cover and total vegetation cover, monthly anomaly of total cover against the time series, and three-monthly total cover difference. MODIS fractional cover has been validated for Australia. A global product is also produced with the same algorithm using the MCD43C1 (0.05 degrees spatial resolution).",
+  "data_source":"/g/data2/tc43/modis-fc/v310/tiles/monthly/cover",
+  "start_isodate":"2001-01-01T00:00:00.000Z",
+  "end_isodate":"2018-09-01T00:00:00.000Z",
+  "accum":true,
+  "step_days":8,
+  "time_generator":"monthly",
+  "rgb_products":[
+    "bare_soil"
+  ],
+  "offset_value":0,
+  "clip_value":100,
+  "scale_value":2.54,
+  "palette":{
+    "interpolate":true,
+    "colours":[
+      {"R":0,"G":100,"B":0,"A":255},
+      {"R":255,"G":255,"B":0,"A":255},
+      {"R":160,"G":82,"B":45,"A":255}
+    ]
+  },
+  "legend_path":"/local/gsky/share/gsky/static/legend/TotCover_Legend.png",
+  "zoom_limit":15000
+},
+    {
+  "name":"global:c6:monthly_decile_total_cover",
+  "title":"GEOGLAM Monthly Decile Total Cover C6",
+  "abstract":"Total Cover- MODIS, CSIRO Land and Water algorithm, Australia coverage. Vegetation fractional cover represents the exposed proportion of Photosynthetic Vegetation (PV), Non-Photosynthetic Vegetation (NPV) and Bare Soil (BS) within each pixel. In forested canopies the photosynthetic or non-photosynthetic portions of trees may obscure those of the grass layer and/or bare soil. The MODIS Fractional Cover product is derived from the MODIS Nadir BRDF-Adjusted Reflectance product MCD43A4). A suite of derivative are also produced, namely total vegetation cover (PV+NPV), monthly fractional cover and total vegetation cover, monthly anomaly of total cover against the time series, and three-monthly total cover difference. MODIS fractional cover has been validated for Australia. A global product is also produced with the same algorithm using the MCD43C1 (0.05 degrees spatial resolution).",
+  "data_source":"/g/data2/tc43/modis-fc/v310/tiles/monthly/deciles",
+  "start_isodate":"2001-01-01T00:00:00.000Z",
+  "end_isodate":"2018-10-01T00:00:00.000Z",
+  "accum":true,
+  "step_days":8,
+  "time_generator":"monthly",
+  "rgb_products":[
+    "bare_soil"
+  ],
+  "offset_value":0,
+  "clip_value":100,
+  "scale_value":2.54,
+  "palette":{
+    "interpolate":true,
+    "colours":[
+      {"R":26,"G":152,"B":80,"A":255},
+      {"R":166,"G":217,"B":106,"A":255},
+      {"R":255,"G":255,"B":191,"A":255},
+      {"R":253,"G":174,"B":97,"A":255},
+      {"R":215,"G":48,"B": 39,"A":255}
+    ]
+  },
+  "legend_path":"/local/gsky/share/gsky/static/legend/TotCover_Legend.png",
+  "zoom_limit":15000
+},
+    {
+  "name":"global:c6:monthly_anom_frac_cover",
+  "title":"GEOGLAM Anomaly Fractional Cover C6",
+  "abstract":"Fractional Cover - MODIS, CSIRO Land and Water algorithm, Australia coverage. Vegetation fractional cover represents the exposed proportion of Photosynthetic Vegetation (PV), Non-Photosynthetic Vegetation (NPV) and Bare Soil (BS) within each pixel. In forested canopies the photosynthetic or non-photosynthetic portions of trees may obscure those of the grass layer and/or bare soil. The MODIS Fractional Cover product is derived from the MODIS Nadir BRDF-Adjusted Reflectance product MCD43A4). A suite of derivative are also produced, namely total vegetation cover (PV+NPV), monthly fractional cover and total vegetation cover, monthly anomaly of total cover against the time series, and three-monthly total cover difference. MODIS fractional cover has been validated for Australia. A global product is also produced with the same algorithm using the MCD43C1 (0.05 degrees spatial resolution).",
+  "data_source":"/g/data2/tc43/modis-fc/v310/tiles/monthly/anomalies",
+  "start_isodate":"2001-01-01T00:00:00.000Z",
+  "end_isodate":"2018-10-01T00:00:00.000Z",
+  "accum":true,
+  "step_days":8,
+  "time_generator":"monthly",
+  "rgb_products":[
+    "bare_soil"
+  ],
+  "palette":{
+    "interpolate":true,
+    "colours":[
+      {"R":0,"G":104,"B":55,"A":255},
+      {"R":26,"G":152,"B":80,"A":255},
+      {"R":102,"G":189,"B":99,"A":255},
+      {"R":166,"G":217,"B":106,"A":255},
+      {"R":217,"G":239,"B":139,"A":255},
+      {"R":255,"G":255,"B":191,"A":255},
+      {"R":254,"G":224,"B":139,"A":255},
+      {"R":253,"G":174,"B":97,"A":255},
+      {"R":244,"G":109,"B":67,"A":255},
+      {"R":215,"G":48,"B": 39,"A":255},
+      {"R":165,"G":0,"B":38,"A":255}
+    ]
+  },
+  "offset_value":25.0,
+  "clip_value":50.0,
+  "scale_value":5.0,
+  "legend_path":"/local/gsky/share/gsky/static/legend/MODIS_FC_Triangle.png",
+  "zoom_limit":15000
+},
+    {
+      "step_days": 16,
+      "abstract": "This product has been corrected to remove the influences of the atmosphere, the time of year and satellite view angles using the methods described in Li et al. 2010 https://doi.org/10.1109/JSTARS.2010.2042281. Landsat 8 Operational Land Imager (OLI) data is available from March 2013 and onwards. More detailed information about the surface reflectance product suite produced using Digital Earth Australia including CCBY4.0 is available at http://dx.doi.org/10.4225/25/5a7a501e1c5af. This service provides access to Landsat 8 OLI terrain corrected surface reflectance data. This service provides access to Landsat 8 OLI surface reflectance data. The true colour composite is composed of wavelengths of light as seen by the human eye. The image composites are made from images acquired within a 16 day period, and may include clouds.  ",
+      "start_isodate": "2013-03-01T00:00:00.000Z",
+      "clip_value": 2500,
+      "data_source": "/g/data2/rs0/datacube/002/LS8_OLI_NBAR",
+      "offset_value": 0,
+      "rgb_products": [
+        "red",
+        "green",
+        "blue"
+      ],
+      "name": "LS8:NBAR:TRUE",
+      "title": "DEA Landsat 8 surface reflectance true colour",
+      "scale_value": 0.1016,
+      "time_generator": "regular",
+      "accum": true,
+      "end_isodate": "2013-03-17T00:00:00.000Z",
+      "zoom_limit": 800
+    }
+  ],
+  "processes":[
+    {
+      "paths":[
+        "/g/data2/tc43/modis-fc/v310/tiles/monthly/cover",
+        "/g/data2/tc43/rainfall/CHIRPS-2.0/global_dekad"
+      ],
+      "identifier":"geometryDrill",
+      "title":"Geometry Drill",
+      "abstract":"",
+      "max_area": 400,
+      "complex_data":[
+        {
+          "identifier":"geometry",
+          "title":"Geometry",
+          "abstract":"",
+          "mime_type":"application/vnd.geo+json",
+          "schema":"http://geojson.org/geojson-spec.html"
+        }
+      ]
+    }
+  ]
+}
