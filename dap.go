@@ -44,7 +44,7 @@ func dapToWcs(ce *utils.DapConstraints, conf *utils.Config) (*utils.WCSParams, e
 
 	layer := conf.Layers[idx]
 	if len(layer.DefaultGeoBbox) == 4 {
-		defaultBbox = layer.DefaultGeoBbox
+		wcsParams.BBox = layer.DefaultGeoBbox
 	}
 
 	if len(layer.DefaultGeoSize) == 2 {
@@ -71,6 +71,10 @@ func dapToWcs(ce *utils.DapConstraints, conf *utils.Config) (*utils.WCSParams, e
 	for _, vp := range ce.VarParams {
 		if vp.IsAxis {
 			if vp.Name == "x" {
+				if len(vp.IdxSelectors) > 0 {
+					return wcsParams, fmt.Errorf("index-based selection is not supported for axis: %s", vp.Name)
+				}
+
 				isOutRange := *vp.ValStart < defaultBbox[0] || *vp.ValStart > defaultBbox[2]
 				if !isOutRange {
 					wcsParams.BBox[0] = *vp.ValStart
@@ -88,6 +92,10 @@ func dapToWcs(ce *utils.DapConstraints, conf *utils.Config) (*utils.WCSParams, e
 			}
 
 			if vp.Name == "y" {
+				if len(vp.IdxSelectors) > 0 {
+					return wcsParams, fmt.Errorf("index-based selection is not supported for axis: %s", vp.Name)
+				}
+
 				isOutRange := *vp.ValStart < defaultBbox[1] || *vp.ValStart > defaultBbox[3]
 				if !isOutRange {
 					wcsParams.BBox[1] = *vp.ValStart
@@ -104,7 +112,16 @@ func dapToWcs(ce *utils.DapConstraints, conf *utils.Config) (*utils.WCSParams, e
 				continue
 			}
 
-			axisParam := &utils.AxisParam{Name: vp.Name, Start: vp.ValStart, End: vp.ValEnd}
+			var axisParam *utils.AxisParam
+			if len(vp.IdxSelectors) > 0 {
+				axisParam = &utils.AxisParam{Name: vp.Name}
+				axisParam.IdxSelectors = make([]*utils.AxisIdxSelector, len(vp.IdxSelectors))
+				for i, sel := range vp.IdxSelectors {
+					axisParam.IdxSelectors[i] = &utils.AxisIdxSelector{Start: sel.Start, End: sel.End, Step: sel.Step, IsRange: sel.IsRange, IsAll: sel.IsAll}
+				}
+			} else {
+				axisParam = &utils.AxisParam{Name: vp.Name, Start: vp.ValStart, End: vp.ValEnd}
+			}
 			wcsParams.Axes = append(wcsParams.Axes, axisParam)
 
 		} else {
@@ -113,6 +130,19 @@ func dapToWcs(ce *utils.DapConstraints, conf *utils.Config) (*utils.WCSParams, e
 	}
 
 	if len(varExpr) == 0 {
+		var specialVars = map[string]bool{"x": true, "y": true}
+		foundOthers := false
+		for _, axis := range wcsParams.Axes {
+			if _, found := specialVars[axis.Name]; !found {
+				foundOthers = true
+				break
+			}
+		}
+
+		if !foundOthers {
+			return wcsParams, fmt.Errorf("querying special variables (i.e. x, y) is not supported")
+		}
+
 		varExpr = append(varExpr, utils.EmptyTileNS)
 		if len(ce.VarParams) > 0 {
 			wcsParams.AxisMapping = 0

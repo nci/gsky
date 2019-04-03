@@ -29,12 +29,21 @@ type ConfigPayLoad struct {
 	AxisMapping           int
 }
 
+type GeoTileIdxSelector struct {
+	Start   *int
+	End     *int
+	Step    *int
+	IsRange bool
+	IsAll   bool
+}
+
 type GeoTileAxis struct {
-	Start     *float64
-	End       *float64
-	InValues  []float64
-	Order     int
-	Aggregate int
+	Start        *float64
+	End          *float64
+	InValues     []float64
+	Order        int
+	Aggregate    int
+	IdxSelectors []*GeoTileIdxSelector
 }
 
 type GeoTileRequest struct {

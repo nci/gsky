@@ -144,7 +144,7 @@ func EncodeDap4(w http.ResponseWriter, dataFile string, bandNames []string, verb
 				progress = 1
 			}
 			if ib%progress == 0 {
-				log.Printf("DAP: %d of %d bands done", ib, nBands)
+				log.Printf("DAP: %d of %d bands done", ib+1, nBands)
 			}
 		}
 	}

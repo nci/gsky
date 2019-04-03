@@ -590,6 +590,10 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 				geoReq.Axes = make(map[string]*proc.GeoTileAxis)
 				for _, axis := range params.Axes {
 					geoReq.Axes[axis.Name] = &proc.GeoTileAxis{Start: axis.Start, End: axis.End, InValues: axis.InValues, Order: axis.Order, Aggregate: axis.Aggregate}
+					for _, sel := range axis.IdxSelectors {
+						tileIdxSel := &proc.GeoTileIdxSelector{Start: sel.Start, End: sel.End, Step: sel.Step, IsRange: sel.IsRange, IsAll: sel.IsAll}
+						geoReq.Axes[axis.Name].IdxSelectors = append(geoReq.Axes[axis.Name].IdxSelectors, tileIdxSel)
+					}
 				}
 			}
 
