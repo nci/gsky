@@ -55,6 +55,7 @@ var (
 	dumpConfig      = flag.Bool("dump_conf", false, "Dump server config files.")
 	verbose         = flag.Bool("v", false, "Verbose mode for more server outputs.")
 	thredds         = flag.Bool("t", false, "Save the *.nc files on THREDDS.")
+	dap         	= flag.Bool("dap", true, "For DAP-GSKY Service.")
 )
 
 var reWMSMap map[string]*regexp.Regexp
@@ -122,7 +123,8 @@ func init() {
 		utils.DataDir + "/templates/WPS_Execute.tpl",
 		utils.DataDir + "/templates/WPS_GetCapabilities.tpl",
 		utils.DataDir + "/templates/WCS_GetCapabilities.tpl",
-		utils.DataDir + "/templates/WCS_DescribeCoverage.tpl"}
+		utils.DataDir + "/templates/WCS_DescribeCoverage.tpl",
+		utils.DataDir + "/templates/WMS_GetCapabilities_v1.1.1.tpl"}
 
 	for _, filePath := range filePaths {
 		if _, err := os.Stat(filePath); os.IsNotExist(err) {
@@ -171,24 +173,14 @@ func list (reqURL string) { // AVS
 
 }
 func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, reqURL string, w http.ResponseWriter, r *http.Request) {
+Info.Printf("reqURL: %v\n", reqURL)
 	if params.Request == nil {
 		http.Error(w, "Malformed WMS, a Request field needs to be specified", 400)
 		return
 	}
-//list(reqURL) // AVS	
-//*params.Version = "1.1.1"
-//fmt.Println(*params.Version)	
-//fmt.Println(*params.Service)	
-//fmt.Println(*params.Request)	
-//fmt.Println(*params.CRS)	
-////fmt.Println(*params.Format)	
-//Info.Printf("AVS-5a--------params: %+v\n", params)
-//Info.Printf("AVS-5b---------params: %+v\n", params.Version)
 	switch *params.Request {
 	case "GetCapabilities":
-//Info.Printf("AVS-6---------params: %+v\n", params)
 		if params.Version != nil && !utils.CheckWMSVersion(*params.Version) {
-//Info.Printf("AVS-6a---------params: %+v\n", params)
 			http.Error(w, fmt.Sprintf("This server can only accept WMS requests compliant with version 1.1.1 and 1.3.0: %s", reqURL), 400)
 			return
 		}
@@ -198,8 +190,12 @@ func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r
 		}
 
 		w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate, max-age=0")
+		GetCapabilities_template := "/templates/WMS_GetCapabilities.tpl";
+		if (*params.Version == "1.1.1") {
+			GetCapabilities_template = "/templates/WMS_GetCapabilities_v1.1.1.tpl";
+		}
 		err := utils.ExecuteWriteTemplateFile(w, conf,
-			utils.DataDir+"/templates/WMS_GetCapabilities.tpl")
+			utils.DataDir+GetCapabilities_template)
 		if err != nil {
 			http.Error(w, err.Error(), 500)
 		}
@@ -240,9 +236,9 @@ func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r
 		}
 
 	case "GetMap":
-		if *thredds {
-			proc.Init_thredds(w, r) // AVS: Create/use teh user-specific thredds subdir
-		}
+//		if *thredds {
+//			proc.Init_thredds(w, r) // AVS: Create/use teh user-specific thredds subdir
+//		}
 		if params.Version == nil || !utils.CheckWMSVersion(*params.Version) {
 			http.Error(w, fmt.Sprintf("This server can only accept WMS requests compliant with version 1.1.1 and 1.3.0: %s", reqURL), 400)
 			return
@@ -289,16 +285,17 @@ func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r
 			eT := params.Time.Add(step)
 			endTime = &eT
 		}
-//Info.Printf("AVS-3j: GetLayerStyleIndex= %s > %s ; %s > %s", *params.Height, conf.Layers[idx].WmsMaxHeight, *params.Width, conf.Layers[idx].WmsMaxWidth)
-//*params.Height = 512		
-//*params.Width = 512		
-//Info.Printf("AVS-3j: GetLayerStyleIndex= %s > %s ; %s > %s", *params.Height, conf.Layers[idx].WmsMaxHeight, *params.Width, conf.Layers[idx].WmsMaxWidth)
 		if *params.Height > conf.Layers[idx].WmsMaxHeight || *params.Width > conf.Layers[idx].WmsMaxWidth {
 			http.Error(w, fmt.Sprintf("Requested width/height is too large, max width:%d, height:%d", conf.Layers[idx].WmsMaxWidth, conf.Layers[idx].WmsMaxHeight), 400)
-//			return // AVS commented out
 		}
-
+//Info.Printf("params.Styles: %+v\n", params.Styles)
+// AVS: If the call is from Google Earth, the 'Styles=default' in the URL crashes the function. Change it to ""
+		if (*params.Version == "1.1.1") {
+			params.Styles[0] = ""
+		}
 		styleIdx, err := utils.GetLayerStyleIndex(params, conf, idx)
+//Info.Printf("params: %+v\n", *params.Time)
+//Info.Printf("err: %+v\n", err)
 		if err != nil {
 			Error.Printf("%s\n", err)
 			http.Error(w, fmt.Sprintf("Malformed WMS GetMap request: %v", err), 400)
@@ -308,11 +305,6 @@ func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r
 		if styleIdx >= 0 {
 			styleLayer = &conf.Layers[idx].Styles[styleIdx]
 		}
-//fmt.Printf("\nAVS-4: -------styleLayer=%+v\n", &conf.Layers[idx])
-
-//Info.Printf("AVS-4: WMS params=%s", *params.Version)
-//*params.Height = 512		
-//*params.Width = 512		
 		geoReq := &proc.GeoTileRequest{ConfigPayLoad: proc.ConfigPayLoad{NameSpaces: styleLayer.RGBExpressions.VarList,
 			BandExpr: styleLayer.RGBExpressions,
 			Mask:     styleLayer.Mask,
@@ -334,8 +326,8 @@ func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r
 			StartTime:  params.Time,
 			EndTime:    endTime,
 		}
-//fmt.Println(*geoReq)
 		ctx, ctxCancel := context.WithCancel(ctx)
+//fmt.Printf("ctx: %+v\n", ctx)
 
 		defer ctxCancel()
 		errChan := make(chan error, 100)
@@ -346,22 +338,16 @@ func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r
 		if yRes > reqRes {
 			reqRes = yRes
 		}
-//fmt.Printf("&width=%v&height=%v&bbox=%f,%f,%f,%f\n", *params.Width,*params.Height,params.BBox[0],params.BBox[1],params.BBox[2],params.BBox[3]) 		
-//fmt.Println(reqRes)
-//reqRes = 2000.00
-//fmt.Println(reqRes)
-//fmt.Println(conf.Layers[idx].ZoomLimit)
-//fmt.Printf("AVS-0: ZoomLimit, reqRes: %v, %v\n", conf.Layers[idx].ZoomLimit, reqRes)				
+		// AVS: With v 1.1.1 and others that send EPSG:4326 the value is less than 1
+		if (*params.Version == "1.1.1") {
+			reqRes = reqRes * 100000
+		}
 		if conf.Layers[idx].ZoomLimit != 0.0 && reqRes > conf.Layers[idx].ZoomLimit {
 			indexer := proc.NewTileIndexer(ctx, conf.ServiceConfig.MASAddress, errChan)
-//fmt.Printf("AVS-1: Zoom In Required: %v, %v\n", conf.Layers[idx].ZoomLimit, reqRes)				
 			go func() {
 				geoReq.Mask = nil
 				geoReq.QueryLimit = 1
 				indexer.In <- geoReq
-//fmt.Println(reflect.TypeOf(geoReq))				
-//t := make(chan GeoTileRequest)				
-//t <- indexer.In				
 				close(indexer.In)
 			}()
 
@@ -369,9 +355,6 @@ func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r
 
 			hasData := false
 			for geo := range indexer.Out {
-//fmt.Println("GEO:")
-//fmt.Printf("AVS-2a: geo: %+v\n", geo)				
-//fmt.Println(geo)
 				select {
 				case <-errChan:
 					break
@@ -389,7 +372,6 @@ func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r
 				}
 			}
 
-//fmt.Printf("AVS-2b: hasData: %v\n", hasData)				
 			if hasData {
 				out, err := utils.GetEmptyTile(utils.DataDir+"/zoom.png", *params.Height, *params.Width)
 				if err != nil {
@@ -410,41 +392,23 @@ func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r
 
 			return
 		}
-//conf.Layers[idx].WmsTimeout = 40 // AVS
-//fmt.Println(conf.Layers[idx].WmsTimeout)
 		timeoutCtx, timeoutCancel := context.WithTimeout(context.Background(), time.Duration(conf.Layers[idx].WmsTimeout)*time.Second)
-//fmt.Println("AVS:0")
-//fmt.Printf("%d AND %d",timeoutCtx,timeoutCancel )
 		defer timeoutCancel()
 
 		tp := proc.InitTilePipeline(ctx, conf.ServiceConfig.MASAddress, conf.ServiceConfig.WorkerNodes, conf.Layers[idx].MaxGrpcRecvMsgSize, conf.Layers[idx].WmsPolygonShardConcLimit, conf.ServiceConfig.MaxGrpcBufferSize, errChan)
-//fmt.Printf("\n-------------AVS:tp: %v\n", tp)
-//     'AU': ('Australia', (113.338953078, -43.6345972634, 153.569469029, -10.6681857235)),
-// http://130.56.242.15/ows?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap&BBOX=-43.6345972634%2C113.338953078%2C-10.6681857235%2C153.569469029&CRS=EPSG:4326&WIDTH=242&HEIGHT=250&LAYERS=LS8:NBAR:TRUE&STYLES=&FORMAT=image/png&DPI=96&MAP_RESOLUTION=96&FORMAT_OPTIONS=dpi:96&TRANSPARENT=TRUE
-// http://130.56.242.15/ows/?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap&bbox=15341217.324948017%2C-2817774.6107047386%2C15419488.841912035%2C-2739503.0937407166&CRS=EPSG:3857&WIDTH=256&HEIGHT=256&LAYERS=LS8:NBAR:TRUE&STYLES=&FORMAT=image/png&DPI=96&MAP_RESOLUTION=96&FORMAT_OPTIONS=dpi:96&TRANSPARENT=TRUE
-//Info.Printf("AVS-3i", geoReq)
 		select {
 		case res := <-tp.Process(geoReq, *verbose):
 			scaleParams := utils.ScaleParams{Offset: geoReq.ScaleParams.Offset,
 				Scale: geoReq.ScaleParams.Scale,
 				Clip:  geoReq.ScaleParams.Clip,
 			}
-//fmt.Printf("\n--------res: %v\n", res[0])
-//scaleParams.Offset = 25
-//scaleParams.Scale = 5
-//scaleParams.Clip = 50
-
-//fmt.Println(reflect.TypeOf(res))				
-//fmt.Println(scaleParams)
-//fmt.Println(res[0])
-//fmt.Println(geoReq.BBox)
 			norm, err := utils.Scale(res, scaleParams)
-//fmt.Println(len(norm))
 			if err != nil {
 				Info.Printf("Error in the utils.Scale: %v\n", err)
 				http.Error(w, err.Error(), 500)
 				return
 			}
+//fmt.Printf("norm: %+v\n", norm[0])
 
 			if len(norm) == 0 || norm[0].Width == 0 || norm[0].Height == 0 {
 				out, err := utils.GetEmptyTile(conf.Layers[idx].NoDataLegendPath, *params.Height, *params.Width)
@@ -456,11 +420,9 @@ func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r
 				}
 				return
 			}
-//fmt.Println(len(norm))
 			out, err := utils.EncodePNG(norm, styleLayer.Palette)
-//fmt.Println(out)
+//fmt.Printf("out: %+v\n", out)
 			if err != nil {
-// AVS: err= Cannot encode other than 1 or 3 namespaces into a PNG: Received 2
 				Info.Printf("Error in the utils.EncodePNG: %v\n", err) 
 				http.Error(w, err.Error(), 500)
 				return
@@ -476,6 +438,21 @@ func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r
 			Error.Printf("WMS pipeline timed out, threshold:%v seconds", conf.Layers[idx].WmsTimeout)
 			http.Error(w, "WMS request timed out", 500)
 		}
+// AVS: Call WCS here so that the displayed map in the canvas extent is saved as a NetCDF file
+//query := utils.NormaliseKeys(r.URL.Query())
+//query["service"][0] = "WCS"
+//query["request"][0] = "GetCoverage"
+//query["srs"][0] = "EPSG:3857"
+//Info.Printf("query: %+v\n", query)
+//ctx = r.Context()
+//Info.Printf("params=%+v", params)
+//Time := *params.Time
+//*params.Time = Time
+//Info.Printf("params.Request: %+v\n", *params.Request)
+//Info.Printf("w: %+v\n", w)
+//Info.Printf("URL: %+v\n", r.URL.String())
+//params, err := utils.WCSParamsChecker(query, reWCSMap) // AVS: Time added to prevent a NIL value 
+//serveWCS(ctx, params, conf, r.URL.String(), w, query)
 		return
 
 	case "GetLegendGraphic":
@@ -513,10 +490,40 @@ func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r
 	default:
 		http.Error(w, fmt.Sprintf("%s not recognised.", *params.Request), 400)
 	}
-
 }
+func Save_aggregate_netcdf (masterTempFile string) {
+/*
+AVS:
+	- This func copies the NetCDF file master (e.g. /tmp/raster_123332973) to /tmp/aggregate_netcdf.nc
+	- From there, a cron job that runs every minute will copy it to...
+		- /home/900/avs900/OpenDAP/aggregate_netcdf.nc and
+		- /usr/local/tds/apache-tomcat-8.5.35/content/thredds/public/gsky/gsky_test.nc # For THREDDS
+It has to be done this way, as the user, 'fr5_gsky', GSKY server runs under cannot write
+or copy files to any user directory.
 
+*/
+	source, err := os.Open(masterTempFile)
+	if err != nil {
+		errMsg := fmt.Sprintf("Reading failed: %v, %v", err, source)
+		Info.Printf(errMsg)
+	}
+	defer source.Close()
+	
+	dst := "/tmp/aggregate_netcdf.nc"
+	destination, err := os.Create(dst)
+	if err != nil {
+		errMsg := fmt.Sprintf("Creation failed: %v, %v", err, destination)
+		Info.Printf(errMsg)
+	}
+	defer destination.Close()
+	nBytes, err := io.Copy(destination, source)
+	if err != nil {
+		errMsg := fmt.Sprintf("Writing failed: %v, %v, %v", err, destination, nBytes)
+		Info.Printf(errMsg)
+	}
+}
 func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, reqURL string, w http.ResponseWriter, query map[string][]string) {
+//Info.Printf("params=%+v", params)
 	if params.Request == nil {
 		http.Error(w, "Malformed WCS, a Request field needs to be specified", 400)
 	}
@@ -558,7 +565,7 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 	case "GetCoverage":
 		if params.Version == nil || !utils.CheckWCSVersion(*params.Version) {
 			http.Error(w, fmt.Sprintf("This server can only accept WCS requests compliant with version 1.0.0: %s", reqURL), 400)
-			return
+				return
 		}
 
 		idx, err := utils.GetCoverageIndex(params, conf)
@@ -591,7 +598,6 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 			http.Error(w, fmt.Sprintf("Unsupported encoding format"), 400)
 			return
 		}
-
 		var endTime *time.Time
 		if conf.Layers[idx].Accum == true {
 			step := time.Minute * time.Duration(60*24*conf.Layers[idx].StepDays+60*conf.Layers[idx].StepHours+conf.Layers[idx].StepMinutes)
@@ -657,8 +663,6 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 				OffX:       offX,
 				OffY:       offY,
 			}
-
-//Info.Printf("geoReq: %v\n", geoReq)
 			return geoReq
 		}
 
@@ -895,7 +899,6 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 		if isWorker {
 			driverFormat = "geotiff" // or "NetCDF"
 		}
-//Info.Printf("driverFormat=%s", driverFormat)
 
 		timeoutCtx, timeoutCancel := context.WithTimeout(context.Background(), time.Duration(conf.Layers[idx].WcsTimeout)*time.Second)
 		defer timeoutCancel()
@@ -1022,7 +1025,6 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 			contentType = "application/geotiff"
 		case "netcdf":
 			fileExt = "nc"
-//Info.Printf("fileExt=%s", fileExt)
 			contentType = "application/netcdf"
 		}
 		ISOFormat := "2006-01-02T15:04:05.000Z"
@@ -1035,7 +1037,6 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 		w.Header().Set("Content-Type", contentType)
 
 		fileHandle, err := os.Open(masterTempFile)
-//Info.Printf("masterTempFile=%s", masterTempFile)
 		if err != nil {
 			errMsg := fmt.Sprintf("Error opening raster file: %v", err)
 			Info.Printf(errMsg)
@@ -1049,11 +1050,9 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 			Info.Printf(errMsg)
 			http.Error(w, errMsg, 500)
 		}
-//Info.Printf("fileHandle=%s", fileHandle)
 		w.Header().Set("Content-Length", fmt.Sprintf("%d", fileInfo.Size()))
-//avs_write()		
-os.Rename(masterTempFile, "/home/900/avs900/OpenDAP/avs_test.nc") // AVS
-//os.Rename(masterTempFile, "/usr/local/tds/apache-tomcat-8.5.35/content/thredds/public/gsky/gsky_test.nc") // AVS
+
+		Save_aggregate_netcdf (masterTempFile) // AVS
 
 		bytesSent, err := io.Copy(w, fileHandle)
 		if err != nil {
@@ -1066,7 +1065,6 @@ os.Rename(masterTempFile, "/home/900/avs900/OpenDAP/avs_test.nc") // AVS
 			Info.Printf("WCS: file_size:%v, bytes_sent:%v\n", fileInfo.Size(), bytesSent)
 		}
 		
-//Info.Printf("attachment; filename=%s.%s.%s", fileNameCoverages, fileNameDateTime, fileExt)
 
 		return
 
@@ -1257,7 +1255,7 @@ func serveWPS(ctx context.Context, params utils.WPSParams, conf *utils.Config, r
 			if dataSource.BandStrides <= 0 {
 				dataSource.BandStrides = 1
 			}
-			proc := dp.Process(geoReq, suffix, dataSource.MetadataURL, dataSource.BandStrides, *process.Approx)
+			proc := dp.Process(geoReq, suffix, dataSource.MetadataURL, dataSource.BandStrides, *process.Approx, *verbose)
 
 			select {
 			case res := <-proc:
@@ -1285,8 +1283,8 @@ func serveWPS(ctx context.Context, params utils.WPSParams, conf *utils.Config, r
 
 // owsHandler handles every request received on /ows
 func generalHandler(conf *utils.Config, w http.ResponseWriter, r *http.Request) {
+//Info.Printf("%s\n", r.URL.String())
 	w.Header().Set("Access-Control-Allow-Origin", "*")
-//Info.Printf("URL: %s\n", r.URL.String())
 	if *verbose {
 		Info.Printf("%s\n", r.URL.String())
 	}
@@ -1339,9 +1337,12 @@ func generalHandler(conf *utils.Config, w http.ResponseWriter, r *http.Request) 
 		}
 		serveWMS(ctx, params, conf, r.URL.String(), w, r) // AVS: added ", r"
 	case "WCS":
-query["format"][0] = "NetCDF" // case-insensitive. changed to lower case later.
+		if (*dap) {
+			query["format"][0] = "netcdf" // AVS: Save the file as NetCDF (*.nc) on the server and as HDF5Image/HDF5 on PC (*nc or *.tiff)
+		}
 		params, err := utils.WCSParamsChecker(query, reWCSMap)
-		if err != nil {
+
+	if err != nil {
 			http.Error(w, fmt.Sprintf("Wrong WCS parameters on URL: %s", err), 400)
 			return
 		}
