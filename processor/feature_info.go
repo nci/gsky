@@ -30,7 +30,7 @@ func GetFeatureInfo(ctx context.Context, params utils.WMSParams, conf *utils.Con
 				return out, nil
 			}
 
-			if rs.NameSpace == "EmptyTile" {
+			if rs.NameSpace == utils.EmptyTileNS {
 				return "", fmt.Errorf("data unavailable")
 			}
 		}
@@ -283,7 +283,7 @@ func getRaster(ctx context.Context, params utils.WMSParams, conf *utils.Config, 
 		case <-ctx.Done():
 			return nil, nil, nil, ctx.Err()
 		default:
-			if geo.NameSpace == "EmptyTile" {
+			if geo.NameSpace == utils.EmptyTileNS {
 				continue
 			}
 

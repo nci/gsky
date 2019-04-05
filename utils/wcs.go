@@ -13,20 +13,22 @@ import (
 // WCSParams contains the serialised version
 // of the parameters contained in a WCS request.
 type WCSParams struct {
-	Service   *string      `json:"service,omitempty"`
-	Version   *string      `json:"version,omitempty"`
-	Request   *string      `json:"request,omitempty"`
-	Coverages []string     `json:"coverage,omitempty"`
-	CRS       *string      `json:"crs,omitempty"`
-	ReqCRS    *string      `json:"req_crs,omitempty"`
-	BBox      []float64    `json:"bbox,omitempty"`
-	Time      *time.Time   `json:"time,omitempty"`
-	Height    *int         `json:"height,omitempty"`
-	Width     *int         `json:"width,omitempty"`
-	Format    *string      `json:"format,omitempty"`
-	Styles    []string     `json:"styles,omitempty"`
-	Axes      []*AxisParam `json:"axes,omitempty"`
-	BandExpr  *BandExpressions
+	Service        *string      `json:"service,omitempty"`
+	Version        *string      `json:"version,omitempty"`
+	Request        *string      `json:"request,omitempty"`
+	Coverages      []string     `json:"coverage,omitempty"`
+	CRS            *string      `json:"crs,omitempty"`
+	ReqCRS         *string      `json:"req_crs,omitempty"`
+	BBox           []float64    `json:"bbox,omitempty"`
+	Time           *time.Time   `json:"time,omitempty"`
+	Height         *int         `json:"height,omitempty"`
+	Width          *int         `json:"width,omitempty"`
+	Format         *string      `json:"format,omitempty"`
+	Styles         []string     `json:"styles,omitempty"`
+	Axes           []*AxisParam `json:"axes,omitempty"`
+	BandExpr       *BandExpressions
+	NoReprojection bool
+	AxisMapping    int
 }
 
 // WCSRegexpMap maps WCS request parameters to
@@ -45,7 +47,7 @@ var WCSRegexpMap = map[string]string{"service": `^WCS$`,
 	"width":    `^[-+]?[0-9]+$`,
 	"height":   `^[-+]?[0-9]+$`,
 	"axis":     `^[A-Za-z_][A-Za-z0-9_]*$`,
-	"format":   `^(?i)(GeoTIFF|NetCDF)$`}
+	"format":   `^(?i)(GeoTIFF|NetCDF|DAP4)$`}
 
 func CompileWCSRegexMap() map[string]*regexp.Regexp {
 	REMap := make(map[string]*regexp.Regexp)

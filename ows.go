@@ -119,6 +119,7 @@ func init() {
 	reWCSMap = utils.CompileWCSRegexMap()
 	reWPSMap = utils.CompileWPSRegexMap()
 
+	utils.InitGdal()
 }
 
 func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, reqURL string, w http.ResponseWriter) {
@@ -324,7 +325,7 @@ func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r
 				case <-ctx.Done():
 					break
 				default:
-					if geo.NameSpace != "EmptyTile" {
+					if geo.NameSpace != utils.EmptyTileNS {
 						hasData = true
 						break
 					}
@@ -571,6 +572,8 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 				QueryLimit:          -1,
 				UserSrcSRS:          conf.Layers[idx].UserSrcSRS,
 				UserSrcGeoTransform: conf.Layers[idx].UserSrcGeoTransform,
+				NoReprojection:      params.NoReprojection,
+				AxisMapping:         params.AxisMapping,
 			},
 				Collection: styleLayer.DataSource,
 				CRS:        *params.CRS,
@@ -587,6 +590,10 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 				geoReq.Axes = make(map[string]*proc.GeoTileAxis)
 				for _, axis := range params.Axes {
 					geoReq.Axes[axis.Name] = &proc.GeoTileAxis{Start: axis.Start, End: axis.End, InValues: axis.InValues, Order: axis.Order, Aggregate: axis.Aggregate}
+					for _, sel := range axis.IdxSelectors {
+						tileIdxSel := &proc.GeoTileIdxSelector{Start: sel.Start, End: sel.End, Step: sel.Step, IsRange: sel.IsRange, IsAll: sel.IsAll}
+						geoReq.Axes[axis.Name].IdxSelectors = append(geoReq.Axes[axis.Name].IdxSelectors, tileIdxSel)
+					}
 				}
 			}
 
@@ -828,7 +835,7 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 		geot := utils.BBox2Geot(*params.Width, *params.Height, params.BBox)
 
 		driverFormat := *params.Format
-		if isWorker {
+		if isWorker || driverFormat == "dap4" {
 			driverFormat = "geotiff"
 		}
 
@@ -836,6 +843,7 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 		defer timeoutCancel()
 
 		isInit := false
+		var bandNames []string
 
 		tp := proc.InitTilePipeline(ctx, conf.ServiceConfig.MASAddress, conf.ServiceConfig.WorkerNodes, conf.Layers[idx].MaxGrpcRecvMsgSize, conf.Layers[idx].WcsPolygonShardConcLimit, conf.ServiceConfig.MaxGrpcBufferSize, errChan)
 		for ir, geoReq := range workerTileRequests[0] {
@@ -848,24 +856,25 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 				if !isInit {
 					hDstDS, masterTempFile, err = utils.EncodeGdalOpen(conf.ServiceConfig.TempDir, 1024, 256, driverFormat, geot, epsg, res, *params.Width, *params.Height, len(res))
 					if err != nil {
-						os.Remove(masterTempFile)
+						utils.RemoveGdalTempFile(masterTempFile)
 						errMsg := fmt.Sprintf("EncodeGdalOpen() failed: %v", err)
 						Info.Printf(errMsg)
 						http.Error(w, errMsg, 500)
 						return
 					}
 					defer utils.EncodeGdalClose(&hDstDS)
-					defer os.Remove(masterTempFile)
+					defer utils.RemoveGdalTempFile(masterTempFile)
 
 					isInit = true
 				}
 
-				err := utils.EncodeGdal(hDstDS, res, geoReq.OffX, geoReq.OffY)
+				bn, err := utils.EncodeGdal(hDstDS, res, geoReq.OffX, geoReq.OffY)
 				if err != nil {
 					Info.Printf("Error in the utils.EncodeGdal: %v\n", err)
 					http.Error(w, err.Error(), 500)
 					return
 				}
+				bandNames = bn
 
 			case err := <-errChan:
 				Info.Printf("WCS: error in the pipeline: %v\n", err)
@@ -948,6 +957,16 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 
 		utils.EncodeGdalClose(&hDstDS)
 		hDstDS = nil
+
+		if *params.Format == "dap4" {
+			err := utils.EncodeDap4(w, masterTempFile, bandNames, *verbose)
+			if err != nil {
+				errMsg := fmt.Sprintf("DAP: error: %v", err)
+				Info.Printf(errMsg)
+				http.Error(w, errMsg, 500)
+			}
+			return
+		}
 
 		fileExt := "wcs"
 		contentType := "application/wcs"
@@ -1196,6 +1215,15 @@ func generalHandler(conf *utils.Config, w http.ResponseWriter, r *http.Request) 
 		}
 	}
 
+	if _, fOK := query["dap4.ce"]; fOK {
+		if len(query["dap4.ce"]) == 0 {
+			http.Error(w, "Failed to parse dap4.ce", 400)
+			return
+		}
+		serveDap(ctx, conf, r.URL.String(), w, query)
+		return
+	}
+
 	if _, fOK := query["service"]; !fOK {
 		canInferService := false
 		if request, hasReq := query["request"]; hasReq {
@@ -1253,6 +1281,10 @@ func owsHandler(w http.ResponseWriter, r *http.Request) {
 	namespace := "."
 	if len(r.URL.Path) > len("/ows/") {
 		namespace = r.URL.Path[len("/ows/"):]
+		dapExt := ".dap"
+		if len(namespace) >= len(dapExt) && namespace[len(namespace)-len(dapExt):] == dapExt {
+			namespace = namespace[:len(namespace)-len(dapExt)]
+		}
 	}
 	config, ok := configMap[namespace]
 	if !ok {
@@ -1269,6 +1301,7 @@ func main() {
 	http.Handle("/", fs)
 	http.HandleFunc("/ows", owsHandler)
 	http.HandleFunc("/ows/", owsHandler)
+
 	Info.Printf("GSKY is ready")
 	log.Fatal(http.ListenAndServe(fmt.Sprintf("0.0.0.0:%d", *port), nil))
 }

@@ -14,13 +14,22 @@ import (
 
 const ISOZeroTime = "0001-01-01T00:00:00.000Z"
 
+type AxisIdxSelector struct {
+	Start   *int
+	End     *int
+	Step    *int
+	IsRange bool
+	IsAll   bool
+}
+
 type AxisParam struct {
-	Name      string    `json:"name"`
-	Start     *float64  `json:"start,omitempty"`
-	End       *float64  `json:"end,omitempty"`
-	InValues  []float64 `json:"in_values,omitempty"`
-	Order     int       `json:"order,omitempty"`
-	Aggregate int       `json:"aggregate,omitempty"`
+	Name         string    `json:"name"`
+	Start        *float64  `json:"start,omitempty"`
+	End          *float64  `json:"end,omitempty"`
+	InValues     []float64 `json:"in_values,omitempty"`
+	Order        int       `json:"order,omitempty"`
+	Aggregate    int       `json:"aggregate,omitempty"`
+	IdxSelectors []*AxisIdxSelector
 }
 
 // WMSParams contains the serialised version

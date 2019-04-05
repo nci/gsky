@@ -66,6 +66,8 @@ func (r *Float32Raster) GetNoData() float64 {
 	return r.NoData
 }
 
+const EmptyTileNS = "EmptyTile"
+
 func EncodePNG(br []*ByteRaster, palette *Palette) ([]byte, error) {
 	buf := new(bytes.Buffer)
 	canvas := image.NewRGBA(image.Rect(0, 0, br[0].Width, br[0].Height))
@@ -276,7 +278,6 @@ func EncodeGdalOpen(tempDir string, blockXSize int, blockYSize int, format strin
 
 	// NULL pointer is used to terminate the point array by gdal
 	driverOptions = append(driverOptions, nil)
-	C.GDALAllRegister()
 
 	var driverNameC = C.CString(driverName)
 	hDriver := C.GDALGetDriverByName(driverNameC)
@@ -288,7 +289,6 @@ func EncodeGdalOpen(tempDir string, blockXSize int, blockYSize int, format strin
 	tempFileHandle.Close()
 
 	tempFile := tempFileHandle.Name()
-
 	tempFileC := C.CString(tempFile)
 	defer C.free(unsafe.Pointer(tempFileC))
 	hDstDS := C.GDALCreate(hDriver, tempFileC, C.int(width), C.int(height), C.int(bands), GDALTypes[rType], &driverOptions[0])
@@ -312,75 +312,92 @@ func EncodeGdalOpen(tempDir string, blockXSize int, blockYSize int, format strin
 	return hDstDS, tempFile, nil
 }
 
-func EncodeGdal(hDstDS C.GDALDatasetH, rs []Raster, xOff int, yOff int) error {
+func EncodeGdal(hDstDS C.GDALDatasetH, rs []Raster, xOff int, yOff int) ([]string, error) {
 	_, _, _, err := ValidateRasterSlice(rs)
 	if err != nil {
-		return fmt.Errorf("Error validating raster: %v", err)
+		return []string{}, fmt.Errorf("Error validating raster: %v", err)
 	}
 
 	resNameSpaceC := C.CString("long_name")
 	defer C.free(unsafe.Pointer(resNameSpaceC))
 
+	bandNames := make([]string, len(rs))
 	for i, r := range rs {
 		hBand := C.GDALGetRasterBand(hDstDS, C.int(i+1))
 		gerr := C.CPLErr(0)
 		switch t := r.(type) {
 		case *ByteRaster:
-			if t.NameSpace == "EmptyTile" {
+			bandNames[i] = t.NameSpace
+			if isEmptyTile(t.NameSpace) {
 				continue
 			}
 			C.GDALSetRasterNoDataValue(hBand, C.double(t.NoData))
 			varNameC := C.CString(t.NameSpace)
-			C.GDALSetMetadataItem(C.GDALMajorObjectH(hBand), resNameSpaceC, varNameC, nil)
+			gerr = C.GDALSetMetadataItem(C.GDALMajorObjectH(hBand), resNameSpaceC, varNameC, nil)
 			C.free(unsafe.Pointer(varNameC))
+			if gerr != 0 {
+				break
+			}
 
 			gerr = C.GDALRasterIO(hBand, C.GF_Write, C.int(xOff), C.int(yOff), C.int(t.Width), C.int(t.Height), unsafe.Pointer(&t.Data[0]), C.int(t.Width), C.int(t.Height), C.GDT_Byte, 0, 0)
 
 		case *Int16Raster:
-			if t.NameSpace == "EmptyTile" {
+			bandNames[i] = t.NameSpace
+			if isEmptyTile(t.NameSpace) {
 				continue
 			}
 			C.GDALSetRasterNoDataValue(hBand, C.double(t.NoData))
 			varNameC := C.CString(t.NameSpace)
-			C.GDALSetMetadataItem(C.GDALMajorObjectH(hBand), resNameSpaceC, varNameC, nil)
+			gerr = C.GDALSetMetadataItem(C.GDALMajorObjectH(hBand), resNameSpaceC, varNameC, nil)
 			C.free(unsafe.Pointer(varNameC))
+			if gerr != 0 {
+				break
+			}
 
 			gerr = C.GDALRasterIO(hBand, C.GF_Write, C.int(xOff), C.int(yOff), C.int(t.Width), C.int(t.Height), unsafe.Pointer(&t.Data[0]), C.int(t.Width), C.int(t.Height), C.GDT_Int16, 0, 0)
 
 		case *UInt16Raster:
-			if t.NameSpace == "EmptyTile" {
+			bandNames[i] = t.NameSpace
+			if isEmptyTile(t.NameSpace) {
 				continue
 			}
 			C.GDALSetRasterNoDataValue(hBand, C.double(t.NoData))
 			varNameC := C.CString(t.NameSpace)
-			C.GDALSetMetadataItem(C.GDALMajorObjectH(hBand), resNameSpaceC, varNameC, nil)
+			gerr = C.GDALSetMetadataItem(C.GDALMajorObjectH(hBand), resNameSpaceC, varNameC, nil)
 			C.free(unsafe.Pointer(varNameC))
+			if gerr != 0 {
+				break
+			}
 
 			gerr = C.GDALRasterIO(hBand, C.GF_Write, C.int(xOff), C.int(yOff), C.int(t.Width), C.int(t.Height), unsafe.Pointer(&t.Data[0]), C.int(t.Width), C.int(t.Height), C.GDT_UInt16, 0, 0)
 
 		case *Float32Raster:
-			if t.NameSpace == "EmptyTile" {
+			bandNames[i] = t.NameSpace
+			if isEmptyTile(t.NameSpace) {
 				continue
 			}
 			C.GDALSetRasterNoDataValue(hBand, C.double(t.NoData))
 			varNameC := C.CString(t.NameSpace)
-			C.GDALSetMetadataItem(C.GDALMajorObjectH(hBand), resNameSpaceC, varNameC, nil)
+			gerr = C.GDALSetMetadataItem(C.GDALMajorObjectH(hBand), resNameSpaceC, varNameC, nil)
 			C.free(unsafe.Pointer(varNameC))
+			if gerr != 0 {
+				break
+			}
 
 			gerr = C.GDALRasterIO(hBand, C.GF_Write, C.int(xOff), C.int(yOff), C.int(t.Width), C.int(t.Height), unsafe.Pointer(&t.Data[0]), C.int(t.Width), C.int(t.Height), C.GDT_Float32, 0, 0)
 
 		default:
 			C.GDALClose(hDstDS)
-			return fmt.Errorf("Unsupported gdal data type")
+			return []string{}, fmt.Errorf("Unsupported gdal data type")
 		}
 
 		if gerr != 0 {
 			C.GDALClose(hDstDS)
-			return fmt.Errorf("Error writing raster band: %d, xOff: %d, yOff:%d", i, xOff, yOff)
+			return []string{}, fmt.Errorf("Error writing raster band: %d, xOff: %d, yOff:%d", i, xOff, yOff)
 		}
 	}
 
-	return nil
+	return bandNames, nil
 
 }
 
@@ -466,8 +483,16 @@ func EncodeGdalClose(hDstDS *C.GDALDatasetH) {
 	}
 }
 
+func RemoveGdalTempFile(tempFile string) {
+	os.Remove(tempFile)
+}
+
 // ExtractEPSGCode parses an SRS string and gets
 // the EPSG code
 func ExtractEPSGCode(srs string) (int, error) {
 	return strconv.Atoi(srs[5:])
+}
+
+func isEmptyTile(namespace string) bool {
+	return len(namespace) >= len(EmptyTileNS) && namespace[:len(EmptyTileNS)] == EmptyTileNS
 }

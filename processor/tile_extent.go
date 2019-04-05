@@ -26,6 +26,7 @@ func ComputeReprojectionExtent(ctx context.Context, geoReq *GeoTileRequest, masA
 
 	go indexer.Run(verbose)
 
+	fileLookup := make(map[string]bool)
 	var indexGrans []*GeoTileGranule
 	for gran := range indexer.Out {
 		select {
@@ -34,7 +35,10 @@ func ComputeReprojectionExtent(ctx context.Context, geoReq *GeoTileRequest, masA
 		case <-ctx.Done():
 			return -1, -1, ctx.Err()
 		default:
-			indexGrans = append(indexGrans, gran)
+			if _, found := fileLookup[gran.RawPath]; !found {
+				fileLookup[gran.RawPath] = true
+				indexGrans = append(indexGrans, gran)
+			}
 		}
 	}
 
@@ -96,7 +100,11 @@ func ComputeReprojectionExtent(ctx context.Context, geoReq *GeoTileRequest, masA
 				defer conc.Decrease()
 				c := pb.NewGDALClient(conns[(iTile+workerStart)%len(conns)])
 
-				granule := &pb.GeoRPCGranule{Operation: "extent", Path: g.Path, DstSRS: projWKT, DstGeot: bbox}
+				dsPath := g.Path
+				if dsPath == "NULL" {
+					dsPath = g.RawPath
+				}
+				granule := &pb.GeoRPCGranule{Operation: "extent", Path: dsPath, DstSRS: projWKT, DstGeot: bbox}
 				res, err := c.Process(ctx, granule)
 				if err != nil {
 					errChan <- err
