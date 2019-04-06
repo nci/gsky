@@ -79,16 +79,17 @@ type LayerAxis struct {
 // to be published and rendered
 type Layer struct {
 	OWSHostname string `json:"ows_hostname"`
-	NameSpace   string
+	NameSpace   string `json:"namespace"`
 	Name        string `json:"name"`
 	Title       string `json:"title"`
 	Abstract    string `json:"abstract"`
 	MetadataURL string `json:"metadata_url"`
 	DataURL     string `json:"data_url"`
 	//CacheLevels  []CacheLevel `json:"cache_levels"`
-	DataSource               string `json:"data_source"`
-	StartISODate             string `json:"start_isodate"`
-	EndISODate               string `json:"end_isodate"`
+	InputLayers              []Layer `json:"input_layers"`
+	DataSource               string  `json:"data_source"`
+	StartISODate             string  `json:"start_isodate"`
+	EndISODate               string  `json:"end_isodate"`
 	EffectiveStartDate       string
 	EffectiveEndDate         string
 	TimestampToken           string

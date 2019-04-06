@@ -361,29 +361,45 @@ func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r
 		defer timeoutCancel()
 
 		tp := proc.InitTilePipeline(ctx, conf.ServiceConfig.MASAddress, conf.ServiceConfig.WorkerNodes, conf.Layers[idx].MaxGrpcRecvMsgSize, conf.Layers[idx].WmsPolygonShardConcLimit, conf.ServiceConfig.MaxGrpcBufferSize, errChan)
+		tp.CurrentLayer = styleLayer
+		tp.DataSources = configMap
 		select {
 		case res := <-tp.Process(geoReq, *verbose):
-			scaleParams := utils.ScaleParams{Offset: geoReq.ScaleParams.Offset,
-				Scale: geoReq.ScaleParams.Scale,
-				Clip:  geoReq.ScaleParams.Clip,
-			}
-
-			norm, err := utils.Scale(res, scaleParams)
-			if err != nil {
-				Info.Printf("Error in the utils.Scale: %v\n", err)
-				http.Error(w, err.Error(), 500)
-				return
-			}
-
-			if len(norm) == 0 || norm[0].Width == 0 || norm[0].Height == 0 {
-				out, err := utils.GetEmptyTile(conf.Layers[idx].NoDataLegendPath, *params.Height, *params.Width)
-				if err != nil {
-					Info.Printf("Error in the utils.GetEmptyTile(): %v\n", err)
-					http.Error(w, err.Error(), 500)
-				} else {
-					w.Write(out)
+			var norm []*utils.ByteRaster
+			if len(styleLayer.InputLayers) == 0 {
+				scaleParams := utils.ScaleParams{Offset: geoReq.ScaleParams.Offset,
+					Scale: geoReq.ScaleParams.Scale,
+					Clip:  geoReq.ScaleParams.Clip,
 				}
-				return
+
+				norm_tmp, err := utils.Scale(res, scaleParams)
+				if err != nil {
+					Info.Printf("Error in the utils.Scale: %v\n", err)
+					http.Error(w, err.Error(), 500)
+					return
+				}
+				norm = norm_tmp
+
+				if len(norm) == 0 || norm[0].Width == 0 || norm[0].Height == 0 {
+					out, err := utils.GetEmptyTile(conf.Layers[idx].NoDataLegendPath, *params.Height, *params.Width)
+					if err != nil {
+						Info.Printf("Error in the utils.GetEmptyTile(): %v\n", err)
+						http.Error(w, err.Error(), 500)
+					} else {
+						w.Write(out)
+					}
+					return
+				}
+			} else {
+				for _, r := range res {
+					byteR, ok := r.(*utils.ByteRaster)
+					if !ok {
+						Info.Printf("Error in the raster data type")
+						http.Error(w, "Error in the raster data type", 500)
+						return
+					}
+					norm = append(norm, byteR)
+				}
 			}
 
 			out, err := utils.EncodePNG(norm, styleLayer.Palette)
