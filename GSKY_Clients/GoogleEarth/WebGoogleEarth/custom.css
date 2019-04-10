@@ -1,0 +1,101 @@
+.btn{
+	display:inline-block;
+	padding:8px 10px;
+	margin-bottom:0;
+	font-size:11px;
+	font-weight:400;
+	line-height:1.42857143;
+	text-align:left;
+	white-space:nowrap;
+	vertical-align:middle;
+	-ms-touch-action:manipulation;
+	touch-action:manipulation;
+	cursor:pointer;
+	-webkit-user-select:none;
+	-moz-user-select:none;
+	-ms-user-select:none;
+	user-select:none;
+	background-image:none;
+	border:1px solid transparent;
+	border-radius:4px
+}
+.list-group-item
+{
+	position:relative;
+	display:block;
+	padding:0px 0px;
+	margin-bottom:-1px;
+	background-color:#fff;
+	border:1px solid #ddd
+}
+.input-group-btn
+{
+	width:auto;
+}
+.btn-primary
+{
+	color:#fff;
+	background-color:#337ab7;
+	border-color:#2e6da4;
+}
+/*
+.jumbotron
+{
+	padding:30px 15px;
+	margin-bottom:30px;
+	color:inherit;
+	background-color:#eee
+}
+.jumbotron .h1,.jumbotron h1
+{
+	color:inherit
+}
+.jumbotron p
+{
+	margin-bottom:15px;
+	font-size:21px;
+	font-weight:200
+}
+.jumbotron>hr
+{
+	border-top-color:#d5d5d5
+}
+.container .jumbotron,.container-fluid .jumbotron
+{
+	border-radius:6px
+}
+.jumbotron .container
+{
+	max-width:100%
+}
+@media screen and (min-width:768px)
+{
+	.jumbotron
+	{
+		padding:48px 0
+	}
+	.container .jumbotron,.container-fluid .jumbotron
+	{
+		padding-right:60px;
+		padding-left:60px
+	}
+	.jumbotron .h1,.jumbotron h1
+	{
+		font-size:63px
+	}
+}
+@media (max-width:767px)
+{
+	.hidden-xs
+	{
+		display:none!important
+	}
+}
+.container
+{
+	padding-right:15px;
+	padding-left:15px;
+	margin-right:auto;
+	margin-left:auto
+}
+*/

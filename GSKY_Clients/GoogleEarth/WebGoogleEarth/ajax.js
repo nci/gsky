@@ -12,6 +12,69 @@
   // Copyright (c) 2011-2015 by AV Sivaprasad and WebGenie Software Pty Ltd.
 // Global variables
 var cgi = "google_earth.cgi"; // calls users.cgi
+function BlankBboxInputBox(item)
+{
+	item.value = "";
+}
+function ShowHideBBoxFinder (iframe)
+{
+	var rand = Math.floor((Math.random()*1000000)+1);
+	var iframe = document.getElementById('BBox_finder');
+	iframe.src = "http://www.webgenie.com/WebGoogleEarth/BBox?uid="+rand;
+	showHideToggle('Details', 'div'); showHideToggle('bbox_finder', 'div');
+}
+function ValidateInput(form)
+{
+	if(!form.layer.value) 
+	{
+		alert("Please choose a GSKY layer !");
+		return;
+	}
+	if(!form.region.value) 
+	{
+		alert("Please choose a Geographic Region !");
+		return;
+	}
+	if(!form.bbox.value) 
+	{
+		alert("Please enter the geographic coordinates !");
+		return;
+	}
+	document.getElementById("kml").innerHTML = "Fetching...";
+	showHide("kml", "block");
+	ajaxFunction(1,form);
+}
+function GetCoordinates(form,item)
+{
+	if(item.value == 'UNLISTED')
+	{
+		form.bbox.value = '';
+		return;
+	}
+	var region = [];
+	region["Aus_ALL"] = "112.324219,-44.087585,153.984375,-10.919618";
+	region["WA"] = "113.378906,-35.137879,129.067383,-13.539201";
+	region["NT"] = "128.979492,-26.076521,137.988281,-11.005904";
+	region["SA"] = "129.023438,-37.996163,141.064453,-25.958045";
+	region["QLD"] = "138.032227,-28.998532,154.467773,-10.919618";
+	region["NSW"] = "141.020508,-36.879621,153.984375,-27.916767";
+	region["ACT"] = "148.699951,-35.942436,149.479980,-35.119909";
+	region["VIC"] = "140.756836,-38.925229,151.435547,-34.415973";
+	region["TAS"] = "143.525391,-43.644026,148.623047,-39.504041";
+	region["NZ"] = "166.333008,-47.368594,178.989258,-34.198173";
+	region["US_ALL"] = "-125.332031,24.766785,-67.412109,48.980217";
+	region["US_WC"] = "-127.001953,32.694866,-113.554688,49.210420"; 
+	region["US_CEN"] = "-109.160156,26.902477,-95.097656,48.922499";
+	region["US_EAST"] = "-94.746094,25.482951,-62.753906,47.517201";
+	region["Europe"] = "-12.304688,35.460670,37.968750,58.631217";
+	region["West_Europe"] = "-11.250000,35.889050,18.808594,58.722599";
+	region["East_Europe"] = "19.511719,37.020098,40.429688,59.445075";
+	var bbox = region[item.value];
+	if (bbox)
+	{
+		form.bbox.value = bbox;
+	}
+}
 function InsertTimes(item)
 {
 	var times = [];
@@ -25,7 +88,7 @@ function InsertTimes(item)
 	var i = item.selectedIndex;
 	var time = times[i].split(",");
 	len = time.length;
-	var option_line = "<select multiple=\"multiple\" size=\"5\" style=\"width:300px; font-size:10px;background-color:#F7F5D7\" name=\"time\">\n\t<option value=\"\">Latest</option>\n";
+	var option_line = "<select multiple=\"multiple\" title=\"Ctrl-click or Shift-click to select more than one.\" size=\"5\" style=\"width:300px; font-size:10px;background-color:#F7F5D7\" name=\"time\">\n\t<option value=\"\">Latest</option>\n";
 	for (var j=0; j < len; j++)
 	{
 		date = time[j].replace("T00:00:00.000Z","");
@@ -35,7 +98,13 @@ function InsertTimes(item)
 	document.getElementById("times").innerHTML = option_line;
 	showHide("times",'block');
 }
-function showHide(id,state)
+function showHideToggle(id,type)
+{
+		var style = document.getElementById(id).style.display;
+		if(style == 'none') showHide(id,type,'block');
+		else showHide(id,type,'none');
+}
+function showHide(id,type,state)
 {
         if (state == undefined) state = 'block';
 		var style = document.getElementById(id).style.display;
@@ -106,7 +175,8 @@ function ajaxFunction(n,form,item)
 		{
 			times[i] = form.time.selectedOptions[i].value;
 		}
-		var bbox = form.bbox.value.split(",");
+		var bbox = form.bbox.value.replace(/ /g, '');
+		bbox = bbox.split(",");
 		pquery = 
 		"&layer=" + form.layer.value +
 		"&region=" + form.region.value +

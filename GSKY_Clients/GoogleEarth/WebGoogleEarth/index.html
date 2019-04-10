@@ -1,91 +1,59 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<title>GSKY via Google Earth</title>
-    <!--NOTE: Most Web WorldWind examples use jquery, Bootstrap and requirejs but those technologies are NOT-->
-    <!--required by Web WorldWind. See SimplestExample.html for an example of using Web WorldWind without them.-->
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.4/css/bootstrap.min.css">
-<!--    <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.3/jquery.min.js" type="text/javascript"></script>-->
-<!--    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.4/js/bootstrap.min.js"></script>-->
-<!--    <script data-main="geoglam" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.1.17/require.min.js"></script>-->
-    <link rel="stylesheet" href="custom.css"> <!-- AVS: Added to change the styles of buttons -->
-	<script type="text/javascript">
-	function InsertTimes_0(item)
-	{
-		var i = item.selectedIndex;
-		var times = "times_"+i;
-		showHide(times,'block');
-	}
-	function showHide(id,type,state)
-	{
-		if (state == undefined) state = 'block';
-		if(id)
-		{
-			var style = document.getElementById(id).style.display;
-			document.getElementById(id).style.display=""+state;
-		}
-	}
-	function Fin()
-	{
-		showHide('avs_waiting_circle','span','none');
-	}
-	function ValidateInput(form)
-	{
-		if(!form.layer.value) 
-		{
-			alert("Please choose a GSKY layer !");
-			return;
-		}
-		if(!form.region.value) 
-		{
-			alert("Please choose a Geographic Region !");
-			return;
-		}
-//		if(!form.west.value || !form.south.value || !form.east.value || !form.north.value) 
-		if(!form.bbox.value) 
-		{
-			alert("Please enter the geographic coordinates !");
-			return;
-		}
-		ajaxFunction(1,form);
-	}
-	function GetCoordinates(form,item)
-	{
-		var region = [];
-		region["Aus_ALL"] = "112.324219,-44.087585,153.984375,-10.919618";
-		region["WA"] = "113.378906,-35.137879,129.067383,-13.539201";
-		region["NT"] = "128.979492,-26.076521,137.988281,-11.005904";
-		region["SA"] = "129.023438,-37.996163,141.064453,-25.958045";
-		region["QLD"] = "138.032227,-28.998532,154.467773,-10.919618";
-		region["NSW"] = "141.020508,-36.879621,153.984375,-27.916767";
-		region["ACT"] = "148.699951,-35.942436,149.479980,-35.119909";
-		region["VIC"] = "140.756836,-38.925229,151.435547,-34.415973";
-		region["TAS"] = "143.525391,-43.644026,148.623047,-39.504041";
-		region["NZ"] = "166.333008,-47.368594,178.989258,-34.198173";
-		region["US_ALL"] = "-125.332031,24.766785,-67.412109,48.980217";
-		region["US_WC"] = "-124.628906,31.802893,-110.039063,48.806863";
-		region["US_CEN"] = "-109.160156,26.902477,-95.097656,48.922499";
-		region["US_EAST"] = "-94.746094,25.482951,-62.753906,47.517201";
-		region["Europe"] = "-12.304688,35.460670,37.968750,58.631217";
-		region["West_Europe"] = "-11.250000,35.889050,18.808594,58.722599";
-		region["East_Europe"] = "19.511719,37.020098,40.429688,59.445075";
-		var bbox = region[item.value];
-		if (bbox)
-		{
-			form.bbox.value = bbox;
-/*
-			coords = bbox.split(",");
-			form.west.value = coords[0];
-			form.south.value = coords[1];
-			form.east.value = coords[2];
-			form.north.value = coords[3];
-*/			
-		}
-//alert(coords[0]);		
-	}
-	</script>
+<title>GSKY via Google Earth Web</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.4/css/bootstrap.min.css">
+<link rel="stylesheet" href="custom.css"> <!-- AVS: Added to change the styles of buttons -->
+
+<style>
+.content-container {
+	position: relative;
+	z-index: 99;
+	margin-top: 10px
+}
+.content-container article {
+	float: left;
+	width: 50%;
+	height: 300px;
+	padding: 20px;
+	background: #fff;
+	border: 1px solid #e7e6eb;
+	-moz-border-radius: 5px;
+	-webkit-border-radius: 5px;
+	border-radius: 5px;
+	margin-bottom: 6px
+}
+.content-container tldr {
+	float: right;
+	width: 100%;
+	padding: 20px;
+	background: #fff;
+	border: 1px solid #e7e6eb;
+	-moz-border-radius: 5px;
+	-webkit-border-radius: 5px;
+	border-radius: 5px;
+	margin-bottom: 6px
+}
+.content-container details {
+	float: left;
+	width: 100%;
+	padding: 20px;
+	background: #fff;
+	border: 1px solid #e7e6eb;
+	-moz-border-radius: 5px;
+	-webkit-border-radius: 5px;
+	border-radius: 5px;
+	margin-bottom: 6px
+}
+.content-container article section {
+	margin: 0 0 30px 0
+}
+.content-container tldr section {
+	margin: 0 0 30px 0
+}
+</style>
 </head>
 <body background="bg-page.png">
 <div class="container">
@@ -107,14 +75,25 @@
 		<tr>
 		<td>
     <small>
-<p>
-        This web app is a wrapper to create KMLs for <a href="https://earth.google.com/web/" target="_blank"><b>Google Earth Web</b></a> (<b>GEWeb</b>).
-        Its purpose is to extend the functionality of GEWeb to display GSKY layers in both spatial and temporal dimensions. Only GEOGLAM
-        has been implemented so far. The DEA layers do not yet show up, but we are working on it!
-        
-        <hr>
-        <h3>TL;DR</h3>
-        <h4>How to use the form below:</h4>
+    <div class="content-container">
+    <article>
+        <section>
+        <h3>What's This?</h3>
+        <p>
+        This page will create the KML (Keyhole Markup Language) files to extend the functionality of 
+        <a href="https://earth.google.com/web/" target="_blank"><b>Google Earth Web</b></a> (<b>GEWeb</b>) 
+        and will display GSKY layers in both spatial and temporal dimensions. 
+        </p>
+        <p>
+        Only GEOGLAM has been implemented so far. The DEA layers do not yet show up, but we are working on it!
+		</section>
+	</article>
+	</div>
+    <div class="content-container">
+    <article>
+        <tldr>
+        <h3>How to create the KML File:</h3>
+        <small>
         <ul>
         <li>
         	Choose the required GEOGLAM layer.
@@ -123,31 +102,20 @@
         	Choose the geographical region. 
         	<ul>
         	<li>
-        		If the required region is not listed, choose '<b>Unlisted</b>' and manually enter its coordinates.
+        		<small>If the required region is not listed, choose '<b>Unlisted</b>' and manually enter its coordinates.</small>
         	</li>
-				<ul>
-				<li>
-					Use 
-					<a href="http://bboxfinder.com" 
-					  target="popup" 
-					  onclick="window.open('http://bboxfinder.com','popup','width=800,height=600'); return false;">
-						<b>BBox Finder</b>
-					</a>
-					or
-					<a href="http://bboxfinder.com" 
-					  target="popup" 
-					  onclick="window.open('http://epsg.io/map#srs=4326&amp;x=46.406250&amp;y=11.695273&amp;z=3&amp;layer=streets','popup','width=800,height=600'); return false;">
-						<b>EPSG</b>.
-					</a>
-				</li>
-				<li>
-					The first lets you draw a box and get the minX,minY,maxX,maxY coordinates as comma-separated. The second site displays the X,Y to be copied separately. In both cases, must use EPSG:4326.
-				</li>
-				</ul>
+        	<li>
+        		<small>Use the <b>BBox Finder</b> to get the bounding box.</small>
+        	</li>
         	</ul>
         </li>
         <li>
-        	Choose the required date. Default is the latest date.
+        	Choose the data acquisition date(s). Default is the latest.
+        	<ul>
+				<li>
+					<small>You can select multiple dates with Ctrl-click or Shift-click.</small>
+				</li>
+        	</ul>
         </li>
         <li>
         	Click '<b>Create KML</b>' and click again on the link that appears to download the file.
@@ -156,15 +124,16 @@
         	Save the <b>*.kml</b> file on your computer.
         	<ul>
 				<li>
-						Open it via the "<b>My Places | IMPORT KML File</b>" link in <b>GEWeb</b>.
+						<small>Open it via the <b><img src="my_places.png" alt="My Places" title="My Places"> My Places | IMPORT KML FILE</b> link in <b><a href="https://earth.google.com/web/">GEWeb</a></b></small>.
 				</li>
         	</ul>
 
         </li>
         </ul>
-        
-</p> 
-<p>
+        </small>        
+		</section>
+	</tldr>
+	</div>
 	<div align="center" style="text-align:left; width:100%">
 	<form id="google_earth" name="google_earth" method="POST" action="google_earth.cgi">
     <table class="jumbotron hidden-xs-" style="width:100%">
@@ -173,11 +142,11 @@
 				<img src="globe.png" alt="Globe" width=150px>
 			</td>
 			<td style="width:20%; text-align:right; font-weight:bold; padding-right:10px;">
-				GSKY layer:
+				GSKY Layer:
 			</td>
 			<td style="width:80%; padding-top:0px; ">
-				<select name="layer" style="width:300px; background-color:#F7F5D7" onchange="InsertTimes(this)">
-					<option value="">GEOGLAM Layers: Choose Below</option>
+				<select name="layer" style="width:300px; font-size:12px; background-color:#F7F5D7" onchange="InsertTimes(this)">
+					<option value="">GEOGLAM</option>
 					<option value="global:c6:frac_cover|Fractional Cover C6">Fractional Cover C6</option>
 					<option value="global:c6:total_cover|Total Cover C6">Total Cover C6</option>
 					<option value="global:c6:monthly_frac_cover|Monthly Fractional Cover C6">Monthly Fractional Cover C6</option>
@@ -190,11 +159,11 @@
 		</tr>
 		<tr>
 			<td style="width:20%; text-align:right; font-weight:bold; padding-right:10px">
-				Geographic region:
+				Geographic Region:
 			</td>
-			<td style="width:80%; padding-top:10px">
-				<select name="region" style="width:300px; background-color:#F7F5D7" onchange="GetCoordinates(this.form,this)">
-					<option value="">Choose Below</option>
+			<td style="width:80%; padding-top:0px">
+				<select name="region" style="width:300px; font-size:12px; padding:0px; background-color:#F7F5D7" onchange="GetCoordinates(this.form,this)">
+					<option value=""></option>
 					<option value="UNLISTED">Unlisted</option>
 					<option value="Aus_ALL">Australia</option>
 					<option value="WA"> Western Australia</option>
@@ -207,9 +176,9 @@
 					<option value="TAS">Tasmania</option>
 					<option value="NZ">New Zealand</option>
 					<option value="US_ALL">USA</option>
-					<option value="US_WC">USA West Coast</option>
-					<option value="US_CEN">USA Central</option>
-					<option value="US_EAST">USA East Coast</option>
+					<option value="US_WC">US West Coast</option>
+					<option value="US_CEN">US Central</option>
+					<option value="US_EAST">US East Coast</option>
 					<option value="Europe">Europe</option>
 					<option value="West_Europe">Western Europe</option>
 					<option value="East_Europe">Eastern Europe</option>
@@ -219,21 +188,17 @@
 		<tr>
 			<td style="width:20%; text-align:right; font-weight:bold; padding-right:10px">
 				BBox<small><small>
-				(as West,South,East,North)</small></small>:
+				(W,S,E,N)</small></small>:
 			</td>
 			<td style="width:80%; padding-top:10px">
-			<input type="text" name="bbox" style="width:300px; background-color:#F7F5D7">
-<!--
-				<small>W: <input type="text" name="west" value="" style="width:100px"></small>
-				<small>S: <input type="text" name="south" value="" style="width:100px"></small>
-				<small>E: <input type="text" name="east" value="" style="width:100px"></small>
-				<small>N: <input type="text" name="north" value="" style="width:100px"></small>
--->				
+			<input type="text" name="bbox" style="width:300px; background-color:#F7F5D7; font-size:12px;"> 
+			<span onmousedown="BlankBboxInputBox(document.forms.google_earth.bbox)"><img src="sm_cross.png" alt="Blank Input" title="Blank Input"></span>
+			<input type="button" value="BBox Finder" title="Show/Hide BBox Finder" style="height:18px; font-size:10px; font-weight:bold; color:blue" onclick="ShowHideBBoxFinder(document.BBox_finder)">
 			</td>
 		</tr>
 		<tr>
 			<td style="width:20%; text-align:right; font-weight:bold; padding-right:10px">
-				Data acquisition date:
+				Acquisition Date:
 			</td>
 			<td style="width:80%; padding-top:10px">
 				<span id="times" style="display:block;"><select name="time" style="width:300px; background-color:#F7F5D7"><option value="">Latest</Option></select></span>
@@ -241,49 +206,53 @@
 		</tr>
 		<tr>
 			<td style="width:100%; text-align:left; font-weight:bold; padding-right:10px" colspan="2">
-				<input type="button" value="Create KML" style="color:blue" onclick="showHide('kml','none'); ValidateInput(document.forms.google_earth);">
-				<span id="kml" style="display: none">KML</span>
+				<input type="button" value="Create KML" style="color:blue" onclick="ValidateInput(document.forms.google_earth);">
+				<span id="kml" style="display: none"></span>
 			</td>
 		</tr>
 	</table>
 	</form>
 	</div>
-</p>	
-<p><hr>
+	<div id="bbox_finder" style="width:100%; display:none; color:blue; font-size:10px; font-weight:bold">
+		<span style="width:80%;">Click <img src="square.png" alt="Square" title="Third button below for 'Draw a rectangle'"> and draw a box. Take the coordinates shown below as <img src="box.png" alt="Box" title="Third line from bottom"></span><span style="width:20%; text-align:right; padding-left:10px"><img src="cross.png" alt="Close" title="Close BBox Finder" onclick="showHideToggle('Details', 'div'); showHideToggle('bbox_finder', 'div'); "></span><br>
+		<iframe id="BBox_finder" style="width:100%; height:600px"></iframe>
+	</div>
+    <div class="content-container" id="Details" style="display:block">
+    <details>
+        <section>
 		<h2>Details</h2>
 		Many GIS clients such as <b>TerriaMap, ArcGIS, QGIS, NASA WorldWind</b> and <b>Google Earth Desktop (GE)</b> support the WMS services.
-		They request the Capability statement via a GSKY server URL. Thereafter the "GetMap" requests are sent
+		They request the Capability statement via a GSKY server URL. Thereafter the "GetMap" requests are 
 		based on the visible Lat/Lon coordinates on the screen. 
-		<br>
-		<br>
-		The GEWeb does not have a WMS support as above. However, it can send the GetMap requests
-		via a KML file. 
-		<br>
-		<br>
+
+		<br><br>
+		GEWeb does not have a WMS support as above. However, it can send the GetMap requests
+		via a KML file. This allows us to manually request the data for any region by specifying the
+		coordinates and the date of data acquisition. The latter is very useful, as all other clients except
+		TerriaMap can only show the latest time slice.
+
+		<br><br>
 		While GE works almost similar to TerriaMap, it lacks the ability to display time layers as in TerriaMap.
-		Only the latest time layer is displayed. When using their WMS service there is no way to specify a time layer as e.g. <i>TIME=2001-01-01</i>.
-		The only way to do so requires a manually created/edited KML file. It is time consuming and error prone, even if one knows
-		the KML syntax.
+		When using their WMS service there is no way to specify a time layer as e.g. <i>TIME=2001-01-01</i>.
 		
-		<br>
-		<br>
+		<br><br>
 		Here we provide a way to create functional KML files where the time and Lat/Lon coordinates are coded
-		via web-based controls. Such KML files can be opened in GEWeb. (Note: Currently the KMLs are not compatible with Google Earth Desktop, but we are working on it!)
+		via web-based controls. Such KML files can be opened in GEWeb. (Note: Currently the KMLs are not compatible with GE, but we are working on it!)
 		
-        <br><br>You will see a GSKY layer for each KML file imported. The layers will stay permanently and hence
+        <br><br>
+        You will see a GSKY layer for each KML file imported. The layers will stay permanently and hence
 		you do not have to recreate the files every time. 
-		<br>
-		<br>
+		
+		<br><br>
 		You will, however, need to create a new KML file to see another time layer or
 		another bounding box. Unlike in the WMS service, you cannot simply pan to a different part of the globe and get the layers
 		re-displayed as you move. 
-		<br>
-		<br>
+
+		<br><br>
 		You can zoom in/out, and the GSKY layers will get smaller/bigger but their resolution will not change. To see a smaller region,
 		select from the "Geographical Region" dropdown or specify your own Lat/Lon values.
 		
         <br><br> 
-
         <b>Notes:</b><br>
         <ul>
         <li>
@@ -305,17 +274,20 @@
         </li>
         </ul>
 
-</p>        
+</span>        
         
         
     </small>
 		</td>
 		</tr>
     </table>
+		</section>
+	</details>
+	</div>
 <small><small>
 <hr>
 Copyright &copy; 2019, National Computational Infrastructure (<a href="http://nci.org.au/">NCI</a>), Canberra, ACT 2601, Australia.
-<br>
+
 Author: Dr. Arapaut V. Sivaprasad. Created on: 31 March, 2019.
 </small></small>
 <hr>
