@@ -86,58 +86,59 @@ type Layer struct {
 	MetadataURL string `json:"metadata_url"`
 	DataURL     string `json:"data_url"`
 	//CacheLevels  []CacheLevel `json:"cache_levels"`
-	InputLayers              []Layer `json:"input_layers"`
-	DataSource               string  `json:"data_source"`
-	StartISODate             string  `json:"start_isodate"`
-	EndISODate               string  `json:"end_isodate"`
-	EffectiveStartDate       string
-	EffectiveEndDate         string
-	TimestampToken           string
-	StepDays                 int      `json:"step_days"`
-	StepHours                int      `json:"step_hours"`
-	StepMinutes              int      `json:"step_minutes"`
-	Accum                    bool     `json:"accum"`
-	TimeGen                  string   `json:"time_generator"`
-	ResFilter                *int     `json:"resolution_filter"`
-	Dates                    []string `json:"dates"`
-	RGBProducts              []string `json:"rgb_products"`
-	RGBExpressions           *BandExpressions
-	Mask                     *Mask    `json:"mask"`
-	OffsetValue              float64  `json:"offset_value"`
-	ClipValue                float64  `json:"clip_value"`
-	ScaleValue               float64  `json:"scale_value"`
-	Palette                  *Palette `json:"palette"`
-	LegendPath               string   `json:"legend_path"`
-	LegendHeight             int      `json:"legend_height"`
-	LegendWidth              int      `json:"legend_width"`
-	Styles                   []Layer  `json:"styles"`
-	ZoomLimit                float64  `json:"zoom_limit"`
-	MaxGrpcRecvMsgSize       int      `json:"max_grpc_recv_msg_size"`
-	WmsPolygonSegments       int      `json:"wms_polygon_segments"`
-	WcsPolygonSegments       int      `json:"wcs_polygon_segments"`
-	WmsTimeout               int      `json:"wms_timeout"`
-	WcsTimeout               int      `json:"wcs_timeout"`
-	GrpcWmsConcPerNode       int      `json:"grpc_wms_conc_per_node"`
-	GrpcWcsConcPerNode       int      `json:"grpc_wcs_conc_per_node"`
-	WmsPolygonShardConcLimit int      `json:"wms_polygon_shard_conc_limit"`
-	WcsPolygonShardConcLimit int      `json:"wcs_polygon_shard_conc_limit"`
-	BandStrides              int      `json:"band_strides"`
-	WmsMaxWidth              int      `json:"wms_max_width"`
-	WmsMaxHeight             int      `json:"wms_max_height"`
-	WcsMaxWidth              int      `json:"wcs_max_width"`
-	WcsMaxHeight             int      `json:"wcs_max_height"`
-	WcsMaxTileWidth          int      `json:"wcs_max_tile_width"`
-	WcsMaxTileHeight         int      `json:"wcs_max_tile_height"`
-	FeatureInfoMaxDataLinks  int      `json:"feature_info_max_data_links"`
-	FeatureInfoDataLinkUrl   string   `json:"feature_info_data_link_url"`
-	FeatureInfoBands         []string `json:"feature_info_bands"`
-	FeatureInfoExpressions   *BandExpressions
-	NoDataLegendPath         string       `json:"nodata_legend_path"`
-	AxesInfo                 []*LayerAxis `json:"axes"`
-	UserSrcSRS               int          `json:"src_srs"`
-	UserSrcGeoTransform      int          `json:"src_geo_transform"`
-	DefaultGeoBbox           []float64    `json:"default_geo_bbox"`
-	DefaultGeoSize           []int        `json:"default_geo_size"`
+	InputLayers                  []Layer `json:"input_layers"`
+	DataSource                   string  `json:"data_source"`
+	StartISODate                 string  `json:"start_isodate"`
+	EndISODate                   string  `json:"end_isodate"`
+	EffectiveStartDate           string
+	EffectiveEndDate             string
+	TimestampToken               string
+	StepDays                     int      `json:"step_days"`
+	StepHours                    int      `json:"step_hours"`
+	StepMinutes                  int      `json:"step_minutes"`
+	Accum                        bool     `json:"accum"`
+	TimeGen                      string   `json:"time_generator"`
+	ResFilter                    *int     `json:"resolution_filter"`
+	Dates                        []string `json:"dates"`
+	RGBProducts                  []string `json:"rgb_products"`
+	RGBExpressions               *BandExpressions
+	Mask                         *Mask    `json:"mask"`
+	OffsetValue                  float64  `json:"offset_value"`
+	ClipValue                    float64  `json:"clip_value"`
+	ScaleValue                   float64  `json:"scale_value"`
+	Palette                      *Palette `json:"palette"`
+	LegendPath                   string   `json:"legend_path"`
+	LegendHeight                 int      `json:"legend_height"`
+	LegendWidth                  int      `json:"legend_width"`
+	Styles                       []Layer  `json:"styles"`
+	ZoomLimit                    float64  `json:"zoom_limit"`
+	MaxGrpcRecvMsgSize           int      `json:"max_grpc_recv_msg_size"`
+	WmsPolygonSegments           int      `json:"wms_polygon_segments"`
+	WcsPolygonSegments           int      `json:"wcs_polygon_segments"`
+	WmsTimeout                   int      `json:"wms_timeout"`
+	WcsTimeout                   int      `json:"wcs_timeout"`
+	GrpcWmsConcPerNode           int      `json:"grpc_wms_conc_per_node"`
+	GrpcWcsConcPerNode           int      `json:"grpc_wcs_conc_per_node"`
+	WmsPolygonShardConcLimit     int      `json:"wms_polygon_shard_conc_limit"`
+	WcsPolygonShardConcLimit     int      `json:"wcs_polygon_shard_conc_limit"`
+	BandStrides                  int      `json:"band_strides"`
+	WmsMaxWidth                  int      `json:"wms_max_width"`
+	WmsMaxHeight                 int      `json:"wms_max_height"`
+	WcsMaxWidth                  int      `json:"wcs_max_width"`
+	WcsMaxHeight                 int      `json:"wcs_max_height"`
+	WcsMaxTileWidth              int      `json:"wcs_max_tile_width"`
+	WcsMaxTileHeight             int      `json:"wcs_max_tile_height"`
+	FeatureInfoMaxAvailableDates int      `json:"feature_info_max_dates"`
+	FeatureInfoMaxDataLinks      int      `json:"feature_info_max_data_links"`
+	FeatureInfoDataLinkUrl       string   `json:"feature_info_data_link_url"`
+	FeatureInfoBands             []string `json:"feature_info_bands"`
+	FeatureInfoExpressions       *BandExpressions
+	NoDataLegendPath             string       `json:"nodata_legend_path"`
+	AxesInfo                     []*LayerAxis `json:"axes"`
+	UserSrcSRS                   int          `json:"src_srs"`
+	UserSrcGeoTransform          int          `json:"src_geo_transform"`
+	DefaultGeoBbox               []float64    `json:"default_geo_bbox"`
+	DefaultGeoSize               []int        `json:"default_geo_size"`
 }
 
 // Process contains all the details that a WPS needs

@@ -3,11 +3,13 @@ package processor
 import (
 	"context"
 	"fmt"
-	"github.com/nci/gsky/utils"
 	"log"
 	"reflect"
+	"strconv"
 	"time"
 	"unsafe"
+
+	"github.com/nci/gsky/utils"
 )
 
 type TilePipeline struct {
@@ -29,6 +31,8 @@ type GeoReqContext struct {
 	GeoReq     *GeoTileRequest
 }
 
+const fusedBandName = "fuse"
+
 func InitTilePipeline(ctx context.Context, masAddr string, rpcAddr []string, maxGrpcRecvMsgSize int, polygonShardConcLimit int, maxGrpcBufferSize int, errChan chan error) *TilePipeline {
 	return &TilePipeline{
 		Context:               ctx,
@@ -42,43 +46,133 @@ func InitTilePipeline(ctx context.Context, masAddr string, rpcAddr []string, max
 }
 
 func (dp *TilePipeline) Process(geoReq *GeoTileRequest, verbose bool) chan []utils.Raster {
+	i := NewTileIndexer(dp.Context, dp.MASAddress, dp.Error)
+	m := NewRasterMerger(dp.Context, dp.Error)
+	grpcTiler := NewRasterGRPC(dp.Context, dp.RPCAddress, dp.MaxGrpcRecvMsgSize, dp.PolygonShardConcLimit, dp.MaxGrpcBufferSize, dp.Error)
+
+	grpcTiler.In = i.Out
+	m.In = grpcTiler.Out
+
+	polyLimiter := NewConcLimiter(dp.PolygonShardConcLimit)
+	go m.Run(polyLimiter, geoReq.BandExpr, verbose)
+
+	varList := geoReq.BandExpr.VarList
 	if dp.CurrentLayer != nil && len(dp.CurrentLayer.InputLayers) > 0 {
-		return dp.processDeps(geoReq, verbose)
-	} else {
-		grpcTiler := NewRasterGRPC(dp.Context, dp.RPCAddress, dp.MaxGrpcRecvMsgSize, dp.PolygonShardConcLimit, dp.MaxGrpcBufferSize, dp.Error)
+		otherVars, hasFusedBand, err := dp.checkFusedBandNames(geoReq)
+		if err != nil {
+			dp.Error <- err
+			close(m.In)
+			return m.Out
+		}
 
-		i := NewTileIndexer(dp.Context, dp.MASAddress, dp.Error)
-		go func() {
-			i.In <- geoReq
-			close(i.In)
-		}()
+		if hasFusedBand {
+			rasters, err := dp.processDeps(geoReq, verbose)
+			if err != nil {
+				close(m.In)
+				return m.Out
+			}
 
-		m := NewRasterMerger(dp.Context, dp.Error)
+			polyLimiter.Increase()
+			m.In <- rasters
 
-		grpcTiler.In = i.Out
-		m.In = grpcTiler.Out
-
-		polyLimiter := NewConcLimiter(dp.PolygonShardConcLimit)
-		go i.Run(verbose)
-		go grpcTiler.Run(polyLimiter, geoReq.BandExpr.VarList, verbose)
-		go m.Run(polyLimiter, geoReq.BandExpr, verbose)
-
-		return m.Out
+			if len(otherVars) == 0 {
+				close(m.In)
+				return m.Out
+			}
+			varList = otherVars
+		}
 	}
 
+	go func() {
+		i.In <- geoReq
+		close(i.In)
+	}()
+
+	go i.Run(verbose)
+	go grpcTiler.Run(polyLimiter, varList, verbose)
+
+	return m.Out
 }
 
-func (dp *TilePipeline) processDeps(geoReq *GeoTileRequest, verbose bool) chan []utils.Raster {
-	errChan := make(chan error, 100)
+func (dp *TilePipeline) GetFileList(geoReq *GeoTileRequest, verbose bool) chan *GeoTileGranule {
+	i := NewTileIndexer(dp.Context, dp.MASAddress, dp.Error)
 
-	m := NewRasterMerger(dp.Context, errChan)
-	defer close(m.In)
-	go m.Run(nil, geoReq.BandExpr, verbose)
+	if dp.CurrentLayer != nil && len(dp.CurrentLayer.InputLayers) > 0 {
+		otherVars, hasFusedBand, err := dp.checkFusedBandNames(geoReq)
+		if err != nil {
+			dp.Error <- err
+			close(i.In)
+			return i.Out
+		}
+
+		if hasFusedBand {
+			grans, err := dp.getDepFileList(geoReq, verbose)
+			if err != nil {
+				close(i.In)
+				return i.Out
+			}
+
+			for _, g := range grans {
+				i.Out <- g
+			}
+
+			if len(otherVars) == 0 {
+				close(i.In)
+				return i.Out
+			}
+		}
+	}
+
+	go func() {
+		i.In <- geoReq
+		close(i.In)
+	}()
+
+	go i.Run(verbose)
+	return i.Out
+}
+
+func (dp *TilePipeline) getDepFileList(geoReq *GeoTileRequest, verbose bool) ([]*GeoTileGranule, error) {
+	errChan := make(chan error, 100)
+	var grans []*GeoTileGranule
 
 	depLayers, err := dp.findDepLayers()
 	if err != nil {
-		dp.Error <- err
-		return m.Out
+		return nil, err
+	}
+	dp.prepareInputGeoRequests(geoReq, depLayers)
+
+	for idx, reqCtx := range depLayers {
+		tp := InitTilePipeline(dp.Context, reqCtx.Service.MASAddress, reqCtx.Service.WorkerNodes, reqCtx.Layer.MaxGrpcRecvMsgSize, reqCtx.Layer.WmsPolygonShardConcLimit, reqCtx.Service.MaxGrpcBufferSize, errChan)
+
+		req := reqCtx.GeoReq
+		for gran := range tp.GetFileList(req, verbose) {
+			select {
+			case err := <-errChan:
+				return nil, fmt.Errorf("Error in the fusion pipeline(%d of %d): %v", idx+1, len(depLayers), err)
+			case <-tp.Context.Done():
+				return nil, fmt.Errorf("Context cancelled in fusion pipeline(%d of %d)", idx+1, len(depLayers))
+			default:
+				grans = append(grans, gran)
+			}
+		}
+
+		if verbose {
+			log.Printf("fusion pipeline(%d of %d) tile indexer done", idx+1, len(depLayers))
+		}
+	}
+
+	return grans, nil
+
+}
+
+func (dp *TilePipeline) processDeps(geoReq *GeoTileRequest, verbose bool) ([]*FlexRaster, error) {
+	errChan := make(chan error, 100)
+	var rasters []*FlexRaster
+
+	depLayers, err := dp.findDepLayers()
+	if err != nil {
+		return nil, err
 	}
 	dp.prepareInputGeoRequests(geoReq, depLayers)
 
@@ -89,7 +183,6 @@ func (dp *TilePipeline) processDeps(geoReq *GeoTileRequest, verbose bool) chan [
 		timestamp = time.Now().UTC()
 	}
 
-	var rasters []*FlexRaster
 	for idx, reqCtx := range depLayers {
 		tp := InitTilePipeline(dp.Context, reqCtx.Service.MASAddress, reqCtx.Service.WorkerNodes, reqCtx.Layer.MaxGrpcRecvMsgSize, reqCtx.Layer.WmsPolygonShardConcLimit, reqCtx.Service.MaxGrpcBufferSize, errChan)
 
@@ -106,11 +199,7 @@ func (dp *TilePipeline) processDeps(geoReq *GeoTileRequest, verbose bool) chan [
 
 				norm, err := utils.Scale(res, scaleParams)
 				if err != nil {
-					if verbose {
-						log.Printf("fusion pipeline(%d of %d) utils.Scale error: %v", idx+1, len(depLayers), err)
-					}
-					dp.Error <- err
-					return m.Out
+					return nil, fmt.Errorf("fusion pipeline(%d of %d) utils.Scale error: %v", idx+1, len(depLayers), err)
 				}
 
 				if len(norm) == 0 || norm[0].Width == 0 || norm[0].Height == 0 || norm[0].NameSpace == "EmptyTile" {
@@ -132,22 +221,27 @@ func (dp *TilePipeline) processDeps(geoReq *GeoTileRequest, verbose bool) chan [
 				}
 			}
 
+			if verbose {
+				log.Printf("fusion pipeline(%d of %d) done", idx+1, len(depLayers))
+			}
+
 		case err := <-errChan:
-			log.Printf("Error in the fusion pipeline(%d of %d): %v", idx+1, len(depLayers), err)
-			dp.Error <- err
-			return m.Out
+			return nil, fmt.Errorf("Error in the fusion pipeline(%d of %d): %v", idx+1, len(depLayers), err)
 		case <-tp.Context.Done():
-			log.Printf("Context cancelled in fusion pipeline(%d of %d)", idx+1, len(depLayers))
-			return m.Out
+			return nil, fmt.Errorf("Context cancelled in fusion pipeline(%d of %d)", idx+1, len(depLayers))
 		}
 	}
+
 	if len(rasters) == 0 {
-		m.Out <- []utils.Raster{&utils.ByteRaster{Data: make([]uint8, geoReq.Height*geoReq.Width), NoData: 0, Height: geoReq.Height, Width: geoReq.Width, NameSpace: utils.EmptyTileNS}}
-	} else {
-		m.In <- rasters
+		for idx, _ := range depLayers {
+			emptyRaster := &utils.ByteRaster{Data: make([]uint8, geoReq.Height*geoReq.Width), NoData: 0, Height: geoReq.Height, Width: geoReq.Width, NameSpace: utils.EmptyTileNS}
+			emptyFlex := getFlexRaster(idx, timestamp, geoReq, emptyRaster)
+			rasters = append(rasters, emptyFlex)
+		}
 	}
 
-	return m.Out
+	return rasters, nil
+
 }
 
 func (dp *TilePipeline) findDepLayers() ([]*GeoReqContext, error) {
@@ -220,8 +314,8 @@ func (dp *TilePipeline) prepareInputGeoRequests(geoReq *GeoTileRequest, depLayer
 }
 
 func getFlexRaster(idx int, timestamp time.Time, req *GeoTileRequest, raster utils.Raster) *FlexRaster {
-	namespace := fmt.Sprintf("fuse%d", idx)
-	flex := &FlexRaster{ConfigPayLoad: req.ConfigPayLoad, NameSpace: namespace, TimeStamp: float64(timestamp.Unix()), Polygon: "dummy_polygon", Height: req.Height, Width: req.Width, DataHeight: req.Height, DataWidth: req.Width}
+	namespace := fmt.Sprintf(fusedBandName+"%d", idx)
+	flex := &FlexRaster{ConfigPayLoad: ConfigPayLoad{NameSpaces: req.ConfigPayLoad.NameSpaces}, NameSpace: namespace, TimeStamp: float64(timestamp.Unix()), Polygon: "dummy_polygon", Height: req.Height, Width: req.Width, DataHeight: req.Height, DataWidth: req.Width}
 	switch t := raster.(type) {
 	case *utils.ByteRaster:
 		flex.Type = "Byte"
@@ -255,4 +349,26 @@ func getFlexRaster(idx int, timestamp time.Time, req *GeoTileRequest, raster uti
 	}
 
 	return flex
+}
+
+func (dp *TilePipeline) checkFusedBandNames(geoReq *GeoTileRequest) ([]string, bool, error) {
+	var otherVars []string
+	hasFusedBand := false
+	for _, ns := range geoReq.BandExpr.VarList {
+		if len(ns) > len(fusedBandName) && ns[:len(fusedBandName)] == fusedBandName {
+			bandIdx64, err := strconv.ParseInt(ns[len(fusedBandName):], 10, 64)
+			if err != nil {
+				return nil, false, fmt.Errorf("invalid namespace: %v", ns)
+			}
+
+			bandIdx := int(bandIdx64)
+			if bandIdx < 0 || bandIdx >= len(dp.CurrentLayer.InputLayers) {
+				return nil, false, fmt.Errorf("namespace out of range: %v", ns)
+			}
+			hasFusedBand = true
+			continue
+		}
+		otherVars = append(otherVars, ns)
+	}
+	return otherVars, hasFusedBand, nil
 }

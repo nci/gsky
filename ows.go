@@ -171,7 +171,7 @@ func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r
 
 		timeStr := fmt.Sprintf(`"time": "%s"`, (*params.Time).Format(utils.ISOFormat))
 
-		feat_info, err := proc.GetFeatureInfo(ctx, params, conf, *verbose)
+		feat_info, err := proc.GetFeatureInfo(ctx, params, conf, configMap, *verbose)
 		if err != nil {
 			feat_info = fmt.Sprintf(`"error": "%v"`, err)
 			Error.Printf("%v\n", err)
@@ -365,41 +365,27 @@ func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r
 		tp.DataSources = configMap
 		select {
 		case res := <-tp.Process(geoReq, *verbose):
-			var norm []*utils.ByteRaster
-			if len(styleLayer.InputLayers) == 0 {
-				scaleParams := utils.ScaleParams{Offset: geoReq.ScaleParams.Offset,
-					Scale: geoReq.ScaleParams.Scale,
-					Clip:  geoReq.ScaleParams.Clip,
-				}
+			scaleParams := utils.ScaleParams{Offset: geoReq.ScaleParams.Offset,
+				Scale: geoReq.ScaleParams.Scale,
+				Clip:  geoReq.ScaleParams.Clip,
+			}
 
-				norm_tmp, err := utils.Scale(res, scaleParams)
+			norm, err := utils.Scale(res, scaleParams)
+			if err != nil {
+				Info.Printf("Error in the utils.Scale: %v\n", err)
+				http.Error(w, err.Error(), 500)
+				return
+			}
+
+			if len(norm) == 0 || norm[0].Width == 0 || norm[0].Height == 0 {
+				out, err := utils.GetEmptyTile(conf.Layers[idx].NoDataLegendPath, *params.Height, *params.Width)
 				if err != nil {
-					Info.Printf("Error in the utils.Scale: %v\n", err)
+					Info.Printf("Error in the utils.GetEmptyTile(): %v\n", err)
 					http.Error(w, err.Error(), 500)
-					return
+				} else {
+					w.Write(out)
 				}
-				norm = norm_tmp
-
-				if len(norm) == 0 || norm[0].Width == 0 || norm[0].Height == 0 {
-					out, err := utils.GetEmptyTile(conf.Layers[idx].NoDataLegendPath, *params.Height, *params.Width)
-					if err != nil {
-						Info.Printf("Error in the utils.GetEmptyTile(): %v\n", err)
-						http.Error(w, err.Error(), 500)
-					} else {
-						w.Write(out)
-					}
-					return
-				}
-			} else {
-				for _, r := range res {
-					byteR, ok := r.(*utils.ByteRaster)
-					if !ok {
-						Info.Printf("Error in the raster data type")
-						http.Error(w, "Error in the raster data type", 500)
-						return
-					}
-					norm = append(norm, byteR)
-				}
+				return
 			}
 
 			out, err := utils.EncodePNG(norm, styleLayer.Palette)

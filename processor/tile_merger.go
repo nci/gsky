@@ -428,9 +428,7 @@ func (enc *RasterMerger) Run(polyLimiter *ConcLimiter, bandExpr *utils.BandExpre
 			canvasMap = tmpMap
 		}
 
-		if polyLimiter != nil {
-			polyLimiter.Decrease()
-		}
+		polyLimiter.Decrease()
 	}
 
 	select {
@@ -440,9 +438,13 @@ func (enc *RasterMerger) Run(polyLimiter *ConcLimiter, bandExpr *utils.BandExpre
 	}
 
 	var nameSpaces []string
-	for _, canvas := range canvasMap {
-		nameSpaces = canvas.ConfigPayLoad.NameSpaces
-		break
+	if _, found := canvasMap[utils.EmptyTileNS]; found {
+		nameSpaces = append(nameSpaces, utils.EmptyTileNS)
+	} else {
+		for _, canvas := range canvasMap {
+			nameSpaces = canvas.ConfigPayLoad.NameSpaces
+			break
+		}
 	}
 
 	if len(nameSpaces) == 0 {
