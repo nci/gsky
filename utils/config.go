@@ -13,6 +13,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"sort"
 	"strings"
 	"syscall"
 	"time"
@@ -501,6 +502,61 @@ func LoadAllConfigFiles(rootDir string, verbose bool) (map[string]*Config, error
 
 	if err == nil && len(configMap) == 0 {
 		err = fmt.Errorf("No config file found")
+		return nil, err
+	}
+
+	for _, config := range configMap {
+		for i := range config.Layers {
+			if len(config.Layers[i].InputLayers) > 0 {
+				var timestamps []string
+				tsLookup := make(map[string]bool)
+				for _, dt := range config.Layers[i].Dates {
+					if _, found := tsLookup[dt]; !found {
+						tsLookup[dt] = true
+						timestamps = append(timestamps, dt)
+					}
+				}
+
+				for _, refLayer := range config.Layers[i].InputLayers {
+					refNameSpace := refLayer.NameSpace
+					if len(refNameSpace) == 0 {
+						refNameSpace = config.Layers[i].NameSpace
+					}
+
+					conf, found := configMap[refNameSpace]
+					if !found {
+						return nil, fmt.Errorf("namespace %s not found referenced by %s", refNameSpace, refLayer.Name)
+					}
+
+					params := WMSParams{Layers: []string{refLayer.Name}}
+					layerIdx, err := GetLayerIndex(params, conf)
+					if err != nil {
+						return nil, err
+					}
+
+					layer := &conf.Layers[layerIdx]
+					for _, dt := range layer.Dates {
+						if _, found := tsLookup[dt]; !found {
+							tsLookup[dt] = true
+							timestamps = append(timestamps, dt)
+						}
+					}
+				}
+
+				sort.Slice(timestamps, func(i, j int) bool {
+					t1, _ := time.Parse(ISOFormat, timestamps[i])
+					t2, _ := time.Parse(ISOFormat, timestamps[j])
+					return t1.Before(t2)
+				})
+
+				if len(timestamps) > 0 {
+					config.Layers[i].Dates = timestamps
+					config.Layers[i].EffectiveStartDate = timestamps[0]
+					config.Layers[i].EffectiveEndDate = timestamps[len(timestamps)-1]
+				}
+
+			}
+		}
 	}
 
 	return configMap, err

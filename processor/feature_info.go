@@ -294,36 +294,34 @@ func getRaster(ctx context.Context, params utils.WMSParams, conf *utils.Config, 
 
 	if conf.Layers[idx].FeatureInfoMaxAvailableDates != 0 {
 		geoReq.StartTime = &time.Time{}
-		//		geoReq.EndTime = nil
+		currTime := time.Now().UTC()
+		geoReq.EndTime = &currTime
 	}
 
 	tp = InitTilePipeline(ctx, conf.ServiceConfig.MASAddress, conf.ServiceConfig.WorkerNodes, conf.Layers[idx].MaxGrpcRecvMsgSize, conf.Layers[idx].WmsPolygonShardConcLimit, conf.ServiceConfig.MaxGrpcBufferSize, errChan)
 	tp.CurrentLayer = styleLayer
 	tp.DataSources = configMap
 
-	indexerOut := tp.GetFileList(geoReq, verbose)
+	indexerOut, err := tp.GetFileList(geoReq, verbose)
+	if err != nil {
+		return nil, err
+	}
 
 	var pixelFiles []*GeoTileGranule
 	timestampLookup := make(map[time.Time]bool)
-	for geo := range indexerOut {
-		select {
-		case err := <-errChan:
-			return nil, err
-		case <-ctx.Done():
-			return nil, ctx.Err()
-		default:
-			if geo.NameSpace == utils.EmptyTileNS {
-				continue
-			}
-
-			tm := time.Unix(int64(geo.TimeStamp), 0)
-			normalizedTm := time.Date(tm.Year(), tm.Month(), tm.Day(), 0, 0, 0, 0, time.UTC)
-			if _, found := timestampLookup[normalizedTm]; found {
-				continue
-			}
-
-			pixelFiles = append(pixelFiles, geo)
+	for _, geo := range indexerOut {
+		if geo.NameSpace == utils.EmptyTileNS {
+			continue
 		}
+
+		tm := time.Unix(int64(geo.TimeStamp), 0)
+		normalizedTm := time.Date(tm.Year(), tm.Month(), tm.Day(), 0, 0, 0, 0, time.UTC)
+		if _, found := timestampLookup[normalizedTm]; found {
+			continue
+		}
+
+		timestampLookup[normalizedTm] = true
+		pixelFiles = append(pixelFiles, geo)
 	}
 
 	sort.Slice(pixelFiles, func(i, j int) bool { return pixelFiles[i].TimeStamp >= pixelFiles[j].TimeStamp })
@@ -341,8 +339,6 @@ func getRaster(ctx context.Context, params utils.WMSParams, conf *utils.Config, 
 		}
 		ftInfo.DsDates = topDsDates
 	}
-
-	fmt.Printf("xxxxxxxxxxx %v, %v, %v", len(pixelFiles), conf.Layers[idx].FeatureInfoMaxAvailableDates, topDsDates)
 
 	var topDsFiles []string
 	if conf.Layers[idx].FeatureInfoMaxDataLinks == 0 {
