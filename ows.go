@@ -306,33 +306,25 @@ func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r
 			reqRes = yRes
 		}
 
-		if conf.Layers[idx].ZoomLimit != 0.0 && reqRes > conf.Layers[idx].ZoomLimit {
-			indexer := proc.NewTileIndexer(ctx, conf.ServiceConfig.MASAddress, errChan)
-			go func() {
-				geoReq.Mask = nil
-				geoReq.QueryLimit = 1
-				indexer.In <- geoReq
-				close(indexer.In)
-			}()
+		timeoutCtx, timeoutCancel := context.WithTimeout(context.Background(), time.Duration(conf.Layers[idx].WmsTimeout)*time.Second)
+		defer timeoutCancel()
 
-			go indexer.Run(*verbose)
+		tp := proc.InitTilePipeline(ctx, conf.ServiceConfig.MASAddress, conf.ServiceConfig.WorkerNodes, conf.Layers[idx].MaxGrpcRecvMsgSize, conf.Layers[idx].WmsPolygonShardConcLimit, conf.ServiceConfig.MaxGrpcBufferSize, errChan)
+		tp.CurrentLayer = styleLayer
+		tp.DataSources = configMap
+
+		if conf.Layers[idx].ZoomLimit != 0.0 && reqRes > conf.Layers[idx].ZoomLimit {
+			geoReq.Mask = nil
+			geoReq.QueryLimit = 1
 
 			hasData := false
-			for geo := range indexer.Out {
-				select {
-				case <-errChan:
-					break
-				case <-ctx.Done():
-					break
-				default:
+			indexerOut, err := tp.GetFileList(geoReq, *verbose)
+			if err == nil {
+				for _, geo := range indexerOut {
 					if geo.NameSpace != utils.EmptyTileNS {
 						hasData = true
 						break
 					}
-				}
-
-				if hasData {
-					break
 				}
 			}
 
@@ -357,12 +349,6 @@ func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r
 			return
 		}
 
-		timeoutCtx, timeoutCancel := context.WithTimeout(context.Background(), time.Duration(conf.Layers[idx].WmsTimeout)*time.Second)
-		defer timeoutCancel()
-
-		tp := proc.InitTilePipeline(ctx, conf.ServiceConfig.MASAddress, conf.ServiceConfig.WorkerNodes, conf.Layers[idx].MaxGrpcRecvMsgSize, conf.Layers[idx].WmsPolygonShardConcLimit, conf.ServiceConfig.MaxGrpcBufferSize, errChan)
-		tp.CurrentLayer = styleLayer
-		tp.DataSources = configMap
 		select {
 		case res := <-tp.Process(geoReq, *verbose):
 			scaleParams := utils.ScaleParams{Offset: geoReq.ScaleParams.Offset,

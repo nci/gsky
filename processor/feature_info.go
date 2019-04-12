@@ -103,6 +103,7 @@ func GetFeatureInfo(ctx context.Context, params utils.WMSParams, conf *utils.Con
 			out += ","
 		}
 	}
+	out += `}`
 
 	if len(ftInfo.DsDates) > 0 {
 		out += `, "data_available_for_dates":[`
@@ -134,7 +135,7 @@ func GetFeatureInfo(ctx context.Context, params utils.WMSParams, conf *utils.Con
 		}
 		out += `]`
 	}
-	out += `}`
+
 	return out, nil
 }
 
@@ -294,7 +295,7 @@ func getRaster(ctx context.Context, params utils.WMSParams, conf *utils.Config, 
 
 	if conf.Layers[idx].FeatureInfoMaxAvailableDates != 0 {
 		geoReq.StartTime = &time.Time{}
-		currTime := time.Now().UTC()
+		currTime, _ := time.Parse(ISOFormat, conf.Layers[idx].Dates[len(conf.Layers[idx].Dates)-1])
 		geoReq.EndTime = &currTime
 	}
 
@@ -327,15 +328,17 @@ func getRaster(ctx context.Context, params utils.WMSParams, conf *utils.Config, 
 	sort.Slice(pixelFiles, func(i, j int) bool { return pixelFiles[i].TimeStamp >= pixelFiles[j].TimeStamp })
 
 	var topDsDates []string
+	dateFormat := "2006-01-02"
 	if conf.Layers[idx].FeatureInfoMaxAvailableDates != 0 {
-		for i, ds := range pixelFiles {
-			tm := time.Unix(int64(ds.TimeStamp), 0)
-			normalizedTm := time.Date(tm.Year(), tm.Month(), tm.Day(), 0, 0, 0, 0, time.UTC).Format(utils.ISOFormat)
+		maxDates := conf.Layers[idx].FeatureInfoMaxAvailableDates
+		if maxDates < 0 {
+			maxDates = len(pixelFiles)
+		}
+		for i := range pixelFiles[:maxDates] {
+			ts := pixelFiles[maxDates-1-i].TimeStamp
+			tm := time.Unix(int64(ts), 0)
+			normalizedTm := time.Date(tm.Year(), tm.Month(), tm.Day(), 0, 0, 0, 0, time.UTC).Format(dateFormat)
 			topDsDates = append(topDsDates, normalizedTm)
-
-			if conf.Layers[idx].FeatureInfoMaxAvailableDates > 0 && i+1 >= conf.Layers[idx].FeatureInfoMaxAvailableDates {
-				break
-			}
 		}
 		ftInfo.DsDates = topDsDates
 	}

@@ -245,6 +245,7 @@ func (dp *TilePipeline) getDepFileList(geoReq *GeoTileRequest, verbose bool) ([]
 	}
 	dp.prepareInputGeoRequests(geoReq, depLayers)
 
+	granCount := 0
 	for idx, reqCtx := range depLayers {
 		tp := InitTilePipeline(dp.Context, reqCtx.Service.MASAddress, reqCtx.Service.WorkerNodes, reqCtx.Layer.MaxGrpcRecvMsgSize, reqCtx.Layer.WmsPolygonShardConcLimit, reqCtx.Service.MaxGrpcBufferSize, errChan)
 
@@ -256,6 +257,18 @@ func (dp *TilePipeline) getDepFileList(geoReq *GeoTileRequest, verbose bool) ([]
 
 		for _, g := range grans {
 			totalGrans = append(totalGrans, g)
+			if geoReq.QueryLimit > 0 {
+				if g.NameSpace != utils.EmptyTileNS {
+					granCount++
+				}
+
+				if granCount >= geoReq.QueryLimit {
+					if verbose {
+						log.Printf("fusion pipeline(%d of %d) tile indexer early stopping, query limit reached", idx+1, len(depLayers))
+					}
+					return totalGrans, nil
+				}
+			}
 		}
 
 		if verbose {
