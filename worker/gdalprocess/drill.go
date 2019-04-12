@@ -248,7 +248,7 @@ func envelopePolygon(hDS C.GDALDatasetH) C.OGRGeometryH {
 }
 
 func getDrillFileDescriptor(ds C.GDALDatasetH, g C.OGRGeometryH) DrillFileDescriptor {
-	gCopy := C.OGR_G_Clone(g)
+	gCopy := C.OGR_G_Buffer(g, C.double(0.0), C.int(30))
 
 	if C.GoString(C.GDALGetProjectionRef(ds)) != "" {
 		desSRS := C.OSRNewSpatialReference(C.GDALGetProjectionRef(ds))
