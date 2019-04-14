@@ -9,20 +9,27 @@ import (
 	"time"
 )
 
-func GetFeatureInfo(ctx context.Context, params utils.WMSParams, conf *utils.Config, verbose bool) (string, error) {
-	raster, namespaces, dsFiles, err := getRaster(ctx, params, conf, verbose)
+type featureInfo struct {
+	Raster     []utils.Raster
+	Namespaces []string
+	DsFiles    []string
+	DsDates    []string
+}
+
+func GetFeatureInfo(ctx context.Context, params utils.WMSParams, conf *utils.Config, configMap map[string]*utils.Config, verbose bool) (string, error) {
+	ftInfo, err := getRaster(ctx, params, conf, configMap, verbose)
 	if err != nil {
 		return "", err
 	}
 
 	out := `"bands": {`
 
-	if len(raster) == 1 {
-		if rs, ok := raster[0].(*utils.ByteRaster); ok {
+	if len(ftInfo.Raster) == 1 {
+		if rs, ok := ftInfo.Raster[0].(*utils.ByteRaster); ok {
 			if rs.NameSpace == "ZoomOut" {
-				for i, ns := range namespaces {
+				for i, ns := range ftInfo.Namespaces {
 					out += fmt.Sprintf(`"%s":"zoom in to view"`, ns)
-					if i < len(namespaces)-1 {
+					if i < len(ftInfo.Namespaces)-1 {
 						out += ","
 					}
 				}
@@ -36,7 +43,7 @@ func GetFeatureInfo(ctx context.Context, params utils.WMSParams, conf *utils.Con
 		}
 	}
 
-	width, height, _, err := utils.ValidateRasterSlice(raster)
+	width, height, _, err := utils.ValidateRasterSlice(ftInfo.Raster)
 	if err != nil {
 		return "", err
 	}
@@ -49,8 +56,8 @@ func GetFeatureInfo(ctx context.Context, params utils.WMSParams, conf *utils.Con
 		return "", fmt.Errorf("x or y out of bound")
 	}
 
-	for i, ns := range namespaces {
-		r := raster[i]
+	for i, ns := range ftInfo.Namespaces {
+		r := ftInfo.Raster[i]
 		var valueStr string
 
 		switch t := r.(type) {
@@ -92,12 +99,24 @@ func GetFeatureInfo(ctx context.Context, params utils.WMSParams, conf *utils.Con
 		}
 
 		out += fmt.Sprintf(`"%s": %s`, ns, valueStr)
-		if i < len(namespaces)-1 {
+		if i < len(ftInfo.Namespaces)-1 {
 			out += ","
 		}
 	}
+	out += `}`
 
-	if len(dsFiles) > 0 {
+	if len(ftInfo.DsDates) > 0 {
+		out += `, "data_available_for_dates":[`
+		for i, ts := range ftInfo.DsDates {
+			out += fmt.Sprintf(`"%s"`, ts)
+			if i < len(ftInfo.DsDates)-1 {
+				out += ","
+			}
+		}
+		out += `]`
+	}
+
+	if len(ftInfo.DsFiles) > 0 {
 		prefix := ""
 		idx, _ := utils.GetLayerIndex(params, conf)
 		if len(conf.Layers[idx].FeatureInfoDataLinkUrl) > 0 {
@@ -107,33 +126,34 @@ func GetFeatureInfo(ctx context.Context, params utils.WMSParams, conf *utils.Con
 			}
 		}
 		out += `, "data_links":[`
-		for i, file := range dsFiles {
+		for i, file := range ftInfo.DsFiles {
 
 			out += fmt.Sprintf(`"%s%s"`, prefix, file)
-			if i < len(dsFiles)-1 {
+			if i < len(ftInfo.DsFiles)-1 {
 				out += ","
 			}
 		}
-
 		out += `]`
 	}
-	out += `}`
+
 	return out, nil
 }
 
-func getRaster(ctx context.Context, params utils.WMSParams, conf *utils.Config, verbose bool) ([]utils.Raster, []string, []string, error) {
+func getRaster(ctx context.Context, params utils.WMSParams, conf *utils.Config, configMap map[string]*utils.Config, verbose bool) (*featureInfo, error) {
+	ftInfo := &featureInfo{}
+
 	idx, err := utils.GetLayerIndex(params, conf)
 	if err != nil {
-		return nil, nil, nil, fmt.Errorf("Malformed WMS GetFeatureInfo request: %v", err)
+		return nil, fmt.Errorf("Malformed WMS GetFeatureInfo request: %v", err)
 	}
 	if params.Time == nil {
-		return nil, nil, nil, fmt.Errorf("Request should contain a valid time.")
+		return nil, fmt.Errorf("Request should contain a valid time.")
 	}
 	if params.CRS == nil {
-		return nil, nil, nil, fmt.Errorf("Request should contain a valid ISO 'crs/srs' parameter.")
+		return nil, fmt.Errorf("Request should contain a valid ISO 'crs/srs' parameter.")
 	}
 	if len(params.BBox) != 4 {
-		return nil, nil, nil, fmt.Errorf("Request should contain a valid 'bbox' parameter.")
+		return nil, fmt.Errorf("Request should contain a valid 'bbox' parameter.")
 	}
 
 	xRes := (params.BBox[2] - params.BBox[0]) / float64(*params.Width)
@@ -145,7 +165,7 @@ func getRaster(ctx context.Context, params utils.WMSParams, conf *utils.Config, 
 
 	styleIdx, err := utils.GetLayerStyleIndex(params, conf, idx)
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, err
 	}
 
 	styleLayer := &conf.Layers[idx]
@@ -167,18 +187,20 @@ func getRaster(ctx context.Context, params utils.WMSParams, conf *utils.Config, 
 	}
 
 	if conf.Layers[idx].ZoomLimit != 0.0 && reqRes > conf.Layers[idx].ZoomLimit {
-		return []utils.Raster{&utils.ByteRaster{NameSpace: "ZoomOut"}}, bandExpr.ExprNames, nil, nil
+		ftInfo.Namespaces = bandExpr.ExprNames
+		ftInfo.Raster = []utils.Raster{&utils.ByteRaster{NameSpace: "ZoomOut"}}
+		return ftInfo, nil
 	}
 
 	if params.Height == nil || params.Width == nil {
-		return nil, nil, nil, fmt.Errorf("Request should contain valid 'width' and 'height' parameters.")
+		return nil, fmt.Errorf("Request should contain valid 'width' and 'height' parameters.")
 	}
 	if *params.Height > conf.Layers[idx].WmsMaxHeight || *params.Width > conf.Layers[idx].WmsMaxWidth {
-		return nil, nil, nil, fmt.Errorf("Requested width/height is too large, max width:%d, height:%d", conf.Layers[idx].WmsMaxWidth, conf.Layers[idx].WmsMaxHeight)
+		return nil, fmt.Errorf("Requested width/height is too large, max width:%d, height:%d", conf.Layers[idx].WmsMaxWidth, conf.Layers[idx].WmsMaxHeight)
 	}
 
 	if params.X == nil || params.Y == nil {
-		return nil, nil, nil, fmt.Errorf("Request should contain valid 'x' and 'y' parameters.")
+		return nil, fmt.Errorf("Request should contain valid 'x' and 'y' parameters.")
 	}
 	if strings.ToUpper(*params.CRS) == "EPSG:4326" && *params.Version == "1.3.0" {
 		params.BBox = []float64{params.BBox[1], params.BBox[0], params.BBox[3], params.BBox[2]}
@@ -195,7 +217,7 @@ func getRaster(ctx context.Context, params utils.WMSParams, conf *utils.Config, 
 	}
 
 	if len(conf.Layers[idx].DataSource) == 0 {
-		return nil, nil, nil, fmt.Errorf("Invalid data source")
+		return nil, fmt.Errorf("Invalid data source")
 	}
 
 	// We construct a 2x2 image corresponding to an infinitesimal bounding box
@@ -253,47 +275,79 @@ func getRaster(ctx context.Context, params utils.WMSParams, conf *utils.Config, 
 
 	var outRaster []utils.Raster
 	tp := InitTilePipeline(ctx, conf.ServiceConfig.MASAddress, conf.ServiceConfig.WorkerNodes, conf.Layers[idx].MaxGrpcRecvMsgSize, conf.Layers[idx].WmsPolygonShardConcLimit, conf.ServiceConfig.MaxGrpcBufferSize, errChan)
+	tp.CurrentLayer = styleLayer
+	tp.DataSources = configMap
+
 	select {
 	case res := <-tp.Process(geoReq, verbose):
 		outRaster = res
 	case err := <-errChan:
-		return nil, nil, nil, err
+		return nil, err
 	case <-ctx.Done():
-		return nil, nil, nil, ctx.Err()
+		return nil, ctx.Err()
 	}
 
-	if conf.Layers[idx].FeatureInfoMaxDataLinks < 1 {
-		return outRaster, bandExpr.ExprNames, nil, nil
+	ftInfo.Raster = outRaster
+	ftInfo.Namespaces = bandExpr.ExprNames
+	if conf.Layers[idx].FeatureInfoMaxAvailableDates == 0 && conf.Layers[idx].FeatureInfoMaxDataLinks == 0 {
+		return ftInfo, nil
 	}
 
-	indexer := NewTileIndexer(ctx, conf.ServiceConfig.MASAddress, errChan)
-	go func() {
-		geoReq.Mask = nil
-		indexer.In <- geoReq
-		close(indexer.In)
-	}()
+	if conf.Layers[idx].FeatureInfoMaxAvailableDates != 0 {
+		geoReq.StartTime = &time.Time{}
+		currTime, _ := time.Parse(ISOFormat, conf.Layers[idx].Dates[len(conf.Layers[idx].Dates)-1])
+		geoReq.EndTime = &currTime
+	}
 
-	go indexer.Run(verbose)
+	tp = InitTilePipeline(ctx, conf.ServiceConfig.MASAddress, conf.ServiceConfig.WorkerNodes, conf.Layers[idx].MaxGrpcRecvMsgSize, conf.Layers[idx].WmsPolygonShardConcLimit, conf.ServiceConfig.MaxGrpcBufferSize, errChan)
+	tp.CurrentLayer = styleLayer
+	tp.DataSources = configMap
+
+	indexerOut, err := tp.GetFileList(geoReq, verbose)
+	if err != nil {
+		return nil, err
+	}
 
 	var pixelFiles []*GeoTileGranule
-	for geo := range indexer.Out {
-		select {
-		case err := <-errChan:
-			return nil, nil, nil, err
-		case <-ctx.Done():
-			return nil, nil, nil, ctx.Err()
-		default:
-			if geo.NameSpace == utils.EmptyTileNS {
-				continue
-			}
-
-			pixelFiles = append(pixelFiles, geo)
+	timestampLookup := make(map[time.Time]bool)
+	for _, geo := range indexerOut {
+		if geo.NameSpace == utils.EmptyTileNS {
+			continue
 		}
+
+		tm := time.Unix(int64(geo.TimeStamp), 0)
+		normalizedTm := time.Date(tm.Year(), tm.Month(), tm.Day(), 0, 0, 0, 0, time.UTC)
+		if _, found := timestampLookup[normalizedTm]; found {
+			continue
+		}
+
+		timestampLookup[normalizedTm] = true
+		pixelFiles = append(pixelFiles, geo)
 	}
 
-	sort.Slice(pixelFiles, func(i, j int) bool { return pixelFiles[i].TimeStamp <= pixelFiles[j].TimeStamp })
+	sort.Slice(pixelFiles, func(i, j int) bool { return pixelFiles[i].TimeStamp >= pixelFiles[j].TimeStamp })
+
+	var topDsDates []string
+	dateFormat := "2006-01-02"
+	if conf.Layers[idx].FeatureInfoMaxAvailableDates != 0 {
+		maxDates := conf.Layers[idx].FeatureInfoMaxAvailableDates
+		if maxDates < 0 {
+			maxDates = len(pixelFiles)
+		}
+		for i := range pixelFiles[:maxDates] {
+			ts := pixelFiles[maxDates-1-i].TimeStamp
+			tm := time.Unix(int64(ts), 0)
+			normalizedTm := time.Date(tm.Year(), tm.Month(), tm.Day(), 0, 0, 0, 0, time.UTC).Format(dateFormat)
+			topDsDates = append(topDsDates, normalizedTm)
+		}
+		ftInfo.DsDates = topDsDates
+	}
 
 	var topDsFiles []string
+	if conf.Layers[idx].FeatureInfoMaxDataLinks == 0 {
+		return ftInfo, nil
+	}
+
 	fileDedup := make(map[string]bool)
 	for i, ds := range pixelFiles {
 		dsFile := ds.RawPath
@@ -315,11 +369,11 @@ func getRaster(ctx context.Context, params utils.WMSParams, conf *utils.Config, 
 			dsFile = dsFile[len(styleLayer.DataSource)+offset:]
 			topDsFiles = append(topDsFiles, dsFile)
 
-			if i+1 >= conf.Layers[idx].FeatureInfoMaxDataLinks {
+			if conf.Layers[idx].FeatureInfoMaxDataLinks > 0 && i+1 >= conf.Layers[idx].FeatureInfoMaxDataLinks {
 				break
 			}
 		}
 	}
-
-	return outRaster, bandExpr.ExprNames, topDsFiles, nil
+	ftInfo.DsFiles = topDsFiles
+	return ftInfo, nil
 }

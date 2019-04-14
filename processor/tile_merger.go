@@ -44,7 +44,6 @@ func MergeMaskedRaster(r *FlexRaster, canvasMap map[string]*FlexRaster, mask []b
 		header := *(*reflect.SliceHeader)(unsafe.Pointer(&r.Data))
 		data := *(*[]uint8)(unsafe.Pointer(&header))
 		nodata := uint8(r.NoData)
-
 		if r.TimeStamp < canvasMap[r.NameSpace].TimeStamp {
 			iSrc := 0
 			for ir := 0; ir < r.DataHeight; ir++ {
@@ -439,9 +438,13 @@ func (enc *RasterMerger) Run(polyLimiter *ConcLimiter, bandExpr *utils.BandExpre
 	}
 
 	var nameSpaces []string
-	for _, canvas := range canvasMap {
-		nameSpaces = canvas.ConfigPayLoad.NameSpaces
-		break
+	if _, found := canvasMap[utils.EmptyTileNS]; found {
+		nameSpaces = append(nameSpaces, utils.EmptyTileNS)
+	} else {
+		for _, canvas := range canvasMap {
+			nameSpaces = canvas.ConfigPayLoad.NameSpaces
+			break
+		}
 	}
 
 	if len(nameSpaces) == 0 {
