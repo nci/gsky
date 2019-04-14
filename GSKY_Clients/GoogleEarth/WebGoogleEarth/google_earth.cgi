@@ -232,6 +232,7 @@ sub do_main
 				$east = $fields[3];
 				$north = $fields[4];
 				$time = $fields[5];
+				$res = $fields[6];
 			}
 		}
 #&debug("sc_action = $sc_action");			
@@ -251,7 +252,7 @@ sub do_main
 				CreateMultipleKML;
 				$outfile = $region . "_" . $basetitle . ".kml";
 				$outfile =~ s/ /_/gi;
-				open (OUT, ">KML/$outfile");
+				open (OUT, ">../html/WebGoogleEarth/KML/$outfile");
 				print OUT $kml;
 				close(OUT);
 				print "<small>Click to download: <a href=\"$url/$outfile\">$outfile</a></small>";
@@ -267,11 +268,12 @@ sub do_main
 				CreateSingleKML;
 				$outfile = $region . "_" . $basetitle . "_" . $$ . "_" . $date . ".kml";
 				$outfile =~ s/ /_/gi;
-				open (OUT, ">KML/$outfile");
+				open (OUT, ">../html/WebGoogleEarth/KML/$outfile");
 				print OUT $kml;
 				close(OUT);
 				print "<small>Click to download: <a href=\"$url/$outfile\">$outfile</a></small>";
 			}
+			exit;
 		}
 =pod
 For DEA: 
@@ -462,9 +464,10 @@ $groundOverlay
 				$east = $ARGV[3];
 				$north = $ARGV[4];
 				$time = $ARGV[5];
+				$res = $ARGV[6];
 			}
 			# Open the file 
-			$tilefile = "$basedir/$time/tile_" . $west . "_" . $south . "_" . $east . "_" . $north . "_" . $time . "_" . ".png";
+			$tilefile = "$basedir/$time/$res/tile_" . $west . "_" . $south . "_" . $east . "_" . $north . "_" . $time . "_" . ".png";
 #&debug("tilefile = $tilefile");
 			eval 
 			{
@@ -674,39 +677,115 @@ $groundOverlay
 			print "<small>$i. Click to download: <a href=\"$url/$outfile?$$\">$outfile</a></small>";
 			exit;
 		}
-		if ($sc_action eq "SubBBox") # For DEA. Get a subset of the tiles inside a sub BBox
+		sub DEASubBBoxUltra
 		{
-			# Usage: http://www.webgenie.com/WebGoogleEarth/Dev/google_earth.cgi?SubBBox+2013-03-17
-			# http://130.56.242.19/cgi-bin/google_earth.cgi?SubBBox+2013-03-17
-			$time = $ARGV[1];
+#			print "Content-type: text/html\n\n"; $headerAdded = 1;
+			$pquery = reformat($ARGV[2]);
+			$pquery =~ s/\\//gi;
+			Get_fields;	# Parse the $pquery to get all form input values
+			@fields = split (/\|/, $layer);
+			$layer = $fields[0];
+			$title = $fields[1];
+			$basetitle = $title;
 			if (!$time) { $time = "2013-03-17"; }
-			open (OUT, ">$basedir/$curl_sh");
-			print "Content-type: text/html\n\n"; $headerAdded = 1;
-			$bbox = "107.578125,-44.339565,154.687500,-10.141932"; # Australia
-#			$bbox = "128.803711,-38.272689,141.152344,-25.760320"; # SA
-#			$bbox = "149.018555,-30.562261,154.204102,-26.941660"; # Part of QLD
-#			$bbox = "141.064453,-36.562600,154.423828,-28.071980"; # NSW
-#			$bbox = "111.621094,-35.532226,129.462891,-12.811801"; # WA
 			@bbox = split(/,/, $bbox);
+			$w = int($bbox[0]) * 2;
+			$s = int($bbox[1]);
+			$e = int($bbox[2]) * 2;
+			$n = int($bbox[3]);
+			for (my $j0 = $w; $j0 <= $e; $j0++)
+			{
+				$j = $j0/2.0;
+				for (my $k = $s; $k <= $n; $k++)
+				{
+					for (my $j1=1; $j1 <= 2; $j1++)
+					{
+						$dec = 1/$j1;
+						if ($dec == 1) 
+						{ 
+							$w1 = sprintf("%.1f", $j); 
+							$s1 = sprintf("%.1f", $k);
+							$e1 = sprintf("%.1f", $j+0.5);
+							$n1 = sprintf("%.1f", $k+0.5);
+						}
+						else
+						{
+							$w1 = sprintf("%.1f", $j); 
+							$s1 = sprintf("%.1f", $k+0.5);
+							$e1 = sprintf("%.1f", $j+0.5);
+							$n1 = sprintf("%.1f", $k+1);
+						}
+						$tileUrl = "$cgi?PNG+$w1+$s1+$e1+$n1+$time+0.5";
+						$west = $w1;
+						$south = $s1;
+						$east = $e1;
+						$north = $n1;
+						$title = "$w1,$s1 $e1,$n1 R 0.5";
+						GroundOverlayTiles;
+						$i++;
+					}
+					if($n1 == $n) { $fin = 1; last; }
+				}
+			}
+			$kml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>
+<kml xmlns=\"http://www.opengis.net/kml/2.2\" xmlns:gx=\"http://www.google.com/kml/ext/2.2\" xmlns:kml=\"http://www.opengis.net/kml/2.2\" xmlns:atom=\"http://www.w3.org/2005/Atom\">
+<Document>
+$groundOverlay	
+</Document>
+</kml>
+";
+			$outfile = "DEA_" . $layer . "_" . $time . "_" . $$ . ".kml";
+			$outfile =~ s/ /_/gi;
+			close(OUT); # curl.sh
+			open (OUT, ">../html/WebGoogleEarth/KML/$outfile");
+			print OUT $kml;
+			close(OUT);
+			print "<small>Click to download: <a href=\"$url/$outfile?$$\">$outfile</a></small>";
+			exit;
+		}
+		if ($sc_action eq "DEASubBBox") # For DEA from dea.html
+		{
+			print "Content-type: text/html\n\n"; $headerAdded = 1;
+			$pquery = reformat($ARGV[2]);
+			$pquery =~ s/\\//gi;
+#&debug($pquery,1);
+			Get_fields;	# Parse the $pquery to get all form input values
+			$i=$resolution; # Number of degrees for tile axis
+			if ($i == 0.5)
+			{
+				DEASubBBoxUltra;
+			}
+			@fields = split (/\|/, $layer);
+			$layer = $fields[0];
+			$title = $fields[1];
+			$basetitle = $title;
+			if (!$time) { $time = "2013-03-17"; }
+			@bbox = split(/,/, $bbox);
+#&debug("bbox=$bbox; resolution=$resolution");			
 			$w = int($bbox[0]);
 			$s = int($bbox[1]);
 			$e = int($bbox[2]);
 			$n = int($bbox[3]);
-			$i=2; # Number of degrees for tile axis
+			# The w,s,e,n values must match the tiles created for this resolution
+			$w -= $w % $i; # e.g. 11%3 = 2. 11-2=9; 9%3 = 0
+			$s -= $s % $i; 
+			$e -= $e % $i; 
+			$n -= $n % $i; 
+#&debug("$w,$s,$e,$n; $i");			
 			for (my $j = $w; $j <= $e; $j+=$i)
 			{
 				for (my $k = $s; $k <= $n; $k+=$i)
 				{
-					$w1 = $j . ".0";
-					$s1 = $k . ".0";
-					$n1 = $k+$i . ".0";
-					$e1 = $j+$i . ".0";
-					$tileUrl = "$cgi?PNG+$w1+$s1+$e1+$n1+$time";
+					$w1 = sprintf("%.1f", $j); 
+					$s1 = sprintf("%.1f", $k);
+					$e1 = sprintf("%.1f", $j+$i);
+					$n1 = sprintf("%.1f", $k+$i);
+					$tileUrl = "$cgi?PNG+$w1+$s1+$e1+$n1+$time+$i";
 					$west = $w1;
 					$south = $s1;
 					$east = $e1;
 					$north = $n1;
-					$title = "$w1+$s1+$e1+$n1";
+					$title = "$w1,$s1 $e1,$n1 R$i";
 					GroundOverlayTiles;
 					$ii++;
 					if($n1 == $n) { last; }
@@ -726,7 +805,63 @@ $groundOverlay
 			print OUT $kml;
 			close(OUT);
 			print "<span style=\"font-family:arial; font-size:12px\">\n";
-			print "Click to download: <a href=\"$url/$outfile?$$\">$outfile</a><br><br>";
+			print "Click to download: <a href=\"$url/$outfile?$$\">$outfile</a>";
+			exit;
+		}
+		if ($sc_action eq "SubBBox") # For DEA. Get a subset of the tiles inside a sub BBox
+		{
+			# Usage: http://www.webgenie.com/WebGoogleEarth/Dev/google_earth.cgi?SubBBox+2013-03-17
+			# http://130.56.242.19/cgi-bin/google_earth.cgi?SubBBox+2013-03-17
+			$time = $ARGV[1];
+			if (!$time) { $time = "2013-03-17"; }
+			open (OUT, ">$basedir/$curl_sh");
+			print "Content-type: text/html\n\n"; $headerAdded = 1;
+			$bbox = "110.0,-44.0,156.0,-10.0"; # Australia
+#			$bbox = "107.578125,-44.339565,154.687500,-10.141932"; # Australia
+#			$bbox = "128.803711,-38.272689,141.152344,-25.760320"; # SA
+#			$bbox = "149.018555,-30.562261,154.204102,-26.941660"; # Part of QLD
+#			$bbox = "141.064453,-36.562600,154.423828,-28.071980"; # NSW
+#			$bbox = "111.621094,-35.532226,129.462891,-12.811801"; # WA
+			@bbox = split(/,/, $bbox);
+			$w = int($bbox[0]);
+			$s = int($bbox[1]);
+			$e = int($bbox[2]);
+			$n = int($bbox[3]);
+			$i=2; # Number of degrees for tile axis
+			for (my $j = $w; $j <= $e; $j+=$i)
+			{
+				for (my $k = $s; $k <= $n; $k+=$i)
+				{
+					$w1 = sprintf("%.1f", $j); 
+					$s1 = sprintf("%.1f", $k);
+					$e1 = sprintf("%.1f", $j+$i);
+					$n1 = sprintf("%.1f", $k+$i);
+					$tileUrl = "$cgi?PNG+$w1+$s1+$e1+$n1+$time";
+					$west = $w1;
+					$south = $s1;
+					$east = $e1;
+					$north = $n1;
+					$title = "$w1,$s1 $e1,$n1";
+					GroundOverlayTiles;
+					$ii++;
+					if($n1 == $n) { last; }
+				}
+			}
+			$kml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>
+<kml xmlns=\"http://www.opengis.net/kml/2.2\" xmlns:gx=\"http://www.google.com/kml/ext/2.2\" xmlns:kml=\"http://www.opengis.net/kml/2.2\" xmlns:atom=\"http://www.w3.org/2005/Atom\">
+<Document>
+$groundOverlay	
+</Document>
+</kml>
+";
+			$outfile = "DEA_" . $layer . "_" . $time . "_" . $$ . ".kml";
+			$outfile =~ s/ /_/gi;
+			close(OUT); # curl.sh
+			open (OUT, ">../html/WebGoogleEarth/KML/$outfile");
+			print OUT $kml;
+			close(OUT);
+			print "<span style=\"font-family:arial; font-size:12px\">\n";
+			print "$ii. Click to download: <a href=\"$url/$outfile?$$\">$outfile</a>";
 =pod
 			print "To create tiles:\n";
 			print "
@@ -750,12 +885,16 @@ $groundOverlay
 			";
 =cut			
 =pod
-	- Time to create 407 tiles (1x1 degree) to cover whole of Australia: 27 min.
+	- Time to create 1632 tiles (1x1 degree) to cover whole of Australia: 30 min.
+	- Time to create 407 tiles (2x2 degree) to cover whole of Australia: 27 min.
+	- Time to create 192 tiles (3x3 degree) to cover whole of Australia: 22 min.
+	- Time to create 3360 tiles (0.5x0.5 degree) to cover whole of Australia: 20 min.
+	- Time to create 6460 tiles (0.5x0.5 degree) to cover whole of Australia: 42 min.
+
 	- Time to display the 1 degree tiles across Australia on 7Mbits connection: 2:30min
 	- Time to display the 1 degree tiles across Australia on 135Mbits connection: 40 sec
 	- Time to display the 1 degree tiles across Australia on 500Mbits connection: 34 sec
-	- Time to create 3360 tiles (0.5x0.5 degree) to cover whole of Australia: 20 min.
-	- Time to create 6460 tiles (0.5x0.5 degree) to cover whole of Australia: 42 min.
+	- Time to display the 3 degree tiles across Australia on 500Mbits connection: 15 sec
 =cut
 			exit;
 		}

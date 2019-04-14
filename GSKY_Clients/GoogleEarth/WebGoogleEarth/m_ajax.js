@@ -102,7 +102,7 @@ function InsertTimes(item,prd)
 	var i = item.selectedIndex;
 	var time = times[i].split(",");
 	len = time.length;
-	var option_line = "<select multiple=\"multiple\" title=\"Ctrl-click or Shift-click to select more than one.\" size=\"5\" style=\"width:300px; font-size:10px;background-color:#F7F5D7\" name=\"time\">\n\t<option value=\"\">Latest</option>\n";
+	var option_line = "<select multiple=\"multiple\" title=\"Click one to select.\" style=\"width:150px; font-size:10px;background-color:#F7F5D7\" name=\"time\">\n\t<option value=\"\">Latest</option>\n";
 	for (var j=0; j < len; j++)
 	{
 		date = time[j].replace("T00:00:00.000Z","");
