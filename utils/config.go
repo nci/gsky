@@ -13,6 +13,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"sort"
 	"strings"
 	"syscall"
 	"time"
@@ -25,6 +26,8 @@ var EtcDir = "."
 var DataDir = "."
 
 const ReservedMemorySize = 1.5 * 1024 * 1024 * 1024
+
+const EmptyTileNS = "EmptyTile"
 
 type ServiceConfig struct {
 	OWSHostname       string `json:"ows_hostname"`
@@ -73,59 +76,61 @@ type BandExpressions struct {
 // to be published and rendered
 type Layer struct {
 	OWSHostname string `json:"ows_hostname"`
-	NameSpace   string
+	NameSpace   string `json:"namespace"`
 	Name        string `json:"name"`
 	Title       string `json:"title"`
 	Abstract    string `json:"abstract"`
 	MetadataURL string `json:"metadata_url"`
 	DataURL     string `json:"data_url"`
 	//CacheLevels  []CacheLevel `json:"cache_levels"`
-	DataSource               string `json:"data_source"`
-	StartISODate             string `json:"start_isodate"`
-	EndISODate               string `json:"end_isodate"`
-	EffectiveStartDate       string
-	EffectiveEndDate         string
-	TimestampToken           string
-	StepDays                 int      `json:"step_days"`
-	StepHours                int      `json:"step_hours"`
-	StepMinutes              int      `json:"step_minutes"`
-	Accum                    bool     `json:"accum"`
-	TimeGen                  string   `json:"time_generator"`
-	ResFilter                *int     `json:"resolution_filter"`
-	Dates                    []string `json:"dates"`
-	RGBProducts              []string `json:"rgb_products"`
-	RGBExpressions           *BandExpressions
-	Mask                     *Mask    `json:"mask"`
-	OffsetValue              float64  `json:"offset_value"`
-	ClipValue                float64  `json:"clip_value"`
-	ScaleValue               float64  `json:"scale_value"`
-	Palette                  *Palette `json:"palette"`
-	LegendPath               string   `json:"legend_path"`
-	LegendHeight             int      `json:"legend_height"`
-	LegendWidth              int      `json:"legend_width"`
-	Styles                   []Layer  `json:"styles"`
-	ZoomLimit                float64  `json:"zoom_limit"`
-	MaxGrpcRecvMsgSize       int      `json:"max_grpc_recv_msg_size"`
-	WmsPolygonSegments       int      `json:"wms_polygon_segments"`
-	WcsPolygonSegments       int      `json:"wcs_polygon_segments"`
-	WmsTimeout               int      `json:"wms_timeout"`
-	WcsTimeout               int      `json:"wcs_timeout"`
-	GrpcWmsConcPerNode       int      `json:"grpc_wms_conc_per_node"`
-	GrpcWcsConcPerNode       int      `json:"grpc_wcs_conc_per_node"`
-	WmsPolygonShardConcLimit int      `json:"wms_polygon_shard_conc_limit"`
-	WcsPolygonShardConcLimit int      `json:"wcs_polygon_shard_conc_limit"`
-	BandStrides              int      `json:"band_strides"`
-	WmsMaxWidth              int      `json:"wms_max_width"`
-	WmsMaxHeight             int      `json:"wms_max_height"`
-	WcsMaxWidth              int      `json:"wcs_max_width"`
-	WcsMaxHeight             int      `json:"wcs_max_height"`
-	WcsMaxTileWidth          int      `json:"wcs_max_tile_width"`
-	WcsMaxTileHeight         int      `json:"wcs_max_tile_height"`
-	FeatureInfoMaxDataLinks  int      `json:"feature_info_max_data_links"`
-	FeatureInfoDataLinkUrl   string   `json:"feature_info_data_link_url"`
-	FeatureInfoBands         []string `json:"feature_info_bands"`
-	FeatureInfoExpressions   *BandExpressions
-	NoDataLegendPath         string `json:"nodata_legend_path"`
+	InputLayers                  []Layer `json:"input_layers"`
+	DataSource                   string  `json:"data_source"`
+	StartISODate                 string  `json:"start_isodate"`
+	EndISODate                   string  `json:"end_isodate"`
+	EffectiveStartDate           string
+	EffectiveEndDate             string
+	TimestampToken               string
+	StepDays                     int      `json:"step_days"`
+	StepHours                    int      `json:"step_hours"`
+	StepMinutes                  int      `json:"step_minutes"`
+	Accum                        bool     `json:"accum"`
+	TimeGen                      string   `json:"time_generator"`
+	ResFilter                    *int     `json:"resolution_filter"`
+	Dates                        []string `json:"dates"`
+	RGBProducts                  []string `json:"rgb_products"`
+	RGBExpressions               *BandExpressions
+	Mask                         *Mask    `json:"mask"`
+	OffsetValue                  float64  `json:"offset_value"`
+	ClipValue                    float64  `json:"clip_value"`
+	ScaleValue                   float64  `json:"scale_value"`
+	Palette                      *Palette `json:"palette"`
+	LegendPath                   string   `json:"legend_path"`
+	LegendHeight                 int      `json:"legend_height"`
+	LegendWidth                  int      `json:"legend_width"`
+	Styles                       []Layer  `json:"styles"`
+	ZoomLimit                    float64  `json:"zoom_limit"`
+	MaxGrpcRecvMsgSize           int      `json:"max_grpc_recv_msg_size"`
+	WmsPolygonSegments           int      `json:"wms_polygon_segments"`
+	WcsPolygonSegments           int      `json:"wcs_polygon_segments"`
+	WmsTimeout                   int      `json:"wms_timeout"`
+	WcsTimeout                   int      `json:"wcs_timeout"`
+	GrpcWmsConcPerNode           int      `json:"grpc_wms_conc_per_node"`
+	GrpcWcsConcPerNode           int      `json:"grpc_wcs_conc_per_node"`
+	WmsPolygonShardConcLimit     int      `json:"wms_polygon_shard_conc_limit"`
+	WcsPolygonShardConcLimit     int      `json:"wcs_polygon_shard_conc_limit"`
+	BandStrides                  int      `json:"band_strides"`
+	WmsMaxWidth                  int      `json:"wms_max_width"`
+	WmsMaxHeight                 int      `json:"wms_max_height"`
+	WcsMaxWidth                  int      `json:"wcs_max_width"`
+	WcsMaxHeight                 int      `json:"wcs_max_height"`
+	WcsMaxTileWidth              int      `json:"wcs_max_tile_width"`
+	WcsMaxTileHeight             int      `json:"wcs_max_tile_height"`
+	FeatureInfoMaxAvailableDates int      `json:"feature_info_max_dates"`
+	FeatureInfoMaxDataLinks      int      `json:"feature_info_max_data_links"`
+	FeatureInfoDataLinkUrl       string   `json:"feature_info_data_link_url"`
+	FeatureInfoBands             []string `json:"feature_info_bands"`
+	FeatureInfoExpressions       *BandExpressions
+	NoDataLegendPath             string `json:"nodata_legend_path"`
 }
 
 // Process contains all the details that a WPS needs
@@ -485,6 +490,61 @@ func LoadAllConfigFiles(rootDir string, verbose bool) (map[string]*Config, error
 
 	if err == nil && len(configMap) == 0 {
 		err = fmt.Errorf("No config file found")
+		return nil, err
+	}
+
+	for _, config := range configMap {
+		for i := range config.Layers {
+			if len(config.Layers[i].InputLayers) > 0 {
+				var timestamps []string
+				tsLookup := make(map[string]bool)
+				for _, dt := range config.Layers[i].Dates {
+					if _, found := tsLookup[dt]; !found {
+						tsLookup[dt] = true
+						timestamps = append(timestamps, dt)
+					}
+				}
+
+				for _, refLayer := range config.Layers[i].InputLayers {
+					refNameSpace := refLayer.NameSpace
+					if len(refNameSpace) == 0 {
+						refNameSpace = config.Layers[i].NameSpace
+					}
+
+					conf, found := configMap[refNameSpace]
+					if !found {
+						return nil, fmt.Errorf("namespace %s not found referenced by %s", refNameSpace, refLayer.Name)
+					}
+
+					params := WMSParams{Layers: []string{refLayer.Name}}
+					layerIdx, err := GetLayerIndex(params, conf)
+					if err != nil {
+						return nil, err
+					}
+
+					layer := &conf.Layers[layerIdx]
+					for _, dt := range layer.Dates {
+						if _, found := tsLookup[dt]; !found {
+							tsLookup[dt] = true
+							timestamps = append(timestamps, dt)
+						}
+					}
+				}
+
+				sort.Slice(timestamps, func(i, j int) bool {
+					t1, _ := time.Parse(ISOFormat, timestamps[i])
+					t2, _ := time.Parse(ISOFormat, timestamps[j])
+					return t1.Before(t2)
+				})
+
+				if len(timestamps) > 0 {
+					config.Layers[i].Dates = timestamps
+					config.Layers[i].EffectiveStartDate = timestamps[0]
+					config.Layers[i].EffectiveEndDate = timestamps[len(timestamps)-1]
+				}
+
+			}
+		}
 	}
 
 	return configMap, err
