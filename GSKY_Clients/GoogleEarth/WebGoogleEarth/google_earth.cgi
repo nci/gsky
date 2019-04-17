@@ -411,6 +411,94 @@ How to display the layers on GEWeb:
 			</span>
 			";
 		}
+		sub CountTheTilesLow 
+		{
+			open (INP, "<$localdir/$time/$resolution/tiles.txt");
+			my @filecontent = <INP>;
+			close (INP);
+			my $len = $#filecontent;
+#&debug("len: $len");	
+			$filecontent = join("|", @filecontent);
+			$filecontent =~ s/\n//gi;
+			$ii = 0;
+			for (my $j = $w; $j <= $e; $j+=$i)
+			{
+				for (my $k = $s; $k <= $n; $k+=$i)
+				{
+					$w1 = sprintf("%.1f", $j); 
+					$s1 = sprintf("%.1f", $k);
+					$e1 = sprintf("%.1f", $j+$i);
+					$n1 = sprintf("%.1f", $k+$i);
+					$tile_filename = "tile_" . $w1 . "_" . $s1 . "_" . $e1 . "_" . $n1 . "_" . $time . "_.png";
+					if ($tile_filename !~ /$filecontent/)
+					{
+						if (!$create_tiles)
+						{
+							next;
+						}
+					}
+					$ii++;
+					if($n1 >= $n) { last; }
+				}
+			}
+			&debug("Number of tiles: <big>$ii</big>");
+			if ($ii <= 0)
+			{
+				&debug("<font style=\"color:red; font-size:14px\">No tiles in the selected region. Please choose another region.</font>");
+			}
+			if ($ii > 100)
+			{
+				&debug("<font style=\"color:red; font-size:14px\">On a slow internet connection this could take a long time to display. Please consider choosing a smaller region or a lower resolution.</font>");
+			}
+		}
+		sub CountTheTiles 
+		{
+			open (INP, "<$localdir/$time/$resolution/tiles.txt");
+			my @filecontent = <INP>;
+			close (INP);
+			my $len = $#filecontent;
+#&debug("len: $len");	
+			$filecontent = join("|", @filecontent);
+			$filecontent =~ s/\n//gi;
+			$ii = 0;
+#			if(!$m) { $m = 1; }
+#&debug("			for (my $j0 = $w; $j0 <= $e; $j0++)");
+			for (my $j0 = $w; $j0 <= $e; $j0++)
+			{
+				$j = $j0/$m;
+#&debug("				for (my $k0 = $s; $k0 <= $n; $k0++)");
+				for (my $k0 = $s; $k0 <= $n; $k0++)
+				{
+					$fin = 0;
+					$k = $k0/$m;
+					$w1 = sprintf("%.1f", $j); 
+					$s1 = sprintf("%.1f", $k);
+					$e1 = sprintf("%.1f", $j+$r);
+					$n1 = sprintf("%.1f", $k+$r);
+					$tile_filename = "tile_" . $w1 . "_" . $s1 . "_" . $e1 . "_" . $n1 . "_" . $time . "_.png";
+#&debug("Check: $tile_filename");	
+					if ($tile_filename !~ /$filecontent/)
+					{
+						if (!$create_tiles)
+						{
+#&debug("Skip: $tile_filename");	
+							next;
+						}
+					}
+					$ii++;
+					if($n1 >= $n/$m) { last; }
+				}
+			}
+			&debug("Number of tiles: <big>$ii</big>");
+			if ($ii <= 0)
+			{
+				&debug("<font style=\"color:red; font-size:14px\">No tiles in the selected region. Please choose another region.</font>");
+			}
+			if ($ii > 100)
+			{
+				&debug("<font style=\"color:red; font-size:14px\">On a slow internet connection this could take a long time to display. Please consider choosing a smaller region or a lower resolution.</font>");
+			}
+		}
 		sub DEA_High
 		{
 			$pquery = reformat($ARGV[2]);
@@ -428,6 +516,7 @@ How to display the layers on GEWeb:
 			$s = int($bbox[1]) * $m;
 			$e = int($bbox[2]) * $m;
 			$n = int($bbox[3]) * $m;
+			CountTheTiles;
 			open (INP, "<$localdir/$time/$resolution/tiles.txt");
 			my @filecontent = <INP>;
 			close (INP);
@@ -470,7 +559,7 @@ How to display the layers on GEWeb:
 					$east = $e1;
 					$north = $n1;
 					$gskyUrl = "http://$ows_domain/ows/ge?SERVICE=WMS&VERSION=1.1.1&REQUEST=GetMap&SRS=EPSG:4326&WIDTH=512&HEIGHT=512&LAYERS=$layer&STYLES=default&TRANSPARENT=TRUE&FORMAT=image/png&BBOX=$west,$south,$east,$north&TIME=$time" . "T00:00:00.000Z";
-					if ($r <= 0.5)
+					if ($callGsky)
 					{
 						$tileUrl = $gskyUrl;
 						$tileUrl =~ s/&/&amp;/gi;
@@ -522,6 +611,7 @@ $groundOverlay
 			$basetitle = $title;
 #			if (!$time) { $time = "2013-03-17"; }
 			@bbox = split(/,/, $bbox);
+#			$m = int(1/$r);
 			$w = int($bbox[0]);
 			$s = int($bbox[1]);
 			$e = int($bbox[2]);
@@ -535,6 +625,7 @@ $groundOverlay
 			$e -= $e % $i; 
 			$n -= $n % $i; 
 #&debug("create_tiles = $create_tiles");
+			CountTheTilesLow;
 			for (my $j = $w; $j <= $e; $j+=$i)
 			{
 				for (my $k = $s; $k <= $n; $k+=$i)
@@ -612,4 +703,5 @@ $create_tiles_sh = "create_tiles.sh";
 $visibility = 1;  
 $layer = "LS8:NBAR:TRUE";
 $title = "DEA Landsat 8 surface reflectance true colour";
+$callGsky = 1; # Use GetMap calls to GSKY instead of using the PNG files at high res
 &do_main;
