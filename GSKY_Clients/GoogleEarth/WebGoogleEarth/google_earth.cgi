@@ -74,10 +74,12 @@ sub GroundOverlayTiles
     </LatLonBox>
 </GroundOverlay>
 	";
-	if (!$skip_curl)
+	if ($create_tiles && !$skip_curl)
 	{
 		print OUT "echo $nt\n"; $nt++;
-		print OUT "curl 'http://$domain/ows/ge?SERVICE=WMS&VERSION=1.1.1&REQUEST=GetMap&SRS=EPSG:4326&WIDTH=512&HEIGHT=512&LAYERS=$layer&STYLES=default&TRANSPARENT=TRUE&FORMAT=image/png&BBOX=$west,$south,$east,$north&$time'\n";
+#$gskyUrl = "http://$ows_domain/ows/ge?SERVICE=WMS&VERSION=1.1.1&REQUEST=GetMap&SRS=EPSG:4326&WIDTH=512&HEIGHT=512&LAYERS=$layer&STYLES=default&TRANSPARENT=TRUE&FORMAT=image/png&BBOX=$west,$south,$east,$north&TIME=$time" . "T00:00:00.000Z";
+		print OUT "curl '$gskyUrl&OUTPUT=PNG_FILE'\n";
+#		print OUT "curl 'http://$domain/ows/ge?SERVICE=WMS&VERSION=1.1.1&REQUEST=GetMap&SRS=EPSG:4326&WIDTH=512&HEIGHT=512&LAYERS=$layer&STYLES=default&TRANSPARENT=TRUE&FORMAT=image/png&BBOX=$west,$south,$east,$north&$time'\n";
 	}
 }
 sub GroundOverlay
@@ -164,7 +166,7 @@ sub CreateMultipleTilesKML
 	my @filecontent = <INP>;
 	close(INP);
 	my $len = $#filecontent;
-	open (OUT, ">$curl_sh");
+	open (OUT, ">$create_tiles_sh");
 	$nt = $len+1;
 	for (my $j=0; $j <= $len; $j++)
 	{
@@ -335,35 +337,32 @@ How to display the layers on GEWeb:
 =cut
 		if ($sc_action eq "DeleteEmptyTiles") # For DEA. Delete the PNG files that are empty
 		{
+			# Usage: ./google_earth.cgi DeleteEmptyTiles resolution
+			# e.g. ./google_earth.cgi DeleteEmptyTiles 1
+			$res = $ARGV[1];
+			if (!$res)
+			{
+				print "Must specify the resolution.";
+				exit;
+			}
 			# Usage: /var/www/cgi-bin/google_earth.cgi DeleteEmptyTiles 3
-#			$resolution = $ARGV[1];
-#			$td = "$basedir/2013-03-17/$resolution";
-			$td = "/var/www/html/WebGoogleEarth/Tiles/2013-03-17/3";
-#			$ls = `ls -lSr $td/*.png`;
+			$td = "$localdir/2013-03-17/$res";
 			$ls = `ls -l $td`;
 			my @ls = split(/\n/, $ls);
 			my $len = $#ls;
-			$tdd = "$td/Deleted";
-			`mkdir -p $tdd`;
 			$n = 0;
 			for (my $j=0; $j <= $len; $j++)
 			{
 				my $line = $ls[$j];
 				$line =~ tr/  / /s;
 				my @fields = split(/ /, $line);
-				
-#&debug("$fields[4] : $line");
-#&debug("$fields[4]");
 				if ($fields[4] == 2132) # Empty tiles
 				{
 					$filename = "$td/$fields[8]"; 
-#print "`mv $filename $tdd`\n";
-#					`mv $filename $tdd`
 					$n++;
-					print "$n.	unlink ($filename\n";
+					print "$n.	unlink ($filename) - $fields[4]\n";
 					unlink ($filename);
 				}
-#last;
 			}
 			exit;
 		}
@@ -379,7 +378,7 @@ How to display the layers on GEWeb:
 				$res = $ARGV[6];
 			}
 			# Open the file 
-			$tilefile = "$basedir/$time/$res/tile_" . $west . "_" . $south . "_" . $east . "_" . $north . "_" . $time . "_" . ".png";
+			$tilefile = "$localdir/$time/$res/tile_" . $west . "_" . $south . "_" . $east . "_" . $north . "_" . $time . "_" . ".png";
 			eval 
 			{
 				select(STDOUT); $| = 1;   #unbuffer STDOUT
@@ -429,6 +428,14 @@ How to display the layers on GEWeb:
 			$s = int($bbox[1]) * $m;
 			$e = int($bbox[2]) * $m;
 			$n = int($bbox[3]) * $m;
+			open (INP, "<$localdir/$time/$resolution/tiles.txt");
+			my @filecontent = <INP>;
+			close (INP);
+			my $len = $#filecontent;
+			$filecontent = join("|", @filecontent);
+			$filecontent =~ s/\n//gi;
+#&debug("Include: $len; $localdir/$time/$resolution/tiles.txt");	
+#&debug("Include: $filecontent");	
 			for (my $j0 = $w; $j0 <= $e; $j0++)
 			{
 				$j = $j0/$m;
@@ -440,87 +447,38 @@ How to display the layers on GEWeb:
 					$s1 = sprintf("%.1f", $k);
 					$e1 = sprintf("%.1f", $j+$r);
 					$n1 = sprintf("%.1f", $k+$r);
-					$tile_file = "$localdir/$time/$resolution/tile_" . $w1 . "_" . $s1 . "_" . $e1 . "_" . $n1 . "_" . $time . "_.png";
-					if (!-f $tile_file)
+					$tile_filename = "tile_" . $w1 . "_" . $s1 . "_" . $e1 . "_" . $n1 . "_" . $time . "_.png";
+#&debug("Check: $tile_filename");	
+					if ($tile_filename !~ /$filecontent/)
 					{
-#&debug("Skip: $tile_file");	
-						next;
+						if (!$create_tiles)
+						{
+#&debug("Skip: $tile_filename");	
+							next;
+						}
 					}
+#					$tile_file = "$localdir/$time/$resolution/$tile_filename";
+#					if (!$create_tiles && !-f $tile_file)
+#					{
+#&debug("Skip: $tile_file");	
+#						next;
+#					}
 					$tileUrl = "$cgi?PNG+$w1+$s1+$e1+$n1+$time+$r";
+#&debug("tileUrl: $tileUrl");	
 					$west = $w1;
 					$south = $s1;
 					$east = $e1;
 					$north = $n1;
+					$gskyUrl = "http://$ows_domain/ows/ge?SERVICE=WMS&VERSION=1.1.1&REQUEST=GetMap&SRS=EPSG:4326&WIDTH=512&HEIGHT=512&LAYERS=$layer&STYLES=default&TRANSPARENT=TRUE&FORMAT=image/png&BBOX=$west,$south,$east,$north&TIME=$time" . "T00:00:00.000Z";
+					if ($r <= 0.5)
+					{
+						$tileUrl = $gskyUrl;
+						$tileUrl =~ s/&/&amp;/gi;
+					}
 					$title = "$w1,$s1 $e1,$n1 R $r";
 					GroundOverlayTiles;
 					$ii++;
 					if($n1 >= $n/$m) { last; }
-				}
-			}
-			$kml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>
-<kml xmlns=\"http://www.opengis.net/kml/2.2\" xmlns:gx=\"http://www.google.com/kml/ext/2.2\" xmlns:kml=\"http://www.opengis.net/kml/2.2\" xmlns:atom=\"http://www.w3.org/2005/Atom\">
-<Document>
-$groundOverlay	
-</Document>
-</kml>
-";
-			$outfile = "DEA_" . $layer . "_" . $time . "_" . $$ . ".kml";
-			$outfile =~ s/ /_/gi;
-			close(OUT); # curl.sh
-			open (OUT, ">$docroot/WebGoogleEarth/KML/$outfile");
-			print OUT $kml;
-			close(OUT);
-			print "<small>Click to download: <a href=\"$url/$outfile?$$\">$outfile</a></small>";
-			exit;
-		}
-		sub DEA_High_0
-		{
-			$pquery = reformat($ARGV[2]);
-			$pquery =~ s/\\//gi;
-			Get_fields;	# Parse the $pquery to get all form input values
-			@fields = split (/\|/, $layer);
-			$layer = $fields[0];
-			$title = $fields[1];
-			$basetitle = $title;
-			if (!$time) { $time = "2013-03-17"; }
-			@bbox = split(/,/, $bbox);
-			$m = int(1/$resolution);
-			$w = int($bbox[0]) * $m;
-			$s = int($bbox[1]);
-			$e = int($bbox[2]) * $m;
-			$n = int($bbox[3]);
-			for (my $j0 = $w; $j0 <= $e; $j0++)
-			{
-				$j = $j0/$m;
-				for (my $k = $s; $k <= $n; $k++)
-				{
-					for (my $j1=1; $j1 <= 2; $j1++)
-					{
-						$dec = 1/$j1;
-						if ($dec == 1) 
-						{ 
-							$w1 = sprintf("%.1f", $j); 
-							$s1 = sprintf("%.1f", $k);
-							$e1 = sprintf("%.1f", $j+0.5);
-							$n1 = sprintf("%.1f", $k+0.5);
-						}
-						else
-						{
-							$w1 = sprintf("%.1f", $j); 
-							$s1 = sprintf("%.1f", $k+0.5);
-							$e1 = sprintf("%.1f", $j+0.5);
-							$n1 = sprintf("%.1f", $k+1);
-						}
-						$tileUrl = "$cgi?PNG+$w1+$s1+$e1+$n1+$time+0.5";
-						$west = $w1;
-						$south = $s1;
-						$east = $e1;
-						$north = $n1;
-						$title = "$w1,$s1 $e1,$n1 R 0.5";
-						GroundOverlayTiles;
-						$ii++;
-					}
-					if($n1 == $n) { $fin = 1; last; }
 				}
 			}
 			$kml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>
@@ -546,8 +504,13 @@ $groundOverlay
 			print "Content-type: text/html\n\n"; $headerAdded = 1;
 			$pquery = reformat($ARGV[2]);
 			$pquery =~ s/\\//gi;
+#&debug("pquery = $pquery");
 			Get_fields;	# Parse the $pquery to get all form input values
-			open (OUT, ">$basedir/$curl_sh");
+			if (!$time) { $time = "2013-03-17"; }
+#&debug("create_tiles = $create_tiles: $localdir/$time/$create_tiles_sh");
+#open (OUT, ">$localdir/$time/$create_tiles_sh");
+#open (OUT, ">$localdir/$time/$create_tiles_sh");
+			if ($create_tiles) { open (OUT, ">$localdir/$time/$create_tiles_sh"); }
 			$i=$resolution; # Number of degrees for tile axis
 			if ($i < 1)
 			{
@@ -557,7 +520,7 @@ $groundOverlay
 			$layer = $fields[0];
 			$title = $fields[1];
 			$basetitle = $title;
-			if (!$time) { $time = "2013-03-17"; }
+#			if (!$time) { $time = "2013-03-17"; }
 			@bbox = split(/,/, $bbox);
 			$w = int($bbox[0]);
 			$s = int($bbox[1]);
@@ -571,6 +534,7 @@ $groundOverlay
 			$s -= $s % $i; 
 			$e -= $e % $i; 
 			$n -= $n % $i; 
+#&debug("create_tiles = $create_tiles");
 			for (my $j = $w; $j <= $e; $j+=$i)
 			{
 				for (my $k = $s; $k <= $n; $k+=$i)
@@ -579,9 +543,8 @@ $groundOverlay
 					$s1 = sprintf("%.1f", $k);
 					$e1 = sprintf("%.1f", $j+$i);
 					$n1 = sprintf("%.1f", $k+$i);
-#tile_156.0_-45.0_159.0_-42.0_2013-03-17_.png					
-					$tile_file = "$basedir/$time/$resolution/tile_" . $w1 . "_" . $s1 . "_" . $e1 . "_" . $n1 . "_" . $time . "_.png";
-					if (!-f $tile_file)
+					$tile_file = "$localdir/$time/$resolution/tile_" . $w1 . "_" . $s1 . "_" . $e1 . "_" . $n1 . "_" . $time . "_.png";
+					if (!$create_tiles && !-f $tile_file)
 					{
 #&debug("Skip: $tile_file");	
 						next;
@@ -606,7 +569,7 @@ $groundOverlay
 ";
 			$outfile = "DEA_" . $layer . "_" . $time . "_" . $$ . ".kml";
 			$outfile =~ s/ /_/gi;
-			close(OUT); # curl.sh
+			if ($create_tiles) { close(OUT); } # curl.sh
 			open (OUT, ">$docroot/WebGoogleEarth/KML/$outfile");
 			print OUT $kml;
 			close(OUT);
@@ -634,8 +597,8 @@ $groundOverlay
 }
 $|=1;
 #$domain = "webgenie.com";
-#$domain = "130.56.242.19";
 $domain = $ENV{HTTP_HOST};
+$ows_domain = "130.56.242.15";
 $docroot = $ENV{DOCUMENT_ROOT};
 if (!$docroot) { $docroot = "/var/www/html"; }
 $cgi = "http://$domain/cgi-bin/google_earth.cgi"; # On VM19
@@ -645,7 +608,7 @@ $url = "http://$domain";
 #$url = $ENV{HTTP_REFERER};
 $url = $url . "/WebGoogleEarth/KML";
 $aus_bboxes = "aus_bboxes.csv";
-$curl_sh = "curl.sh";
+$create_tiles_sh = "create_tiles.sh";
 $visibility = 1;  
 $layer = "LS8:NBAR:TRUE";
 $title = "DEA Landsat 8 surface reflectance true colour";
