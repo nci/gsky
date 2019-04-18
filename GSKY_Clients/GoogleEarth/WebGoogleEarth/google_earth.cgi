@@ -226,7 +226,7 @@ sub do_main
 		{
 			$dumb = 1; # This is a dumb URL with &BBOX=0,0,0,0 added at the end.
 			$request_string = $ENV{QUERY_STRING};
-#&debug("request_string = $request_string");	
+#&debug("request_string = $request_string",1);	
 			@fields = split (/\&/, $request_string);
 			$sc_action = $fields[0];
 			@fields = split (/\+/, $sc_action);
@@ -239,6 +239,13 @@ sub do_main
 				$north = $fields[4];
 				$time = $fields[5];
 				$res = $fields[6];
+			}
+			if ($sc_action eq "WMS")
+			{
+				$layer = $fields[1];
+				$bbox = $fields[2];
+				$time = $fields[3];
+				$res = $fields[4];
 			}
 		}
 #&debug("sc_action = $sc_action");			
@@ -413,14 +420,7 @@ How to display the layers on GEWeb:
 		}
 		sub CountTheTilesLow 
 		{
-			open (INP, "<$localdir/$time/$resolution/tiles.txt");
-			my @filecontent = <INP>;
-			close (INP);
-			my $len = $#filecontent;
-#&debug("len: $len");	
-			$filecontent = join("|", @filecontent);
-			$filecontent =~ s/\n//gi;
-			$ii = 0;
+			my $ii = 0;
 			for (my $j = $w; $j <= $e; $j+=$i)
 			{
 				for (my $k = $s; $k <= $n; $k+=$i)
@@ -430,8 +430,17 @@ How to display the layers on GEWeb:
 					$e1 = sprintf("%.1f", $j+$i);
 					$n1 = sprintf("%.1f", $k+$i);
 					$tile_filename = "tile_" . $w1 . "_" . $s1 . "_" . $e1 . "_" . $n1 . "_" . $time . "_.png";
-					if ($tile_filename !~ /$filecontent/)
+					$tile_file = "$localdir/$time/$resolution/$tile_filename";
+					if (-f $tile_file)
 					{
+						if ($create_tiles)
+						{
+							next;
+						}
+					}
+					else
+					{
+						# Skip if this tile has already been created
 						if (!$create_tiles)
 						{
 							next;
@@ -444,29 +453,27 @@ How to display the layers on GEWeb:
 			&debug("Number of tiles: <big>$ii</big>");
 			if ($ii <= 0)
 			{
-				&debug("<font style=\"color:red; font-size:14px\">No tiles in the selected region. Please choose another region.</font>");
+				&debug("<font style=\"color:red; font-size:12px\">No tiles in the selected region. Please choose another region.</font>");
 			}
-			if ($ii > 100)
+			if ($ii > 300)
 			{
-				&debug("<font style=\"color:red; font-size:14px\">On a slow internet connection this could take a long time to display. Please consider choosing a smaller region or a lower resolution.</font>");
+				&debug("<font style=\"color:red; font-size:12px\">On a slow internet connection this could take a long time to display and/or crash Google Earth.<br>Please consider choosing a smaller region or a lower resolution.</font>");
 			}
+		}
+		sub ElapsedTime
+		{
+			my $n = $_[0];
+			$ct1 = time();
+			$et = $ct1 - $ct0;
+			&debug ("$n. $et sec.");
+			$ct0 = $ct1;
 		}
 		sub CountTheTiles 
 		{
-			open (INP, "<$localdir/$time/$resolution/tiles.txt");
-			my @filecontent = <INP>;
-			close (INP);
-			my $len = $#filecontent;
-#&debug("len: $len");	
-			$filecontent = join("|", @filecontent);
-			$filecontent =~ s/\n//gi;
-			$ii = 0;
-#			if(!$m) { $m = 1; }
-#&debug("			for (my $j0 = $w; $j0 <= $e; $j0++)");
+			my $ii = 0;
 			for (my $j0 = $w; $j0 <= $e; $j0++)
 			{
 				$j = $j0/$m;
-#&debug("				for (my $k0 = $s; $k0 <= $n; $k0++)");
 				for (my $k0 = $s; $k0 <= $n; $k0++)
 				{
 					$fin = 0;
@@ -476,27 +483,33 @@ How to display the layers on GEWeb:
 					$e1 = sprintf("%.1f", $j+$r);
 					$n1 = sprintf("%.1f", $k+$r);
 					$tile_filename = "tile_" . $w1 . "_" . $s1 . "_" . $e1 . "_" . $n1 . "_" . $time . "_.png";
-#&debug("Check: $tile_filename");	
-					if ($tile_filename !~ /$filecontent/)
+					$tile_file = "$localdir/$time/$resolution/$tile_filename";
+					if (-f $tile_file)
 					{
+						if ($create_tiles)
+						{
+							next;
+						}
+					}
+					else
+					{
+						# Skip if this tile has already been created
 						if (!$create_tiles)
 						{
-#&debug("Skip: $tile_filename");	
 							next;
 						}
 					}
 					$ii++;
-					if($n1 >= $n/$m) { last; }
 				}
 			}
 			&debug("Number of tiles: <big>$ii</big>");
 			if ($ii <= 0)
 			{
-				&debug("<font style=\"color:red; font-size:14px\">No tiles in the selected region. Please choose another region.</font>");
+				&debug("<font style=\"color:red; font-size:12px\">No tiles in the selected region. Please choose another region.</font>");
 			}
 			if ($ii > 100)
 			{
-				&debug("<font style=\"color:red; font-size:14px\">On a slow internet connection this could take a long time to display. Please consider choosing a smaller region or a lower resolution.</font>");
+				&debug("<font style=\"color:red; font-size:12px\">On a slow internet connection this could take a long time to display.<br>Please consider choosing a smaller region or a lower resolution.</font>");
 			}
 		}
 		sub DEA_High
@@ -516,13 +529,18 @@ How to display the layers on GEWeb:
 			$s = int($bbox[1]) * $m;
 			$e = int($bbox[2]) * $m;
 			$n = int($bbox[3]) * $m;
+#&debug("n = 			$n = int($bbox[3]) * $m;");
+#ElapsedTime(1);
 			CountTheTiles;
-			open (INP, "<$localdir/$time/$resolution/tiles.txt");
-			my @filecontent = <INP>;
-			close (INP);
-			my $len = $#filecontent;
-			$filecontent = join("|", @filecontent);
-			$filecontent =~ s/\n//gi;
+			$ii = 0;
+#ElapsedTime(2);
+#return;			
+#			open (INP, "<$localdir/$time/$resolution/tiles.txt");
+#			my @filecontent = <INP>;
+#			close (INP);
+#			my $len = $#filecontent;
+#			$filecontent = join("|", @filecontent);
+#			$filecontent =~ s/\n//gi;
 #&debug("Include: $len; $localdir/$time/$resolution/tiles.txt");	
 #&debug("Include: $filecontent");	
 			for (my $j0 = $w; $j0 <= $e; $j0++)
@@ -537,28 +555,33 @@ How to display the layers on GEWeb:
 					$e1 = sprintf("%.1f", $j+$r);
 					$n1 = sprintf("%.1f", $k+$r);
 					$tile_filename = "tile_" . $w1 . "_" . $s1 . "_" . $e1 . "_" . $n1 . "_" . $time . "_.png";
-#&debug("Check: $tile_filename");	
-					if ($tile_filename !~ /$filecontent/)
+					$tile_file = "$localdir/$time/$resolution/$tile_filename";
+					if (-f $tile_file)
 					{
+						if ($create_tiles)
+						{
+							# Skip if this tile does not exist
+#&debug("Skip: $tile_filename");	
+							next;
+						}
+					}
+					else
+					{
+						# Skip if this tile has already been created
 						if (!$create_tiles)
 						{
 #&debug("Skip: $tile_filename");	
 							next;
 						}
 					}
-#					$tile_file = "$localdir/$time/$resolution/$tile_filename";
-#					if (!$create_tiles && !-f $tile_file)
-#					{
-#&debug("Skip: $tile_file");	
-#						next;
-#					}
 					$tileUrl = "$cgi?PNG+$w1+$s1+$e1+$n1+$time+$r";
-#&debug("tileUrl: $tileUrl");	
 					$west = $w1;
 					$south = $s1;
 					$east = $e1;
 					$north = $n1;
-					$gskyUrl = "http://$ows_domain/ows/ge?SERVICE=WMS&VERSION=1.1.1&REQUEST=GetMap&SRS=EPSG:4326&WIDTH=512&HEIGHT=512&LAYERS=$layer&STYLES=default&TRANSPARENT=TRUE&FORMAT=image/png&BBOX=$west,$south,$east,$north&TIME=$time" . "T00:00:00.000Z";
+#					$gskyUrl = "http://$ows_domain/ows/ge?SERVICE=WMS&VERSION=1.1.1&REQUEST=GetMap&SRS=EPSG:4326&WIDTH=512&HEIGHT=512&LAYERS=$layer&STYLES=default&TRANSPARENT=TRUE&FORMAT=image/png&BBOX=$west,$south,$east,$north&TIME=$time" . "T00:00:00.000Z";
+		            $gskyUrl = "http://$domain/cgi-bin/google_earth.cgi?WMS+$layer+$west,$south,$east,$north+$time+$r";
+#					$gskyUrl = "http://$domain/ows/ge?SERVICE=WMS&VERSION=1.1.1&REQUEST=GetMap&SRS=EPSG:4326&WIDTH=512&HEIGHT=512&LAYERS=$layer&STYLES=default&TRANSPARENT=TRUE&FORMAT=image/png&BBOX=$west,$south,$east,$north&TIME=$time" . "T00:00:00.000Z";
 					if ($callGsky)
 					{
 						$tileUrl = $gskyUrl;
@@ -567,7 +590,7 @@ How to display the layers on GEWeb:
 					$title = "$w1,$s1 $e1,$n1 R $r";
 					GroundOverlayTiles;
 					$ii++;
-					if($n1 >= $n/$m) { last; }
+#					if($n1 >= $n/$m) { last; }
 				}
 			}
 			$kml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>
@@ -593,7 +616,7 @@ $groundOverlay
 			print "Content-type: text/html\n\n"; $headerAdded = 1;
 			$pquery = reformat($ARGV[2]);
 			$pquery =~ s/\\//gi;
-#&debug("pquery = $pquery");
+#&debug("pquery = $pquery",1);
 			Get_fields;	# Parse the $pquery to get all form input values
 			if (!$time) { $time = "2013-03-17"; }
 #&debug("create_tiles = $create_tiles: $localdir/$time/$create_tiles_sh");
@@ -668,6 +691,32 @@ $groundOverlay
 			print "Click to download: <a href=\"$url/$outfile?$$\">$outfile</a>";
 			exit;
 		}
+		if ($sc_action eq "WMS") # This takes care of the caching issue
+		{
+			$imgfile = "../html/Img/" . $bbox . "_" . $time . "_" . $res . ".png";
+			$imgurl = "/Img/" . $bbox . "_" . $time . "_" . $res . ".png";
+			$imgfile =~ s/,/_/gi;
+			$imgurl =~ s/,/_/gi;
+			if (-f $imgfile)
+			{
+				print "Location: $imgurl\n\n";
+				exit;
+			}
+			else
+			{
+				$url = "http://$ows_domain/ows/ge?SERVICE=WMS&VERSION=1.1.1&REQUEST=GetMap&SRS=EPSG:4326&WIDTH=512&HEIGHT=512&LAYERS=$layer&STYLES=default&TRANSPARENT=TRUE&FORMAT=image/png&BBOX=$bbox&TIME=$time" . "T00:00:00.000Z";
+				$png = `curl '$url'`;
+				open (OUT, ">$imgfile");
+				print OUT $png;
+				close (OUT);
+				print "Location: $imgurl\n\n";
+				exit;
+			}
+		}
+		if ($sc_action eq "Cache_test") # For DEA from dea.html
+		{
+#&debug("Cache-Test");			
+		}
 =pod
 	- Time to create 1632 tiles (1x1 degree) to cover whole of Australia: 30 min.
 	- Time to create 407 tiles (2x2 degree) to cover whole of Australia: 27 min.
@@ -704,4 +753,5 @@ $visibility = 1;
 $layer = "LS8:NBAR:TRUE";
 $title = "DEA Landsat 8 surface reflectance true colour";
 $callGsky = 1; # Use GetMap calls to GSKY instead of using the PNG files at high res
+$ct0 = time();
 &do_main;
