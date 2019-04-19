@@ -529,20 +529,8 @@ How to display the layers on GEWeb:
 			$s = int($bbox[1]) * $m;
 			$e = int($bbox[2]) * $m;
 			$n = int($bbox[3]) * $m;
-#&debug("n = 			$n = int($bbox[3]) * $m;");
-#ElapsedTime(1);
 			CountTheTiles;
 			$ii = 0;
-#ElapsedTime(2);
-#return;			
-#			open (INP, "<$localdir/$time/$resolution/tiles.txt");
-#			my @filecontent = <INP>;
-#			close (INP);
-#			my $len = $#filecontent;
-#			$filecontent = join("|", @filecontent);
-#			$filecontent =~ s/\n//gi;
-#&debug("Include: $len; $localdir/$time/$resolution/tiles.txt");	
-#&debug("Include: $filecontent");	
 			for (my $j0 = $w; $j0 <= $e; $j0++)
 			{
 				$j = $j0/$m;
@@ -561,7 +549,6 @@ How to display the layers on GEWeb:
 						if ($create_tiles)
 						{
 							# Skip if this tile does not exist
-#&debug("Skip: $tile_filename");	
 							next;
 						}
 					}
@@ -570,7 +557,6 @@ How to display the layers on GEWeb:
 						# Skip if this tile has already been created
 						if (!$create_tiles)
 						{
-#&debug("Skip: $tile_filename");	
 							next;
 						}
 					}
@@ -579,9 +565,7 @@ How to display the layers on GEWeb:
 					$south = $s1;
 					$east = $e1;
 					$north = $n1;
-#					$gskyUrl = "http://$ows_domain/ows/ge?SERVICE=WMS&VERSION=1.1.1&REQUEST=GetMap&SRS=EPSG:4326&WIDTH=512&HEIGHT=512&LAYERS=$layer&STYLES=default&TRANSPARENT=TRUE&FORMAT=image/png&BBOX=$west,$south,$east,$north&TIME=$time" . "T00:00:00.000Z";
 		            $gskyUrl = "http://$domain/cgi-bin/google_earth.cgi?WMS+$layer+$west,$south,$east,$north+$time+$r";
-#					$gskyUrl = "http://$domain/ows/ge?SERVICE=WMS&VERSION=1.1.1&REQUEST=GetMap&SRS=EPSG:4326&WIDTH=512&HEIGHT=512&LAYERS=$layer&STYLES=default&TRANSPARENT=TRUE&FORMAT=image/png&BBOX=$west,$south,$east,$north&TIME=$time" . "T00:00:00.000Z";
 					if ($callGsky)
 					{
 						$tileUrl = $gskyUrl;
@@ -590,7 +574,6 @@ How to display the layers on GEWeb:
 					$title = "$w1,$s1 $e1,$n1 R $r";
 					GroundOverlayTiles;
 					$ii++;
-#					if($n1 >= $n/$m) { last; }
 				}
 			}
 			$kml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>
@@ -616,12 +599,8 @@ $groundOverlay
 			print "Content-type: text/html\n\n"; $headerAdded = 1;
 			$pquery = reformat($ARGV[2]);
 			$pquery =~ s/\\//gi;
-#&debug("pquery = $pquery",1);
 			Get_fields;	# Parse the $pquery to get all form input values
 			if (!$time) { $time = "2013-03-17"; }
-#&debug("create_tiles = $create_tiles: $localdir/$time/$create_tiles_sh");
-#open (OUT, ">$localdir/$time/$create_tiles_sh");
-#open (OUT, ">$localdir/$time/$create_tiles_sh");
 			if ($create_tiles) { open (OUT, ">$localdir/$time/$create_tiles_sh"); }
 			$i=$resolution; # Number of degrees for tile axis
 			if ($i < 1)
@@ -632,9 +611,8 @@ $groundOverlay
 			$layer = $fields[0];
 			$title = $fields[1];
 			$basetitle = $title;
-#			if (!$time) { $time = "2013-03-17"; }
 			@bbox = split(/,/, $bbox);
-#			$m = int(1/$r);
+			$r = $resolution;
 			$w = int($bbox[0]);
 			$s = int($bbox[1]);
 			$e = int($bbox[2]);
@@ -647,7 +625,6 @@ $groundOverlay
 			$s -= $s % $i; 
 			$e -= $e % $i; 
 			$n -= $n % $i; 
-#&debug("create_tiles = $create_tiles");
 			CountTheTilesLow;
 			for (my $j = $w; $j <= $e; $j+=$i)
 			{
@@ -660,7 +637,6 @@ $groundOverlay
 					$tile_file = "$localdir/$time/$resolution/tile_" . $w1 . "_" . $s1 . "_" . $e1 . "_" . $n1 . "_" . $time . "_.png";
 					if (!$create_tiles && !-f $tile_file)
 					{
-#&debug("Skip: $tile_file");	
 						next;
 					}
 					$tileUrl = "$cgi?PNG+$w1+$s1+$e1+$n1+$time+$i";
@@ -668,6 +644,12 @@ $groundOverlay
 					$south = $s1;
 					$east = $e1;
 					$north = $n1;
+		            $gskyUrl = "http://$domain/cgi-bin/google_earth.cgi?WMS+$layer+$west,$south,$east,$north+$time+$r";
+					if ($callGsky)
+					{
+						$tileUrl = $gskyUrl;
+						$tileUrl =~ s/&/&amp;/gi;
+					}
 					$title = "$w1,$s1 $e1,$n1 R$i";
 					GroundOverlayTiles;
 					$ii++;
@@ -704,13 +686,24 @@ $groundOverlay
 			}
 			else
 			{
-				$url = "http://$ows_domain/ows/ge?SERVICE=WMS&VERSION=1.1.1&REQUEST=GetMap&SRS=EPSG:4326&WIDTH=512&HEIGHT=512&LAYERS=$layer&STYLES=default&TRANSPARENT=TRUE&FORMAT=image/png&BBOX=$bbox&TIME=$time" . "T00:00:00.000Z";
-				$png = `curl '$url'`;
-				open (OUT, ">$imgfile");
-				print OUT $png;
-				close (OUT);
-				print "Location: $imgurl\n\n";
-				exit;
+				if ($res < 1)
+				{
+					$url = "http://$ows_domain/ows/ge?SERVICE=WMS&VERSION=1.1.1&REQUEST=GetMap&SRS=EPSG:4326&WIDTH=512&HEIGHT=512&LAYERS=$layer&STYLES=default&TRANSPARENT=TRUE&FORMAT=image/png&BBOX=$bbox&TIME=$time" . "T00:00:00.000Z";
+					$png = `curl '$url'`;
+					open (OUT, ">$imgfile");
+					print OUT $png;
+					close (OUT);
+					print "Location: $imgurl\n\n";
+					exit;
+				}
+				else
+				{
+					$imgfile_orig = "$localdir/$time/$res/tile_$bbox" . "_$time" . "_.png";
+					$imgfile_orig =~ s/,/_/gi;
+					`ln -s $imgfile_orig $imgfile`; 
+					print "Location: $imgurl\n\n";
+					exit;
+				}
 			}
 		}
 		if ($sc_action eq "Cache_test") # For DEA from dea.html
@@ -728,6 +721,7 @@ $groundOverlay
 	- Time to display the 1 degree tiles across Australia on 135Mbits connection: 40 sec
 	- Time to display the 1 degree tiles across Australia on 500Mbits connection: 34 sec
 	- Time to display the 3 degree tiles across Australia on 500Mbits connection: 15 sec
+Cache location: C:\Users\avs29\AppData\Local\Google\Chrome\User Data\Default\Cache
 =cut
 		else
 		{
