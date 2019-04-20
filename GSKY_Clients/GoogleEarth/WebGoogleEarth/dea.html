@@ -80,72 +80,71 @@ else url = 'm_dea.html';
 			</td>
 		</tr>
     </table>
-    <div>
-    <table style="width:100%; font-size:16px">
-		<tr>
-		<td>
-    <small>
-    <div class="content-container">
-    <article>
-        <section>
-        <h3>What's This?</h3>
-        <p>
-        This page will create the <b>KML</b> (Keyhole Markup Language) files to extend the functionality of 
-        <a href="https://earth.google.com/web/" target="_blank"><b>Google Earth Web</b></a> (<b>GEWeb</b>) 
-        and will display GSKY layers in both spatial and temporal dimensions. 
-        </p>
-		</section>
-	</article>
-	</div>
-    <div class="content-container">
-    <article>
-        <tldr>
-        <h3>How to create the KML File:</h3>
-        <small>
-        Select:<br>
-        	- The GSKY layer.<br>
-        	- Geographical region or Bounding box coordinates. <br>
-        	- Data acquisition date(s).<br>
-        	- Required resolution.<br>
-        	- Click '<b>Create KML</b>' and click again on the link that appears to download the file.<br>
-        </small>        
-		</section>
-	</tldr>
-    <span class="content-container" id="Create_KML" style="display:block">
-    <details>
-        <section>
-        	<ul>
-        	<li>
-        		<small>Choose '<b>Unlisted</b>' to manually enter its BBox.</small>
-        	</li>
-        	<li>
-        		<small>Use the <b>BBox Finder</b> to get the bounding box.</small>
-        	</li>
-			<li>
-				<small>Select multiple dates with Ctrl-click or Shift-click.</small>
-			</li>
-			<li>
-				<small>There is only one date in this demo dataset.</small>
-			</li>
-			<li>
-				<small>The level of resolution affects how the image looks when zoomed in.</small>
-			</li>
-			<li>
-				<small>Using a higher resolution takes longer to display.</small>
-			</li>
-			<li>
-				<small>'High' and 'Ultra' resolution will crash Google Earth if whole Aus is chosen.</small>
-			</li>
-			<li>
-				<small>Choose smaller regions (e.g. a state) and combine to produce whole Australia.</small>
-			</li>
-			<li>
-					<small>Open it via the <b><img src="my_places.png" alt="My Places" title="My Places"> My Places | IMPORT KML FILE</b> link in <b><a href="https://earth.google.com/web/">GEWeb</a></b></small>.
-			</li>
-			</ul>
-		</section>
-	</details>
-    </span>
+<!--    <div> -->
+	<div id="top_section">
+		<small>
+		<div class="content-container">
+		<article>
+			<tldr>
+			<h3>What's This?</h3>
+				This page will create the <b>KML</b> (Keyhole Markup Language) files to extend the functionality of 
+				<a href="https://earth.google.com/web/" target="_blank"><b>Google Earth Web</b></a> (<b>GEWeb</b>) 
+				and will display GSKY layers in both spatial and temporal dimensions. 
+			<h4>A quirk of Google Earth Web</h4>
+				The retrieval of tiles goes to sleep if there is no mouse activity.
+				Just keep moving the mouse to make the display run quickly.
+			</tldr>
+		</article>
+		</div>
+		<div class="content-container">
+		<article>
+			<tldr>
+				<h3>How to create the KML File:</h3>
+				<small>
+				Select:<br>
+					- The GSKY layer.<br>
+					- Geographical region or Bounding box coordinates. <br>
+					- Data acquisition date(s).<br>
+					- Required resolution.<br>
+					- Click '<b>Create KML</b>' and click again on the link that appears to download the file.<br>
+				</small>        
+			</tldr>
+			<span class="content-container" id="Create_KML" style="display:block">
+			<details>
+				<section>
+					<ul>
+					<li>
+						<small>Choose '<b>Unlisted</b>' to manually enter its BBox.</small>
+					</li>
+					<li>
+						<small>Use the <b>BBox Finder</b> to get the bounding box.</small>
+					</li>
+					<li>
+						<small>Select multiple dates with Ctrl-click or Shift-click.</small>
+					</li>
+					<li>
+						<small>There is only one date in this demo dataset.</small>
+					</li>
+					<li>
+						<small>The level of resolution affects how the image looks when zoomed in.</small>
+					</li>
+					<li>
+						<small>Using a higher resolution takes longer to display.</small>
+					</li>
+					<li>
+						<small>'High' and 'Ultra' resolution will crash Google Earth if whole Aus is chosen.</small>
+					</li>
+					<li>
+						<small>Choose smaller regions (e.g. a state) and combine to produce whole Australia.</small>
+					</li>
+					<li>
+							<small>Open it via the <b><img src="my_places.png" alt="My Places" title="My Places"> My Places | IMPORT KML FILE</b> link in <b><a href="https://earth.google.com/web/">GEWeb</a></b></small>.
+					</li>
+					</ul>
+				</section>
+			</details>
+			</span>
+		</div>
 	</div>
 	<div align="center" style="text-align:left; width:100%">
 	<form id="google_earth" name="google_earth" method="POST" action="google_earth.cgi">
@@ -159,9 +158,9 @@ else url = 'm_dea.html';
 			</td>
 			<td style="width:80%; padding-top:0px; ">
 				<select name="layer" style="width:300px; font-size:12px; background-color:#F7F5D7" onchange="InsertTimes(this,'dea')">
-					<option value="LS8:NBAR:TRUE|Landsat 8 surface reflectance true colour">DEA</option>
+					<option value="">DEA</option>
 					<option value="LS8:NBAR:TRUE|Landsat 8 surface reflectance true colour">Landsat 8 surface reflectance true colour</option>
-<!--					<option value="LS8:NBAR:TRUE|DEA Landsat 8 surface reflectance">DEA Landsat 8 surface reflectance true colour</option>-->
+					<option value="landsat8_nbart_16day|16-day DEA Landsat 8 terrain corrected surface reflectance">16-day DEA Landsat 8 terrain corrected surface reflectance</option>
 				</select>
 			</td>
 		</tr>
@@ -212,18 +211,19 @@ else url = 'm_dea.html';
 			<td style="width:80%; padding-top:10px">
 				<span id="resolutions" style="display:block;">
 				<select name="resolution" style="width:300px; background-color:#F7F5D7">
-					<option value="3">Low (3x3)</Option>
-					<option value="2">Medium (2x2)</Option>
-					<option value="1">High (1x1)</Option>
-					<option value="0.5">Extra High (0.5x0.5)</Option>
-					<option value="0.2">Ultra High (0.2x0.2)</Option>
-					<option value="0.1">Highest (0.1x0.1)</Option>
+					<option value="3">Low (3&deg;x3&deg;)</Option>
+					<option value="2">Medium (2&deg;x2&deg;)</Option>
+					<option value="1">High I(1&deg;x1&deg;)</Option>
+					<option value="0.5">High II (0.5&deg;x0.5&deg;)</Option>
+					<option value="0.2">High III (0.2&deg;x0.2&deg;)</Option>
+					<option value="0.1">High IV (0.1&deg;x0.1&deg;)</Option>
 				</select></span>
 			</td>
 		</tr>
 		<tr>
 			<td style="width:100%; text-align:left; font-weight:bold; padding-right:10px" colspan="2">
 				<input type="button" value="Create KML" style="color:blue" onclick="ValidateInput(document.forms.google_earth,2);">
+				<input type="hidden" name="create_tiles" value="create_tiles">
 				<span id="kml" style="display: none"></span>
 			</td>
 		</tr>
@@ -231,7 +231,6 @@ else url = 'm_dea.html';
 	</form>
 	</div>
 	<div id="bbox_finder" style="width:100%; display:none; color:blue; font-size:10px; font-weight:bold">
-<!--		<span style="width:80%;">Click <img src="square.png" alt="Square" title="Third button below for 'Draw a rectangle'"> and draw a box. Take the coordinates shown below as <img src="box.png" alt="Box" title="Third line from bottom"></span><span style="width:20%; text-align:right; padding-left:10px"><img src="cross.png" alt="Close" title="Close BBox Finder" onclick="showHideToggle('Details', 'div'); showHideToggle('bbox_finder', 'div'); "></span><br>-->
 		<span style="width:80%;">Click <img src="square.png" alt="Square" title="Third button below for 'Draw a rectangle'"> and draw a box. Click the paste icon <img src="copy_paste.png" width="15px" alt="Box" title="Third line from bottom"> to insert the value.</span><span style="width:20%; text-align:right; padding-left:10px"><img src="cross.png" alt="Close" title="Close BBox Finder" onclick="showHideToggle('Details', 'div'); showHideToggle('bbox_finder', 'div'); "></span><br>
 		<iframe id="BBox_finder" style="width:100%; height:600px"></iframe>
 	</div>
