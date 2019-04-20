@@ -822,6 +822,98 @@ $groundOverlay
 				exit;
 			}
 		}
+		sub CreateTilesForThisLayer
+		{
+			print "Content-type: text/html\n\n"; $headerAdded = 1;
+			my @times = split(/,/,$times);
+			my $len = $#filecontent;
+			foreach my $date (@times)
+			{
+#&debug("1. $date");
+				$date =~ s/T.*Z//g;
+				print "$date\n";
+#sleep(10);			
+				for (my $j=0; $j <= $len; $j++)
+				{
+#last;					
+					my $line = $filecontent[$j];
+					chop ($line);
+					$line =~ s/\$layer/$layer/g;
+					$line =~ s/\$date/$date/g;
+					my $res = `$line`;
+					if ($res) { print OUT "$res"; }
+				}
+			}
+#sleep(10);			
+		}
+		if ($sc_action eq "CreateAllTiles") # Read a file to create the tiles (3x3 deg) for all layers and time slices
+		{
+=pod			
+			$result = `curl 'https://gsky.nci.org.au/ows/dea?service=WMS&version=1.3.0&request=GetCapabilities'`;
+			@result = split(/\n/, $result);
+			my $len = $#result;
+&debug ($len);
+			open (OUT, ">$localdir/GEWeb/layers.txt");
+			for (my $j=0; $j <= $len; $j++)
+			{
+				if ($result[$j] =~ /<Layer queryable="1" opaque="0">/)
+				{
+					for ($j++; $j <= $len; $j++)
+					{
+						if($result[$j] =~ /<Name>(.*)<\/Name>/i)
+						{
+							$name = $1;
+							print OUT "Name:$name\n";
+#&debug("name = $name");						
+						}
+						if($result[$j] =~ /<Title>(.*)<\/Title>/i)
+						{
+							$title = $1;
+							print OUT "Title:$title\n";
+#&debug("title = $title");						
+						}
+						if($result[$j] =~ /<Dimension.*>(.*)<\/Dimension>/i)
+						{
+							$times = $1;
+							print OUT "Times:$times\n";
+#&debug("times = $times");	
+							last;
+						}
+						if($result[$j+1] =~ /<\/Layer>/i) { last; }
+					}
+				}
+			}
+			close(OUT);
+=cut
+			open(INP, "<$localdir/GEWeb/create_tiles_tem.sh");
+			@filecontent = <INP>;
+			close(INP);
+			open (OUT, ">>/var/www/cgi-bin/logs.txt");
+			open (INP, "<$localdir/GEWeb/layers.txt");
+			while ($line = <INP>)
+			{
+				if($line =~ /^#/) { next; }
+				if($line =~ /Name:(.*)\n/)
+				{
+					$layer = $1;
+					&debug("layer = $layer");						
+				}
+				if($line =~ /Title:(.*)\n/)
+				{
+					$title = $1;
+#&debug("title = $title");						
+				}
+				if($line =~ /Times:(.*)\n/)
+				{
+					$times = $1;
+#&debug("times = $times_");	
+					CreateTilesForThisLayer;
+#exit;			
+				}
+			}
+			close(INP);
+			close(OUT);
+		}
 =pod
 	- Time to create 1632 tiles (1x1 degree) to cover whole of Australia: 30 min.
 	- Time to create 407 tiles (2x2 degree) to cover whole of Australia: 27 min.
