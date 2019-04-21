@@ -543,16 +543,58 @@ How to display the layers on GEWeb:
 				&debug("<font style=\"color:red; font-size:12px\">On a slow internet connection this could take a long time to display.<br>Please consider choosing a smaller region or a lower resolution.</font>");
 			}
 		}
+		sub CountTheTiles_0 
+		{
+			my $ii = 0;
+#&debug("w,e			for (my $j0 = $w; $j0 <= $e; $j0++)");
+			for (my $j0 = $w; $j0 <= $e; $j0++)
+			{
+				$j = $j0/$m;
+#&debug("s,n				for (my $k0 = $s; $k0 <= $n; $k0++)");
+				for (my $k0 = $s; $k0 <= $n; $k0++)
+				{
+					$fin = 0;
+					$k = $k0/$m;
+					$w1 = sprintf("%.1f", $j); 
+					$s1 = sprintf("%.1f", $k);
+					$e1 = sprintf("%.1f", $j+$r);
+					$n1 = sprintf("%.1f", $k+$r);
+					$tile_filename = $w1 . "_" . $s1 . "_" . $e1 . "_" . $n1 . "_" . $time . "_$r" . ".png";
+					$tile_file = "$basedir/$layer/$time/$r/$tile_filename";
+#					if (-f $tile_file)
+#					{
+#						if ($create_tiles)
+#						{
+#							next;
+#						}
+#					}
+#					else
+#					{
+#						# Skip if this tile has already been created
+#						if (!$create_tiles)
+#						{
+#							next;
+#						}
+#					}
+					$ii++;
+				}
+			}
+			&debug("Number of tiles: <big>$ii</big>");
+			if ($ii <= 0)
+			{
+				&debug("<font style=\"color:red; font-size:12px\">No tiles in the selected region. Please choose another region.</font>");
+			}
+			if ($ii > 100)
+			{
+				&debug("<font style=\"color:red; font-size:12px\">On a slow internet connection this could take a long time to display.<br>Please consider choosing a smaller region or a lower resolution.</font>");
+			}
+		}
 		sub DEA_High
 		{
-#			$pquery = reformat($ARGV[2]);
-#			$pquery =~ s/\\//gi;
-#			Get_fields;	# Parse the $pquery to get all form input values
 			@fields = split (/\|/, $layer);
 			$layer = $fields[0];
 			$title = $fields[1];
 			$basetitle = $title;
-#&debug("2. $time");					
 			if (!$time) { $time = "2013-03-17"; }
 			@bbox = split(/,/, $bbox);
 			$r = $resolution;
@@ -563,7 +605,6 @@ How to display the layers on GEWeb:
 			$n = int($bbox[3]) * $m;
 			CountTheTiles;
 			$ii = 0;
-#&debug("3. $time");					
 			for (my $j0 = $w; $j0 <= $e; $j0++)
 			{
 				$j = $j0/$m;
@@ -645,14 +686,11 @@ $groundOverlay
 			{
 				$time =~ s/T.*$//gi;
 			}
-#&debug("1. $layer");					
 			$create_tiles_dir = "$localdir/GEWeb/DEA_Layers/$layer/$time/$r";
 			if (!-d "$create_tiles_dir")
 			{
 				`mkdir -p "$create_tiles_dir"`;
 			}
-#&debug("			if ($create_tiles) { open (OUT, \">$localdir/$time/$r/$create_tiles_sh\"); }");
-#&debug("1. $time");					
 			if ($create_tiles) 
 			{ 
 				open (OUT, ">$create_tiles_dir/$create_tiles_sh"); 
@@ -663,12 +701,7 @@ $groundOverlay
 			{
 				DEA_High;
 			}
-#			@fields = split (/\|/, $layer);
-#			$layer = $fields[0];
-#			$title = $fields[1];
-#			$basetitle = $title;
 			@bbox = split(/,/, $bbox);
-#			$r = $resolution;
 			$w = int($bbox[0]);
 			$s = int($bbox[1]);
 			$e = int($bbox[2]);
@@ -690,10 +723,8 @@ $groundOverlay
 					$s1 = sprintf("%.1f", $k);
 					$e1 = sprintf("%.1f", $j+$i);
 					$n1 = sprintf("%.1f", $k+$i);
-#					$tile_file = "$localdir/$time/$resolution/tile_" . $w1 . "_" . $s1 . "_" . $e1 . "_" . $n1 . "_" . $time . "_.png";
 					$tile_filename = $w1 . "_" . $s1 . "_" . $e1 . "_" . $n1 . "_" . $time . "_$r" . ".png";
 					$tile_file = "$basedir/$layer/$time/$r/$tile_filename";
-#&debug("$tile_file");					
 					if (!$create_tiles && !-f $tile_file)
 					{
 						next;
@@ -704,7 +735,6 @@ $groundOverlay
 					$east = $e1;
 					$north = $n1;
 		            $gskyUrl = "http://$domain/cgi-bin/google_earth.cgi?WMS+$layer+$west,$south,$east,$north+$time+$r+$create_tiles";
-#&debug($gskyUrl);
 					if ($callGsky)
 					{
 						$tileUrl = $gskyUrl;
@@ -712,7 +742,6 @@ $groundOverlay
 					}
 					$title = "$w1,$s1 $e1,$n1 R$i";
 					GroundOverlayTiles;
-#					$ii++;
 					if($n1 == $n) { last; }
 				}
 			}
