@@ -300,51 +300,6 @@ sub do_main
 			}
 			exit;
 		}
-=pod
-For DEA: 
-
-To create small tiles across Australia and display them as individual Icons on GEWeb.
-It will solve the issue of zoom level over large area. GSKY cannot display
-the layer if the zoom level is more than 2 degrees. To give a better resolution,
-here we use 1x1 degree tiles and then display them as multiple Icons in GEWeb.
-It will let one see the whole Australia together and then zom into see smaller
-areas. 
-
-The user experience will improve drammatically. By using cached tiles, the display
-will also be faster than directly calling GSKY.
-
-How to create the tiles:
-
-1. Open the web page at: http://130.56.242.19/dea.html
-
-	- Use "Australia" and the required resolution.
-	- Choose other parameters an click 'Create KML'
-	- Run 'curl.sh' at commandline
-		- source /home/900/avs900/WebGoogleEarth/Tiles/curl.sh
-	- Create a subdir in /home/900/avs900/WebGoogleEarth/Tiles/2017-03-17 as the tile res...
-		- 3
-		- 2
-		- 1
-		- 0.5
-		- 0.2
-		- 0.1
-	- Copy the tiles from /home/900/avs900/WebGoogleEarth/Tiles/2017-03-17
-		- to the respective sub dir with it.
-
-How to display the layers on GEWeb:
-
-1. Open the web page at: http://130.56.242.19/dea.html
-
-2. Choose "Australia" or any of the smaller regions.
-
-3. Choose other parameters an click 'Create KML'
-
-4. Download and save the KML
-
-5. Open it in GEWeb
-
-
-=cut
 		if ($sc_action eq "DeleteEmptyTiles") # For DEA. Delete the PNG files that are empty
 		{
 			# Usage: ./google_earth.cgi DeleteEmptyTiles resolution
@@ -370,60 +325,7 @@ How to display the layers on GEWeb:
 			}
 			exit;
 		}
-		if ($sc_action eq "DeleteEmptyTiles_0") # For DEA. Delete the PNG files that are empty
-		{
-			# Usage: ./google_earth.cgi DeleteEmptyTiles resolution
-			# e.g. ./google_earth.cgi DeleteEmptyTiles 1
-			$res = $ARGV[1];
-			if (!$res)
-			{
-				print "Must specify the resolution.";
-				exit;
-			}
-			# Usage: /var/www/cgi-bin/google_earth.cgi DeleteEmptyTiles 3
-			$td = "$localdir/2013-03-17/$res";
-			$ls = `ls -l $td`;
-			my @ls = split(/\n/, $ls);
-			my $len = $#ls;
-			$n = 0;
-			for (my $j=0; $j <= $len; $j++)
-			{
-				my $line = $ls[$j];
-				$line =~ tr/  / /s;
-				my @fields = split(/ /, $line);
-				if ($fields[4] == 2132) # Empty tiles
-				{
-					$filename = "$td/$fields[8]"; 
-					$n++;
-					print "$n.	unlink ($filename) - $fields[4]\n";
-					unlink ($filename);
-				}
-			}
-			exit;
-		}
-		if ($sc_action eq "PNG") # For DEA
-		{
-			if (!$dumb)
-			{
-				$west = $ARGV[1];
-				$south = $ARGV[2];
-				$east = $ARGV[3];
-				$north = $ARGV[4];
-				$time = $ARGV[5];
-				$res = $ARGV[6];
-			}
-			# Open the file 
-			$tilefile = "$localdir/$time/$res/tile_" . $west . "_" . $south . "_" . $east . "_" . $north . "_" . $time . "_" . ".png";
-			eval 
-			{
-				select(STDOUT); $| = 1;   #unbuffer STDOUT
-				print "Content-type: image/png\n\n";
-				open (IMAGE, '<', $tilefile);
-				print <IMAGE>;
-				close(IMAGE);
-			};
-		}
-		if ($sc_action eq "Help") # Help to create the tiles
+		if ($sc_action eq "Help") # Help to create the tiles. Out of date.
 		{
 			print "To create tiles:\n";
 			print "
@@ -459,7 +361,6 @@ How to display the layers on GEWeb:
 					$n1 = sprintf("%.1f", $k+$i);
 					$tile_filename = $w1 . "_" . $s1 . "_" . $e1 . "_" . $n1 . "_" . $time . "_$r" . ".png";
 					$tile_file = "$basedir/$layer/$time/$r/$tile_filename";
-#&debug($tile_file);
 					if (!-f $tile_file)
 					{
 						if (!$create_tiles)
@@ -467,14 +368,6 @@ How to display the layers on GEWeb:
 							next;
 						}
 					}
-#					else
-#					{
-#						# Skip if this tile has already been created
-#						if (!$create_tiles)
-#						{
-#							next;
-#						}
-#					}
 					$n_tiles++;
 					if($n1 >= $n) { last; }
 				}
@@ -721,7 +614,6 @@ $groundOverlay
 					$n1 = sprintf("%.1f", $k+$i);
 					$tile_filename = $w1 . "_" . $s1 . "_" . $e1 . "_" . $n1 . "_" . $time . "_$r" . ".png";
 					$tile_file = "$basedir/$layer/$time/$r/$tile_filename";
-#&debug("$tile_file");
 					if (!$create_tiles && !-f $tile_file)
 					{
 						next;
@@ -769,56 +661,8 @@ $groundOverlay
 			print "Click to download: <a href=\"$url/$outfile?$$\">$outfile</a>";
 			exit;
 		}
-		if ($sc_action eq "WMS_0") # This takes care of the caching issue
+		if ($sc_action eq "WMS") # This is called for create_tiles but not for anything else.
 		{
-			$imgdir = "$docroot/GEWeb/DEA_Layers/$layer/$time/$res";
-			if (!-d $imgdir)
-			{
-				`mkdir -p $imgdir`;
-			}
-			$imgfile = "$imgdir/" . $bbox . "_" . $time . "_" . $res . ".png";
-			$imgurl = "/GEWeb/DEA_Layers/$layer/$time/$res/" . $bbox . "_" . $time . "_" . $res . ".png";
-			$imgfile =~ s/,/_/gi;
-			$imgurl =~ s/,/_/gi;
-			if (-f $imgfile)
-			{
-				print "Location: $imgurl\n\n";
-				exit;
-			}
-			else
-			{
-				if ($res < 1)
-				{
-					$url = "http://$ows_domain/ows/ge?SERVICE=WMS&VERSION=1.1.1&REQUEST=GetMap&SRS=EPSG:4326&WIDTH=512&HEIGHT=512&LAYERS=$layer&STYLES=default&TRANSPARENT=TRUE&FORMAT=image/png&BBOX=$bbox&TIME=$time" . "T00:00:00.000Z";
-					$png = `curl '$url'`;
-					open (OUT, ">$imgfile");
-					print OUT $png;
-					close (OUT);
-					print "Location: $imgurl\n\n";
-					exit;
-				}
-				else
-				{
-					$imgfile_orig = "$localdir/$time/$res/tile_$bbox" . "_$time" . "_.png";
-					$imgfile_orig =~ s/,/_/gi;
-					`ln -s $imgfile_orig $imgfile`; 
-					print "Location: $imgurl\n\n";
-					exit;
-				}
-			}
-		}
-		if ($sc_action eq "WMS") # This takes care of the caching issue
-		{
-#$imgdir = "$localdir/GEWeb/DEA_Layers/landsat5_nbar_16day/1986-09-16/3/120.0_-30.0_123.0_-27.0_1986-09-16_3.png";
-#open (IMG, "<$imgdir");
-#@img = <IMG>;
-#close(IMG);
-#print "Content-type: image/png\n\n";
-#print @img;
-#exit;
-#&debug("OK",1);			
-print "Location: http://130.56.242.19/GEWeb/120.0_-30.0_123.0_-27.0_1986-09-16_3.png\n\n";
-exit;
 			$imgdir = "$localdir/GEWeb/DEA_Layers/$layer/$time/$r";
 			if (!-d $imgdir)
 			{
@@ -828,21 +672,14 @@ exit;
 			$imgurl = "http://$domain/GEWeb/DEA_Layers/$layer/$time/$r/" . $bbox . "_" . $time . "_" . $r . ".png";
 			$imgfile =~ s/,/_/gi;
 			$imgurl =~ s/,/_/gi;
-#&debug($imgurl);
-#&debug("			if (-f $imgfile && !$create_tiles)");
 			if (-f $imgfile && !$create_tiles)
 			{
-#&debug($imgurl,1);
 				print "Location: $imgurl\n\n";
 				exit;
 			}
 			else
 			{
-#curl 'http://130.56.242.19/cgi-bin/google_earth.cgi?WMS+landsat8_nbart_16day+111.0,-45.0,114.0,-42.0+2013-03-17+3&BBOX=0,0,0,0'
-#				$url = "http://$ows_domain/ows/ge?SERVICE=WMS&VERSION=1.1.1&REQUEST=GetMap&SRS=EPSG:4326&WIDTH=512&HEIGHT=512&LAYERS=$layer&STYLES=default&TRANSPARENT=TRUE&FORMAT=image/png&BBOX=$bbox&TIME=$time" . "T00:00:00.000Z";
 				$url = "https://gsky.nci.org.au/ows/dea?SERVICE=WMS&VERSION=1.1.1&REQUEST=GetMap&SRS=EPSG:4326&WIDTH=512&HEIGHT=512&LAYERS=$layer&STYLES=&TRANSPARENT=TRUE&FORMAT=image/png&BBOX=$bbox&TIME=$time" . "T00:00:00.000Z";
-#&debug("<a href=\"$url\">$url</a>");
-#https://gsky.nci.org.au/ows/dea?SERVICE=WMS&VERSION=1.1.1&REQUEST=GetMap&SRS=EPSG:4326&WIDTH=512&HEIGHT=512&LAYERS=landsat8_nbart_16day&STYLES=&TRANSPARENT=TRUE&FORMAT=image/png&BBOX=126.0,-27.0,129.0,-24.0&TIME=2013-03-17T00:00:00.000Z
 				$png = `curl '$url'`;
 				if ($png)
 				{
@@ -856,7 +693,7 @@ exit;
 					else
 					{
 						print "Content-type: text/html\n\n"; $headerAdded = 1;
-#						print "Created: $ii. $imgfile\n";
+						print "Created: $ii. $imgfile\n";
 					}
 				}
 				exit;
@@ -869,13 +706,10 @@ exit;
 			my $len = $#filecontent;
 			foreach my $date (@times)
 			{
-#&debug("1. $date");
 				$date =~ s/T.*Z//g;
 				print "$date\n";
-#sleep(10);			
 				for (my $j=0; $j <= $len; $j++)
 				{
-#last;					
 					my $line = $filecontent[$j];
 					chop ($line);
 					$line =~ s/\$layer/$layer/g;
@@ -884,7 +718,6 @@ exit;
 					if ($res) { print OUT "$res"; }
 				}
 			}
-#sleep(10);			
 		}
 		if ($sc_action eq "CreateAllTiles") # Read a file to create the tiles (3x3 deg) for all layers and time slices
 		{
@@ -1054,19 +887,6 @@ exit;
 				print "Not Found\n";
 			}
 		}
-=pod
-	- Time to create 1632 tiles (1x1 degree) to cover whole of Australia: 30 min.
-	- Time to create 407 tiles (2x2 degree) to cover whole of Australia: 27 min.
-	- Time to create 192 tiles (3x3 degree) to cover whole of Australia: 22 min.
-	- Time to create 3360 tiles (0.5x0.5 degree) to cover whole of Australia: 20 min.
-	- Time to create 6460 tiles (0.5x0.5 degree) to cover whole of Australia: 42 min.
-
-	- Time to display the 1 degree tiles across Australia on 7Mbits connection: 2:30min
-	- Time to display the 1 degree tiles across Australia on 135Mbits connection: 40 sec
-	- Time to display the 1 degree tiles across Australia on 500Mbits connection: 34 sec
-	- Time to display the 3 degree tiles across Australia on 500Mbits connection: 15 sec
-Cache location: C:\Users\avs29\AppData\Local\Google\Chrome\User Data\Default\Cache
-=cut
 		else
 		{
 			&debug("OK");
@@ -1094,3 +914,6 @@ $title = "DEA Landsat 8 surface reflectance true colour";
 $callGsky = 1; # Use GetMap calls to GSKY instead of using the PNG files at high res
 $ct0 = time();
 &do_main;
+=pod
+Cache location: C:\Users\avs29\AppData\Local\Google\Chrome\User Data\Default\Cache
+=cut
