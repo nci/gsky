@@ -499,12 +499,13 @@ How to display the layers on GEWeb:
 		}
 		sub CountTheTiles 
 		{
-			my $ii = 0;
-#&debug("w,e			for (my $j0 = $w; $j0 <= $e; $j0++)");
+&debug("			GetTheLargeTile($w,$s,$e,$n);");
+			GetTheLargeTile($w,$s,$e,$n); # Find the 3x3 tile that covers this bbox
+exit;			
+			my $n_tiles = 0;
 			for (my $j0 = $w; $j0 <= $e; $j0++)
 			{
 				$j = $j0/$m;
-#&debug("s,n				for (my $k0 = $s; $k0 <= $n; $k0++)");
 				for (my $k0 = $s; $k0 <= $n; $k0++)
 				{
 					$fin = 0;
@@ -513,35 +514,27 @@ How to display the layers on GEWeb:
 					$s1 = sprintf("%.1f", $k);
 					$e1 = sprintf("%.1f", $j+$r);
 					$n1 = sprintf("%.1f", $k+$r);
-					$tile_filename = $w1 . "_" . $s1 . "_" . $e1 . "_" . $n1 . "_" . $time . "_$r" . ".png";
+					$this_tile = $w1 . "_" . $s1 . "_" . $e1 . "_" . $n1;
+					$tile_filename = $this_tile . "_" . $time . "_$r" . ".png";
+#					$tile_filename = $w1 . "_" . $s1 . "_" . $e1 . "_" . $n1 . "_" . $time . "_$r" . ".png";
 					$tile_file = "$basedir/$layer/$time/$r/$tile_filename";
-#					if (-f $tile_file)
-#					{
-#						if ($create_tiles)
-#						{
-#							next;
-#						}
-#					}
-#					else
-#					{
-#						# Skip if this tile has already been created
-#						if (!$create_tiles)
-#						{
-#							next;
-#						}
-#					}
-					$ii++;
+					if ($tilesHash{$this_tile})
+					{
+#&debug("$tilesHash{$this_tile}. $this_tile");
+						$n_tiles++;
+					}
 				}
 			}
-			&debug("Number of tiles: <big>$ii</big>");
-			if ($ii <= 0)
+			&debug("Number of tiles: <big>$n_tiles</big>");
+			if ($n_tiles <= 0)
 			{
 				&debug("<font style=\"color:red; font-size:12px\">No tiles in the selected region. Please choose another region.</font>");
 			}
-			if ($ii > 100)
+			if ($n_tiles > 100)
 			{
 				&debug("<font style=\"color:red; font-size:12px\">On a slow internet connection this could take a long time to display.<br>Please consider choosing a smaller region or a lower resolution.</font>");
 			}
+exit;			
 		}
 		sub CountTheTiles_0 
 		{
@@ -603,6 +596,8 @@ How to display the layers on GEWeb:
 			$s = int($bbox[1]) * $m;
 			$e = int($bbox[2]) * $m;
 			$n = int($bbox[3]) * $m;
+#&debug("$bbox			GetHash($layer, $time, 3);");
+#			GetHash($layer, $time, 3);
 			CountTheTiles;
 			$ii = 0;
 			for (my $j0 = $w; $j0 <= $e; $j0++)
@@ -687,6 +682,7 @@ $groundOverlay
 				$time =~ s/T.*$//gi;
 			}
 			$create_tiles_dir = "$localdir/GEWeb/DEA_Layers/$layer/$time/$r";
+#&debug($create_tiles_dir);
 			if (!-d "$create_tiles_dir")
 			{
 				`mkdir -p "$create_tiles_dir"`;
@@ -725,6 +721,7 @@ $groundOverlay
 					$n1 = sprintf("%.1f", $k+$i);
 					$tile_filename = $w1 . "_" . $s1 . "_" . $e1 . "_" . $n1 . "_" . $time . "_$r" . ".png";
 					$tile_file = "$basedir/$layer/$time/$r/$tile_filename";
+#&debug("$tile_file");
 					if (!$create_tiles && !-f $tile_file)
 					{
 						next;
@@ -734,7 +731,9 @@ $groundOverlay
 					$south = $s1;
 					$east = $e1;
 					$north = $n1;
-		            $gskyUrl = "http://$domain/cgi-bin/google_earth.cgi?WMS+$layer+$west,$south,$east,$north+$time+$r+$create_tiles";
+#		            $gskyUrl = "http://$domain/cgi-bin/google_earth.cgi?WMS+$layer+$west,$south,$east,$north+$time+$r+$create_tiles";
+		            $gskyUrl = "http://$domain/GEWeb/DEA_Layers/$layer/$time/$r/$west" . "_" . $south . "_" . $east . "_" . $north . "_" . $time . "_" . $r . ".png";
+#            http://130.56.242.19/GEWeb/DEA_Layers/landsat5_nbar_16day/1986-09-16/3/120.0_-33.0_123.0_-30.0_1986-09-16_3.png
 					if ($callGsky)
 					{
 						$tileUrl = $gskyUrl;
@@ -810,15 +809,27 @@ $groundOverlay
 		}
 		if ($sc_action eq "WMS") # This takes care of the caching issue
 		{
+#$imgdir = "$localdir/GEWeb/DEA_Layers/landsat5_nbar_16day/1986-09-16/3/120.0_-30.0_123.0_-27.0_1986-09-16_3.png";
+#open (IMG, "<$imgdir");
+#@img = <IMG>;
+#close(IMG);
+#print "Content-type: image/png\n\n";
+#print @img;
+#exit;
+#&debug("OK",1);			
+print "Location: http://130.56.242.19/GEWeb/120.0_-30.0_123.0_-27.0_1986-09-16_3.png\n\n";
+exit;
 			$imgdir = "$localdir/GEWeb/DEA_Layers/$layer/$time/$r";
 			if (!-d $imgdir)
 			{
 				`mkdir -p $imgdir`;
 			}
 			$imgfile = "$imgdir/" . $bbox . "_" . $time . "_" . $r . ".png";
-			$imgurl = "/GEWeb/DEA_Layers/$layer/$time/$r/" . $bbox . "_" . $time . "_" . $r . ".png";
+			$imgurl = "http://$domain/GEWeb/DEA_Layers/$layer/$time/$r/" . $bbox . "_" . $time . "_" . $r . ".png";
 			$imgfile =~ s/,/_/gi;
 			$imgurl =~ s/,/_/gi;
+#&debug($imgurl);
+#&debug("			if (-f $imgfile && !$create_tiles)");
 			if (-f $imgfile && !$create_tiles)
 			{
 #&debug($imgurl,1);
@@ -877,49 +888,14 @@ $groundOverlay
 		}
 		if ($sc_action eq "CreateAllTiles") # Read a file to create the tiles (3x3 deg) for all layers and time slices
 		{
-=pod			
-			$result = `curl 'https://gsky.nci.org.au/ows/dea?service=WMS&version=1.3.0&request=GetCapabilities'`;
-			@result = split(/\n/, $result);
-			my $len = $#result;
-&debug ($len);
-			open (OUT, ">$localdir/GEWeb/layers.txt");
-			for (my $j=0; $j <= $len; $j++)
-			{
-				if ($result[$j] =~ /<Layer queryable="1" opaque="0">/)
-				{
-					for ($j++; $j <= $len; $j++)
-					{
-						if($result[$j] =~ /<Name>(.*)<\/Name>/i)
-						{
-							$name = $1;
-							print OUT "Name:$name\n";
-#&debug("name = $name");						
-						}
-						if($result[$j] =~ /<Title>(.*)<\/Title>/i)
-						{
-							$title = $1;
-							print OUT "Title:$title\n";
-#&debug("title = $title");						
-						}
-						if($result[$j] =~ /<Dimension.*>(.*)<\/Dimension>/i)
-						{
-							$times = $1;
-							print OUT "Times:$times\n";
-#&debug("times = $times");	
-							last;
-						}
-						if($result[$j+1] =~ /<\/Layer>/i) { last; }
-					}
-				}
-			}
-			close(OUT);
-=cut
 			open(INP, "<$localdir/GEWeb/create_tiles_tem.sh");
 			@filecontent = <INP>;
 			close(INP);
 			open (OUT, ">>/var/www/cgi-bin/logs.txt");
 			open (INP, "<$localdir/GEWeb/layers.txt");
-			while ($line = <INP>)
+			@layers = <INP>;
+			close(INP);
+			foreach $line (@layers)
 			{
 				if($line =~ /^#/) { next; }
 				if($line =~ /Name:(.*)\n/)
@@ -930,18 +906,153 @@ $groundOverlay
 				if($line =~ /Title:(.*)\n/)
 				{
 					$title = $1;
-#&debug("title = $title");						
 				}
 				if($line =~ /Times:(.*)\n/)
 				{
 					$times = $1;
-#&debug("times = $times_");	
 					CreateTilesForThisLayer;
-#exit;			
 				}
 			}
-			close(INP);
 			close(OUT);
+		}
+
+		sub GetTheLargeTile
+		{
+			my $i = 3; # The tile res
+			my $w = $_[0]/10;
+			my $s = $_[1]/10;
+			my $e = $_[2]/10;
+			my $n = $_[3]/10;
+
+			$w -= ($w % $i);
+			$s -= ($s % $i);
+			$e -= ($e % $i);
+			$n -= ($n % $i);
+&debug("			for (my $j = $w; $j <= $e; $j+=$i)");
+			for (my $j = $w; $j <= $e; $j+=$i)
+			{
+				for (my $k = $s; $k <= $n; $k+=$i)
+				{
+					$w1 = sprintf("%.1f", $j); 
+					$s1 = sprintf("%.1f", $k);
+					$e1 = sprintf("%.1f", $j+$i);
+					$n1 = sprintf("%.1f", $k+$i);
+					$tile_filename = $w1 . "_" . $s1 . "_" . $e1 . "_" . $n1 . "_" . $time . "_$r" . ".png";
+					$tile_file = "$basedir/$layer/$time/$r/$tile_filename";
+&debug("$tile_file");
+				}
+			}
+		}
+		
+		sub GetHash
+		{
+			my $layer = $_[0];
+			my $time = $_[1];
+			my $r3 = $_[2];
+			$layerdir = "$basedir/$layer/$time/$r3";
+#&debug($layerdir);
+			chdir $layerdir;
+			$dirlist = `ls -1 *.png`;
+			@dirlist = split(/\n/, $dirlist);
+			my $len = $#dirlist;
+			%tilesHash = {};
+			$ii = 0;
+			$r = 0.1;
+			for (my $i=0; $i <= $len; $i++)
+			{
+#				$filename = "150.0_-33.0_153.0_-30.0_1986-08-15_3.png";
+				$filename = $dirlist[$i];
+#				print "$i. $filename ------------------------ <br>\n";
+#&debug("<a href=\"/GEWeb/DEA_Layers/landsat8_nbart_16day/2013-03-19/3/$filename\">$filename</a>");
+				@bbox = split (/_/, $filename);
+				$m = int(1/$r);
+				$w = int($bbox[0]) * $m;
+				$s = int($bbox[1]) * $m;
+				$e = (int($bbox[2]) - $r) * $m;
+				$n = (int($bbox[3]) - $r) * $m;
+				for (my $j0 = $w; $j0 <= $e; $j0++)
+				{
+					$j = $j0/$m;
+					for (my $k0 = $s; $k0 <= $n; $k0++)
+					{
+						$fin = 0;
+						$k = $k0/$m;
+						$w1 = sprintf("%.1f", $j); 
+						$s1 = sprintf("%.1f", $k);
+						$e1 = sprintf("%.1f", $j+$r);
+						$n1 = sprintf("%.1f", $k+$r);
+						$sub_tile = $w1 . "_" . $s1 . "_" . $e1 . "_" . $n1;
+						$ii++;
+#&debug($tilesHash{$sub_tile});
+						$tilesHash{$sub_tile} = $ii;
+#&debug("$sub_tile:$tilesHash{$sub_tile}");
+#						print "$ii. $sub_tile\n";
+					}
+				}
+			}
+		}
+		sub GetHash_0
+		{
+			my $layer = $_[0];
+			my $time = $_[1];
+			my $r3 = $_[2];
+			$layerdir = "$basedir/$layer/$time/$r3";
+#&debug($layerdir);
+			chdir $layerdir;
+			$dirlist = `ls -1 *.png`;
+			@dirlist = split(/\n/, $dirlist);
+			my $len = $#dirlist;
+			%tilesHash = {};
+			$ii = 0;
+			$r = 0.1;
+			for (my $i=0; $i <= $len; $i++)
+			{
+#				$filename = "150.0_-33.0_153.0_-30.0_1986-08-15_3.png";
+				$filename = $dirlist[$i];
+#				print "$i. $filename ------------------------ <br>\n";
+#&debug("<a href=\"/GEWeb/DEA_Layers/landsat8_nbart_16day/2013-03-19/3/$filename\">$filename</a>");
+				@bbox = split (/_/, $filename);
+				$m = int(1/$r);
+				$w = int($bbox[0]) * $m;
+				$s = int($bbox[1]) * $m;
+				$e = (int($bbox[2]) - $r) * $m;
+				$n = (int($bbox[3]) - $r) * $m;
+				for (my $j0 = $w; $j0 <= $e; $j0++)
+				{
+					$j = $j0/$m;
+					for (my $k0 = $s; $k0 <= $n; $k0++)
+					{
+						$fin = 0;
+						$k = $k0/$m;
+						$w1 = sprintf("%.1f", $j); 
+						$s1 = sprintf("%.1f", $k);
+						$e1 = sprintf("%.1f", $j+$r);
+						$n1 = sprintf("%.1f", $k+$r);
+						$sub_tile = $w1 . "_" . $s1 . "_" . $e1 . "_" . $n1;
+						$ii++;
+#&debug($tilesHash{$sub_tile});
+						$tilesHash{$sub_tile} = $ii;
+#&debug("$sub_tile:$tilesHash{$sub_tile}");
+#						print "$ii. $sub_tile\n";
+					}
+				}
+			}
+		}
+		if ($sc_action eq "CountSubTiles") # Determine whether a 0.1x0.1 tile is within a 3x3 tile
+		{
+			$layer = "landsat5_nbar_16day";
+			$time = "1986-08-15";
+			$r3 = 3;
+			GetHash($layer, $time, $r3);
+			$this_tile = "152.9_-30.9_153.0_-30.8";
+			if ($tilesHash{$this_tile})
+			{
+				print $tilesHash{$this_tile} . "\n";
+			}
+			else
+			{
+				print "Not Found\n";
+			}
 		}
 =pod
 	- Time to create 1632 tiles (1x1 degree) to cover whole of Australia: 30 min.
