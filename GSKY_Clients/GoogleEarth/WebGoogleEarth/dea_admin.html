@@ -32,7 +32,7 @@ else url = 'm_dea.html';
 		</tr>
     </table>
 <!--    <div> -->
-	<div id="top_section">
+	<div id="top_section" style="display:block">
 		<div class="content-container" style="font-size:small">
 		<article>
 			<tldr>
@@ -46,7 +46,7 @@ else url = 'm_dea.html';
 			</tldr>
 		</article>
 		</div>
-		<div class="content-container">
+		<div class="content-container" style="display:block">
 		<article>
 			<tldr>
 				<h3>How to create the KML File:</h3>
@@ -98,7 +98,7 @@ else url = 'm_dea.html';
 	</div>
 	<div style="text-align:left; width:100%">
 	<form id="google_earth" name="google_earth" method="POST" action="google_earth.cgi">
-    <table class="jumbotron hidden-xs-" style="width:100%">
+    <table class="jumbotron hidden-xs-" style="width:100%; display:block">
 		<tr>
 			<td style="width:20%; text-align:right; font-weight:bold; padding-right:10px" rowspan="6">
 				<img src="dea_australia.png" alt="DEA" style="width:207px; height:182px">
@@ -107,20 +107,29 @@ else url = 'm_dea.html';
 				GSKY Layer:
 			</td>
 			<td style="width:80%; padding-top:0px; ">
-				<select name="layer" style="width:300px; font-size:12px; background-color:#F7F5D7" onchange="InsertTimes(this,'dea')">
+				<select name="layer" style="width:300px; font-size:12px; background-color:#F7F5D7" onchange="InsertTimes(this,'dea');">
 					<option value="">DEA</option>
-					<option value="LS8:NBAR:TRUE|Landsat 8 surface reflectance true colour">Landsat 8 surface reflectance true colour</option>
-					<option value="landsat8_nbart_16day|16-day DEA Landsat 8 terrain corrected surface reflectance">16-day DEA Landsat 8 terrain corrected surface reflectance</option>
-					<option value="landsat5_geomedian|DEA Landsat 5 terrain corrected surface reflectance geometric median">DEA Landsat 5 terrain corrected surface reflectance geometric median</option>
-					<option value="landsat5_nbar_16day|16-day DEA Landsat 5 surface reflectance">16-day DEA Landsat 5 surface reflectance</option>
-					<option value=""></option>
-					<option value=""></option>
-					<option value=""></option>
-					<option value=""></option>
-					<option value=""></option>
-					<option value=""></option>
-					<option value=""></option>
+					<option value="landsat5_geomedian|LS5 terrain corrected surface reflectance geometric median">LS5 terrain corrected surface reflectance geometric median</option>
+					<option value="landsat7_geomedian|LS7 terrain corrected surface reflectance geometric median">LS7 terrain corrected surface reflectance geometric median</option>
+					<option value="landsat8_geomedian|LS8 terrain corrected surface reflectance geometric median">LS8 terrain corrected surface reflectance geometric median</option>
+					<option value="landsat5_nbar_16day|16-day LS5 surface reflectance">16-day LS5 surface reflectance</option>
+					<option value="landsat5_nbart_16day|16-day LS5 terrain corrected surface reflectance">16-day LS5 terrain corrected surface reflectance</option>
+					<option value="landsat7_nbar_16day|16-day LS7 surface reflectance" selected="selected">16-day LS7 surface reflectance</option>
+					<option value="landsat7_nbart_16day|16-day LS7 terrain corrected surface reflectance">16-day LS7 terrain corrected surface reflectance</option>
+					<option value="landsat8_nbar_16day|16-day LS8 surface reflectance">16-day LS8 surface reflectance</option>
+					<option value="landsat8_nbart_16day|16-day LS8 terrain corrected surface reflectance">16-day LS8 terrain corrected surface reflectance</option>
+					<option value="landsat5_nbar_daily|Daily LS5 surface reflectance">Daily LS5 surface reflectance</option>
+					<option value="landsat5_nbart_daily|Daily LS5 terrain corrected surface reflectance">Daily LS5 terrain corrected surface reflectance</option>
+					<option value="landsat7_nbar_daily|Daily LS7 surface reflectance">Daily LS7 surface reflectance</option>
+					<option value="landsat7_nbart_daily|Daily LS7 terrain corrected surface reflectance">Daily LS7 terrain corrected surface reflectance</option>
+					<option value="landsat8_nbar_daily|Daily LS8 surface reflectance">Daily LS8 surface reflectance</option>
+					<option value="landsat8_nbart_daily|Daily LS8 terrain corrected surface reflectance">Daily LS8 terrain corrected surface reflectance</option>
+					<option value="sentinel2_nbart_daily|Sentinel 2 Analysis Ready Data">Sentinel 2 Analysis Ready Data</option>
+					<option value="wofs|DEA Water Observation Feature Layer">DEA Water Observation Feature Layer</option>
 				</select>
+			</td>
+			<td rowspan="5" style="background-color:auto; vertical-align:top">
+				<span id="n_tiles" style="display:block; width:210px;">&nbsp;</span>
 			</td>
 		</tr>
 		<tr>
@@ -128,8 +137,9 @@ else url = 'm_dea.html';
 				Geographic Region:
 			</td>
 			<td style="width:80%; padding-top:0px">
-				<select name="region" style="width:300px; font-size:12px; padding:0px; background-color:#F7F5D7" onchange="GetCoordinates(this.form,this)">
+				<select name="region" style="width:300px; font-size:12px; padding:0px; background-color:#F7F5D7" onchange="GetCoordinates(this.form,this); CountTheTiles(this.form)">
 					<option value="Aus_ALL">Australia</option>
+					<option value="Canberra">Canberra</option>
 					<option value="UNLISTED">User-defined</option>
 					<option value="ACT">ACT</option>
 					<option value="NT">Northern Territory</option>
@@ -148,10 +158,11 @@ else url = 'm_dea.html';
 				(W,S,E,N)</small></small>:
 			</td>
 			<td style="width:80%; padding-top:10px">
-			<input type="text" name="bbox" style="width:300px; background-color:#F7F5D7; font-size:12px;" value="112.0,-44.0,153.0,-10.0"> 
+		<input type="text" name="bbox" style="width:300px; background-color:#F7F5D7; font-size:12px;" value="112.0,-44.0,153.0,-10.0" onchange="CountTheTiles(this.form)">
+<!--			<input type="text" name="bbox" style="width:300px; background-color:#F7F5D7; font-size:12px;" value="136.804504,-35.308401,137.603760,-34.876918"> -->
 			<span onmousedown="BlankBboxInputBox(document.forms.google_earth.bbox)"><img src="sm_cross.png" alt="Blank Input" title="Blank the BBox value"></span>
 			<input type="button" value="BBox Finder" title="Show/Hide BBox Finder" style="height:18px; font-size:10px; font-weight:bold; color:blue" onclick="ShowHideBBoxFinder(document.BBox_finder)">
-			<img src="copy_paste.png" width="20px" alt="Copy and Paste" title="Insert the selected BBox value" onmousedown="GetBBoxValue()">
+			<img src="copy_paste.png" width="20px" alt="Copy and Paste" title="Insert the selected BBox value" onmousedown="GetBBoxValue(); CountTheTiles(document.forms.google_earth)">
 			</td>
 		</tr>
 		<tr>
@@ -159,7 +170,7 @@ else url = 'm_dea.html';
 				Acquisition Date:
 			</td>
 			<td style="width:80%; padding-top:10px">
-				<span id="times" style="display:block;"><select name="time" style="width:300px; background-color:#F7F5D7"><option value="">Latest</Option></select></span>
+				<span id="times" style="display:block;"><select name="time" style="width:300px; background-color:#F7F5D7"><option value="1999-08-16">1999-08-16</Option></select></span>
 			</td>
 		</tr>
 		<tr>
@@ -168,9 +179,9 @@ else url = 'm_dea.html';
 			</td>
 			<td style="width:80%; padding-top:10px">
 				<span id="resolutions" style="display:block;">
-				<select name="resolution" style="width:300px; background-color:#F7F5D7">
+				<select name="resolution" style="width:300px; background-color:#F7F5D7" onchange="CountTheTiles(this.form)">
 					<option value="3">Standard (3&deg;x3&deg; Tiles)</Option>
-					<option value="0.1">High (0.1&deg;x0.1&deg; Tiles)</Option>
+					<option value="0.1" selected="selected">High (0.1&deg;x0.1&deg; Tiles)</Option>
 <!--					
 					<option value="2">Medium (2&deg;x2&deg;)</Option>
 					<option value="1">High I(1&deg;x1&deg;)</Option>
@@ -184,8 +195,9 @@ else url = 'm_dea.html';
 		<tr>
 			<td style="width:100%; text-align:left; font-weight:bold; padding-right:10px" colspan="2">
 				<input type="button" value="Create KML" style="color:blue" onclick="ValidateInput(document.forms.google_earth,2);">
-				<input type="checkbox" name="create_tiles" value="create_tiles" checked="checked"> To create tiles (Admin only)<br>
+				<input type="checkbox" name="create_tiles" value="create_tiles"> To create tiles (Admin only)<br>
 				<span id="kml" style="display: none"></span>
+				<span id="killed" style="display: none"></span>
 			</td>
 		</tr>
 	</table>

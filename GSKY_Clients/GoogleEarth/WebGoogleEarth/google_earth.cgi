@@ -53,12 +53,15 @@ sub Get_fields
 }
 sub GroundOverlayTiles
 {
+#p($bbox);	
 	# To create the multi "GroundOverlay" KML for displaying the DEA tiles
-	my $title = $_[0];
-	my $skip_curl = $_[1];
+	my $n_tiles = $_[0];
+	my $title = $_[1];
+	my $skip_curl = $_[2];
 #p($title);
 	$groundOverlay .= "
-<!-- $date -->
+$placemark
+<!-- $n_tiles -->
 <GroundOverlay>
     <name>$title</name>
     <visibility>$visibility</visibility>
@@ -79,12 +82,8 @@ sub GroundOverlayTiles
 	";
 	if ($create_tiles && !$skip_curl)
 	{
-#print "OK";		
 		print OUT "echo $n_tiles\n"; $n_tiles--;
-#$gskyUrl = "http://$ows_domain/ows/ge?SERVICE=WMS&VERSION=1.1.1&REQUEST=GetMap&SRS=EPSG:4326&WIDTH=512&HEIGHT=512&LAYERS=$layer&STYLES=default&TRANSPARENT=TRUE&FORMAT=image/png&BBOX=$west,$south,$east,$north&TIME=$time" . "T00:00:00.000Z";
-#		print OUT "curl '$gskyUrl&OUTPUT=PNG_FILE'\n";
 		print OUT "curl '$gskyUrl&BBOX=0,0,0,0'\n";
-#		print OUT "curl 'http://$domain/ows/ge?SERVICE=WMS&VERSION=1.1.1&REQUEST=GetMap&SRS=EPSG:4326&WIDTH=512&HEIGHT=512&LAYERS=$layer&STYLES=default&TRANSPARENT=TRUE&FORMAT=image/png&BBOX=$west,$south,$east,$north&$time'\n";
 	}
 }
 sub GroundOverlay
@@ -382,15 +381,15 @@ sub do_main
 					if($n1 >= $n) { last; }
 				}
 			}
-			&debug("Number of tiles: <big>$n_tiles</big>");
+			&debug("Actual number of tiles: <big>$n_tiles</big>");
 			if ($n_tiles <= 0)
 			{
 				&debug("<font style=\"color:red; font-size:12px\">No tiles in the selected region. Please choose another region.</font>");
 			}
-			if ($n_tiles > 300)
-			{
-				&debug("<font style=\"color:red; font-size:12px\">On a slow internet connection this could take a long time to display and/or crash Google Earth.<br>Please consider choosing a smaller region or a lower resolution.</font>");
-			}
+#			if ($n_tiles > 300)
+#			{
+#				&debug("<font style=\"color:red; font-size:12px\">On a slow internet connection this could take a long time to display and/or crash Google Earth.<br>Please consider choosing a smaller region or a lower resolution.</font>");
+#			}
 		}
 		sub ElapsedTime
 		{
@@ -430,15 +429,17 @@ sub do_main
 					}
 				}
 			}
-			&debug("Number of tiles: <big>$n_tiles</big>");
+			&debug("Actual number of tiles: <big>$n_tiles</big>");
 			if ($n_tiles <= 0)
 			{
 				&debug("<font style=\"color:red; font-size:12px\">No tiles in the selected region. Please choose another region.</font>");
 			}
-			if ($n_tiles > 50 && $n_tiles <= 100)
-			{
-				&debug("<font style=\"color:red; font-size:12px\">This could take a long time to fetch the tiles.<br>Please consider choosing a smaller region or a lower resolution.</font>");
-			}
+
+#			if ($n_tiles > 50 && $n_tiles <= 100)
+#			{
+#				&debug("<font style=\"color:red; font-size:12px\">This could take a long time to fetch the tiles.<br>Please consider choosing a smaller region or a lower resolution.</font>");
+#			}
+			
 			if ($n_tiles > 100)
 			{
 				&debug("<font style=\"color:red; font-size:12px\">Too many tiles to be fetched. A smaller BBox is required for high resolution.</font>");
@@ -457,6 +458,17 @@ sub do_main
 			my $s = int($bbox[1] * $m);
 			my $e = int($bbox[2] * $m);
 			my $n = int($bbox[3] * $m);
+			
+			# For High Res alone, we need a place mark in the middle of the tiled area.
+			my $pmx = $bbox[0] + (($bbox[2] - $bbox[0])/2);
+			my $pmy = $bbox[1] + (($bbox[3] - $bbox[1])/2);
+			$placemark = "<Placemark>
+	<Point>
+	  <coordinates>$pmx,$pmy,0</coordinates>
+	</Point>
+</Placemark>
+";
+#p("$pmx, $pmy");			
 			CountTheTiles($w,$s,$e,$n);
 			my @keys = sort keys %tilesHash;
 			my $n_tiles = 0;
@@ -485,7 +497,8 @@ sub do_main
 						$tileUrl =~ s/&/&amp;/gi;
 					}
 					$title = "$west,$south,$east,$north R$r";
-					GroundOverlayTiles($title);
+					GroundOverlayTiles($n_tiles,$title);
+					$placemark = ""; # Blank this for next round
 				}
 			}
 			$kml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>
@@ -794,112 +807,40 @@ $groundOverlay
 				}
 			}
 		}
-		sub GetHash_1 # Make a hash of the 0.1x0.1 tiles within the bbox
-		{
-			my $layer = $_[0];
-			my $time = $_[1];
-			my $r3 = $_[2];
-			$layerdir = "$basedir/$layer/$time/$r3";
-			chdir $layerdir;
-			$dirlist = `ls -1 *.png`;
-			@dirlist = split(/\n/, $dirlist);
-			my $len = $#dirlist;
-			%tilesHash = {};
-			$ii = 0;
-			$r = 0.1;
-			for (my $i=0; $i <= $len; $i++)
-			{
-				$filename = $dirlist[$i];
-				@bbox = split (/_/, $filename);
-				$m = int(1/$r);
-				$w = int($bbox[0]) * $m;
-				$s = int($bbox[1]) * $m;
-				$e = (int($bbox[2]) - $r) * $m;
-				$n = (int($bbox[3]) - $r) * $m;
-				for (my $j0 = $w; $j0 <= $e; $j0++)
-				{
-					$j = $j0/$m;
-					for (my $k0 = $s; $k0 <= $n; $k0++)
-					{
-						$fin = 0;
-						$k = $k0/$m;
-						$w1 = sprintf("%.1f", $j); 
-						$s1 = sprintf("%.1f", $k);
-						$e1 = sprintf("%.1f", $j+$r);
-						$n1 = sprintf("%.1f", $k+$r);
-						$sub_tile = $w1 . "_" . $s1 . "_" . $e1 . "_" . $n1;
-						$ii++;
-#&debug($tilesHash{$sub_tile});
-						$tilesHash{$sub_tile} = $ii;
-#&debug("$sub_tile:$tilesHash{$sub_tile}");
-#						print "$ii. $sub_tile\n";
-					}
-				}
-			}
-		}
-		sub GetHash_0
-		{
-			my $layer = $_[0];
-			my $time = $_[1];
-			my $r3 = $_[2];
-			$layerdir = "$basedir/$layer/$time/$r3";
-#&debug($layerdir);
-			chdir $layerdir;
-			$dirlist = `ls -1 *.png`;
-			@dirlist = split(/\n/, $dirlist);
-			my $len = $#dirlist;
-			%tilesHash = {};
-			$ii = 0;
-			$r = 0.1;
-			for (my $i=0; $i <= $len; $i++)
-			{
-#				$filename = "150.0_-33.0_153.0_-30.0_1986-08-15_3.png";
-				$filename = $dirlist[$i];
-#				print "$i. $filename ------------------------ <br>\n";
-#&debug("<a href=\"/GEWeb/DEA_Layers/landsat8_nbart_16day/2013-03-19/3/$filename\">$filename</a>");
-				@bbox = split (/_/, $filename);
-				$m = int(1/$r);
-				$w = int($bbox[0]) * $m;
-				$s = int($bbox[1]) * $m;
-				$e = (int($bbox[2]) - $r) * $m;
-				$n = (int($bbox[3]) - $r) * $m;
-				for (my $j0 = $w; $j0 <= $e; $j0++)
-				{
-					$j = $j0/$m;
-					for (my $k0 = $s; $k0 <= $n; $k0++)
-					{
-						$fin = 0;
-						$k = $k0/$m;
-						$w1 = sprintf("%.1f", $j); 
-						$s1 = sprintf("%.1f", $k);
-						$e1 = sprintf("%.1f", $j+$r);
-						$n1 = sprintf("%.1f", $k+$r);
-						$sub_tile = $w1 . "_" . $s1 . "_" . $e1 . "_" . $n1;
-						$ii++;
-#&debug($tilesHash{$sub_tile});
-						$tilesHash{$sub_tile} = $ii;
-#&debug("$sub_tile:$tilesHash{$sub_tile}");
-#						print "$ii. $sub_tile\n";
-					}
-				}
-			}
-		}
 		if ($sc_action eq "CountSubTiles") # Determine whether a 0.1x0.1 tile is within a 3x3 tile
 		{
-			$layer = "landsat5_nbar_16day";
-			$time = "1986-08-15";
-			$r3 = 3;
-			GetHash($layer, $time, $r3);
-			$this_tile = "152.9_-30.9_153.0_-30.8";
-			if ($tilesHash{$this_tile})
-			{
-				print $tilesHash{$this_tile} . "\n";
+		}
+		if ($sc_action eq "Kill")
+		{
+			# Kill previous CGI
+			$pquery = reformat($ARGV[2]);
+			$pquery =~ s/\\//gi;
+#&debug("pquery=$pquery");
+			Get_fields;	# Parse the $pquery to get all form input values
+#			@fields = split (/\|/, $layer);
+#			$layer = $fields[0];
+			print "Content-type: text/html\n\n"; $headerAdded = 1;
+			$layer =~ s/\|/\\|/g;
+			my $pscmd = "ps -ef | grep \"/var/www/cgi-bin/google_earth.cgi DEA.*$layer\" | grep -v grep";
+			my $psline = `$pscmd`;
+			$psline =~ tr/  / /s;
+#print "pscmd=$pscmd\n";
+			my @fields = split (/\s/, $psline);
+			$pid = $fields[1];
+#print "$pid\n";
+			my $thispid = $$;
+#print "$thispid\n";
+			if ($pid && $pid ne $thispid) 
+			{ 
+				`kill $pid`;
+				print "<font style=\"color:#FF0000\">Killed the process. ID = <b>$pid</b></font>";
 			}
 			else
 			{
-				print "Not Found\n";
+				print "Could not find any process to kill.\n";
 			}
 		}
+		
 		else
 		{
 			&debug("OK");
