@@ -1037,7 +1037,17 @@ func serveWPS(ctx context.Context, params utils.WPSParams, conf *utils.Config, r
 		ctx, ctxCancel := context.WithCancel(ctx)
 		defer ctxCancel()
 		errChan := make(chan error, 100)
-		suffix := fmt.Sprintf("_%04d", rand.Intn(1000))
+
+		var suffix string
+		if params.GeometryId != nil {
+			geoId := strings.TrimSpace(*params.GeometryId)
+			if len(geoId) > 0 {
+				suffix = fmt.Sprintf("_%s", geoId)
+			}
+		}
+		if len(suffix) < 2 {
+			suffix = fmt.Sprintf("_%04d", rand.Intn(1000))
+		}
 
 		for ids, dataSource := range process.DataSources {
 			if *verbose {
