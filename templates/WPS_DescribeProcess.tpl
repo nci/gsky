@@ -12,11 +12,15 @@
 			<ows:Abstract>{{ .Abstract }}</ows:Abstract>
 			<LiteralData>
 				<ows:DataType ows:reference="{{ .DataTypeRef }}">{{ .DataType }}</ows:DataType>
+				{{ if .AllowedValues }}
 				<ows:AllowedValues>
 					{{ range $index, $value := .AllowedValues }}
 					<ows:Value>{{ . }}</ows:Value>
 					{{ end }}
 				</ows:AllowedValues>
+				{{ else }}
+				<ows:AnyValue />
+				{{ end }}
 			</LiteralData>
 		</Input>
 		{{ end }}

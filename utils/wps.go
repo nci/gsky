@@ -20,6 +20,7 @@ import (
 
 type Data struct {
 	ComplexData string
+	LiteralData string
 }
 
 type Input struct {
@@ -62,6 +63,8 @@ func ParsePost(rc io.ReadCloser) (map[string][]string, error) {
 			parsedBody["end_datetime"] = []string{input.Data.ComplexData}
 		} else if inputID == "geometry" {
 			parsedBody["geometry"] = []string{fmt.Sprintf(`geometry=%s`, input.Data.ComplexData)}
+		} else if inputID == "geometry_id" {
+			parsedBody["geometry_id"] = []string{input.Data.LiteralData}
 		}
 	}
 
@@ -78,6 +81,7 @@ type WPSParams struct {
 	EndDateTime   *string               `json:"end_datetime"`
 	Product       *string               `json:"product"`
 	FeatCol       geo.FeatureCollection `json:"feature_collection"`
+	GeometryId    *string               `json:"geometry_id"`
 }
 
 // WPSRegexpMap maps WPS request parameters to
@@ -199,6 +203,10 @@ func WPSParamsChecker(params map[string][]string, compREMap map[string]*regexp.R
 			jsonFields = append(jsonFields, fmt.Sprintf(`"feature_collection":%s`, featCol[1]))
 		}
 
+	}
+
+	if geometryId, geometryIdOk := params["geometry_id"]; geometryIdOk {
+		jsonFields = append(jsonFields, fmt.Sprintf(`"geometry_id":"%s"`, geometryId[0]))
 	}
 
 	jsonParams := fmt.Sprintf("{%s}", strings.Join(jsonFields, ","))
