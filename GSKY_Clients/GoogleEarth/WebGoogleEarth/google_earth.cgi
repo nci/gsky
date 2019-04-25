@@ -57,9 +57,11 @@ sub GroundOverlayTiles
 	# To create the multi "GroundOverlay" KML for displaying the DEA tiles
 	my $n_tiles = $_[0];
 	my $title = $_[1];
-	my $skip_curl = $_[2];
+#	my $region_title = $_[2];
+#	my $skip_curl = $_[2];
 #p($title);
 	$groundOverlay .= "
+<name>$region</name>	
 $placemark
 <!-- $n_tiles -->
 <GroundOverlay>
@@ -440,10 +442,10 @@ sub do_main
 #				&debug("<font style=\"color:red; font-size:12px\">This could take a long time to fetch the tiles.<br>Please consider choosing a smaller region or a lower resolution.</font>");
 #			}
 			
-			if ($n_tiles > 100)
+			if ($n_tiles > 125)
 			{
 				&debug("<font style=\"color:red; font-size:12px\">Too many tiles to be fetched. A smaller BBox is required for high resolution.</font>");
-				&debug("<font style=\"color:lime; font-size:12px\">Giving Up!</font>");
+				&debug("<font style=\"color:#008000; font-size:12px\">Giving Up!</font>");
 				exit;
 			}
 		}
@@ -463,6 +465,7 @@ sub do_main
 			my $pmx = $bbox[0] + (($bbox[2] - $bbox[0])/2);
 			my $pmy = $bbox[1] + (($bbox[3] - $bbox[1])/2);
 			$placemark = "<Placemark>
+	<name>$region_title</name>			
 	<Point>
 	  <coordinates>$pmx,$pmy,0</coordinates>
 	</Point>
@@ -594,7 +597,8 @@ $groundOverlay
 						$tileUrl =~ s/&/&amp;/gi;
 					}
 					$title = "$w1,$s1,$e1,$n1 R$i";
-					GroundOverlayTiles($title);
+					$n_tiles++;
+					GroundOverlayTiles($n_tiles,$title);
 					if($n1 == $n) { last; }
 				}
 			}

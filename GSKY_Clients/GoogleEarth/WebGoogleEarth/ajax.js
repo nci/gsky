@@ -44,7 +44,7 @@ function CountTheTiles(form)
 	tot_tiles = Math.round(tiles_row * tiles_col);
 	if (tot_tiles == 0 && (tiles_row > 0 || tiles_col > 0)) { tot_tiles += 1; }
 	tot_tilesCommified = Commify(tot_tiles);
-	var warning = "Estimated no. of tiles: <b>" + tot_tilesCommified + "</b><br><br><small>\n";
+	var warning = "Estimated no. of tiles: <b>" + tot_tilesCommified + "</b><br>\n";
 	var tot_sec = tot_tiles * 5; // Estimated 5 sec per tile fetching
 	if (tot_sec < 3600)
 	{
@@ -56,25 +56,59 @@ function CountTheTiles(form)
 		estime = Commify(Math.round(tot_tiles * 5 / 3660));
 		estime_str = estime + " hours.";
 	}
+	warning += "Time: " + estime_str + "<br><br><br><small>";
 	if (res == 3 && tot_tiles > 100)
 	{
 		warning += "Some of these will be empty tiles and will be eliminated.<br><br><b><font style=\"color:#008000\">Safe to proceed.</font>";
 	}
-	if (res == 0.1 && tot_tiles > 50 && tot_tiles <= 100)
+	if (res == 0.1 && tot_tiles > 50 && tot_tiles <= 125)
 	{
-		warning += "If not in cache, fetching these many tiles may take up to <font style=\"color:#0000FF\"><b>" + estime_str + "</b></font><br><br></small><big><big><b><font style=\"color:#800000\">Be warned!</font></b><br><br></big></big>";
+		warning += "<big><big><b><font style=\"color:#800000\">Warning!</font></b><br><br></big></big>If not in cache, fetching these many tiles may take up to <font style=\"color:#0000FF\"><b>" + estime_str + "</b></font><br><br></small>";
 	}
-	if (res == 0.1 && tot_tiles > 100)
+	if (res == 0.1 && tot_tiles > 125)
 	{
 		warning += "If not in cache, fetching these many tiles may take up to <font style=\"color:#0000FF\"><b>" + estime_str + "</b></font><br><b><font style=\"color:red\"></small><big><big>Unsafe to proceed.</big></big></font></b><br><br><small>Choose a smaller region.</small>";
 	}
 	document.getElementById('n_tiles').innerHTML = warning;
 	showHide('n_tiles','block');
 }
-function GetBBoxValue()
+function CalculateBBox()
 {
-	var bbox= document.getElementById('BBox_finder').contentWindow.document.getElementById('boxbounds').innerHTML;
+	var crosshair = document.forms.google_earth.crosshair.value;
+	var zoom_size = document.forms.google_earth.zoom_size.value;
+	if (!crosshair) { alert ("Please locate an area first!"); return;}
+	var xy = crosshair.split(",");
+	var x = xy[0];
+	var y = xy[1];
+	var x1 = parseFloat(x) - parseFloat((zoom_size/10));
+	x1 = x1.toFixed(1);
+	var y1 = parseFloat(y) - parseFloat((zoom_size/10));
+	y1 = y1.toFixed(1);
+	var x2 = parseFloat(x) + parseFloat((zoom_size/10)) + 0.1;
+	x2 = x2.toFixed(1);
+	var y2 = parseFloat(y) + parseFloat((zoom_size/10)) + 0.1;
+	y2 = y2.toFixed(1);
+	var bbox = x1 + "," + y1 + "," + x2 + "," + y2;
+//alert(bbox);
 	document.forms.google_earth.bbox.value = bbox;
+//alert(document.forms.google_earth.resolution[1].value);
+	document.forms.google_earth.resolution[1].selected = true;
+	CountTheTiles(document.forms.google_earth);
+	ValidateInput(document.forms.google_earth,2);
+	showHide('zoom_box','div','none');
+}
+function GetBBoxValue(box)
+{
+	if (box == 1)
+	{
+		var bbox= document.getElementById('BBox_finder').contentWindow.document.getElementById('boxbounds').innerHTML;
+		document.forms.google_earth.bbox.value = bbox;
+	}
+	if (box == 2)
+	{
+		var crosshair= document.getElementById('BBox_finder').contentWindow.document.getElementById('center').innerHTML;
+		document.forms.google_earth.crosshair.value = crosshair;
+	}
 }
 function BlankBboxInputBox(item)
 {
@@ -122,7 +156,7 @@ function GetCoordinates(form,item)
 		return;
 	}
 	var region = [];
-	region["Aus_ALL"] = "112.324219,-44.087585,153.984375,-10.919618";
+	region["Australia"] = "112.324219,-44.087585,153.984375,-10.919618";
 	region["Canberra"] = "149.049454,-35.430252,149.288156,-35.271971";
 	region["WA"] = "113.378906,-35.137879,129.067383,-13.539201";
 	region["NT"] = "128.979492,-26.076521,137.988281,-11.005904";
@@ -314,6 +348,7 @@ function ajaxFunction(n,form,item)
 		"&bbox=" + bbox +
 		"&resolution=" + form.resolution.value +
 		"&create_tiles=" + create_tiles +
+		"&region_title=" + form.region_title.value +
 		"&time=" + times;
 		pquery = escape(pquery);
 		pquery = pquery.replace("+","%2B");
