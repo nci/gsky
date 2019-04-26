@@ -45,16 +45,21 @@ function CountTheTiles(form)
 	if (tot_tiles == 0 && (tiles_row > 0 || tiles_col > 0)) { tot_tiles += 1; }
 	tot_tilesCommified = Commify(tot_tiles);
 	var warning = "Estimated no. of tiles: <b>" + tot_tilesCommified + "</b><br>\n";
-	var tot_sec = tot_tiles * 5; // Estimated 5 sec per tile fetching
+	var sec_per_tile = 0.7; // no. of seconds to fetch a 0.1x0.1 tile
+	var tot_sec = Math.round(tot_tiles * sec_per_tile); 
 	if (tot_sec < 3600)
 	{
-		estime = Commify(Math.round(tot_tiles * 5 / 60));
-		estime_str = estime + " minutes.";
+		var sec = tot_sec % 60;
+		if (sec < 10) { sec = "0" + sec; }
+		estime = Commify(Math.round(tot_sec / 60));
+		estime_str = estime + "m " + sec + "s";
 	}
 	else
 	{
-		estime = Commify(Math.round(tot_tiles * 5 / 3660));
-		estime_str = estime + " hours.";
+		var min = (tot_sec) % 60;
+		if (min < 10) { min = "0" + min; }
+		estime = Commify(Math.round(tot_sec / 3600));
+		estime_str = estime + "h " + min + "m";
 	}
 	warning += "Time: " + estime_str + "<br><br><br><small>";
 	if (res == 3 && tot_tiles > 100)
@@ -70,16 +75,29 @@ function CountTheTiles(form)
 		warning += "If not in cache, fetching these many tiles may take up to <font style=\"color:#0000FF\"><b>" + estime_str + "</b></font><br><b><font style=\"color:red\"></small><big><big>Unsafe to proceed.</big></big></font></b><br><br><small>Choose a smaller region.</small>";
 	}
 	document.getElementById('n_tiles').innerHTML = warning;
-	showHide('n_tiles','block');
+//	showHide('n_tiles','block');
 }
-function CalculateBBox()
+function ZoomInAroundCrosshair()
 {
-	var crosshair = document.forms.google_earth.crosshair.value;
-	var zoom_size = document.forms.google_earth.zoom_size.value;
-	if (!crosshair) { alert ("Please locate an area first!"); return;}
+	var form = document.forms.google_earth;
+	var crosshair = form.crosshair.value;
+	var zoom_size = form.zoom_size.value;
+	if (!crosshair) 
+	{ 
+		GetBBoxValue(2);
+		crosshair = document.forms.google_earth.crosshair.value;
+		if (!crosshair) return;
+	}
 	var xy = crosshair.split(",");
 	var x = xy[0];
 	var y = xy[1];
+	if (x < 112.8 || x > 153.6 || y < -43.8 || y > -10.6)
+	{
+		alert("Crosshair is outside Australia. Data will not be available.");
+		document.forms.google_earth.crosshair.value = "";
+		document.forms.google_earth.region_title.value = "";
+		return;
+	}
 	var x1 = parseFloat(x) - parseFloat((zoom_size/10));
 	x1 = x1.toFixed(1);
 	var y1 = parseFloat(y) - parseFloat((zoom_size/10));
@@ -89,25 +107,51 @@ function CalculateBBox()
 	var y2 = parseFloat(y) + parseFloat((zoom_size/10)) + 0.1;
 	y2 = y2.toFixed(1);
 	var bbox = x1 + "," + y1 + "," + x2 + "," + y2;
-//alert(bbox);
-	document.forms.google_earth.bbox.value = bbox;
-//alert(document.forms.google_earth.resolution[1].value);
-	document.forms.google_earth.resolution[1].selected = true;
-	CountTheTiles(document.forms.google_earth);
-	ValidateInput(document.forms.google_earth,2);
-	showHide('zoom_box','div','none');
+	form.bbox.value = bbox;
+	form.resolution[1].selected = true;
+	CountTheTiles(form);
+	ValidateInput(form,2);
+//	showHide('zoom_box','div','none');
+	form.region_title.value = ""; // Blank it
+	form.crosshair.value = ""; // Blank it
 }
 function GetBBoxValue(box)
 {
 	if (box == 1)
 	{
-		var bbox= document.getElementById('BBox_finder').contentWindow.document.getElementById('boxbounds').innerHTML;
-		document.forms.google_earth.bbox.value = bbox;
+		try 
+		{
+			var bbox= document.getElementById('BBox_finder').contentWindow.document.getElementById('boxbounds').innerHTML;
+			document.forms.google_earth.bbox.value = bbox;
+		}
+		catch(err)
+		{
+			alert("Please open the BBox Finder and draw a box.");
+			return;
+		}
+		CountTheTiles(document.forms.google_earth);
 	}
 	if (box == 2)
 	{
-		var crosshair= document.getElementById('BBox_finder').contentWindow.document.getElementById('center').innerHTML;
-		document.forms.google_earth.crosshair.value = crosshair;
+		try 
+		{
+			var crosshair= document.getElementById('BBox_finder').contentWindow.document.getElementById('center').innerHTML;
+			document.forms.google_earth.crosshair.value = crosshair;
+		}
+		catch(err)
+		{
+			alert("Please open the BBox Finder and move the crosshair into place.");
+			return;
+		}
+//return;		
+		// Create a string for the title
+		var xy = crosshair.split(",");
+		var x = parseFloat(xy[0]).toFixed(1);
+		var y = parseFloat(xy[1]).toFixed(1);
+		var title = x + "," + y;
+		
+//alert(title);		
+		document.forms.google_earth.region_title.value = title;
 	}
 }
 function BlankBboxInputBox(item)
@@ -144,7 +188,7 @@ function ValidateInput(form,n)
 		return;
 	}
 	showHide("killed",'span',"none");
-	document.getElementById("kml").innerHTML = "<img alt=\"Wait!\" src=\"/images/ajax-loader.gif\"> Fetching...&nbsp;&nbsp;&nbsp;<input type=\"button\" value=\"Cancel\" onclick=\"CancelJob(this.form)\">";
+	document.getElementById("kml").innerHTML = "<img alt=\"Wait!\" src=\"/images/ajax-loader.gif\"> Fetching...&nbsp;&nbsp;&nbsp;<input type=\"button\" value=\"Cancel\" style=\"color:red\" onclick=\"CancelJob(this.form)\">";
 	showHide("kml",'span',"block");
 	ajaxFunction(n,form);
 }

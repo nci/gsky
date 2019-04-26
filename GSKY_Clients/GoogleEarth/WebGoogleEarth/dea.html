@@ -12,167 +12,158 @@ if(url.indexOf('index.html') >= 0) url = url.replace('index.html','m_dea.html');
 else url = 'm_dea.html';
 (function(a,b){if(/(android|bb\d+|meego).+mobile|avantgo|bada\/|blackberry|blazer|compal|elaine|fennec|hiptop|iemobile|ip(hone|od)|iris|kindle|lge |maemo|midp|mmp|mobile.+firefox|netfront|opera m(ob|in)i|palm( os)?|phone|p(ixi|re)\/|plucker|pocket|psp|series(4|6)0|symbian|treo|up\.(browser|link)|vodafone|wap|windows ce|xda|xiino/i.test(a)||/1207|6310|6590|3gso|4thp|50[1-6]i|770s|802s|a wa|abac|ac(er|oo|s\-)|ai(ko|rn)|al(av|ca|co)|amoi|an(ex|ny|yw)|aptu|ar(ch|go)|as(te|us)|attw|au(di|\-m|r |s )|avan|be(ck|ll|nq)|bi(lb|rd)|bl(ac|az)|br(e|v)w|bumb|bw\-(n|u)|c55\/|capi|ccwa|cdm\-|cell|chtm|cldc|cmd\-|co(mp|nd)|craw|da(it|ll|ng)|dbte|dc\-s|devi|dica|dmob|do(c|p)o|ds(12|\-d)|el(49|ai)|em(l2|ul)|er(ic|k0)|esl8|ez([4-7]0|os|wa|ze)|fetc|fly(\-|_)|g1 u|g560|gene|gf\-5|g\-mo|go(\.w|od)|gr(ad|un)|haie|hcit|hd\-(m|p|t)|hei\-|hi(pt|ta)|hp( i|ip)|hs\-c|ht(c(\-| |_|a|g|p|s|t)|tp)|hu(aw|tc)|i\-(20|go|ma)|i230|iac( |\-|\/)|ibro|idea|ig01|ikom|im1k|inno|ipaq|iris|ja(t|v)a|jbro|jemu|jigs|kddi|keji|kgt( |\/)|klon|kpt |kwc\-|kyo(c|k)|le(no|xi)|lg( g|\/(k|l|u)|50|54|\-[a-w])|libw|lynx|m1\-w|m3ga|m50\/|ma(te|ui|xo)|mc(01|21|ca)|m\-cr|me(rc|ri)|mi(o8|oa|ts)|mmef|mo(01|02|bi|de|do|t(\-| |o|v)|zz)|mt(50|p1|v )|mwbp|mywa|n10[0-2]|n20[2-3]|n30(0|2)|n50(0|2|5)|n7(0(0|1)|10)|ne((c|m)\-|on|tf|wf|wg|wt)|nok(6|i)|nzph|o2im|op(ti|wv)|oran|owg1|p800|pan(a|d|t)|pdxg|pg(13|\-([1-8]|c))|phil|pire|pl(ay|uc)|pn\-2|po(ck|rt|se)|prox|psio|pt\-g|qa\-a|qc(07|12|21|32|60|\-[2-7]|i\-)|qtek|r380|r600|raks|rim9|ro(ve|zo)|s55\/|sa(ge|ma|mm|ms|ny|va)|sc(01|h\-|oo|p\-)|sdk\/|se(c(\-|0|1)|47|mc|nd|ri)|sgh\-|shar|sie(\-|m)|sk\-0|sl(45|id)|sm(al|ar|b3|it|t5)|so(ft|ny)|sp(01|h\-|v\-|v )|sy(01|mb)|t2(18|50)|t6(00|10|18)|ta(gt|lk)|tcl\-|tdg\-|tel(i|m)|tim\-|t\-mo|to(pl|sh)|ts(70|m\-|m3|m5)|tx\-9|up(\.b|g1|si)|utst|v400|v750|veri|vi(rg|te)|vk(40|5[0-3]|\-v)|vm40|voda|vulc|vx(52|53|60|61|70|80|81|83|85|98)|w3c(\-| )|webc|whit|wi(g |nc|nw)|wmlb|wonu|x700|yas\-|your|zeto|zte\-/i.test(a.substr(0,4)))window.location=b})(navigator.userAgent||navigator.vendor||window.opera,url);
 </script>
-
-
-<style>
-.content-container {
-	position: relative;
-	z-index: 99;
-	margin-top: 10px
-}
-.content-container article {
-	float: left;
-	width: 50%;
-	height: 300px;
-	padding: 20px;
-	background: #fff;
-	border: 1px solid #e7e6eb;
-	-moz-border-radius: 5px;
-	-webkit-border-radius: 5px;
-	border-radius: 5px;
-	margin-bottom: 6px
-}
-.content-container tldr {
-	float: right;
-	width: 100%;
-	padding: 20px;
-	background: #fff;
-	border: 1px solid #e7e6eb;
-	-moz-border-radius: 5px;
-	-webkit-border-radius: 5px;
-	border-radius: 5px;
-	margin-bottom: 6px
-}
-.content-container details {
-	float: left;
-	width: 100%;
-	padding: 20px;
-	background: #fff;
-	border: 1px solid #e7e6eb;
-	-moz-border-radius: 5px;
-	-webkit-border-radius: 5px;
-	border-radius: 5px;
-	margin-bottom: 6px
-}
-.content-container article section {
-	margin: 0 0 30px 0
-}
-.content-container tldr section {
-	margin: 0 0 30px 0
-}
-</style>
 </head>
-<body background="bg-page.png">
+<body style="background-image:url('/images/bg-page.png')">
 <div class="container">
     <table class="jumbotron hidden-xs" style="width:100%">
 		<tr>
 			<td style="width:20%">
-				<img src="https://nci.org.au/wp-content/uploads/2018/09/NCI-Australia-and-Text-website-2-2.png" style="width:300px">
+				<img alt="NCI" src="https://nci.org.au/wp-content/uploads/2018/09/NCI-Australia-and-Text-website-2-2.png" style="width:300px">
 			</td>
 			<td style="text-align:right">
-				<img src="https://gsky.nci.org.au/img/logo.svg" width="150">
+				<img alt="GSKY" src="https://gsky.nci.org.au/img/logo.svg" width="150">
 			</td>
-			<td nowrap>
+			<td style="white-space:nowrap">
 				<h3>GskyGE: Wrapper for Google Earth Web - <b>DEA</b></h3>
 				(Click here for <a href="geoglam.html">GEOGLAM</a>)
 				
-				<br><h5>Powered by: <b>Google Earth Web</b></h5>
+				<br><h5>Powered by: <b>Google Earth Web</b> and <b>GSKY from NCI</b></h5>
 			</td>
 		</tr>
     </table>
 <!--    <div> -->
-	<div id="top_section">
-		<small>
-		<div class="content-container">
+	<div id="top_section" style="display:block">
+		<div class="content-container" style="font-size:small">
 		<article>
 			<tldr>
 			<h3>What's This?</h3>
 				This page will create the <b>KML</b> (Keyhole Markup Language) files to extend the functionality of 
 				<a href="https://earth.google.com/web/" target="_blank"><b>Google Earth Web</b></a> (<b>GEWeb</b>) 
-				and will display GSKY layers in both spatial and temporal dimensions. 
-			<h4>A quirk of Google Earth Web</h4>
-				The retrieval of tiles goes to sleep if there is no mouse activity.
-				Just keep moving the mouse to make the display run quickly.
+				to display GSKY layers in both spatial and temporal dimensions. <br><br>
+			<div style="background-color:#C6D2CE">
+			<b>A quirk of Google Earth Web</b>:<br>
+				The data retrieval goes to sleep if there is no mouse activity.
+				Move or click the mouse occasionally to keep it going.
+			</div>
 			</tldr>
 		</article>
 		</div>
-		<div class="content-container">
+		<div class="content-container" style="display:block">
 		<article>
 			<tldr>
 				<h3>How to create the KML File:</h3>
 				<small>
-				Select:<br>
-					- The GSKY layer.<br>
-					- Geographical region or Bounding box coordinates. <br>
-					- Data acquisition date(s).<br>
-					- Required resolution.<br>
-					- Click '<b>Create KML</b>' and click again on the link that appears to download the file.<br>
+					- Select the required GSKY layer.<br>
+					- Select the geographical region. <br>
+					- Select data acquisition date(s).<br>
+					- Select the required resolution.<br>
+					- Click '<b>Create KML</b>' for a link to download the file.<br>
 				</small>        
 			</tldr>
-			<span class="content-container" id="Create_KML" style="display:block">
+			<div class="content-container" id="Create_KML" style="display:block">
 			<details>
 				<section>
 					<ul>
 					<li>
 						<small>Choose '<b>Unlisted</b>' to manually enter its BBox.</small>
+						<ul>
+							<li><small>Use the <b>BBox Finder</b> <img src="/images/bbox_finder_1.png" height="25" alt="BBox Finder" title="BBox finder to define an area" onmousedown="ShowHideBBoxFinder(document.BBox_finder)" width="40"> to get the bounding box.</small></li>
+						</ul>
 					</li>
 					<li>
-						<small>Use the <b>BBox Finder</b> to get the bounding box.</small>
+						<small>Only one date can be chosen at a time, but can combine many KMLs.</small>
 					</li>
 					<li>
-						<small>Select multiple dates with Ctrl-click or Shift-click.</small>
+						<small>Low resolution is to see a larger area.</small>
 					</li>
 					<li>
-						<small>There is only one date in this demo dataset.</small>
+						<small>High resolution will let zooming in, but takes longer to display.</small>
 					</li>
 					<li>
-						<small>The level of resolution affects how the image looks when zoomed in.</small>
+						<small>Use a small BBox or pick a point <img src="/images/zoom_1.png" width="25px" alt="Zoom" title="Pick a point to define a smaller area" onmousedown="showHideToggle('zoom_box'); showHide('n_tiles','span','none')"> to zoom in or around it.</small>
 					</li>
 					<li>
-						<small>Using a higher resolution takes longer to display.</small>
-					</li>
-					<li>
-						<small>'High' and 'Ultra' resolution will crash Google Earth if whole Aus is chosen.</small>
-					</li>
-					<li>
-						<small>Choose smaller regions (e.g. a state) and combine to produce whole Australia.</small>
-					</li>
-					<li>
-							<small>Open it via the <b><img src="my_places.png" alt="My Places" title="My Places"> My Places | IMPORT KML FILE</b> link in <b><a href="https://earth.google.com/web/">GEWeb</a></b></small>.
+							<small>Open the KML via the <img src="my_places.png" alt="My Places" title="My Places"> <i><small><b>My Places | IMPORT KML FILE</b></small></i> link in <b><a href="https://earth.google.com/web/">GEWeb</a></b></small>.
 					</li>
 					</ul>
 				</section>
 			</details>
-			</span>
+			</div>
+		</article>
 		</div>
 	</div>
-	<div align="center" style="text-align:left; width:100%">
+	<div style="text-align:left; width:100%">
 	<form id="google_earth" name="google_earth" method="POST" action="google_earth.cgi">
-    <table class="jumbotron hidden-xs-" style="width:100%">
+    <table class="jumbotron hidden-xs-" style="width:100%; display:block;">
 		<tr>
 			<td style="width:20%; text-align:right; font-weight:bold; padding-right:10px" rowspan="6">
-				<img src="dea_australia.png" alt="DEA" style="width:207px; height:182px">
+				<img src="/images/dea_australia.png" alt="DEA">
 			</td>
-			<td style="width:20%; text-align:right; font-weight:bold; padding-right:10px;">
-				GSKY Layer:
+			<td style="width:20%; text-align:right; font-weight:bold; font-size:12px; padding-right:10px">
+				Layer:
 			</td>
-			<td style="width:80%; padding-top:0px; ">
-				<select name="layer" style="width:300px; font-size:12px; background-color:#F7F5D7" onchange="InsertTimes(this,'dea')">
+			<td style="width:10%; padding-top:0px; ">
+				<select name="layer" style="width:300px; font-size:12px; background-color:#F7F5D7" onchange="InsertTimes(this,'dea');">
 					<option value="">DEA</option>
-					<option value="LS8:NBAR:TRUE|Landsat 8 surface reflectance true colour">Landsat 8 surface reflectance true colour</option>
-					<option value="landsat8_nbart_16day|16-day DEA Landsat 8 terrain corrected surface reflectance">16-day DEA Landsat 8 terrain corrected surface reflectance</option>
+					<option value="landsat5_geomedian|LS5 terrain corrected surface reflectance geometric median">LS5 terrain corrected surface reflectance geometric median</option>
+					<option value="landsat7_geomedian|LS7 terrain corrected surface reflectance geometric median">LS7 terrain corrected surface reflectance geometric median</option>
+					<option value="landsat8_geomedian|LS8 terrain corrected surface reflectance geometric median">LS8 terrain corrected surface reflectance geometric median</option>
+					<option value="landsat5_nbar_16day|16-day LS5 surface reflectance">16-day LS5 surface reflectance</option>
+					<option value="landsat5_nbart_16day|16-day LS5 terrain corrected surface reflectance">16-day LS5 terrain corrected surface reflectance</option>
+					<option value="landsat7_nbar_16day|16-day LS7 surface reflectance" selected="selected">16-day LS7 surface reflectance</option>
+					<option value="landsat7_nbart_16day|16-day LS7 terrain corrected surface reflectance">16-day LS7 terrain corrected surface reflectance</option>
+					<option value="landsat8_nbar_16day|16-day LS8 surface reflectance">16-day LS8 surface reflectance</option>
+					<option value="landsat8_nbart_16day|16-day LS8 terrain corrected surface reflectance">16-day LS8 terrain corrected surface reflectance</option>
+					<option value="landsat5_nbar_daily|Daily LS5 surface reflectance">Daily LS5 surface reflectance</option>
+					<option value="landsat5_nbart_daily|Daily LS5 terrain corrected surface reflectance">Daily LS5 terrain corrected surface reflectance</option>
+					<option value="landsat7_nbar_daily|Daily LS7 surface reflectance">Daily LS7 surface reflectance</option>
+					<option value="landsat7_nbart_daily|Daily LS7 terrain corrected surface reflectance">Daily LS7 terrain corrected surface reflectance</option>
+					<option value="landsat8_nbar_daily|Daily LS8 surface reflectance">Daily LS8 surface reflectance</option>
+					<option value="landsat8_nbart_daily|Daily LS8 terrain corrected surface reflectance">Daily LS8 terrain corrected surface reflectance</option>
+					<option value="sentinel2_nbart_daily|Sentinel 2 Analysis Ready Data">Sentinel 2 Analysis Ready Data</option>
+					<option value="wofs|DEA Water Observation Feature Layer">DEA Water Observation Feature Layer</option>
 				</select>
+			</td>
+			<td rowspan="6" style="background-color:auto; vertical-align:top">
+				<span id="n_tiles" style="display:none; width:210px;">&nbsp;</span>
+				<div id="zoom_box" style="display:none; width:302px; font-size:small">
+				<hr>
+					<strong>To zoom in on a region:</strong>
+				<ol>
+					<li>Open the BBox Finder.
+<!--						<img src="/images/bbox_finder_1.png" height="25" alt="BBox Finder" title="BBox finder to define an area" onmousedown="ShowHideBBoxFinder(document.BBox_finder)" width="40">-->
+					</li>
+					<li>Move crosshair to location.</li>
+					<li><input type="text" name="crosshair" style="background-color:#F7F5D7" title="Click the paste icon or manually enter West,South coordinates.">
+					<img src="copy_paste.png" width="15px" alt="Copy and Paste" title="Insert the selected location point" onmousedown="GetBBoxValue(2);"> Paste
+					</li>
+					<li>Choose tiles: 
+					<select name="zoom_size" title="Number of tiles around the crosshair">
+						<option value="0">1</option>
+						<option value="1">9</option>
+						<option value="2" selected="selected">25</option>
+						<option value="3">49</option>
+						<option value="4">81</option>
+						<option value="5">121</option>
+					</select>&nbsp;
+					
+					</li>
+					<li><input type="text" name="region_title" style="background-color:#F7F5D7"> Title (optional)</li>
+					<li>
+					<img src="/images/tick.png" alt="Copy and Paste" title="Calculate and insert the selected BBox values" onmousedown="CalculateBBox(); "> Create KML</li>
+				</ol>
+				</div>
 			</td>
 		</tr>
 		<tr>
-			<td style="width:20%; text-align:right; font-weight:bold; padding-right:10px">
-				Geographic Region:
+			<td style="width:20%; text-align:right; font-weight:bold; font-size:12px; padding-right:10px">
+				Region:
 			</td>
-			<td style="width:80%; padding-top:0px">
-				<select name="region" style="width:300px; font-size:12px; padding:0px; background-color:#F7F5D7" onchange="GetCoordinates(this.form,this)">
-					<option value=""></option>
-					<option value="UNLISTED">Unlisted</option>
-					<option value="Aus_ALL">Australia</option>
+			<td style="width:1%; padding-top:0px">
+				<select name="region" style="width:300px; font-size:12px; padding:0px; background-color:#F7F5D7" onchange="GetCoordinates(this.form,this); CountTheTiles(this.form)">
+					<option value="Australia">Australia</option>
+					<option value="Canberra">Canberra</option>
+					<option value="UNLISTED">User-defined</option>
 					<option value="ACT">ACT</option>
 					<option value="NT">Northern Territory</option>
 					<option value="NSW">New South Wales</option>
@@ -185,38 +176,42 @@ else url = 'm_dea.html';
 			</td>
 		</tr>
 		<tr>
-			<td style="width:20%; text-align:right; font-weight:bold; padding-right:10px">
-				BBox<small><small>
-				(W,S,E,N)</small></small>:
+			<td style="width:20%; text-align:right; font-weight:bold; font-size:12px; padding-right:10px">
+				BBox:
 			</td>
-			<td style="width:80%; padding-top:10px">
-			<input type="text" name="bbox" style="width:300px; background-color:#F7F5D7; font-size:12px;"> 
-			<span onmousedown="BlankBboxInputBox(document.forms.google_earth.bbox)"><img src="sm_cross.png" alt="Blank Input" title="Blank the BBox value"></span>
-			<input type="button" value="BBox Finder" title="Show/Hide BBox Finder" style="height:18px; font-size:10px; font-weight:bold; color:blue" onclick="ShowHideBBoxFinder(document.BBox_finder)">
-			<img src="copy_paste.png" width="20px" alt="Copy and Paste" title="Insert the selected BBox value" onmousedown="GetBBoxValue()">
-			</td>
-		</tr>
-		<tr>
-			<td style="width:20%; text-align:right; font-weight:bold; padding-right:10px">
-				Acquisition Date:
-			</td>
-			<td style="width:80%; padding-top:10px">
-				<span id="times" style="display:block;"><select name="time" style="width:300px; background-color:#F7F5D7"><option value="">Latest</Option></select></span>
+			<td style="width:1%; padding-top:10px; white-space:nowrap">
+		<input type="text" name="bbox" style="width:300px; background-color:#F7F5D7; font-size:12px;" value="112.0,-44.0,153.0,-10.0" onchange="CountTheTiles(this.form)"><span onmousedown="BlankBboxInputBox(document.forms.google_earth.bbox)"><img src="sm_cross.png" alt="Blank Input" title="Blank the BBox value"></span>
+<!--			<input type="button" value="BBox Finder" title="Show/Hide BBox Finder" style="height:18px; font-size:10px; font-weight:bold; color:blue" onclick="ShowHideBBoxFinder(document.BBox_finder)">-->
+			<img src="/images/bbox_finder_1.png" height="25" alt="BBox Finder" title="BBox finder to define an area" onmousedown="ShowHideBBoxFinder(document.BBox_finder)" width="40">
+			<img src="/images/paste_1.png" width="25px" alt="Copy and Paste" title="Insert the selected BBox values" onmousedown="GetBBoxValue(1); CountTheTiles(document.forms.google_earth)">
+			<img src="/images/zoom_1.png" width="25px" alt="Zoom" title="Pick a point to define a smaller area" onmousedown="showHideToggle('zoom_box'); showHide('n_tiles','span','none')">
+			&nbsp;&nbsp;&nbsp;
 			</td>
 		</tr>
 		<tr>
-			<td style="width:20%; text-align:right; font-weight:bold; padding-right:10px">
+			<td style="width:20%; text-align:right; font-weight:bold; font-size:12px; padding-right:10px">
+				Date:
+			</td>
+			<td style="width:1%; padding-top:10px">
+				<span id="times" style="display:block;"><select name="time" style="width:300px; background-color:#F7F5D7"><option value="1999-08-16">1999-08-16</Option></select></span>
+			</td>
+		</tr>
+		<tr>
+			<td style="width:20%; text-align:right; font-weight:bold; font-size:12px; padding-right:10px">
 				Resolution:
 			</td>
-			<td style="width:80%; padding-top:10px">
+			<td style="width:1%; padding-top:10px">
 				<span id="resolutions" style="display:block;">
-				<select name="resolution" style="width:300px; background-color:#F7F5D7">
-					<option value="3">Low (3&deg;x3&deg;)</Option>
+				<select name="resolution" style="width:300px; background-color:#F7F5D7" onchange="CountTheTiles(this.form)">
+					<option value="3">Standard (3&deg;x3&deg; Tiles)</Option>
+					<option value="0.1">High (0.1&deg;x0.1&deg; Tiles)</Option>
+<!--					
 					<option value="2">Medium (2&deg;x2&deg;)</Option>
 					<option value="1">High I(1&deg;x1&deg;)</Option>
 					<option value="0.5">High II (0.5&deg;x0.5&deg;)</Option>
 					<option value="0.2">High III (0.2&deg;x0.2&deg;)</Option>
 					<option value="0.1">High IV (0.1&deg;x0.1&deg;)</Option>
+-->					
 				</select></span>
 			</td>
 		</tr>
@@ -225,6 +220,7 @@ else url = 'm_dea.html';
 				<input type="button" value="Create KML" style="color:blue" onclick="ValidateInput(document.forms.google_earth,2);">
 				<input type="hidden" name="create_tiles" value="create_tiles">
 				<span id="kml" style="display: none"></span>
+				<span id="killed" style="display: none"></span>
 			</td>
 		</tr>
 	</table>
@@ -243,37 +239,40 @@ else url = 'm_dea.html';
 		based on the visible Lat/Lon coordinates on the screen. 
 
 		<br><br>
-		GEWeb does not have a WMS support as above. However, it can send the GetMap requests
+			<strong>GEWeb</strong> does not have a WMS support as above. However, it can send the GetMap requests
 		via a KML file. This allows us to manually request the data for any region by specifying the
 		coordinates and the date of data acquisition. The latter is very useful, as all other clients except
 		TerriaMap can only show the latest time slice.
 
 		<br><br>
-		While GE works almost similar to TerriaMap, it lacks the ability to display time layers as in TerriaMap.
-		When using their WMS service there is no way to specify a time layer as e.g. <i>TIME=2001-01-01</i>.
+		While 
+			<strong>GE</strong> works almost similar to TerriaMap, it lacks the ability to display time layers.
+			i.e. when using their WMS service there is no way to specify a time layer as e.g. <i>TIME=2001-01-01</i>.
 		
 		<br><br>
 		Here we provide a way to create functional KML files where the time and Lat/Lon coordinates are coded
-		via web-based controls. Such KML files can be opened in GEWeb. (Note: Currently the KMLs are not compatible with GE, but we are working on it!)
+		via web-based controls. Such KML files can be opened in <strong>GEWeb</strong>. (Note: Currently the KMLs are not compatible with 
+			<strong>GE</strong>, but we are working on it!)
 		
         <br><br>
-        You will see a GSKY layer for each KML file imported. The layers will stay permanently and hence
+        	There will be a <strong>GSKY</strong> layer for each KML file imported. The layers will stay permanently and hence
 		you do not have to recreate the files every time. 
 		
 		<br><br>
-		You will, however, need to create a new KML file to see another time layer or
+			It is required to create a new KML file to see another time layer or
 		another bounding box. Unlike in the WMS service, you cannot simply pan to a different part of the globe and get the layers
 		re-displayed as you move. 
 
 		<br><br>
-		You can zoom in/out, and the GSKY layers will get smaller/bigger but their resolution will not change. To see a smaller region,
-		select from the "Geographical Region" dropdown or specify your own Lat/Lon values.
+			It is possible to zoom in/out, and the <strong>GSKY</strong> layers will get smaller/bigger but their resolution will not change. To see a smaller region,
+		select one from the "<strong>Region</strong>" dropdown, draw a box to 
+			get the <strong>BBox</strong> values or zoom in around a point.
 		
         <br><br> 
         <b>Notes:</b><br>
         <ul>
         <li>
-	        GEWeb  currently works only in Google Chrome.
+	        <strong>GEWeb</strong>  currently works only in Google Chrome.
         </li>
         <li>
 	        The dataset is available only for Australa. 
@@ -286,46 +285,26 @@ else url = 'm_dea.html';
 			</li>
         </ul>
         </li>
-		<li>
-			With a large region (e.g. whole of Australia) at high resoultion the execution may crash.
-		</li>
-		<li>
-			It is safe to use Low and Medium resolutions with the entire continent.
-		</li>
         </ul>
         <b>TIPs:</b><br>
         <ul>
         <li>
-	        GEWeb goes to sleep if there is no mouse activity for a while.<br>
-	        - Move your mouse over the globe occassionally to speed up the display.
-        </li>
-        <li>
-        	To display whole Australia at high resolution:<br>
-        	- Select each state separatley and save the layers.<br>
-        	- Then, click the "eye" icon to show them all together.
-        	
+	        <strong>GEWeb</strong> goes to sleep if there is no mouse activity for a while.<br>
+	        - Move 
+			or click the mouse over the globe occasionally to speed up the display.
         </li>
         </ul>
-</span>        
-        
-        
-    </small>
-		</td>
-		</tr>
-    </table>
-		</section>
+	</section>
 	</details>
 	</div>
-<small><small>
-<hr>
-Copyright &copy; 2019, National Computational Infrastructure (<a href="http://nci.org.au/">NCI</a>), Canberra, ACT 2601, Australia.
-
-Author: Dr. Arapaut V. Sivaprasad. Created on: 31 March, 2019.
-</small></small>
-<hr>
-    </div>
+	<hr>
+	<small><small>
+	Copyright &copy; 2019, National Computational Infrastructure (<a href="http://nci.org.au/">NCI</a>), Canberra, ACT 2601, Australia.
+	
+	Author: Dr. Arapaut V. Sivaprasad. Created on: 31 March, 2019.
+	</small></small>
+	<hr>
 </div>
 <script src="ajax.js"></script>
-</script>
 </body>
 </html>
