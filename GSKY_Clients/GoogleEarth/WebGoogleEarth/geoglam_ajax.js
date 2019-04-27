@@ -29,58 +29,8 @@ function Monify(value)
 
   return (str=="0")?"":(str.substring(0,len-2)+"."+str.substring(len-2,len));
 }
-function CountTheTiles(form)
-{
-	// Called when the BBox cordinates change. Triggered by Region and Resolution drop boxes
-	// The purpose is to warn the user if the no. of tiles is too large.
-	var res = form.resolution.value;
-	var	bbox = form.bbox.value;
-	if (!bbox) return;
-	coords = bbox.split(",");
-	x = coords[2] - coords[0];
-	y = coords[3] - coords[1];
-	tiles_row = x/res;
-	tiles_col = y/res;
-	tot_tiles = Math.round(tiles_row * tiles_col);
-	if (tot_tiles == 0 && (tiles_row > 0 || tiles_col > 0)) { tot_tiles += 1; }
-	tot_tilesCommified = Commify(tot_tiles);
-	var warning = "Estimated no. of tiles: <b>" + tot_tilesCommified + "</b><br>\n";
-	var sec_per_tile = 0.7; // no. of seconds to fetch a 0.1x0.1 tile
-	var tot_sec = Math.round(tot_tiles * sec_per_tile); 
-	if (tot_sec < 3600)
-	{
-		var sec = tot_sec % 60;
-		if (sec < 10) { sec = "0" + sec; }
-		estime = Commify(Math.round(tot_sec / 60));
-		estime_str = estime + "m " + sec + "s";
-	}
-	else
-	{
-		var min = (tot_sec) % 60;
-		if (min < 10) { min = "0" + min; }
-		estime = Commify(Math.round(tot_sec / 3600));
-		estime_str = estime + "h " + min + "m";
-	}
-	warning += "Time: " + estime_str + "<br><br><br><small>";
-	if (res == 3 && tot_tiles > 100)
-	{
-		warning += "Some of these will be empty tiles and will be eliminated.<br><br><b><font style=\"color:#008000\">Safe to proceed.</font>";
-	}
-	if (res == 0.1 && tot_tiles > 50 && tot_tiles <= 125)
-	{
-		warning += "<big><big><b><font style=\"color:#800000\">Warning!</font></b><br><br></big></big>If not in cache, fetching these many tiles may take up to <font style=\"color:#0000FF\"><b>" + estime_str + "</b></font><br><br></small>";
-	}
-	if (res == 0.1 && tot_tiles > 125)
-	{
-		warning += "If not in cache, fetching these many tiles may take up to <font style=\"color:#0000FF\"><b>" + estime_str + "</b></font><br><b><font style=\"color:red\"></small><big><big>Unsafe to proceed.</big></big></font></b><br><br><small>Choose a smaller region.</small>";
-	}
-	document.getElementById('n_tiles').innerHTML = warning;
-//	showHide('n_tiles','block');
-}
 function ZoomInAroundCrosshair()
 {
-alert("Here");
-return;
 	var form = document.forms.google_earth;
 	var crosshair = form.crosshair.value;
 	var zoom_size = form.zoom_size.value;
@@ -111,7 +61,6 @@ return;
 	var bbox = x1 + "," + y1 + "," + x2 + "," + y2;
 	form.bbox.value = bbox;
 	form.resolution[1].selected = true;
-	CountTheTiles(form);
 	ValidateInput(form,2);
 //	showHide('zoom_box','div','none');
 	form.region_title.value = ""; // Blank it
@@ -131,7 +80,6 @@ function GetBBoxValue(box)
 			alert("Please open the BBox Finder and draw a box.");
 			return;
 		}
-		CountTheTiles(document.forms.google_earth);
 	}
 	if (box == 2)
 	{
@@ -179,7 +127,7 @@ function ValidateInput(form,n)
 		alert("Please choose a GSKY layer !");
 		return;
 	}
-	if(!form.region.value) 
+	if(!form.region.value && !form.bbox.value) 
 	{
 		alert("Please choose a Geographic Region !");
 		return;
@@ -189,7 +137,7 @@ function ValidateInput(form,n)
 		alert("Please enter the geographic coordinates !");
 		return;
 	}
-	showHide("killed",'span',"none");
+//	showHide("killed",'span',"none");
 	document.getElementById("kml").innerHTML = "<img alt=\"Wait!\" src=\"/images/ajax-loader.gif\"> Fetching...&nbsp;&nbsp;&nbsp;<input type=\"button\" value=\"Cancel\" style=\"color:red\" onclick=\"CancelJob(this.form)\">";
 	showHide("kml",'span',"block");
 	ajaxFunction(n,form);

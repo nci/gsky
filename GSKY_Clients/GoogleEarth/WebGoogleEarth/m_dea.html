@@ -61,6 +61,19 @@ else url = 'm_dea.html';
 .content-container tldr section {
 	margin: 0 0 30px 0
 }
+.auto-style1 {
+	font-weight: normal;
+}
+.auto-style3 {
+	font-size: x-small;
+}
+.auto-style4 {
+	font-weight: bold;
+}
+.auto-style5 {
+	font-weight: normal;
+	font-size: small;
+}
 </style>
 </head>
 <body background="bg-page.png">
@@ -72,36 +85,54 @@ else url = 'm_dea.html';
 				<h3>GskyGE:- <b>DEA</b></h3>
 				(Click for: <a href="geoglam.html"><b>GEOGLAM</b></a>)
 				
-				<br><h5>Powered by: <b>Google Earth Web</b></h5>
+				<br><h5>Powered by: <b>Google Earth Web</b> and <b>GSKY from NCI</b></h5>
 			</td>
 			<td>
-				<img src="https://gsky.nci.org.au/img/logo.svg" width="150">
+				<img alt="GSKY" src="https://gsky.nci.org.au/img/logo.svg" width="150">
 			</td>
 		</tr>
 	</table>
+	<div id="top_section" style="display:block"></div>
 	<div align="center" style="text-align:left; width:100%">
 	<form id="google_earth" name="google_earth" method="POST" action="google_earth.cgi">
     <table class="jumbotron hidden-xs-" style="width:100%">
 		<tr>
 			<td style="width:20%; text-align:right; font-weight:bold; padding-right:10px;">
-				Layer:
+				<span class="auto-style1">Layer</span>:
 			</td>
 			<td style="width:80%; padding-top:0px; ">
-				<select name="layer" style="width:201px; font-size:12px; background-color:#F7F5D7" onchange="InsertTimes(this,'dea')">
-					<option value="LS8:NBAR:TRUE|Landsat 8 surface reflectance true colour">DEA Landsat 8 surface reflectance true colour</option>
-<!--					<option value="LS8:NBAR:TRUE|DEA Landsat 8 surface reflectance">DEA Landsat 8 surface reflectance true colour</option>-->
+				<select name="layer" style="width:151px; background-color:#F7F5D7" onchange="InsertTimes(this,'dea');" class="auto-style3">
+					<option value="">DEA</option>
+					<option value="landsat5_geomedian|LS5 terrain corrected surface reflectance geometric median">LS5 terrain corrected surface reflectance geometric median</option>
+					<option value="landsat7_geomedian|LS7 terrain corrected surface reflectance geometric median">LS7 terrain corrected surface reflectance geometric median</option>
+					<option value="landsat8_geomedian|LS8 terrain corrected surface reflectance geometric median">LS8 terrain corrected surface reflectance geometric median</option>
+					<option value="landsat5_nbar_16day|16-day LS5 surface reflectance">16-day LS5 surface reflectance</option>
+					<option value="landsat5_nbart_16day|16-day LS5 terrain corrected surface reflectance">16-day LS5 terrain corrected surface reflectance</option>
+					<option value="landsat7_nbar_16day|16-day LS7 surface reflectance" selected="selected">16-day LS7 surface reflectance</option>
+					<option value="landsat7_nbart_16day|16-day LS7 terrain corrected surface reflectance">16-day LS7 terrain corrected surface reflectance</option>
+					<option value="landsat8_nbar_16day|16-day LS8 surface reflectance">16-day LS8 surface reflectance</option>
+					<option value="landsat8_nbart_16day|16-day LS8 terrain corrected surface reflectance">16-day LS8 terrain corrected surface reflectance</option>
+					<option value="landsat5_nbar_daily|Daily LS5 surface reflectance">Daily LS5 surface reflectance</option>
+					<option value="landsat5_nbart_daily|Daily LS5 terrain corrected surface reflectance">Daily LS5 terrain corrected surface reflectance</option>
+					<option value="landsat7_nbar_daily|Daily LS7 surface reflectance">Daily LS7 surface reflectance</option>
+					<option value="landsat7_nbart_daily|Daily LS7 terrain corrected surface reflectance">Daily LS7 terrain corrected surface reflectance</option>
+					<option value="landsat8_nbar_daily|Daily LS8 surface reflectance">Daily LS8 surface reflectance</option>
+					<option value="landsat8_nbart_daily|Daily LS8 terrain corrected surface reflectance">Daily LS8 terrain corrected surface reflectance</option>
+					<option value="sentinel2_nbart_daily|Sentinel 2 Analysis Ready Data">Sentinel 2 Analysis Ready Data</option>
+					<option value="wofs|DEA Water Observation Feature Layer">DEA Water Observation Feature Layer</option>
 				</select>
+				<span id="n_tiles" style="display:none; width:210px;">&nbsp;</span>
 			</td>
 		</tr>
 		<tr>
 			<td style="width:20%; text-align:right; font-weight:bold; padding:10px">
-				Region:
+				<span class="auto-style5">Region</span>:
 			</td>
 			<td style="width:80%; padding-top:10px">
-				<select name="region" style="width:201px; height:50px; font-size:12px; padding:0px; background-color:#F7F5D7" onchange="GetCoordinates(this.form,this)">
-					<option value=""></option>
-					<option value="UNLISTED">Unlisted</option>
-					<option value="Aus_ALL">Australia</option>
+				<select name="region" style="width:131px; padding:0px; background-color:#F7F5D7" onchange="GetCoordinates(this.form,this); CountTheTiles(this.form)" class="auto-style3">
+					<option value="Australia">Australia</option>
+					<option value="Canberra">Canberra</option>
+					<option value="UNLISTED">User-defined</option>
 					<option value="ACT">ACT</option>
 					<option value="NT">Northern Territory</option>
 					<option value="NSW">New South Wales</option>
@@ -114,72 +145,111 @@ else url = 'm_dea.html';
 			</td>
 		</tr>
 		<tr>
-			<td style="width:20%; text-align:right; font-weight:bold; padding-right:10px">
-				BBox:<small><small>
+			<td style="width:20%; text-align:right; font-weight:bold; padding-right:10px; height: 30px;">
+				<span class="auto-style5">BBox</span>:
 			</td>
-			<td style="width:80%; padding-top:10px">
-			<input type="text" name="bbox" style="width:201px; background-color:#F7F5D7; font-size:12px;"> 
+			<td style="width:80%; padding-top:10px; height: 30px;">
+			<input type="text" name="bbox" style="width:131px; background-color:#F7F5D7; " value="112.0,-44.0,153.0,-10.0" class="auto-style3"> 
 			<span onmousedown="BlankBboxInputBox(document.forms.google_earth.bbox)"><img src="sm_cross.png" alt="Blank Input" title="Blank the BBox value"></span>
-<!--			<input type="button" value="BBox Finder" title="Show/Hide BBox Finder" style="height:18px; font-size:10px; font-weight:bold; color:blue" onclick="ShowHideBBoxFinder(document.BBox_finder)">-->
-<!--			<img src="copy_paste.png" width="20px" alt="Copy and Paste" title="Insert the selected BBox value" onmousedown="GetBBoxValue()">-->
+			<img src="/images/bbox_finder_1.png" height="40" alt="BBox Finder" title="BBox finder to define an area" onmousedown="ShowHideBBoxFinder(document.BBox_finder)" width="40">
+<!--			<img src="/images/copy_paste.png" width="35px" alt="Copy and Paste" title="Insert the selected BBox values" onmousedown="GetBBoxValue(1);"> -->
+			<br>
 			</td>
 		</tr>
 		<tr>
+			<td style="width:20%; text-align:right; font-weight:bold; font-size:12px; padding-right:10px; height: 24px;">
+				<span class="auto-style1">Crosshair</span>:
+			</td>
+		<td style="white-space:nowrap; height: 24px; padding-top:10px">
+					<input type="text" name="crosshair" style="width:131px; font-size:12px; background-color:#F7F5D7" title="Move the crosshair into position or manually enter W,S coordinates.">
+<!--					<input type="hidden" name="zoom_size" value="2">-->
+
+					<select name="zoom_size" title="Number of tiles around the crosshair" class="auto-style3">
+						<option value="0">1</option>
+						<option value="1">9</option>
+						<option value="2" selected="selected">25</option>
+						<option value="3">49</option>
+						<option value="4">81</option>
+						<option value="5">121</option>
+					</select>&nbsp;
+<!--					<img src="/images/zoom_1.png" alt="Zoom" style="width:200px" title="Zoom in around crosshair" onmousedown="ZoomInAroundCrosshair(); showHide('n_tiles','span','block')">-->
+					&nbsp;</td>
+		</tr>
+		<tr>
+			<td style="width:20%; text-align:right; font-weight:bold; font-size:12px; padding:10px">
+				<span class="auto-style1">Label</span>:
+			</td>
+		<td style="padding-top:10px">
+					<input type="text" name="region_title" title="Label for the crosshair point" style="width:131px; font-size:12px; background-color:#F7F5D7">
+		</td>
+		</tr>
+		<tr>
 			<td style="width:20%; text-align:right; font-weight:bold; padding-right:10px">
-				Date:
+				<span class="auto-style5">Date</span>:
 			</td>
 			<td style="width:80%; padding-top:10px">
-				<span id="times" style="display:block;"><select name="time" style="width:201px; background-color:#F7F5D7"><option value="">Latest</Option></select></span>
+				<span id="times" style="display:block;">
+				<select name="time" style="width:131px; background-color:#F7F5D7" class="auto-style3"><option value="1999-08-16">1999-08-16</Option></select></span>
 			</td>
 		</tr>
 		<tr>
 			<td style="width:20%; text-align:right; font-weight:bold; padding-right:10px">
-				Resolution:
+				<span class="auto-style5">Res</span>:
 			</td>
 			<td style="width:80%; padding-top:10px; padding-bottom:10px">
 				<span id="resolutions" style="display:block;">
-				<select name="resolution" style="width:201px; background-color:#F7F5D7">
+				<select name="resolution" style="width:131px; background-color:#F7F5D7" class="auto-style3">
 					<option value="3">Low</Option>
-					<option value="2">Medium</Option>
-					<option value="1">High</Option>
-					<option value="0.5">Ultra High</Option>
+					<option value="0.1">High</Option>
 				</select></span>
 			</td>
 		</tr>
 		<tr>
 			<td style="width:100%; text-align:center; font-weight:bold; padding-right:10px" colspan="2">
-				<input type="button" value="Create KML" style="color:blue" onclick="ValidateInput(document.forms.google_earth,2);">
+				<strong>
+				<input type="button" value="Create KML" style="color:blue" onclick="ValidateInput(document.forms.google_earth,2);" class="auto-style4"></strong>
 				<input type="hidden" name="create_tiles" value="create_tiles">
 				<span id="kml" style="display: none"></span>
+				<span id="killed" style="display: none"></span>
 			</td>
 		</tr>
 	</table>
 	</form>
 	</div>
 	<div id="bbox_finder" style="width:100%; display:none; color:blue; font-size:10px; font-weight:bold">
-<!--		<span style="width:80%;">Click <img src="square.png" alt="Square" title="Third button below for 'Draw a rectangle'"> and draw a box. Take the coordinates shown below as <img src="box.png" alt="Box" title="Third line from bottom"></span><span style="width:20%; text-align:right; padding-left:10px"><img src="cross.png" alt="Close" title="Close BBox Finder" onclick="showHideToggle('Details', 'div'); showHideToggle('bbox_finder', 'div'); "></span><br>-->
-		<span style="width:80%;">Click <img src="square.png" alt="Square" title="Third button below for 'Draw a rectangle'"> and draw a box. Click the paste icon <img src="copy_paste.png" width="15px" alt="Box" title="Third line from bottom"> to insert the value.</span><span style="width:20%; text-align:right; padding-left:10px"><img src="cross.png" alt="Close" title="Close BBox Finder" onclick="showHideToggle('Details', 'div'); showHideToggle('bbox_finder', 'div'); "></span><br>
-		<iframe id="BBox_finder" style="width:100%; height:600px"></iframe>
+		<span style="width:20%; text-align:right; padding-left:10px"><img src="cross.png" alt="Close" title="Close BBox Finder" onclick="CloseIframe(); "></span><br>
+		<iframe id="BBox_finder" style="width:90%; height:600px"></iframe>
 	</div>
-    <div class="content-container" id="Details" style="display:block">
+    <div class="content-container" id="Details" style="display:block; font-size:16px">
     <details>
         <section>
-        <ul>
+        <ul style="font-size:10px">
         <li>Install the <b>Google Earth App</b>.</li>
         <li>Create the KML using the form above.</li>
         <li>Click the link for KML.</li>
         <li>Open in "Google Earth".</li>
-        <li>BBox Finder does not work on mobile.</li>
-        <li>Medium and above resolution may <br> crash the app for whole Australia.</li>
-        <li>Too many open layers will crash the app.</li>
+        <li>BBox Finder:<ul>
+			<li>Click the map icon.</li>
+			<li>Position the crosshair.</li>
+			<li>Click 'GDAL' and scroll back to top.</li>
+			<li>Choose number of tiles (def=25)</li>
+			<li>Click the map icon again.</li>
+			<li>Open the KML.</li>
+			</ul>
+			</li>
+        <li><strong>Tips</strong>:<ul>
+			<li>Too many open layers crash the app.</li>
+			<li>Hold the mobile in portrait position.</li>
+			</ul>
+			</li>
+		</ul>
 		</section>
 	</details>
 	</div>
 <small><small>
 Copyright &copy; 2019, National Computational Infrastructure (<a href="http://nci.org.au/">NCI</a>), Canberra, ACT 2601, Australia.
+</small></small>
     </div>
-</div>
-<script src="ajax.js"></script>
-</script>
+<script src="m_dea_ajax.js"></script>
 </body>
 </html>

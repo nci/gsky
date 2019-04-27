@@ -61,7 +61,7 @@ sub GroundOverlayTiles
 #	my $skip_curl = $_[2];
 #p($title);
 	$groundOverlay .= "
-<name>$region</name>	
+<name>$region | $layer</name>	
 $placemark
 <!-- $n_tiles -->
 <GroundOverlay>
@@ -279,12 +279,12 @@ sub do_main
 			{
 				# This is a multiple time selection
 				CreateMultipleKML;
-				$outfile = $region . "_" . $basetitle . ".kml";
+				$outfile = $region . "_" . $basetitle . $$ . "_" . ".kml";
 				$outfile =~ s/ /_/gi;
 				open (OUT, ">$docroot/WebGoogleEarth/KML/$outfile");
 				print OUT $kml;
 				close(OUT);
-				print "<small>Click to download: <a href=\"$url/$outfile\">$outfile</a></small>";
+				print "<small><a href=\"$url/$outfile\">$outfile</a></small>";
 				exit;
 			}
 			else
@@ -300,7 +300,7 @@ sub do_main
 				open (OUT, ">$docroot/WebGoogleEarth/KML/$outfile");
 				print OUT $kml;
 				close(OUT);
-				print "<small>Click to download: <a href=\"$url/$outfile\">$outfile</a></small>";
+				print "<small><a href=\"$url/$outfile\">$outfile</a></small>";
 			}
 			exit;
 		}
@@ -471,7 +471,8 @@ sub do_main
 	</Point>
 </Placemark>
 ";
-#p("$pmx, $pmy");			
+#p("$pmx, $pmy");	
+			my $ct0 = time();
 			CountTheTiles($w,$s,$e,$n);
 			my @keys = sort keys %tilesHash;
 			my $n_tiles = 0;
@@ -504,6 +505,7 @@ sub do_main
 					$placemark = ""; # Blank this for next round
 				}
 			}
+			my $ct1 = time();
 			$kml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>
 <kml xmlns=\"http://www.opengis.net/kml/2.2\" xmlns:gx=\"http://www.google.com/kml/ext/2.2\" xmlns:kml=\"http://www.opengis.net/kml/2.2\" xmlns:atom=\"http://www.w3.org/2005/Atom\">
 <Document>
@@ -513,11 +515,28 @@ $groundOverlay
 ";
 			$outfile = "DEA_" . $layer . "_" . $time . "_" . $$ . ".kml";
 			$outfile =~ s/ /_/gi;
-			close(OUT); # curl.sh
+			if ($create_tiles) 
+			{ 
+				close(OUT); # curl.sh
+			}
 			open (OUT, ">$docroot/WebGoogleEarth/KML/$outfile");
 			print OUT $kml;
 			close(OUT);
-			print "<small>Click to download: <a href=\"$url/$outfile?$$\">$outfile</a></small>";
+
+			# Calculate the actual time
+			my $et = $ct1 - $ct0;
+			$etime = "$et sec.";
+			if ($et > 60) 
+			{ 
+				$etmin = int($et/60); 
+				my $etsec =$et % 60; 
+				if ($etsec < 10) { $etsec = "0$etsec"; }
+				$etime = "$etmin:$etsec min."; 
+			}
+			my $elapsed_time = "Elapsed Time: $etime";
+
+			print "$elapsed_time<br>\n";
+			print "<small><a href=\"$url/$outfile?$$\">$outfile</a></small>";
 			exit;
 		}
 		if ($sc_action eq "DEA") # For DEA from dea.html
@@ -624,7 +643,7 @@ $groundOverlay
 			print OUT $kml;
 			close(OUT);
 			print "<span style=\"font-family:arial; font-size:12px\">\n";
-			print "Click to download: <a href=\"$url/$outfile?$$\">$outfile</a>";
+			print "<a href=\"$url/$outfile?$$\">$outfile</a>";
 			exit;
 		}
 		if ($sc_action eq "WMS") # This is called for create_tiles and DEA_HIGH.
@@ -847,7 +866,7 @@ $groundOverlay
 		
 		else
 		{
-			&debug("OK");
+			&debug("Warning: sc_action not found!");
 		}
 	}
 }

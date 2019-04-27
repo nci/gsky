@@ -58,7 +58,7 @@ function GetCoordinates(form,item)
 		return;
 	}
 	var region = [];
-	region["Aus_ALL"] = "112.324219,-44.087585,153.984375,-10.919618";
+	region["Australia"] = "112.324219,-44.087585,153.984375,-10.919618";
 	region["WA"] = "113.378906,-35.137879,129.067383,-13.539201";
 	region["NT"] = "128.979492,-26.076521,137.988281,-11.005904";
 	region["SA"] = "129.023438,-37.996163,141.064453,-25.958045";
@@ -208,7 +208,7 @@ function ajaxFunction(n,form,item)
 		pquery = escape(pquery);
 		pquery = pquery.replace("+","%2B");
 		var ran_number= Math.random()*5000;
-		url = cgi + "?createKML+" + ran_number + "+" + pquery;
+		url = cgi + "?GEOGLAM+" + ran_number + "+" + pquery;
 	}
 	if (n == 2) // KML
 	{

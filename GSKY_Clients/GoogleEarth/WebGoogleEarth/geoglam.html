@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
 <title>GSKY via Google Earth Web</title>
@@ -75,69 +75,70 @@ else url = 'm_geoglam.html';
 				<h3>GskyGE: Wrapper for Google Earth Web - <b>GEOGLAM</b></h3>
 				
 				(Click here for <a href="dea.html">DEA</a>)
-				<br><h5>Powered by: <b>Google Earth Web</b></h5>
+				<br><h5>Powered by: <b>GSKY from NCI</b> and <b>Google Earth Web</b></h5>
 			</td>
 		</tr>
     </table>
     <div>
-    <table style="width:100%; font-size:16px">
-		<tr>
-		<td>
-    <small>
-    <div class="content-container">
-    <article>
-        <section>
-        <h3>What's This?</h3>
-        <p>
-        This page will create the KML (Keyhole Markup Language) files to extend the functionality of 
-        <a href="https://earth.google.com/web/" target="_blank"><b>Google Earth Web</b></a> (<b>GEWeb</b>) 
-        and will display GSKY layers in both spatial and temporal dimensions. 
-        </p>
-		</section>
-	</article>
-	</div>
-    <div class="content-container">
-    <article>
-        <tldr>
-        <h3>How to create the KML File:</h3>
-        <small>
-        <ul>
-        <li>
-        	Choose the required GEOGLAM layer.
-        </li>
-        <li>
-        	Choose the geographical region. 
-        </li>
-        <li>
-        	Choose the data acquisition date(s). Default is the latest.
-        </li>
-        <li>
-        	Click '<b>Create KML</b>' and click again on the link that appears to download the file.
-        </li>
-        </ul>
-        </small>        
-		</section>
-	</tldr>
-    <span class="content-container" id="Create_KML" style="display:block">
-    <details>
-        <section>
-        	<ul>
-				<li>
-	        		<small>Choose '<b>Unlisted</b>' to manually enter its BBox.</small>
-				</li>
-				<li>
-					<small>Use the <b>BBox Finder</b> to get the bounding box.</small>
-				</li>
-				<li>
-					<small>Select multiple dates with Ctrl-click or Shift-click.</small>
-				</li>
-				<li>
-						<small>Open it via the <b><img src="my_places.png" alt="My Places" title="My Places"> My Places | IMPORT KML FILE</b> link in <b><a href="https://earth.google.com/web/">GEWeb</a></b></small>.
-				</li>
-        	</ul>
-		</section>
-	</details>
-    </span>
+	<div id="top_section" style="display:block">
+	    <div class="content-container">
+		<article>
+			<tldr>
+		        <section>
+		        <h3>What's This?</h3>
+		        <p>
+		        This page will create the KML (Keyhole Markup Language) files to extend the functionality of 
+		        <a href="https://earth.google.com/web/" target="_blank"><b>Google Earth Web</b></a> (<b>GEWeb</b>) 
+		        and will display GSKY layers in both spatial and temporal dimensions. 
+		        </p>
+				</section>
+			</tldr>			
+		</article>
+		</div>
+	    <div class="content-container" style="font-size:small">
+	    <article>
+	        <tldr>
+		        <h3>How to create the KML File:</h3>
+		        <ul>
+		        <li>
+		        	Choose the required GEOGLAM layer.
+		        </li>
+		        <li>
+		        	Choose the geographical region or enter a BBox. 
+		        </li>
+		        <li>
+		        	Choose the data acquisition date(s). 
+		        </li>
+		        <li>
+		        	Click '<b>Create KML</b>'.
+		        </li>
+		        <li>
+		        	Download and open the KML file in GEWeb.
+		        </li>
+		        </ul>
+			</tldr>
+<!--		<div class="content-container" id="Create_KML" style="display:block">-->
+	    <details>
+	        <section>
+	        	<ul>
+					<li>
+		        		<small>Choose '<b>Unlisted</b>' to manually enter its BBox.</small>
+					</li>
+					<li>
+						<small>Use the <b>BBox Finder</b> to get the bounding box.</small>
+					</li>
+					<li>
+						<small>Select multiple dates with Ctrl-click or Shift-click.</small>
+					</li>
+					<li>
+							<small>Open it via the <b><img src="my_places.png" alt="My Places" title="My Places"> My Places | IMPORT KML FILE</b> link in <b><a href="https://earth.google.com/web/">GEWeb</a></b></small>.
+					</li>
+	        	</ul>
+			</section>
+		</details>
+	    </div>
+		</article>		
+		</div>
 	</div>
 	<div align="center" style="text-align:left; width:100%">
 	<form id="google_earth" name="google_earth" method="POST" action="google_earth.cgi">
@@ -147,7 +148,7 @@ else url = 'm_geoglam.html';
 				<img src="geoglam_australia.png" alt="GEOGLAM">
 			</td>
 			<td style="width:20%; text-align:right; font-weight:bold; padding-right:10px;">
-				GSKY Layer:
+				Layer:
 			</td>
 			<td style="width:80%; padding-top:0px; ">
 				<select name="layer" style="width:300px; font-size:12px; background-color:#F7F5D7" onchange="InsertTimes(this)">
@@ -163,13 +164,13 @@ else url = 'm_geoglam.html';
 		</tr>
 		<tr>
 			<td style="width:20%; text-align:right; font-weight:bold; padding-right:10px">
-				Geographic Region:
+				Region:
 			</td>
 			<td style="width:80%; padding-top:0px">
 				<select name="region" style="width:300px; font-size:12px; padding:0px; background-color:#F7F5D7" onchange="GetCoordinates(this.form,this)">
 					<option value=""></option>
 					<option value="UNLISTED">Unlisted</option>
-					<option value="Aus_ALL">Australia</option>
+					<option value="Australia">Australia</option>
 					<option value="WA"> Western Australia</option>
 					<option value="NT">Northern Territory</option>
 					<option value="SA">South Australia</option>
@@ -191,19 +192,18 @@ else url = 'm_geoglam.html';
 		</tr>
 		<tr>
 			<td style="width:20%; text-align:right; font-weight:bold; padding-right:10px">
-				BBox<small><small>
-				(W,S,E,N)</small></small>:
+				BBox:
 			</td>
 			<td style="width:80%; padding-top:10px">
 			<input type="text" name="bbox" style="width:300px; background-color:#F7F5D7; font-size:12px;"> 
 			<span onmousedown="BlankBboxInputBox(document.forms.google_earth.bbox)"><img src="sm_cross.png" alt="Blank Input" title="Blank the BBox value"></span>
-			<input type="button" value="BBox Finder" title="Show/Hide BBox Finder" style="height:18px; font-size:10px; font-weight:bold; color:blue" onclick="ShowHideBBoxFinder(document.BBox_finder)">
-			<img src="copy_paste.png" width="20px" alt="Copy and Paste" title="Insert the selected BBox value" onmousedown="GetBBoxValue()">
+			<img src="/images/bbox_finder_1.png" height="25" alt="BBox Finder" title="BBox finder to define an area" onmousedown="ShowHideBBoxFinder(document.BBox_finder)" width="40">
+			<img src="copy_paste.png" width="20px" alt="Copy and Paste" title="Insert the selected BBox value" onmousedown="GetBBoxValue(1)">
 			</td>
 		</tr>
 		<tr>
 			<td style="width:20%; text-align:right; font-weight:bold; padding-right:10px">
-				Acquisition Date:
+				Date:
 			</td>
 			<td style="width:80%; padding-top:10px">
 				<span id="times" style="display:block;"><select name="time" style="width:300px; background-color:#F7F5D7"><option value="">Latest</Option></select></span>
@@ -219,7 +219,8 @@ else url = 'm_geoglam.html';
 	</form>
 	</div>
 	<div id="bbox_finder" style="width:100%; display:none; color:blue; font-size:10px; font-weight:bold">
-		<span style="width:80%;">Click <img src="square.png" alt="Square" title="Third button below for 'Draw a rectangle'"> and draw a box. Take the coordinates shown below as <img src="box.png" alt="Box" title="Third line from bottom"></span><span style="width:20%; text-align:right; padding-left:10px"><img src="cross.png" alt="Close" title="Close BBox Finder" onclick="showHideToggle('Details', 'div'); showHideToggle('bbox_finder', 'div'); "></span><br>
+		<span style="width:80%;">Click <img src="square.png" alt="Square" title="Third button below for 'Draw a rectangle'"> and draw a box. Click the paste icon <img src="copy_paste.png" width="15px" alt="Box" title="Third line from bottom"> to insert the value.</span><span style="width:20%; text-align:right; padding-left:10px">
+		<img src="cross.png" alt="Close" title="Close BBox Finder" onclick="ShowHideBBoxFinder(document.BBox_finder)"></span><br>
 		<iframe id="BBox_finder" style="width:100%; height:600px"></iframe>
 	</div>
     <div class="content-container" id="Details" style="display:block">
@@ -298,7 +299,7 @@ Author: Dr. Arapaut V. Sivaprasad. Created on: 31 March, 2019.
 <hr>
     </div>
 </div>
-<script src="ajax.js"></script>
+<script src="geoglam_ajax.js"></script>
 </script>
 </body>
 </html>

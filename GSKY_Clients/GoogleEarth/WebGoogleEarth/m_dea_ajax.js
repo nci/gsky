@@ -12,6 +12,7 @@
   // Copyright (c) 2011-2015 by AV Sivaprasad and WebGenie Software Pty Ltd.
 // Global variables
 var cgi = "/cgi-bin/google_earth.cgi"; // calls users.cgi
+var iframe_open = 0;
 function Commify0(x) 
 {
     return x.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
@@ -79,8 +80,6 @@ function CountTheTiles(form)
 }
 function ZoomInAroundCrosshair()
 {
-alert("Here");
-return;
 	var form = document.forms.google_earth;
 	var crosshair = form.crosshair.value;
 	var zoom_size = form.zoom_size.value;
@@ -90,7 +89,7 @@ return;
 		crosshair = document.forms.google_earth.crosshair.value;
 		if (!crosshair) return;
 	}
-	var xy = crosshair.split(",");
+	var xy = crosshair.split(" ");
 	var x = xy[0];
 	var y = xy[1];
 	if (x < 112.8 || x > 153.6 || y < -43.8 || y > -10.6)
@@ -160,16 +159,39 @@ function BlankBboxInputBox(item)
 {
 	item.value = "";
 }
+function CloseIframe()
+{
+	showHideToggle('Details', 'div'); 
+	showHide('bbox_finder', 'div', 'none');
+	iframe_open = 0;
+}
 function ShowHideBBoxFinder (iframe)
 {
 	var rand = Math.floor((Math.random()*1000000)+1);
 	var iframe = document.getElementById('BBox_finder');
-	iframe.src = "/BBox?uid="+rand;
+	iframe.src = "/BBox/m_index.html?uid="+rand;
 	showHideToggle('top_section', 'div'); showHideToggle('Details', 'div'); showHideToggle('bbox_finder', 'div');
+	if (iframe_open)
+	{
+		var crosshair= document.getElementById('BBox_finder').contentWindow.document.getElementById('center').innerHTML;
+		document.forms.google_earth.crosshair.value = crosshair;
+		crosshair = document.forms.google_earth.crosshair.value;
+		// Create a string for the title
+		var xy = crosshair.split(" ");
+		var x = parseFloat(xy[0]).toFixed(1);
+		var y = parseFloat(xy[1]).toFixed(1);
+		var title = x + "," + y;
+		document.forms.google_earth.region_title.value = title;
+		ZoomInAroundCrosshair();
+		iframe_open = 0;
+	}
+	else
+	{
+		iframe_open = 1;
+	}
 }
 function CancelJob(form)
 {
-//alert(form.id);	
 	ajaxFunction(3,form);
 }
 function ValidateInput(form,n)
