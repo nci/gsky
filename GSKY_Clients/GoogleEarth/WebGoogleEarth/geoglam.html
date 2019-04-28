@@ -144,7 +144,7 @@ else url = 'm_geoglam.html';
 	<form id="google_earth" name="google_earth" method="POST" action="google_earth.cgi">
     <table class="jumbotron hidden-xs-" style="width:100%">
 		<tr>
-			<td style="width:20%; text-align:right; font-weight:bold; padding-right:10px" rowspan="5">
+			<td style="width:20%; text-align:right; font-weight:bold; padding-right:10px" rowspan="7">
 				<img src="geoglam_australia.png" alt="GEOGLAM">
 			</td>
 			<td style="width:20%; text-align:right; font-weight:bold; padding-right:10px;">
@@ -163,7 +163,7 @@ else url = 'm_geoglam.html';
 			</td>
 		</tr>
 		<tr>
-			<td style="width:20%; text-align:right; font-weight:bold; padding-right:10px">
+			<td style="width:20%; text-align:right; font-weight:bold; padding:10px">
 				Region:
 			</td>
 			<td style="width:80%; padding-top:0px">
@@ -205,9 +205,35 @@ else url = 'm_geoglam.html';
 			<td style="width:20%; text-align:right; font-weight:bold; padding-right:10px">
 				Date:
 			</td>
-			<td style="width:80%; padding-top:10px">
+			<td style="width:80%; padding-top:10px; white-space:nowrap">
 				<span id="times" style="display:block;"><select name="time" style="width:300px; background-color:#F7F5D7"><option value="">Latest</Option></select></span>
+				<img src="/images/zoom_1.png" alt="Zoom" title="Zoom in around crosshair" onmousedown="ZoomInAroundCrosshair();">
 			</td>
+		</tr>
+		<tr>
+			<td style="width:20%; text-align:right; font-weight:bold; font-size:12px; padding-right:10px">
+				Crosshair:
+			</td>
+		<td style="white-space:nowrap">
+					<input type="text" name="crosshair" style="width:300px; font-size:12px; background-color:#F7F5D7" title="Move the crosshair into position or manually enter W,S coordinates.">
+					<select name="zoom_size" title="Number of tiles around the crosshair" class="auto-style1">
+						<option value="1">1</option>
+						<option value="5">5</option>
+						<option value="10" selected="selected">10</option>
+						<option value="15">15</option>
+						<option value="20">20</option>
+						<option value="25">25</option>
+					</select>&nbsp;
+					<img src="/images/zoom_1.png" alt="Zoom" title="Zoom in around crosshair" onmousedown="ZoomInAroundCrosshair();">
+		</td>
+		</tr>
+		<tr>
+			<td style="width:20%; text-align:right; font-weight:bold; font-size:12px; padding:10px">
+				Label:
+			</td>
+		<td>
+					<input type="text" name="region_title" title="Label for the crosshair point" style="width:300px; font-size:12px; background-color:#F7F5D7">
+		</td>
 		</tr>
 		<tr>
 			<td style="width:100%; text-align:left; font-weight:bold; padding-right:10px" colspan="2">

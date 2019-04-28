@@ -43,28 +43,19 @@ function ZoomInAroundCrosshair()
 	var xy = crosshair.split(",");
 	var x = xy[0];
 	var y = xy[1];
-	if (x < 112.8 || x > 153.6 || y < -43.8 || y > -10.6)
-	{
-		alert("Crosshair is outside Australia. Data will not be available.");
-		document.forms.google_earth.crosshair.value = "";
-		document.forms.google_earth.region_title.value = "";
-		return;
-	}
-	var x1 = parseFloat(x) - parseFloat((zoom_size/10));
+	var x1 = parseFloat(x) - parseFloat(zoom_size);
 	x1 = x1.toFixed(1);
-	var y1 = parseFloat(y) - parseFloat((zoom_size/10));
+	var y1 = parseFloat(y) - parseFloat(zoom_size);
 	y1 = y1.toFixed(1);
-	var x2 = parseFloat(x) + parseFloat((zoom_size/10)) + 0.1;
+	var x2 = parseFloat(x) + parseFloat(zoom_size);
 	x2 = x2.toFixed(1);
-	var y2 = parseFloat(y) + parseFloat((zoom_size/10)) + 0.1;
+	var y2 = parseFloat(y) + parseFloat(zoom_size);
 	y2 = y2.toFixed(1);
 	var bbox = x1 + "," + y1 + "," + x2 + "," + y2;
 	form.bbox.value = bbox;
-	form.resolution[1].selected = true;
-	ValidateInput(form,2);
-//	showHide('zoom_box','div','none');
-	form.region_title.value = ""; // Blank it
-	form.crosshair.value = ""; // Blank it
+	ValidateInput(form,1);
+//	form.region_title.value = ""; // Blank it
+//	form.crosshair.value = ""; // Blank it
 }
 function GetBBoxValue(box)
 {
@@ -112,7 +103,7 @@ function ShowHideBBoxFinder (iframe)
 {
 	var rand = Math.floor((Math.random()*1000000)+1);
 	var iframe = document.getElementById('BBox_finder');
-	iframe.src = "/BBox?uid="+rand;
+	iframe.src = "/BBox/?uid="+rand;
 	showHideToggle('top_section', 'div'); showHideToggle('Details', 'div'); showHideToggle('bbox_finder', 'div');
 }
 function CancelJob(form)
@@ -336,14 +327,12 @@ function ajaxFunction(n,form,item)
 			times[i] = form.time.selectedOptions[i].value;
 		}
 		create_tiles = "";
-		if (form.create_tiles.checked) { create_tiles = "create_tiles"; } 
+//		if (form.create_tiles.checked) { create_tiles = "create_tiles"; } 
 		var bbox = form.bbox.value.replace(/ /g, '');
 		pquery = 
 		"&layer=" + form.layer.value +
 		"&region=" + form.region.value +
 		"&bbox=" + bbox +
-		"&resolution=" + form.resolution.value +
-		"&create_tiles=" + create_tiles +
 		"&region_title=" + form.region_title.value +
 		"&time=" + times;
 		pquery = escape(pquery);

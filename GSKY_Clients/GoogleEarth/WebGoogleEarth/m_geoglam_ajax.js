@@ -12,6 +12,7 @@
   // Copyright (c) 2011-2015 by AV Sivaprasad and WebGenie Software Pty Ltd.
 // Global variables
 var cgi = "/cgi-bin/google_earth.cgi"; // calls users.cgi
+var iframe_open = 0;
 function Commify0(x) 
 {
     return x.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
@@ -43,28 +44,19 @@ function ZoomInAroundCrosshair()
 	var xy = crosshair.split(",");
 	var x = xy[0];
 	var y = xy[1];
-	if (x < 112.8 || x > 153.6 || y < -43.8 || y > -10.6)
-	{
-		alert("Crosshair is outside Australia. Data will not be available.");
-		document.forms.google_earth.crosshair.value = "";
-		document.forms.google_earth.region_title.value = "";
-		return;
-	}
-	var x1 = parseFloat(x) - parseFloat((zoom_size/10));
+	var x1 = parseFloat(x) - parseFloat(zoom_size);
 	x1 = x1.toFixed(1);
-	var y1 = parseFloat(y) - parseFloat((zoom_size/10));
+	var y1 = parseFloat(y) - parseFloat(zoom_size);
 	y1 = y1.toFixed(1);
-	var x2 = parseFloat(x) + parseFloat((zoom_size/10)) + 0.1;
+	var x2 = parseFloat(x) + parseFloat(zoom_size);
 	x2 = x2.toFixed(1);
-	var y2 = parseFloat(y) + parseFloat((zoom_size/10)) + 0.1;
+	var y2 = parseFloat(y) + parseFloat(zoom_size);
 	y2 = y2.toFixed(1);
 	var bbox = x1 + "," + y1 + "," + x2 + "," + y2;
 	form.bbox.value = bbox;
-	form.resolution[1].selected = true;
-	ValidateInput(form,2);
-//	showHide('zoom_box','div','none');
-	form.region_title.value = ""; // Blank it
-	form.crosshair.value = ""; // Blank it
+	ValidateInput(form,1);
+//	form.region_title.value = ""; // Blank it
+//	form.crosshair.value = ""; // Blank it
 }
 function GetBBoxValue(box)
 {
@@ -101,18 +93,49 @@ function GetBBoxValue(box)
 		var title = x + "," + y;
 		
 //alert(title);		
-		document.forms.google_earth.region_title.value = title;
+//		document.forms.google_earth.region_title.value = title;
 	}
 }
 function BlankBboxInputBox(item)
 {
 	item.value = "";
 }
+function CloseIframe()
+{
+	showHideToggle('Details', 'div'); 
+	showHide('bbox_finder', 'div', 'none');
+	iframe_open = 0;
+}
 function ShowHideBBoxFinder (iframe)
 {
 	var rand = Math.floor((Math.random()*1000000)+1);
 	var iframe = document.getElementById('BBox_finder');
-	iframe.src = "/BBox?uid="+rand;
+	iframe.src = "/BBox/m_index.html?uid="+rand;
+	showHideToggle('top_section', 'div'); showHideToggle('Details', 'div'); showHideToggle('bbox_finder', 'div');
+	if (iframe_open)
+	{
+		var crosshair= document.getElementById('BBox_finder').contentWindow.document.getElementById('center').innerHTML;
+		document.forms.google_earth.crosshair.value = crosshair;
+		crosshair = document.forms.google_earth.crosshair.value;
+		// Create a string for the title
+		var xy = crosshair.split(",");
+		var x = parseFloat(xy[0]).toFixed(1);
+		var y = parseFloat(xy[1]).toFixed(1);
+		var title = x + "," + y;
+//		document.forms.google_earth.region_title.value = title;
+		ZoomInAroundCrosshair();
+		iframe_open = 0;
+	}
+	else
+	{
+		iframe_open = 1;
+	}
+}
+function ShowHideBBoxFinder_0 (iframe)
+{
+	var rand = Math.floor((Math.random()*1000000)+1);
+	var iframe = document.getElementById('BBox_finder');
+	iframe.src = "/BBox/m_index.html?uid="+rand;
 	showHideToggle('top_section', 'div'); showHideToggle('Details', 'div'); showHideToggle('bbox_finder', 'div');
 }
 function CancelJob(form)
@@ -211,7 +234,7 @@ function InsertTimes(item,prd)
 	var i = item.selectedIndex;
 	var time = times[i].split(",");
 	len = time.length;
-	var option_line = "<select multiple=\"multiple\" title=\"Ctrl-click or Shift-click to select more than one.\" size=\"5\" style=\"width:201px; font-size:10px;background-color:#F7F5D7\" name=\"time\">\n";
+	var option_line = "<select title=\"Select one date.\" style=\"width:201px; font-size:10px;background-color:#F7F5D7\" name=\"time\">\n";
 	for (var j=0; j < len; j++)
 	{
 		date = time[j].replace("T00:00:00.000Z","");
@@ -335,16 +358,11 @@ function ajaxFunction(n,form,item)
 		{
 			times[i] = form.time.selectedOptions[i].value;
 		}
-		create_tiles = "";
-		if (form.create_tiles.checked) { create_tiles = "create_tiles"; } 
 		var bbox = form.bbox.value.replace(/ /g, '');
 		pquery = 
 		"&layer=" + form.layer.value +
 		"&region=" + form.region.value +
 		"&bbox=" + bbox +
-		"&resolution=" + form.resolution.value +
-		"&create_tiles=" + create_tiles +
-		"&region_title=" + form.region_title.value +
 		"&time=" + times;
 		pquery = escape(pquery);
 		pquery = pquery.replace("+","%2B");

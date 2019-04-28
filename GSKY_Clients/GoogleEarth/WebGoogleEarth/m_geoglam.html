@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
 <title>GSKY via Google Earth Web</title>
@@ -61,6 +61,16 @@ else url = 'm_dea.html';
 .content-container tldr section {
 	margin: 0 0 30px 0
 }
+.auto-style1 {
+	font-weight: normal;
+}
+.auto-style2 {
+	font-weight: normal;
+	font-size: small;
+}
+.auto-style3 {
+	font-size: small;
+}
 </style>
 </head>
 <body background="bg-page.png">
@@ -68,14 +78,14 @@ else url = 'm_dea.html';
 	<img src="https://nci.org.au/wp-content/uploads/2018/09/NCI-Australia-and-Text-website-2-2.png" style="width:300px">
     <table style="width:100%; font-size:16px">
 		<tr>
-			<td nowrap>
+			<td style="white-space:nowrap; width:22%">
 				<h3>GskyGE:- <b>GEOGLAM</b></h3>
 				(Click for: <a href="dea.html"><b>DEA</b></a>)
 				
-				<br><h5>Powered by: <b>Google Earth Web</b> and <b>GSKY from NCI</b></h5>
+				<br><h6>Via: <b>GSKY from NCI</b> and <b>Google Earth Web</b></h6>
 			</td>
 			<td>
-				<img src="https://gsky.nci.org.au/img/logo.svg" width="150">
+				<img alt="GSKY" src="https://gsky.nci.org.au/img/logo.svg" width="150">
 			</td>
 		</tr>
 	</table>
@@ -85,10 +95,10 @@ else url = 'm_dea.html';
     <table class="jumbotron hidden-xs-" style="width:100%">
 		<tr>
 			<td style="width:20%; text-align:right; font-weight:bold; padding-right:10px;">
-				Layer:
+				<span class="auto-style2"><strong>Layer</strong></span>:
 			</td>
 			<td style="width:80%; padding-top:10px; ">
-				<select name="layer" style="width:201px; height:50px; font-size:12px; background-color:#F7F5D7" onchange="InsertTimes(this)">
+				<select name="layer" style="width:151px; height:50px; font-size:12px; background-color:#F7F5D7" onchange="InsertTimes(this)">
 					<option value="global:c6:frac_cover|Fractional Cover C6">Fractional Cover C6</option>
 					<option value="global:c6:frac_cover|Fractional Cover C6">Fractional Cover C6</option>
 					<option value="global:c6:total_cover|Total Cover C6">Total Cover C6</option>
@@ -101,10 +111,10 @@ else url = 'm_dea.html';
 		</tr>
 		<tr>
 			<td style="width:20%; text-align:right; font-weight:bold; padding:10px">
-				Region:
+				<span class="auto-style3">Region</span>:
 			</td>
 			<td style="width:80%; padding-top:10px">
-				<select name="region" style="width:201px; height:50px; font-size:12px; padding:0px; background-color:#F7F5D7" onchange="GetCoordinates(this.form,this)">
+				<select name="region" style="width:151px; height:50px; font-size:12px; padding:0px; background-color:#F7F5D7" onchange="GetCoordinates(this.form,this)">
 					<option value=""></option>
 					<option value="UNLISTED">Unlisted</option>
 					<option value="Australia" selected="selected">Australia</option>
@@ -129,23 +139,48 @@ else url = 'm_dea.html';
 		</tr>
 		<tr>
 			<td style="width:20%; text-align:right; font-weight:bold; padding-right:10px">
-				BBox:
+				<span class="auto-style3">BBox</span>:
 			</td>
 			<td style="width:80%; padding-top:10px">
-			<input type="text" name="bbox" style="width:201px; background-color:#F7F5D7; font-size:12px;" value="112.32,-44.09,153.98,-10.91"> 
-			<span onmousedown="BlankBboxInputBox(document.forms.google_earth.bbox)"><img src="sm_cross.png" alt="Blank Input" title="Blank the BBox value"></span>
-			<img src="/images/bbox_finder_1.png" height="25" alt="BBox Finder" title="BBox finder to define an area" onmousedown="ShowHideBBoxFinder(document.BBox_finder)" width="40">
+			<input type="text" name="bbox" style="width:151px; background-color:#F7F5D7; font-size:12px;" value="112.32,-44.09,153.98,-10.91"> 
+<!--			<span onmousedown="BlankBboxInputBox(document.forms.google_earth.bbox)"><img src="sm_cross.png" alt="Blank Input" title="Blank the BBox value"></span>-->
+			<img src="/images/bbox_finder_1.png" height="40" alt="BBox Finder" title="BBox finder to define an area" onmousedown="ShowHideBBoxFinder(document.BBox_finder)">
 <!--			<img src="copy_paste.png" width="20px" alt="Copy and Paste" title="Insert the selected BBox value" onmousedown="GetBBoxValue()">-->
 			</td>
 		</tr>
 		<tr>
 			<td style="width:20%; text-align:right; font-weight:bold; padding-right:10px">
-				Date:
+				<span class="auto-style3">Date</span>:
 			</td>
 			<td style="width:80%; padding-top:10px; padding-bottom:10px">
-				<span id="times" style="display:block;"><select name="time" style="width:201px; background-color:#F7F5D7"><option value="">Latest</Option></select></span>
+				<span id="times" style="display:block;"><select name="time" style="width:151px; background-color:#F7F5D7"><option value="">Latest</Option></select></span>
 			</td>
 		</tr>
+		<tr>
+			<td style="width:20%; text-align:right; font-weight:bold; font-size:12px; padding-right:10px">
+				Crosshair:
+			</td>
+		<td style="white-space:nowrap">
+					<input type="text" name="crosshair" style="width:151px; font-size:12px; background-color:#F7F5D7" title="Move the crosshair into position or manually enter W,S coordinates.">
+					<select name="zoom_size" title="Number of tiles around the crosshair" class="auto-style1">
+						<option value="1">1</option>
+						<option value="5">5</option>
+						<option value="10" selected="selected">10</option>
+						<option value="15">15</option>
+						<option value="20">20</option>
+						<option value="25">25</option>
+					</select>&nbsp;&nbsp;
+		</td>
+		</tr>
+<!--
+		<tr>
+			<td style="width:20%; text-align:right; font-weight:bold; font-size:12px; padding:10px">
+				Label:
+			</td>
+		<td>
+					<input type="text" name="region_title" title="Label for the crosshair point" style="width:151px; font-size:12px; background-color:#F7F5D7">
+		</tr>
+-->
 		<tr>
 			<td style="width:100%; text-align:center; font-weight:bold; padding-right:10px" colspan="2">
 				<input type="button" value="Create KML" style="color:blue" onclick="ValidateInput(document.forms.google_earth,1);">
@@ -156,20 +191,33 @@ else url = 'm_dea.html';
 	</form>
 	</div>
 	<div id="bbox_finder" style="width:100%; display:none; color:blue; font-size:10px; font-weight:bold">
-		<img src="cross.png" alt="Close" title="Close BBox Finder" onclick="ShowHideBBoxFinder(document.BBox_finder)"><br>
-		<iframe id="BBox_finder" style="width:100%; height:600px"></iframe>
+		<span style="width:20%; text-align:right; padding-left:10px"><img src="cross.png" alt="Close" title="Close BBox Finder" onclick="CloseIframe(); "></span><br>
+		<iframe id="BBox_finder" style="width:90%; height:600px"></iframe>
 	</div>
     <div class="content-container" id="Details" style="display:block">
     <details>
         <section>
         <ul>
-        <li>Install the <b>Google Earth App</b>.</li>
-        <li>Create the KML using the form above.</li>
+        	<li>Choose the GSKY layer.</li>
+			<li>Choose the region.</li>
+        <li>Create the KML.</li>
         <li>Click the link for KML.</li>
         <li>Open in "Google Earth".</li>
-        <li>Multiples dates do not work on mobile.</li>
-        <li>BBox Finder does not work on mobile.</li>
-        <li>Too many open layers will crash the app.</li>
+        <li>For unlisted regions:<ul>
+			<li>Click the map icon.</li>
+			<li>Move the crosshair to position.</li>
+			<li>Click 'GDAL' at the bottom of map.</li>
+			<li>Choose the size of area (1 to 25).</li>
+			<li>Click the map icon again.</li>
+		</ul>
+			</li>
+			<li><strong>Notes:</strong><ul>
+				<li>Too many layers will crash the app.</li>
+				<li>Multiple dates do not work.</li>
+				<li>Must have <strong>Google Earth App</strong>.</li>
+				<li>Must be <strong>VPN</strong> connected to NCI.</li>
+			</ul>
+			</li>
         </ul>
 		</section>
 	</details>

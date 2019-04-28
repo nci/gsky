@@ -89,7 +89,7 @@ function ZoomInAroundCrosshair()
 		crosshair = document.forms.google_earth.crosshair.value;
 		if (!crosshair) return;
 	}
-	var xy = crosshair.split(" ");
+	var xy = crosshair.split(",");
 	var x = xy[0];
 	var y = xy[1];
 	if (x < 112.8 || x > 153.6 || y < -43.8 || y > -10.6)
@@ -177,7 +177,7 @@ function ShowHideBBoxFinder (iframe)
 		document.forms.google_earth.crosshair.value = crosshair;
 		crosshair = document.forms.google_earth.crosshair.value;
 		// Create a string for the title
-		var xy = crosshair.split(" ");
+		var xy = crosshair.split(",");
 		var x = parseFloat(xy[0]).toFixed(1);
 		var y = parseFloat(xy[1]).toFixed(1);
 		var title = x + "," + y;
