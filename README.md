@@ -7,12 +7,12 @@ What Is This?
 GSKY was developed at [NCI](http://nci.org.au) and is a scalable,
 distributed server which presents a new approach for geospatial data
 discovery and delivery using OGC standards. The most recent release is
-version 1.0 (June 2018).
+[here](https://github.com/nci/gsky/releases).
 
 License
 -------
 
-Copyright 2016, 2017, 2018 Australian National University
+Copyright 2016 - 2019 Australian National University
 
 Licensed under the Apache License, Version 2.0 (the "License"); you
 may not use this package except in compliance with the License.  A

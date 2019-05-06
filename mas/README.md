@@ -1,7 +1,7 @@
 MAS Database
 ============
 
-MAS stands for Metadata Storage. MAS uses Postgres JSON functions to extract the fields from the crawler outputs and generates materialized views for the RESTful API. This document intends to give instructions on deploying the AS Postgres database as well as ingesting crawler outputs into MAS. The `MAS_Design.md` provides technical details in the architectual design of MAS database.
+MAS stands for Metadata Attribute Storage. MAS uses Postgres JSON functions to extract the fields from the crawler outputs and generates materialized views for the RESTful API. This document intends to give instructions on deploying the AS Postgres database as well as ingesting crawler outputs into MAS. The `MAS_Design.md` provides technical details in the architectual design of MAS database.
 
 Deploying MAS
 -------------
