@@ -10,8 +10,8 @@ import (
 	"os"
 	"runtime"
 
-	"github.com/nci/gsky/utils"
 	"github.com/golang/protobuf/proto"
+	"github.com/nci/gsky/utils"
 	gp "github.com/nci/gsky/worker/gdalprocess"
 	pb "github.com/nci/gsky/worker/gdalservice"
 )

@@ -549,7 +549,7 @@ func getNCAxes(sdsName string, hSubdataset C.GDALDatasetH, ruleSet *RuleSet) ([]
 
 	value := C.CSLFetchNameValue(metadata, CncExtraDims)
 	if value == nil {
-		return axes, fmt.Errorf("Failed to parse dimensions", sdsName)
+		return axes, fmt.Errorf("Failed to parse dimensions: %v", sdsName)
 	}
 
 	foundTimeAxis := false

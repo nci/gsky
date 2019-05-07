@@ -142,7 +142,6 @@ func WCSParamsChecker(params map[string][]string, compREMap map[string]*regexp.R
 		if strings.HasPrefix(key, "dim_") {
 			if len(key) <= len("dim_") {
 				continue
-				return wcsParams, fmt.Errorf("no dimension specified")
 			}
 
 			axisName := key[len("dim_"):]

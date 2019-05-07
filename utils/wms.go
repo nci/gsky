@@ -193,7 +193,6 @@ func WMSParamsChecker(params map[string][]string, compREMap map[string]*regexp.R
 		if strings.HasPrefix(key, "dim_") {
 			if len(key) <= len("dim_") {
 				continue
-				return wmsParams, fmt.Errorf("no dimension specified")
 			}
 
 			axisName := key[len("dim_"):]
@@ -206,7 +205,6 @@ func WMSParamsChecker(params map[string][]string, compREMap map[string]*regexp.R
 			valFloat64, err := strconv.ParseFloat(val[0], 64)
 			if err != nil {
 				continue
-				return wmsParams, fmt.Errorf("the value '%v' for dimension '%v' is not float64", key, val)
 			}
 
 			axisVal := valFloat64
