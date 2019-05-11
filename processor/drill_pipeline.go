@@ -5,6 +5,9 @@ import (
 	"fmt"
 )
 
+const DecileNamespace = "_d%d"
+const DecileCount = 2
+
 type DrillPipeline struct {
 	Context     context.Context
 	Error       chan error
@@ -44,7 +47,19 @@ func (dp *DrillPipeline) Process(geoReq GeoDrillRequest, suffix string, template
 
 	go i.Run(verbose)
 	go grpcDriller.Run(bandStrides, verbose)
-	go dm.Run(suffix, geoReq.NameSpaces, templateFileName, geoReq.BandExpr)
+
+	nCols := DecileCount + 1
+	var namespaces []string
+	for _, ns := range geoReq.NameSpaces {
+		for i := 0; i < nCols; i++ {
+			newNs := ns
+			if i > 0 {
+				newNs = ns + fmt.Sprintf(DecileNamespace, i)
+			}
+			namespaces = append(namespaces, newNs)
+		}
+	}
+	go dm.Run(suffix, namespaces, templateFileName, geoReq.BandExpr)
 
 	return dm.Out
 }

@@ -127,7 +127,14 @@ func (gi *GeoDrillGRPC) Run(bandStrides int, verbose bool) {
 					return
 				}
 
-				gi.Out <- &DrillResult{NameSpace: g.NameSpace, Data: r.TimeSeries, Dates: g.TimeStamps}
+				nCols := 1 + DecileCount
+				for i := 0; i < nCols; i++ {
+					ns := g.NameSpace
+					if i > 0 {
+						ns = g.NameSpace + fmt.Sprintf(DecileNamespace, i)
+					}
+					gi.Out <- &DrillResult{NameSpace: ns, Data: r.TimeSeries, Dates: g.TimeStamps}
+				}
 			}(gran, cLimiter, i)
 		}
 	}

@@ -83,7 +83,7 @@ func (dm *DrillMerger) Run(suffix string, namespaces []string, templateFileName 
 		fmt.Fprintf(csv, "%s", key)
 
 		if len(bandExpr.Expressions) == 0 {
-			for _, ns := range bandExpr.ExprNames {
+			for _, ns := range namespaces {
 				fmt.Fprint(csv, ",")
 				if val, ok := values[ns]; ok {
 					fmt.Fprintf(csv, "%f", val)
@@ -94,39 +94,50 @@ func (dm *DrillMerger) Run(suffix string, namespaces []string, templateFileName 
 			continue
 		}
 
+		nCols := 1 + DecileCount
 		for ix, expr := range bandExpr.Expressions {
-			noData := false
-			for _, variable := range bandExpr.ExprVarRef[ix] {
-				if _, ok := values[variable]; !ok {
-					noData = true
-					break
+			for ic := 0; ic < nCols; ic++ {
+				noData := false
+				for _, variable := range bandExpr.ExprVarRef[ix] {
+					varCol := variable
+					if ic > 0 {
+						varCol = variable + fmt.Sprintf(DecileNamespace, ic)
+					}
+					if _, ok := values[varCol]; !ok {
+						noData = true
+						break
+					}
 				}
+
+				fmt.Fprint(csv, ",")
+
+				if noData {
+					continue
+				}
+
+				parameters := make(map[string]interface{}, len(bandExpr.ExprVarRef[ix]))
+				for _, variable := range bandExpr.ExprVarRef[ix] {
+					varCol := variable
+					if ic > 0 {
+						varCol = variable + fmt.Sprintf(DecileNamespace, ic)
+					}
+					parameters[variable] = values[varCol]
+				}
+
+				result, err := expr.Evaluate(parameters)
+				if err != nil {
+					dm.Error <- fmt.Errorf("WPS: Eval '%v' error: %v", bandExpr.ExprText[ix], err)
+					return
+				}
+
+				val, ok := result.(float32)
+				if !ok {
+					dm.Error <- fmt.Errorf("WPS: Failed to cast eval results '%v' to float32, %v", val, bandExpr.ExprText[ix])
+					return
+				}
+
+				fmt.Fprintf(csv, "%f", float64(val))
 			}
-
-			fmt.Fprint(csv, ",")
-
-			if noData {
-				continue
-			}
-
-			parameters := make(map[string]interface{}, len(bandExpr.ExprVarRef[ix]))
-			for _, variable := range bandExpr.ExprVarRef[ix] {
-				parameters[variable] = values[variable]
-			}
-
-			result, err := expr.Evaluate(parameters)
-			if err != nil {
-				dm.Error <- fmt.Errorf("WPS: Eval '%v' error: %v", bandExpr.ExprText[ix], err)
-				return
-			}
-
-			val, ok := result.(float32)
-			if !ok {
-				dm.Error <- fmt.Errorf("WPS: Failed to cast eval results '%v' to float32, %v", val, bandExpr.ExprText[ix])
-				return
-			}
-
-			fmt.Fprintf(csv, "%f", float64(val))
 		}
 
 		fmt.Fprint(csv, "\\n")
