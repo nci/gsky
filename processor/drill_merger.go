@@ -24,7 +24,7 @@ func NewDrillMerger(errChan chan error) *DrillMerger {
 	}
 }
 
-func (dm *DrillMerger) Run(suffix string, namespaces []string, templateFileName string, bandExpr *utils.BandExpressions) {
+func (dm *DrillMerger) Run(suffix string, namespaces []string, templateFileName string, bandExpr *utils.BandExpressions, decileCount int) {
 	defer close(dm.Out)
 	results := make(map[string]map[string][]*pb.TimeSeries)
 
@@ -94,7 +94,7 @@ func (dm *DrillMerger) Run(suffix string, namespaces []string, templateFileName 
 			continue
 		}
 
-		nCols := 1 + DecileCount
+		nCols := 1 + decileCount
 		for ix, expr := range bandExpr.Expressions {
 			for ic := 0; ic < nCols; ic++ {
 				noData := false

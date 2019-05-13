@@ -15,6 +15,7 @@ import (
 	"image"
 	"log"
 	"math"
+	"strings"
 	"unsafe"
 
 	"encoding/json"
@@ -75,10 +76,30 @@ func DrillDataset(in *pb.GeoRPCGranule) *pb.Result {
 
 	C.OGR_G_AssignSpatialReference(geom, selSRS)
 
-	return readData(ds, in.Bands, geom, int(in.BandStrides))
+	return readData(ds, in.Bands, geom, int(in.BandStrides), in.DrillAlgorithm)
 }
 
-func readData(ds C.GDALDatasetH, bands []int32, geom C.OGRGeometryH, bandStrides int) *pb.Result {
+func readData(ds C.GDALDatasetH, bands []int32, geom C.OGRGeometryH, bandStrides int, drillAlgorithm string) *pb.Result {
+	/* drill algo is mean + decile
+	const DefaultDecileCount = 2
+	decileCount := 0
+	if len(drillAlgorithm) > 0 {
+		drillAlgos := strings.Split(drillAlgorithm, ",")
+		for _, algo := range drillAlgos {
+			algo = strings.ToLower(strings.TrimSpace(algo))
+			if len(algo) == 0 {
+				continue
+			}
+
+			if algo == "deciles" {
+				decileCount = DefaultDecileCount
+			}
+		}
+
+	}
+	nCols := 1 + decileCount
+	*/
+
 	avgs := []*pb.TimeSeries{}
 
 	dsDscr := getDrillFileDescriptor(ds, geom)

@@ -145,16 +145,17 @@ type Layer struct {
 // Process contains all the details that a WPS needs
 // to be published and processed
 type Process struct {
-	DataSources []Layer    `json:"data_sources"`
-	Identifier  string     `json:"identifier"`
-	Title       string     `json:"title"`
-	Abstract    string     `json:"abstract"`
-	MaxArea     float64    `json:"max_area"`
-	LiteralData []LitData  `json:"literal_data"`
-	ComplexData []CompData `json:"complex_data"`
-	IdentityTol float64    `json:"identity_tol"`
-	DpTol       float64    `json:"dp_tol"`
-	Approx      *bool      `json:"approx,omitempty"`
+	DataSources    []Layer    `json:"data_sources"`
+	Identifier     string     `json:"identifier"`
+	Title          string     `json:"title"`
+	Abstract       string     `json:"abstract"`
+	MaxArea        float64    `json:"max_area"`
+	LiteralData    []LitData  `json:"literal_data"`
+	ComplexData    []CompData `json:"complex_data"`
+	IdentityTol    float64    `json:"identity_tol"`
+	DpTol          float64    `json:"dp_tol"`
+	Approx         *bool      `json:"approx,omitempty"`
+	DrillAlgorithm string     `json:"drill_algo,omitempty"`
 }
 
 // LitData contains the description of a variable used to compute a

@@ -17,6 +17,7 @@ message GeoRPCGranule {
     repeated double dstGeot = 10;
     int32 bandStrides = 11;
     repeated string geoLocOpts = 12;
+    string drillAlgorithm = 13;
 }
 
 message Raster {
@@ -63,6 +64,7 @@ message Result {
     Raster raster = 2;
     GeoFile info = 3;
     string error = 4;
+    repeated int32 shape = 5;
 }
 
 service GDAL {
