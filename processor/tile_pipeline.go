@@ -360,6 +360,19 @@ func getFlexRaster(idx int, timestamp time.Time, req *GeoTileRequest, raster uti
 
 	allFilled := true
 	switch t := raster.(type) {
+	case *utils.SignedByteRaster:
+		flex.Type = "SignedByte"
+		flex.NoData = t.NoData
+		headr := *(*reflect.SliceHeader)(unsafe.Pointer(&t.Data))
+		flex.Data = *(*[]uint8)(unsafe.Pointer(&headr))
+		noData := int8(t.NoData)
+		for i := range t.Data {
+			if t.Data[i] == noData {
+				allFilled = false
+				break
+			}
+		}
+
 	case *utils.ByteRaster:
 		flex.Type = "Byte"
 		flex.NoData = t.NoData
