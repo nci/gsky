@@ -283,6 +283,13 @@ int warp_operation_fast(const char *srcFilePath, char *srcProjRef, double *srcGe
         dstBbox[2] = dstXSize;
         dstBbox[3] = dstYSize;
 
+	if(*dType == GDT_Byte) {
+		const char *pixelType = GDALGetMetadataItem((GDALMajorObjectH)hBand, "PIXELTYPE", "IMAGE_STRUCTURE");
+		if(pixelType != NULL && !strcmp(pixelType, "SIGNEDBYTE")) {
+			*dType = 100;
+		}
+	}
+
 	int iBlock;
         for(iBlock = 0; iBlock < nXBlocks * nYBlocks; iBlock++) {
                 if(blockList[iBlock]) {
@@ -486,5 +493,12 @@ func WarpRaster(in *pb.GeoRPCGranule, debug bool) *pb.Result {
 	bboxCanvas := C.GoBytes(dstBufC, dstBufSize)
 	C.free(dstBufC)
 
-	return &pb.Result{Raster: &pb.Raster{Data: bboxCanvas, NoData: noData, RasterType: GDALTypes[dType], Bbox: dstBbox}, Error: "OK"}
+	var rasterType string
+	if C.int(dType) == 100 {
+		rasterType = "SignedByte"
+	} else {
+		rasterType = GDALTypes[dType]
+	}
+
+	return &pb.Result{Raster: &pb.Raster{Data: bboxCanvas, NoData: noData, RasterType: rasterType, Bbox: dstBbox}, Error: "OK"}
 }

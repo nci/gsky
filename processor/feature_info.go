@@ -61,6 +61,15 @@ func GetFeatureInfo(ctx context.Context, params utils.WMSParams, conf *utils.Con
 		var valueStr string
 
 		switch t := r.(type) {
+		case *utils.SignedByteRaster:
+			noData := int8(t.NoData)
+			value := t.Data[offset]
+			if value == noData {
+				valueStr = `"n/a"`
+			} else {
+				valueStr = fmt.Sprintf("%v", value)
+			}
+
 		case *utils.ByteRaster:
 			noData := uint8(t.NoData)
 			value := t.Data[offset]
