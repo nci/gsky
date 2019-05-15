@@ -230,5 +230,18 @@ func WarpRaster(in *pb.GeoRPCGranule, debug bool) *pb.Result {
 		dump("debug")
 	}
 
-	return &pb.Result{Raster: &pb.Raster{Data: canvas, NoData: nodata, RasterType: GDALTypes[dType]}, Error: "OK"}
+	rasterType := GDALTypes[dType]
+	if rasterType == "Byte" {
+		pixelTypeC := C.CString("PIXELTYPE")
+		pixelTypeDomainC := C.CString("IMAGE_STRUCTURE")
+		pixelTypeValC := C.GDALGetMetadataItem(C.GDALMajorObjectH(bandH), pixelTypeC, pixelTypeDomainC);
+		if pixelTypeValC != nil && C.GoString(pixelTypeValC) == "SIGNEDBYTE" {
+			rasterType = "SignedByte"
+		}
+
+		C.free(unsafe.Pointer(pixelTypeC))
+		C.free(unsafe.Pointer(pixelTypeDomainC))
+	}
+
+	return &pb.Result{Raster: &pb.Raster{Data: canvas, NoData: nodata, RasterType: rasterType}, Error: "OK"}
 }

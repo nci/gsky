@@ -260,7 +260,7 @@ func (gi *GeoRasterGRPC) sendError(err error) {
 
 func getDataSize(dataType string) (int, error) {
 	switch dataType {
-	case "Byte":
+	case "Byte", "SignedByte":
 		return 1, nil
 	case "Int16":
 		return 2, nil
