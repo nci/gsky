@@ -626,6 +626,10 @@ func (config *Config) GetLayerDates(iLayer int, verbose bool) {
 	step := time.Minute * time.Duration(60*24*layer.StepDays+60*layer.StepHours+layer.StepMinutes)
 
 	if strings.TrimSpace(strings.ToLower(layer.TimeGen)) == "mas" {
+		if len(layer.InputLayers) > 0 && len(strings.TrimSpace(layer.DataSource)) == 0 {
+			return
+		}
+
 		timestamps, token := GenerateDatesMas(layer.StartISODate, layer.EndISODate, config.ServiceConfig.MASAddress, layer.DataSource, layer.RGBExpressions.VarList, step, layer.TimestampToken, verbose)
 		if len(timestamps) > 0 && len(token) > 0 {
 			config.Layers[iLayer].Dates = timestamps
@@ -658,6 +662,10 @@ func (config *Config) GetLayerDates(iLayer int, verbose bool) {
 		}
 
 		if useMasTimestamps {
+			if len(layer.InputLayers) > 0 && len(strings.TrimSpace(layer.DataSource)) == 0 {
+				return
+			}
+
 			masTimestamps, token := GenerateDatesMas(startDate, endDate, config.ServiceConfig.MASAddress, layer.DataSource, layer.RGBExpressions.VarList, 0, layer.TimestampToken, verbose)
 			if len(token) == 0 {
 				log.Printf("Failed to get MAS timestamps")
