@@ -97,6 +97,11 @@ func (p *TileIndexer) Run(verbose bool) {
 			p.Error <- fmt.Errorf("Tile indexer context has been cancel: %v", p.Context.Err())
 			return
 		default:
+			if len(strings.TrimSpace(geoReq.Collection)) == 0 {
+				p.Out <- &GeoTileGranule{ConfigPayLoad: ConfigPayLoad{NameSpaces: []string{utils.EmptyTileNS}, ScaleParams: geoReq.ScaleParams, Palette: geoReq.Palette}, Path: "NULL", NameSpace: utils.EmptyTileNS, RasterType: "Byte", TimeStamp: 0, BBox: geoReq.BBox, Height: geoReq.Height, Width: geoReq.Width, OffX: geoReq.OffX, OffY: geoReq.OffY, CRS: geoReq.CRS}
+				return
+			}
+
 			var wg sync.WaitGroup
 			var url string
 
