@@ -482,6 +482,11 @@ func LoadAllConfigFiles(rootDir string, verbose bool) (map[string]*Config, error
 						}
 						config.Layers[i].Styles[j].FeatureInfoExpressions = featureInfoExpr
 					}
+
+					if len(config.Layers[i].Styles[j].InputLayers) == 0 && len(config.Layers[i].InputLayers) > 0 {
+						config.Layers[i].Styles[j].InputLayers = config.Layers[i].InputLayers
+					}
+
 				}
 			}
 		}
