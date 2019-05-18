@@ -225,10 +225,6 @@ func getRaster(ctx context.Context, params utils.WMSParams, conf *utils.Config, 
 		endTime = &eT
 	}
 
-	if len(conf.Layers[idx].DataSource) == 0 {
-		return nil, fmt.Errorf("Invalid data source")
-	}
-
 	// We construct a 2x2 image corresponding to an infinitesimal bounding box
 	// to approximate a pixel.
 	// We observed several order of magnitude of performance improvement as a
