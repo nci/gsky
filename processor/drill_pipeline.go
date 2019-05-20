@@ -29,7 +29,7 @@ func InitDrillPipeline(ctx context.Context, apiAddr string, rpcAddrs []string, i
 }
 
 func (dp *DrillPipeline) Process(geoReq GeoDrillRequest, suffix string, templateFileName string, bandStrides int, approx bool, drillAlgorithm string, verbose bool) chan string {
-	const DefaultDecileCount = 2
+	const DefaultDecileAnchorPoints = 9
 	decileCount := 0
 	if len(drillAlgorithm) > 0 {
 		drillAlgos := strings.Split(drillAlgorithm, ",")
@@ -40,7 +40,7 @@ func (dp *DrillPipeline) Process(geoReq GeoDrillRequest, suffix string, template
 			}
 
 			if algo == "deciles" {
-				decileCount = DefaultDecileCount
+				decileCount = DefaultDecileAnchorPoints
 			}
 		}
 

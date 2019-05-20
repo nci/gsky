@@ -17,7 +17,7 @@ message GeoRPCGranule {
     repeated double dstGeot = 10;
     int32 bandStrides = 11;
     repeated string geoLocOpts = 12;
-    string drillAlgorithm = 13;
+    int32 drillDecileCount = 13;
 }
 
 message Raster {
