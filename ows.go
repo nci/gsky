@@ -259,6 +259,12 @@ func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r
 			styleLayer = &conf.Layers[idx].Styles[styleIdx]
 		}
 
+		if utils.CheckDisableServices(styleLayer, "wms") {
+			Error.Printf("WMS GetMap is disabled for this layer")
+			http.Error(w, "WMS GetMap is disabled for this layer", 400)
+			return
+		}
+
 		geoReq := &proc.GeoTileRequest{ConfigPayLoad: proc.ConfigPayLoad{NameSpaces: styleLayer.RGBExpressions.VarList,
 			BandExpr: styleLayer.RGBExpressions,
 			Mask:     styleLayer.Mask,
@@ -533,6 +539,12 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 		styleLayer := &conf.Layers[idx]
 		if styleIdx >= 0 {
 			styleLayer = &conf.Layers[idx].Styles[styleIdx]
+		}
+
+		if utils.CheckDisableServices(styleLayer, "wcs") {
+			Error.Printf("WCS GetCoverage is disabled for this layer")
+			http.Error(w, "WCS GetCoverage is disabled for this layer", 400)
+			return
 		}
 
 		maxXTileSize := conf.Layers[idx].WcsMaxTileWidth
