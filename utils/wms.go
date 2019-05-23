@@ -279,3 +279,21 @@ func GetCurrentTimeStamp(timestamps []string) (*time.Time, error) {
 
 	return &currentTime, nil
 }
+
+func CheckDisableServices(layer *Layer, service string) bool {
+	if len(layer.DisableServices) > 0 {
+		if layer.DisableServicesMap == nil {
+			layer.DisableServicesMap = make(map[string]bool)
+			for _, srv := range layer.DisableServices {
+				srv = strings.ToLower(strings.TrimSpace(srv))
+				layer.DisableServicesMap[srv] = true
+			}
+		}
+
+		if _, found := layer.DisableServicesMap[service]; found {
+			return true
+		}
+	}
+
+	return false
+}
