@@ -87,10 +87,12 @@ type Layer struct {
 	MetadataURL string `json:"metadata_url"`
 	DataURL     string `json:"data_url"`
 	//CacheLevels  []CacheLevel `json:"cache_levels"`
-	InputLayers                  []Layer `json:"input_layers"`
-	DataSource                   string  `json:"data_source"`
-	StartISODate                 string  `json:"start_isodate"`
-	EndISODate                   string  `json:"end_isodate"`
+	InputLayers                  []Layer  `json:"input_layers"`
+	DisableServices              []string `json:"disable_services"`
+	DisableServicesMap           map[string]bool
+	DataSource                   string `json:"data_source"`
+	StartISODate                 string `json:"start_isodate"`
+	EndISODate                   string `json:"end_isodate"`
 	EffectiveStartDate           string
 	EffectiveEndDate             string
 	TimestampToken               string
@@ -499,6 +501,9 @@ func LoadAllConfigFiles(rootDir string, verbose bool) (map[string]*Config, error
 						config.Layers[i].Styles[j].InputLayers = config.Layers[i].InputLayers
 					}
 
+					if len(config.Layers[i].Styles[j].DisableServices) == 0 && len(config.Layers[i].DisableServices) > 0 {
+						config.Layers[i].Styles[j].DisableServices = config.Layers[i].DisableServices
+					}
 				}
 			}
 		}
