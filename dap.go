@@ -43,7 +43,7 @@ func dapToWcs(ce *utils.DapConstraints, conf *utils.Config) (*utils.WCSParams, e
 	}
 
 	layer := &conf.Layers[idx]
-	if(utils.CheckDisableServices(layer, "dap4")) {
+	if utils.CheckDisableServices(layer, "dap4") {
 		return wcsParams, fmt.Errorf("dap4 is disabled for this dataset: %v", ce.Dataset)
 	}
 
