@@ -21,6 +21,61 @@ func scale(r Raster, params ScaleParams) (*ByteRaster, error) {
 	}
 
 	switch t := r.(type) {
+	case *SignedByteRaster:
+		out := &ByteRaster{NameSpace: t.NameSpace, NoData: t.NoData, Data: make([]uint8, t.Height*t.Width), Width: t.Width, Height: t.Height}
+		noData := int8(t.NoData)
+		offset := int8(params.Offset)
+		clip := int8(params.Clip)
+
+		if params.Scale == 0.0 && params.Clip == 0.0 && params.Offset == 0.0 {
+			var minVal, maxVal float32
+			for i, value := range t.Data {
+				if value == noData {
+					continue
+				}
+
+				val := float32(value)
+				if i == 0 {
+					minVal = val
+					maxVal = val
+				} else {
+					if val < minVal {
+						minVal = val
+					}
+
+					if val > maxVal {
+						maxVal = val
+					}
+				}
+			}
+
+			if minVal == maxVal {
+				maxVal += 0.1
+			}
+
+			scale = 254.0 / (maxVal - minVal)
+			dfOffset := -minVal
+
+			offset = int8(dfOffset)
+			clip = int8(maxVal + dfOffset)
+		}
+
+		for i, value := range t.Data {
+			if value == noData {
+				out.Data[i] = 0xFF
+			} else {
+				value += offset
+				if value > clip {
+					value = clip
+				}
+				if value < 0 {
+					value = 0
+				}
+				out.Data[i] = uint8(float32(value) * scale)
+			}
+		}
+		return out, nil
+
 	case *ByteRaster:
 		noData := uint8(t.NoData)
 		offset := uint8(params.Offset)

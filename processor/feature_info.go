@@ -61,6 +61,15 @@ func GetFeatureInfo(ctx context.Context, params utils.WMSParams, conf *utils.Con
 		var valueStr string
 
 		switch t := r.(type) {
+		case *utils.SignedByteRaster:
+			noData := int8(t.NoData)
+			value := t.Data[offset]
+			if value == noData {
+				valueStr = `"n/a"`
+			} else {
+				valueStr = fmt.Sprintf("%v", value)
+			}
+
 		case *utils.ByteRaster:
 			noData := uint8(t.NoData)
 			value := t.Data[offset]
@@ -214,10 +223,6 @@ func getRaster(ctx context.Context, params utils.WMSParams, conf *utils.Config, 
 		step := time.Minute * time.Duration(60*24*conf.Layers[idx].StepDays+60*conf.Layers[idx].StepHours+conf.Layers[idx].StepMinutes)
 		eT := params.Time.Add(step)
 		endTime = &eT
-	}
-
-	if len(conf.Layers[idx].DataSource) == 0 {
-		return nil, fmt.Errorf("Invalid data source")
 	}
 
 	// We construct a 2x2 image corresponding to an infinitesimal bounding box

@@ -37,6 +37,40 @@ func NewRasterMerger(ctx context.Context, errChan chan error) *RasterMerger {
 
 func MergeMaskedRaster(r *FlexRaster, canvasMap map[string]*FlexRaster, mask []bool) (err error) {
 	switch r.Type {
+	case "SignedByte":
+		headr := *(*reflect.SliceHeader)(unsafe.Pointer(&canvasMap[r.NameSpace].Data))
+		canvas := *(*[]int8)(unsafe.Pointer(&headr))
+
+		header := *(*reflect.SliceHeader)(unsafe.Pointer(&r.Data))
+		data := *(*[]int8)(unsafe.Pointer(&header))
+		nodata := int8(r.NoData)
+		if r.TimeStamp < canvasMap[r.NameSpace].TimeStamp {
+			iSrc := 0
+			for ir := 0; ir < r.DataHeight; ir++ {
+				for ic := 0; ic < r.DataWidth; ic++ {
+					val := data[iSrc]
+					iDst := (ir+r.OffY)*r.Width + ic + r.OffX
+					if val != nodata && !mask[iSrc] && canvas[iDst] == nodata {
+						canvas[iDst] = val
+					}
+					iSrc++
+				}
+			}
+		} else {
+			iSrc := 0
+			for ir := 0; ir < r.DataHeight; ir++ {
+				for ic := 0; ic < r.DataWidth; ic++ {
+					val := data[iSrc]
+					if val != nodata && !mask[iSrc] {
+						iDst := (ir+r.OffY)*r.Width + ic + r.OffX
+						canvas[iDst] = val
+					}
+					iSrc++
+				}
+			}
+			canvasMap[r.NameSpace].TimeStamp = r.TimeStamp
+		}
+
 	case "Byte":
 		headr := *(*reflect.SliceHeader)(unsafe.Pointer(&canvasMap[r.NameSpace].Data))
 		canvas := *(*[]uint8)(unsafe.Pointer(&headr))
@@ -192,6 +226,14 @@ func MergeMaskedRaster(r *FlexRaster, canvasMap map[string]*FlexRaster, mask []b
 
 func initNoDataSlice(rType string, noDataValue float64, size int) []uint8 {
 	switch rType {
+	case "SignedByte":
+		out := make([]int8, size)
+		fill := int8(noDataValue)
+		for i := 0; i < size; i++ {
+			out[i] = fill
+		}
+		headr := *(*reflect.SliceHeader)(unsafe.Pointer(&out))
+		return *(*[]uint8)(unsafe.Pointer(&headr))
 	case "Byte":
 		out := make([]uint8, size)
 		fill := uint8(noDataValue)
@@ -283,6 +325,33 @@ func ComputeMask(mask *utils.Mask, data []byte, rType string) (out []bool, err e
 	header := *(*reflect.SliceHeader)(unsafe.Pointer(&data))
 
 	switch rType {
+	case "SignedByte":
+		data := *(*[]int8)(unsafe.Pointer(&header))
+		out = make([]bool, len(data))
+		if len(mask.Value) > 0 {
+			maskValue64, _ := strconv.ParseUint(mask.Value, 2, 8)
+			maskValue := int8(maskValue64)
+			for i, val := range data {
+				if (val & maskValue) > 0 {
+					out[i] = true
+				}
+			}
+		} else {
+			for i, val := range data {
+				for j := 0; j < len(mask.BitTests); j += 2 {
+					maskFilter64, _ := strconv.ParseInt(mask.BitTests[j], 2, 8)
+					maskFilter := int8(maskFilter64)
+
+					maskValue64, _ := strconv.ParseInt(mask.BitTests[j+1], 2, 8)
+					maskValue := int8(maskValue64)
+
+					if (val & maskFilter) == maskValue {
+						out[i] = true
+						break
+					}
+				}
+			}
+		}
 	case "Byte":
 		data := *(*[]uint8)(unsafe.Pointer(&header))
 		out = make([]bool, len(data))
@@ -498,6 +567,19 @@ func (enc *RasterMerger) Run(polyLimiter *ConcLimiter, bandExpr *utils.BandExpre
 		canvas := canvasMap[ns]
 		headr := *(*reflect.SliceHeader)(unsafe.Pointer(&canvas.Data))
 		switch canvas.Type {
+		case "SignedByte":
+			data := *(*[]int8)(unsafe.Pointer(&headr))
+			if !hasExpr {
+				out[i] = &utils.SignedByteRaster{NoData: canvas.NoData, Data: data,
+					Width: canvas.Width, Height: canvas.Height, NameSpace: ns}
+			} else {
+				varData := make([]float32, len(data))
+				for i, val := range data {
+					varData[i] = float32(val)
+				}
+				bandVars[i] = &utils.Float32Raster{NoData: float64(canvas.NoData), Data: varData}
+			}
+
 		case "Byte":
 			if !hasExpr {
 				out[i] = &utils.ByteRaster{NoData: canvas.NoData, Data: canvas.Data,

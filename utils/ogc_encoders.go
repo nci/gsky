@@ -22,6 +22,17 @@ type Raster interface {
 	GetNoData() float64
 }
 
+type SignedByteRaster struct {
+	NameSpace     string
+	Data          []int8
+	Height, Width int
+	NoData        float64
+}
+
+func (r *SignedByteRaster) GetNoData() float64 {
+	return r.NoData
+}
+
 type ByteRaster struct {
 	NameSpace     string
 	Data          []uint8
@@ -137,6 +148,24 @@ func ValidateRasterSlice(rs []Raster) (int, int, string, error) {
 
 	for _, r := range rs {
 		switch t := r.(type) {
+		case *SignedByteRaster:
+			if rasterType == "" {
+				rasterType = "SignedByte"
+			} else if rasterType != "SignedByte" {
+				err = fmt.Errorf("Mixed types")
+			}
+
+			if width == 0 {
+				width = t.Width
+			} else if width != t.Width {
+				err = fmt.Errorf("Mixed width sizes")
+			}
+
+			if height == 0 {
+				height = t.Height
+			} else if height != t.Height {
+				err = fmt.Errorf("Mixed height sizes")
+			}
 		case *ByteRaster:
 			if rasterType == "" {
 				rasterType = "Byte"
@@ -221,7 +250,7 @@ func ValidateRasterSlice(rs []Raster) (int, int, string, error) {
 	return width, height, rasterType, err
 }
 
-var GDALTypes = map[string]C.GDALDataType{"Unkown": 0, "Byte": 1, "UInt16": 2, "Int16": 3,
+var GDALTypes = map[string]C.GDALDataType{"Unkown": 0, "Byte": 1, "SignedByte": 1, "UInt16": 2, "Int16": 3,
 	"UInt32": 4, "Int32": 5, "Float32": 6, "Float64": 7,
 	"CInt16": 8, "CInt32": 9, "CFloat32": 10, "CFloat64": 11,
 	"TypeCount": 12}
@@ -276,6 +305,10 @@ func EncodeGdalOpen(tempDir string, blockXSize int, blockYSize int, format strin
 		defer C.free(unsafe.Pointer(opt))
 	}
 
+	if rType == "SignedByte" {
+		driverOptions = append(driverOptions, C.CString("PIXELTYPE=SIGNEDBYTE"))
+	}
+
 	// NULL pointer is used to terminate the point array by gdal
 	driverOptions = append(driverOptions, nil)
 
@@ -326,6 +359,21 @@ func EncodeGdal(hDstDS C.GDALDatasetH, rs []Raster, xOff int, yOff int) ([]strin
 		hBand := C.GDALGetRasterBand(hDstDS, C.int(i+1))
 		gerr := C.CPLErr(0)
 		switch t := r.(type) {
+		case *SignedByteRaster:
+			bandNames[i] = t.NameSpace
+			if isEmptyTile(t.NameSpace) {
+				continue
+			}
+			C.GDALSetRasterNoDataValue(hBand, C.double(t.NoData))
+			varNameC := C.CString(t.NameSpace)
+			gerr = C.GDALSetMetadataItem(C.GDALMajorObjectH(hBand), resNameSpaceC, varNameC, nil)
+			C.free(unsafe.Pointer(varNameC))
+			if gerr != 0 {
+				break
+			}
+
+			gerr = C.GDALRasterIO(hBand, C.GF_Write, C.int(xOff), C.int(yOff), C.int(t.Width), C.int(t.Height), unsafe.Pointer(&t.Data[0]), C.int(t.Width), C.int(t.Height), C.GDT_Byte, 0, 0)
+
 		case *ByteRaster:
 			bandNames[i] = t.NameSpace
 			if isEmptyTile(t.NameSpace) {
