@@ -29,7 +29,7 @@ func NewDrillGRPC(ctx context.Context, serverAddress []string, errChan chan erro
 	}
 }
 
-func (gi *GeoDrillGRPC) Run(bandStrides int, verbose bool) {
+func (gi *GeoDrillGRPC) Run(bandStrides int, decileCount int, verbose bool) {
 	defer close(gi.Out)
 	start := time.Now()
 
@@ -119,7 +119,7 @@ func (gi *GeoDrillGRPC) Run(bandStrides int, verbose bool) {
 				c := pb.NewGDALClient(conns[(iTile+workerStart)%len(conns)])
 				bands, err := getBands(g.TimeStamps)
 
-				granule := &pb.GeoRPCGranule{Operation: "drill", Path: g.Path, Geometry: g.Geometry, Bands: bands, BandStrides: int32(bandStrides)}
+				granule := &pb.GeoRPCGranule{Operation: "drill", Path: g.Path, Geometry: g.Geometry, Bands: bands, BandStrides: int32(bandStrides), DrillDecileCount: int32(decileCount)}
 				r, err := c.Process(gi.Context, granule)
 				if err != nil {
 					gi.Error <- err
@@ -127,7 +127,20 @@ func (gi *GeoDrillGRPC) Run(bandStrides int, verbose bool) {
 					return
 				}
 
-				gi.Out <- &DrillResult{NameSpace: g.NameSpace, Data: r.TimeSeries, Dates: g.TimeStamps}
+				nCols := int(r.Shape[1])
+				nRows := int(r.Shape[0])
+				for i := 0; i < nCols; i++ {
+					ns := g.NameSpace
+					if i > 0 {
+						ns = g.NameSpace + fmt.Sprintf(DecileNamespace, i)
+					}
+					tsRow := make([]*pb.TimeSeries, nRows)
+					for ir := 0; ir < nRows; ir++ {
+						tsRow[ir] = r.TimeSeries[ir*nCols+i]
+					}
+
+					gi.Out <- &DrillResult{NameSpace: ns, Data: tsRow, Dates: g.TimeStamps}
+				}
 			}(gran, cLimiter, i)
 		}
 	}
