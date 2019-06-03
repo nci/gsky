@@ -28,6 +28,7 @@ type RuleSet struct {
 	ComputeStats bool         `json:"compute_stats"`
 	TimeAxis     *DatasetAxis `json:"time_axis"`
 	TimeUnits    string       `json:"time_units"`
+	TimesText    []string     `json:"times_text"`
 	BBox         []float64    `json:"bbox"`
 	GeoLoc       *GeoLocRule  `json:"geo_loc"`
 }
