@@ -213,15 +213,28 @@ func computeDeciles(decileCount int, dataBuf []float32, bandSize int, bandOffset
 		for i := 0; i < decileCount; i++ {
 			iStep := (i + 1) * step
 			de := buf[iStep]
-			if !isEven {
+			if isEven {
 				de = (buf[iStep] + buf[iStep+1]) / 2.0
 			}
 
 			deciles[i] = de
 		}
 	} else {
+		padding := make(map[int]int)
 		for i := 0; i < decileCount; i++ {
-			deciles[i] = buf[i/len(buf)]
+			idx := i % len(buf)
+			if _, found := padding[idx]; !found {
+				padding[idx] = 0
+			}
+			padding[idx]++
+		}
+
+		idx := 0
+		for i := 0; i < len(buf); i++ {
+			for p := 0; p < padding[i]; p++ {
+				deciles[idx] = buf[i]
+				idx++
+			}
 		}
 	}
 
