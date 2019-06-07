@@ -573,13 +573,11 @@ func getNCAxes(sdsName string, hSubdataset C.GDALDatasetH, ruleSet *RuleSet) ([]
 		dimValsStr := C.GoString(dimValsStrC)
 		dimValues := strings.Split(strings.Trim(dimValsStr, "{}"), ",")
 
-		if ruleSet.TimeAxis != nil {
-			if dim == "time" || dim == ruleSet.TimeAxis.Name {
-				axis := &DatasetAxis{Name: "time", Shape: []int{len(dimValues)}, Grid: "default"}
-				axes = append(axes, axis)
-				foundTimeAxis = true
-				continue
-			}
+		if dim == "time" || (ruleSet.TimeAxis != nil && dim == ruleSet.TimeAxis.Name) {
+			axis := &DatasetAxis{Name: "time", Shape: []int{len(dimValues)}, Grid: "default"}
+			axes = append(axes, axis)
+			foundTimeAxis = true
+			continue
 		}
 
 		axis := &DatasetAxis{Name: dim, Shape: []int{len(dimValues)}, Grid: "enum"}
