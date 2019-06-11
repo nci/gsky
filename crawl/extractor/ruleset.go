@@ -20,17 +20,18 @@ type GeoLocRule struct {
 }
 
 type RuleSet struct {
-	Collection   string       `json:"collection"`
-	NameSpace    string       `json:"namespace"`
-	SRSText      string       `json:"srs_text"`
-	Proj4Text    string       `json:"proj4_text"`
-	Pattern      string       `json:"pattern"`
-	ComputeStats bool         `json:"compute_stats"`
-	TimeAxis     *DatasetAxis `json:"time_axis"`
-	TimeUnits    string       `json:"time_units"`
-	TimesText    []string     `json:"times_text"`
-	BBox         []float64    `json:"bbox"`
-	GeoLoc       *GeoLocRule  `json:"geo_loc"`
+	Collection   string         `json:"collection"`
+	NameSpace    string         `json:"namespace"`
+	SRSText      string         `json:"srs_text"`
+	Proj4Text    string         `json:"proj4_text"`
+	Pattern      string         `json:"pattern"`
+	ComputeStats bool           `json:"compute_stats"`
+	TimeAxis     *DatasetAxis   `json:"time_axis"`
+	TimeUnits    string         `json:"time_units"`
+	TimesText    []string       `json:"times_text"`
+	BBox         []float64      `json:"bbox"`
+	GeoLoc       *GeoLocRule    `json:"geo_loc"`
+	AxesText     []*DatasetAxis `json:"axes_text,omitempty"`
 }
 
 /***** An example config file for the eReefs dataset

@@ -183,6 +183,21 @@ func getDataSetInfo(filename string, dsName *C.char, driverName string, approx b
 		ncAxes, err = getNCAxes(datasetName, hSubdataset, ruleSet)
 	}
 
+	for _, axis := range ruleSet.AxesText {
+		foundAxis := false
+		for ia, ax := range ncAxes {
+			if ax.Name == axis.Name {
+				foundAxis = true
+				ncAxes[ia] = axis
+				break
+			}
+		}
+
+		if !foundAxis {
+			ncAxes = append(ncAxes, axis)
+		}
+	}
+
 	var geoLocation *GeoLocInfo
 	if ruleSet.GeoLoc != nil {
 		geoLocTmp, err := getGeoLocation(ruleSet.GeoLoc, filename)
