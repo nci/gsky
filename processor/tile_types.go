@@ -27,6 +27,8 @@ type ConfigPayLoad struct {
 	UserSrcSRS            int
 	NoReprojection        bool
 	AxisMapping           int
+	GrpcTileXSize         float64
+	GrpcTileYSize         float64
 }
 
 type GeoTileIdxSelector struct {
@@ -60,21 +62,22 @@ type GeoTileRequest struct {
 
 type GeoTileGranule struct {
 	ConfigPayLoad
-	RawPath         string
-	Path            string
-	CRS             string
-	SrcSRS          string
-	SrcGeoTransform []float64
-	BBox            []float64
-	Height, Width   int
-	OffX, OffY      int
-	NameSpace       string
-	VarNameSpace    string
-	TimeStamp       float64
-	BandIdx         int
-	Polygon         string
-	RasterType      string
-	GeoLocation     *GeoLocInfo
+	RawPath             string
+	Path                string
+	CRS                 string
+	SrcSRS              string
+	SrcGeoTransform     []float64
+	BBox                []float64
+	Height, Width       int
+	RawHeight, RawWidth int
+	OffX, OffY          int
+	NameSpace           string
+	VarNameSpace        string
+	TimeStamp           float64
+	BandIdx             int
+	Polygon             string
+	RasterType          string
+	GeoLocation         *GeoLocInfo
 }
 
 type FlexRaster struct {
