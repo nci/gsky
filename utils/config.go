@@ -142,6 +142,7 @@ type Layer struct {
 	UserSrcGeoTransform          int          `json:"src_geo_transform"`
 	DefaultGeoBbox               []float64    `json:"default_geo_bbox"`
 	DefaultGeoSize               []int        `json:"default_geo_size"`
+	WmsAxisMapping               int          `json:"wms_axis_mapping"`
 }
 
 // Process contains all the details that a WPS needs
