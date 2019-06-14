@@ -96,6 +96,61 @@ func (gi *GeoRasterGRPC) Run(polyLimiter *ConcLimiter, varList []string, verbose
 		return
 	}
 
+	if g0.GrpcTileXSize > 0.0 || g0.GrpcTileYSize > 0.0 {
+		maxXTileSize := g0.Width
+		if g0.GrpcTileXSize <= 0.0 {
+			maxXTileSize = g0.Width
+		} else if g0.GrpcTileXSize <= 1.0 {
+			maxXTileSize = int(float64(g0.Width) * g0.GrpcTileXSize)
+		} else if g0.GrpcTileXSize < float64(g0.Width) {
+			maxXTileSize = int(g0.GrpcTileXSize)
+		}
+
+		maxYTileSize := g0.Height
+		if g0.GrpcTileYSize <= 0.0 {
+			maxYTileSize = g0.Height
+		} else if g0.GrpcTileYSize <= 1.0 {
+			maxYTileSize = int(float64(g0.Height) * g0.GrpcTileYSize)
+		} else if g0.GrpcTileYSize < float64(g0.Height) {
+			maxYTileSize = int(g0.GrpcTileYSize)
+		}
+
+		var tmpGrans []*GeoTileGranule
+		for _, g := range grans {
+			tmpGrans = append(tmpGrans, g)
+		}
+
+		if verbose {
+			log.Printf("tile grpc maxTileSize: %v, %v", maxXTileSize, maxYTileSize)
+		}
+
+		grans = nil
+		for _, g := range tmpGrans {
+			xRes := (g.BBox[2] - g.BBox[0]) / float64(g.Width)
+			yRes := (g.BBox[3] - g.BBox[1]) / float64(g.Height)
+
+			for y := 0; y < g.Height; y += maxYTileSize {
+				for x := 0; x < g.Width; x += maxXTileSize {
+					yMin := g.BBox[1] + float64(y)*yRes
+					yMax := math.Min(g.BBox[1]+float64(y+maxYTileSize)*yRes, g.BBox[3])
+					xMin := g.BBox[0] + float64(x)*xRes
+					xMax := math.Min(g.BBox[0]+float64(x+maxXTileSize)*xRes, g.BBox[2])
+
+					tileXSize := int(.5 + (xMax-xMin)/xRes)
+					tileYSize := int(.5 + (yMax-yMin)/yRes)
+
+					tileGran := &GeoTileGranule{ConfigPayLoad: g.ConfigPayLoad, RawPath: g.RawPath, Path: g.Path, NameSpace: g.NameSpace, VarNameSpace: g.VarNameSpace, RasterType: g.RasterType, TimeStamp: g.TimeStamp, BandIdx: g.BandIdx, Polygon: g.Polygon, BBox: []float64{xMin, yMin, xMax, yMax}, Height: tileYSize, Width: tileXSize, RawHeight: g.Height, RawWidth: g.Width, OffX: x, OffY: g.Height - y - tileYSize, CRS: g.CRS, SrcSRS: g.SrcSRS, SrcGeoTransform: g.SrcGeoTransform, GeoLocation: g.GeoLocation}
+					grans = append(grans, tileGran)
+				}
+			}
+
+		}
+
+		if verbose {
+			log.Printf("tile grpc: %v tiled granules", len(grans))
+		}
+	}
+
 	// We divide the GeoTileGranules (i.e. inputs) into shards whose key is the
 	// corresponding polygon string.
 	// Once we obtain all the gPRC output results for a particular shard, this shard
@@ -245,11 +300,17 @@ func (gi *GeoRasterGRPC) Run(polyLimiter *ConcLimiter, varList []string, verbose
 						if len(r.Raster.Bbox) == 0 {
 							r.Raster.Bbox = []int32{0, 0, int32(g.Width), int32(g.Height)}
 						}
-						rOffX := int(r.Raster.Bbox[0])
-						rOffY := int(r.Raster.Bbox[1])
+						rOffX := g.OffX + int(r.Raster.Bbox[0])
+						rOffY := g.OffY + int(r.Raster.Bbox[1])
 						rWidth := int(r.Raster.Bbox[2])
 						rHeight := int(r.Raster.Bbox[3])
-						outRasters[idx] = &FlexRaster{ConfigPayLoad: g.ConfigPayLoad, Data: r.Raster.Data, Height: g.Height, Width: g.Width, DataHeight: rHeight, DataWidth: rWidth, OffX: rOffX, OffY: rOffY, Type: r.Raster.RasterType, NoData: r.Raster.NoData, NameSpace: g.NameSpace, TimeStamp: g.TimeStamp, Polygon: g.Polygon}
+						rawHeight := g.Height
+						rawWidth := g.Width
+						if g.RawHeight > 0 && g.RawWidth > 0 {
+							rawHeight = g.RawHeight
+							rawWidth = g.RawWidth
+						}
+						outRasters[idx] = &FlexRaster{ConfigPayLoad: g.ConfigPayLoad, Data: r.Raster.Data, Height: rawHeight, Width: rawWidth, DataHeight: rHeight, DataWidth: rWidth, OffX: rOffX, OffY: rOffY, Type: r.Raster.RasterType, NoData: r.Raster.NoData, NameSpace: g.NameSpace, TimeStamp: g.TimeStamp, Polygon: g.Polygon}
 					}(gran, granCounter+iGran, iGran)
 				}
 
