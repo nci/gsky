@@ -279,6 +279,7 @@ func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r
 			QueryLimit:          -1,
 			UserSrcSRS:          conf.Layers[idx].UserSrcSRS,
 			UserSrcGeoTransform: conf.Layers[idx].UserSrcGeoTransform,
+			AxisMapping:         conf.Layers[idx].WmsAxisMapping,
 		},
 			Collection: styleLayer.DataSource,
 			CRS:        *params.CRS,
