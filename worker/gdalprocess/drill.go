@@ -15,6 +15,7 @@ import (
 	"image"
 	"log"
 	"math"
+	"sort"
 	"unsafe"
 
 	"encoding/json"
@@ -75,10 +76,12 @@ func DrillDataset(in *pb.GeoRPCGranule) *pb.Result {
 
 	C.OGR_G_AssignSpatialReference(geom, selSRS)
 
-	return readData(ds, in.Bands, geom, int(in.BandStrides))
+	return readData(ds, in.Bands, geom, int(in.BandStrides), int(in.DrillDecileCount))
 }
 
-func readData(ds C.GDALDatasetH, bands []int32, geom C.OGRGeometryH, bandStrides int) *pb.Result {
+func readData(ds C.GDALDatasetH, bands []int32, geom C.OGRGeometryH, bandStrides int, decileCount int) *pb.Result {
+	nCols := 1 + decileCount
+
 	avgs := []*pb.TimeSeries{}
 
 	dsDscr := getDrillFileDescriptor(ds, geom)
@@ -123,7 +126,7 @@ func readData(ds C.GDALDatasetH, bands []int32, geom C.OGRGeometryH, bandStrides
 		dataBuf := make([]float32, dsDscr.CountX*dsDscr.CountY*int32(effectiveNBands))
 		C.GDALDatasetRasterIO(ds, C.GF_Read, C.int(dsDscr.OffX), C.int(dsDscr.OffY), C.int(dsDscr.CountX), C.int(dsDscr.CountY), unsafe.Pointer(&dataBuf[0]), C.int(dsDscr.CountX), C.int(dsDscr.CountY), C.GDT_Float32, C.int(effectiveNBands), (*C.int)(unsafe.Pointer(&bandsRead[0])), 0, 0, 0)
 
-		boundAvgs := make([]*pb.TimeSeries, effectiveNBands)
+		boundAvgs := make([]*pb.TimeSeries, effectiveNBands*nCols)
 		bandSize := int(dsDscr.CountX * dsDscr.CountY)
 		for iBand := 0; iBand < effectiveNBands; iBand++ {
 			bandOffset := iBand * bandSize
@@ -138,31 +141,104 @@ func readData(ds C.GDALDatasetH, bands []int32, geom C.OGRGeometryH, bandStrides
 				}
 			}
 
+			iRes := iBand * nCols
 			if total > 0 {
-				boundAvgs[iBand] = &pb.TimeSeries{Value: float64(sum / float32(total)), Count: total}
+				boundAvgs[iRes] = &pb.TimeSeries{Value: float64(sum / float32(total)), Count: total}
 			} else {
-				boundAvgs[iBand] = &pb.TimeSeries{Value: 0, Count: 0}
+				boundAvgs[iRes] = &pb.TimeSeries{Value: 0, Count: 0}
+			}
+
+			if nCols > 1 {
+				if total > 0 {
+					deciles := computeDeciles(decileCount, dataBuf, bandSize, bandOffset, nodata, &dsDscr)
+					for ic := 0; ic < len(deciles); ic++ {
+						iRes++
+						boundAvgs[iRes] = &pb.TimeSeries{Value: float64(deciles[ic]), Count: 1}
+					}
+				} else {
+					for ic := 0; ic < decileCount; ic++ {
+						iRes++
+						boundAvgs[iRes] = &pb.TimeSeries{Value: 0, Count: 0}
+					}
+				}
 			}
 		}
 
-		avgs = append(avgs, boundAvgs[0])
+		avgs = append(avgs, boundAvgs[:nCols]...)
 
-		if bandStrides > 2 {
-			beta := (boundAvgs[1].Value - boundAvgs[0].Value) / float64(bandStrides-1)
-			count := math.Round(float64(boundAvgs[0].Count+boundAvgs[1].Count) / float64(2))
+		if bandStrides > 2 && len(boundAvgs) > nCols {
+			var beta []float64
+			var count []float64
+			for ic := 0; ic < nCols; ic++ {
+				beta_ := (boundAvgs[ic+nCols].Value - boundAvgs[ic].Value) / float64(bandStrides-1)
+				beta = append(beta, beta_)
+
+				count_ := math.Round(float64(boundAvgs[ic].Count+boundAvgs[ic+nCols].Count) / float64(2))
+				count = append(count, count_)
+			}
 			for ip := 1; ip < bandStrides-1; ip++ {
-				val := boundAvgs[0].Value + float64(ip)*beta
-				avgs = append(avgs, &pb.TimeSeries{Value: val, Count: int32(count)})
+				for ic := 0; ic < nCols; ic++ {
+					beta_ := beta[ic]
+					val := boundAvgs[ic].Value + float64(ip)*beta_
+					avgs = append(avgs, &pb.TimeSeries{Value: val, Count: int32(count[ic])})
+				}
 			}
 		}
 
-		if len(boundAvgs) > 1 {
-			avgs = append(avgs, boundAvgs[1])
+		if len(boundAvgs) > nCols {
+			avgs = append(avgs, boundAvgs[len(boundAvgs)-nCols:]...)
 		}
 
 	}
 
-	return &pb.Result{TimeSeries: avgs, Error: "OK"}
+	nRows := len(avgs) / nCols
+	return &pb.Result{TimeSeries: avgs, Shape: []int32{int32(nRows), int32(nCols)}, Error: "OK"}
+}
+
+func computeDeciles(decileCount int, dataBuf []float32, bandSize int, bandOffset int, nodata float32, dsDscr *DrillFileDescriptor) []float32 {
+	deciles := make([]float32, decileCount)
+
+	var buf []float32
+	for i := 0; i < bandSize; i++ {
+		if dsDscr.Mask.Pix[i] == 255 && dataBuf[i+bandOffset] != nodata {
+			buf = append(buf, dataBuf[i+bandOffset])
+		}
+	}
+
+	sort.Slice(buf, func(i, j int) bool { return buf[i] <= buf[j] })
+	step := len(buf) / (decileCount + 1)
+	if step > 0 {
+		isEven := len(buf)%(decileCount+1) == 0
+
+		for i := 0; i < decileCount; i++ {
+			iStep := (i + 1) * step
+			de := buf[iStep]
+			if isEven {
+				de = (buf[iStep] + buf[iStep+1]) / 2.0
+			}
+
+			deciles[i] = de
+		}
+	} else {
+		padding := make(map[int]int)
+		for i := 0; i < decileCount; i++ {
+			idx := i % len(buf)
+			if _, found := padding[idx]; !found {
+				padding[idx] = 0
+			}
+			padding[idx]++
+		}
+
+		idx := 0
+		for i := 0; i < len(buf); i++ {
+			for p := 0; p < padding[i]; p++ {
+				deciles[idx] = buf[i]
+				idx++
+			}
+		}
+	}
+
+	return deciles
 }
 
 func createMask(ds C.GDALDatasetH, g C.OGRGeometryH, offsetX, offsetY, countX, countY int32) (*image.Gray, error) {

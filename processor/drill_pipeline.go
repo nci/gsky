@@ -3,7 +3,10 @@ package processor
 import (
 	"context"
 	"fmt"
+	"strings"
 )
+
+const DecileNamespace = "_d%d"
 
 type DrillPipeline struct {
 	Context     context.Context
@@ -25,7 +28,23 @@ func InitDrillPipeline(ctx context.Context, apiAddr string, rpcAddrs []string, i
 	}
 }
 
-func (dp *DrillPipeline) Process(geoReq GeoDrillRequest, suffix string, templateFileName string, bandStrides int, approx bool, verbose bool) chan string {
+func (dp *DrillPipeline) Process(geoReq GeoDrillRequest, suffix string, templateFileName string, bandStrides int, approx bool, drillAlgorithm string, verbose bool) chan string {
+	const DefaultDecileAnchorPoints = 9
+	decileCount := 0
+	if len(drillAlgorithm) > 0 {
+		drillAlgos := strings.Split(drillAlgorithm, ",")
+		for _, algo := range drillAlgos {
+			algo = strings.ToLower(strings.TrimSpace(algo))
+			if len(algo) == 0 {
+				continue
+			}
+
+			if algo == "deciles" {
+				decileCount = DefaultDecileAnchorPoints
+			}
+		}
+
+	}
 	grpcDriller := NewDrillGRPC(dp.Context, dp.RPCAddrs, dp.Error)
 	if grpcDriller == nil {
 		dp.Error <- fmt.Errorf("Couldn't instantiate RPCDriller %s/n", dp.RPCAddrs)
@@ -43,8 +62,20 @@ func (dp *DrillPipeline) Process(geoReq GeoDrillRequest, suffix string, template
 	dm.In = grpcDriller.Out
 
 	go i.Run(verbose)
-	go grpcDriller.Run(bandStrides, verbose)
-	go dm.Run(suffix, geoReq.NameSpaces, templateFileName, geoReq.BandExpr)
+	go grpcDriller.Run(bandStrides, decileCount, verbose)
+
+	nCols := decileCount + 1
+	var namespaces []string
+	for _, ns := range geoReq.NameSpaces {
+		for i := 0; i < nCols; i++ {
+			newNs := ns
+			if i > 0 {
+				newNs = ns + fmt.Sprintf(DecileNamespace, i)
+			}
+			namespaces = append(namespaces, newNs)
+		}
+	}
+	go dm.Run(suffix, namespaces, templateFileName, geoReq.BandExpr, decileCount)
 
 	return dm.Out
 }
