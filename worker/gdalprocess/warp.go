@@ -234,7 +234,7 @@ func WarpRaster(in *pb.GeoRPCGranule, debug bool) *pb.Result {
 	if rasterType == "Byte" {
 		pixelTypeC := C.CString("PIXELTYPE")
 		pixelTypeDomainC := C.CString("IMAGE_STRUCTURE")
-		pixelTypeValC := C.GDALGetMetadataItem(C.GDALMajorObjectH(bandH), pixelTypeC, pixelTypeDomainC);
+		pixelTypeValC := C.GDALGetMetadataItem(C.GDALMajorObjectH(bandH), pixelTypeC, pixelTypeDomainC)
 		if pixelTypeValC != nil && C.GoString(pixelTypeValC) == "SIGNEDBYTE" {
 			rasterType = "SignedByte"
 		}
