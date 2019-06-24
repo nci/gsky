@@ -252,7 +252,7 @@ func (dp *TilePipeline) getDepFileList(geoReq *GeoTileRequest, verbose bool) ([]
 		req := reqCtx.GeoReq
 		grans, err := tp.GetFileList(req, verbose)
 		if err != nil {
-			return nil, fmt.Errorf("fusion pipeline(%d of %d) tile indexer error: ", err)
+			return nil, fmt.Errorf("fusion pipeline(%d of %d) tile indexer error: %v", idx+1, len(depLayers), err)
 		}
 
 		for _, g := range grans {
