@@ -265,13 +265,22 @@ func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r
 			return
 		}
 
+		offset := styleLayer.OffsetValue
+		scale := styleLayer.ScaleValue
+		clip := styleLayer.ClipValue
+		if params.Offset != nil && params.Clip != nil {
+			offset = *params.Offset
+			clip = *params.Clip
+			scale = 0.0
+		}
+
 		geoReq := &proc.GeoTileRequest{ConfigPayLoad: proc.ConfigPayLoad{NameSpaces: styleLayer.RGBExpressions.VarList,
 			BandExpr: styleLayer.RGBExpressions,
 			Mask:     styleLayer.Mask,
 			Palette:  styleLayer.Palette,
-			ScaleParams: proc.ScaleParams{Offset: styleLayer.OffsetValue,
-				Scale: styleLayer.ScaleValue,
-				Clip:  styleLayer.ClipValue,
+			ScaleParams: proc.ScaleParams{Offset: offset,
+				Scale: scale,
+				Clip:  clip,
 			},
 			ZoomLimit:           conf.Layers[idx].ZoomLimit,
 			PolygonSegments:     conf.Layers[idx].WmsPolygonSegments,
