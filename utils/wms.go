@@ -49,6 +49,8 @@ type WMSParams struct {
 	Styles   []string     `json:"styles,omitempty"`
 	Version  *string      `json:"version,omitempty"`
 	Axes     []*AxisParam `json:"axes,omitempty"`
+	Offset   *float64     `json:"offset,omitempty"`
+	Clip     *float64     `json:"clip,omitempty"`
 	BandExpr *BandExpressions
 }
 
@@ -210,6 +212,27 @@ func WMSParamsChecker(params map[string][]string, compREMap map[string]*regexp.R
 			axisVal := valFloat64
 
 			axesInfo = append(axesInfo, fmt.Sprintf(`{"name":"%s", "start":%f, "order":1, "aggregate": 1}`, axisName, axisVal))
+		}
+	}
+
+	if scaleRange, scaleRangeOK := params["colorscalerange"]; scaleRangeOK {
+		parts := strings.Split(scaleRange[0], ",")
+		if len(parts) == 2 {
+			lower, err := strconv.ParseFloat(parts[0], 64)
+			if err != nil {
+				return wmsParams, fmt.Errorf("parsing error in the lower endpoint of colorscalerange: %v", err)
+			}
+			offset := 0.0 - lower
+			jsonFields = append(jsonFields, fmt.Sprintf(`"offset": %f`, offset))
+
+			upper, err := strconv.ParseFloat(parts[1], 64)
+			if err != nil {
+				return wmsParams, fmt.Errorf("parsing error in the upper endpoint of colorscalerange: %v", err)
+			}
+			clip := upper - lower
+			jsonFields = append(jsonFields, fmt.Sprintf(`"clip": %f`, clip))
+		} else {
+			return wmsParams, fmt.Errorf("colorscalerange must be in the format of 'min,max': %v", scaleRange[0])
 		}
 	}
 
