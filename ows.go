@@ -25,6 +25,8 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"path"
+	"path/filepath"
 	"regexp"
 	"runtime"
 	"strings"
@@ -1320,9 +1322,25 @@ func owsHandler(w http.ResponseWriter, r *http.Request) {
 	generalHandler(config, w, r)
 }
 
+func fileHandler(w http.ResponseWriter, r *http.Request) {
+	upath := r.URL.Path
+	if !strings.HasPrefix(upath, "/") {
+		upath = "/" + upath
+		r.URL.Path = upath
+	}
+	upath = path.Clean(upath)
+	upath = filepath.Join(utils.DataDir+"/static", upath)
+
+	if *verbose {
+		Info.Printf("%s -> %s\n", r.URL.String(), upath)
+	}
+
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	http.ServeFile(w, r, upath)
+}
+
 func main() {
-	fs := http.FileServer(http.Dir(utils.DataDir + "/static"))
-	http.Handle("/", fs)
+	http.HandleFunc("/", fileHandler)
 	http.HandleFunc("/ows", owsHandler)
 	http.HandleFunc("/ows/", owsHandler)
 
