@@ -276,10 +276,20 @@ func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r
 			scale = 0.0
 		}
 
+		palette := styleLayer.Palette
+		if params.Palette != nil {
+			for _, p := range styleLayer.Palettes {
+				if strings.ToLower(p.Name) == strings.ToLower(*params.Palette) {
+					palette = p
+					break
+				}
+			}
+		}
+
 		geoReq := &proc.GeoTileRequest{ConfigPayLoad: proc.ConfigPayLoad{NameSpaces: styleLayer.RGBExpressions.VarList,
 			BandExpr: styleLayer.RGBExpressions,
 			Mask:     styleLayer.Mask,
-			Palette:  styleLayer.Palette,
+			Palette:  palette,
 			ScaleParams: proc.ScaleParams{Offset: offset,
 				Scale: scale,
 				Clip:  clip,
@@ -394,7 +404,7 @@ func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r
 				return
 			}
 
-			out, err := utils.EncodePNG(norm, styleLayer.Palette)
+			out, err := utils.EncodePNG(norm, palette)
 			if err != nil {
 				Info.Printf("Error in the utils.EncodePNG: %v\n", err)
 				http.Error(w, err.Error(), 500)

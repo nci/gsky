@@ -51,6 +51,7 @@ type WMSParams struct {
 	Axes     []*AxisParam `json:"axes,omitempty"`
 	Offset   *float64     `json:"offset,omitempty"`
 	Clip     *float64     `json:"clip,omitempty"`
+	Palette  *string      `json:"palette,omitempty"`
 	BandExpr *BandExpressions
 }
 
@@ -191,6 +192,7 @@ func WMSParamsChecker(params map[string][]string, compREMap map[string]*regexp.R
 	var wmsParams WMSParams
 
 	axesInfo := []string{}
+
 	for key, val := range params {
 		if strings.HasPrefix(key, "dim_") {
 			if len(key) <= len("dim_") {
@@ -199,6 +201,11 @@ func WMSParamsChecker(params map[string][]string, compREMap map[string]*regexp.R
 
 			axisName := key[len("dim_"):]
 			axisName = strings.TrimSpace(axisName)
+
+			if axisName == "palette" {
+				params["palette"] = val
+				continue
+			}
 
 			if !compREMap["axis"].MatchString(axisName) {
 				return wmsParams, fmt.Errorf("invalid axis name: %v", key)
@@ -213,6 +220,10 @@ func WMSParamsChecker(params map[string][]string, compREMap map[string]*regexp.R
 
 			axesInfo = append(axesInfo, fmt.Sprintf(`{"name":"%s", "start":%f, "order":1, "aggregate": 1}`, axisName, axisVal))
 		}
+	}
+
+	if palette, paletteOK := params["palette"]; paletteOK {
+		jsonFields = append(jsonFields, fmt.Sprintf(`"palette": "%s"`, palette[0]))
 	}
 
 	if scaleRange, scaleRangeOK := params["colorscalerange"]; scaleRangeOK {
