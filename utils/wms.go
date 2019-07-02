@@ -35,24 +35,25 @@ type AxisParam struct {
 // WMSParams contains the serialised version
 // of the parameters contained in a WMS request.
 type WMSParams struct {
-	Service  *string      `json:"service,omitempty"`
-	Request  *string      `json:"request,omitempty"`
-	CRS      *string      `json:"crs,omitempty"`
-	BBox     []float64    `json:"bbox,omitempty"`
-	Format   *string      `json:"format,omitempty"`
-	X        *int         `json:"x,omitempty"`
-	Y        *int         `json:"y,omitempty"`
-	Height   *int         `json:"height,omitempty"`
-	Width    *int         `json:"width,omitempty"`
-	Time     *time.Time   `json:"time,omitempty"`
-	Layers   []string     `json:"layers,omitempty"`
-	Styles   []string     `json:"styles,omitempty"`
-	Version  *string      `json:"version,omitempty"`
-	Axes     []*AxisParam `json:"axes,omitempty"`
-	Offset   *float64     `json:"offset,omitempty"`
-	Clip     *float64     `json:"clip,omitempty"`
-	Palette  *string      `json:"palette,omitempty"`
-	BandExpr *BandExpressions
+	Service     *string      `json:"service,omitempty"`
+	Request     *string      `json:"request,omitempty"`
+	CRS         *string      `json:"crs,omitempty"`
+	BBox        []float64    `json:"bbox,omitempty"`
+	Format      *string      `json:"format,omitempty"`
+	X           *int         `json:"x,omitempty"`
+	Y           *int         `json:"y,omitempty"`
+	Height      *int         `json:"height,omitempty"`
+	Width       *int         `json:"width,omitempty"`
+	Time        *time.Time   `json:"time,omitempty"`
+	Layers      []string     `json:"layers,omitempty"`
+	Styles      []string     `json:"styles,omitempty"`
+	Version     *string      `json:"version,omitempty"`
+	Axes        []*AxisParam `json:"axes,omitempty"`
+	Offset      *float64     `json:"offset,omitempty"`
+	Clip        *float64     `json:"clip,omitempty"`
+	Palette     *string      `json:"palette,omitempty"`
+	ColourScale *int         `json:"colour_scale,omitempty"`
+	BandExpr    *BandExpressions
 }
 
 // WMSRegexpMap maps WMS request parameters to
@@ -207,6 +208,11 @@ func WMSParamsChecker(params map[string][]string, compREMap map[string]*regexp.R
 				continue
 			}
 
+			if axisName == "colorscale" {
+				params["colorscale"] = val
+				continue
+			}
+
 			if !compREMap["axis"].MatchString(axisName) {
 				return wmsParams, fmt.Errorf("invalid axis name: %v", key)
 			}
@@ -219,6 +225,19 @@ func WMSParamsChecker(params map[string][]string, compREMap map[string]*regexp.R
 			axisVal := valFloat64
 
 			axesInfo = append(axesInfo, fmt.Sprintf(`{"name":"%s", "start":%f, "order":1, "aggregate": 1}`, axisName, axisVal))
+		}
+	}
+
+	if colourScale, colourScaleOK := params["colorscale"]; colourScaleOK {
+		colourScaleStr := strings.ToLower(strings.TrimSpace(colourScale[0]))
+		colourScale := -1
+		if colourScaleStr == "linear" {
+			colourScale = ColourLinearScale
+		} else if colourScaleStr == "logarithm" {
+			colourScale = ColourLogScale
+		}
+		if colourScale >= 0 {
+			jsonFields = append(jsonFields, fmt.Sprintf(`"colour_scale": %d`, colourScale))
 		}
 	}
 

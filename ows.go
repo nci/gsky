@@ -286,13 +286,19 @@ func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r
 			}
 		}
 
+		colourScale := styleLayer.ColourScale
+		if params.ColourScale != nil {
+			colourScale = *params.ColourScale
+		}
+
 		geoReq := &proc.GeoTileRequest{ConfigPayLoad: proc.ConfigPayLoad{NameSpaces: styleLayer.RGBExpressions.VarList,
 			BandExpr: styleLayer.RGBExpressions,
 			Mask:     styleLayer.Mask,
 			Palette:  palette,
 			ScaleParams: proc.ScaleParams{Offset: offset,
-				Scale: scale,
-				Clip:  clip,
+				Scale:       scale,
+				Clip:        clip,
+				ColourScale: colourScale,
 			},
 			ZoomLimit:           conf.Layers[idx].ZoomLimit,
 			PolygonSegments:     conf.Layers[idx].WmsPolygonSegments,
@@ -382,8 +388,9 @@ func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r
 		select {
 		case res := <-tp.Process(geoReq, *verbose):
 			scaleParams := utils.ScaleParams{Offset: geoReq.ScaleParams.Offset,
-				Scale: geoReq.ScaleParams.Scale,
-				Clip:  geoReq.ScaleParams.Clip,
+				Scale:       geoReq.ScaleParams.Scale,
+				Clip:        geoReq.ScaleParams.Clip,
+				ColourScale: geoReq.ScaleParams.ColourScale,
 			}
 
 			norm, err := utils.Scale(res, scaleParams)

@@ -7,9 +7,10 @@ import (
 )
 
 type ScaleParams struct {
-	Offset float64
-	Scale  float64
-	Clip   float64
+	Offset      float64
+	Scale       float64
+	Clip        float64
+	ColourScale int
 }
 
 type ConfigPayLoad struct {
