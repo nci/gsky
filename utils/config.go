@@ -26,6 +26,8 @@ var EtcDir = "."
 var DataDir = "."
 
 const ReservedMemorySize = 1.5 * 1024 * 1024 * 1024
+const ColourLinearScale = 0
+const ColourLogScale = 1
 
 type ServiceConfig struct {
 	OWSHostname       string `json:"ows_hostname"`
@@ -147,6 +149,7 @@ type Layer struct {
 	WmsAxisMapping               int          `json:"wms_axis_mapping"`
 	GrpcTileXSize                float64      `json:"grpc_tile_x_size"`
 	GrpcTileYSize                float64      `json:"grpc_tile_y_size"`
+	ColourScale                  int          `json:"colour_scale"`
 }
 
 // Process contains all the details that a WPS needs

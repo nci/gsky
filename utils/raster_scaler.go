@@ -2,12 +2,29 @@ package utils
 
 import (
 	"fmt"
+	"math"
 )
 
 type ScaleParams struct {
-	Offset float64
-	Scale  float64
-	Clip   float64
+	Offset      float64
+	Scale       float64
+	Clip        float64
+	ColourScale int
+}
+
+func normalise(val float64, colourScale int, nodata float64) float64 {
+	if val == nodata {
+		return val
+	}
+	v := val
+	if colourScale == ColourLogScale {
+		v = math.Log10(val)
+	}
+
+	if math.IsInf(v, 0) || math.IsNaN(v) {
+		v = nodata
+	}
+	return v
 }
 
 func scale(r Raster, params ScaleParams) (*ByteRaster, error) {
@@ -253,6 +270,14 @@ func scale(r Raster, params ScaleParams) (*ByteRaster, error) {
 					continue
 				}
 
+				if params.ColourScale > 0 {
+					v := normalise(float64(value), params.ColourScale, t.NoData)
+					if v == t.NoData {
+						continue
+					}
+					value = float32(v)
+				}
+
 				if i == 0 {
 					minVal = value
 					maxVal = value
@@ -281,6 +306,14 @@ func scale(r Raster, params ScaleParams) (*ByteRaster, error) {
 			if value == noData {
 				out.Data[i] = 0xFF
 			} else {
+				if params.ColourScale > 0 {
+					v := normalise(float64(value), params.ColourScale, t.NoData)
+					if v == t.NoData {
+						out.Data[i] = 0xFF
+						continue
+					}
+					value = float32(v)
+				}
 				value += offset
 				if value > clip {
 					value = clip
