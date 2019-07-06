@@ -139,7 +139,7 @@ func getDataSetInfo(filename string, dsName *C.char, driverName string, approx b
 	var ncTimes []string
 	var err error
 	var times []time.Time
-	if driverName == "netCDF" || driverName == "JP2OpenJPEG" {
+	if ruleSet.NcMetadata || driverName == "netCDF" || driverName == "JP2OpenJPEG" {
 		ncTimes, err = getNCTime(datasetName, hSubdataset, ruleSet)
 		if err != nil && timeStamp.IsZero() && len(ruleSet.TimesText) == 0 {
 			return &GeoMetaData{}, fmt.Errorf("Error parsing dates: %v", err)
@@ -169,7 +169,7 @@ func getDataSetInfo(filename string, dsName *C.char, driverName string, approx b
 	}
 
 	var ncAxes []*DatasetAxis
-	if driverName == "netCDF" || driverName == "JP2OpenJPEG" {
+	if ruleSet.NcMetadata || driverName == "netCDF" || driverName == "JP2OpenJPEG" {
 		if ruleSet.TimeAxis != nil {
 			if len(ruleSet.TimeAxis.Shape) == 0 || ruleSet.TimeAxis.Shape[0] < 0 {
 				ruleSet.TimeAxis.Shape = []int{len(times)}

@@ -32,6 +32,7 @@ type RuleSet struct {
 	BBox         []float64      `json:"bbox"`
 	GeoLoc       *GeoLocRule    `json:"geo_loc"`
 	AxesText     []*DatasetAxis `json:"axes_text,omitempty"`
+	NcMetadata   bool           `json:"nc_metadata"`
 }
 
 /***** An example config file for the eReefs dataset
