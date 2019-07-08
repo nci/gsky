@@ -1,7 +1,8 @@
 #!/bin/bash
+gsky_crawler=${CRAWL_BIN:-gsky-crawl}
 set -e
 which concurrent
-which gsky-crawl
+[[ "$gsky_crawler" = "gsky-crawl" ]] && which gsky-crawl
 set +e
 
 conc_limit=${CRAWL_CONC_LIMIT:-16}
@@ -51,12 +52,14 @@ echo "INFO: crawl output file: $crawl_file"
 
 gdal_json() {
 	src_file="$1"
-	json=$(gsky-crawl $src_file $CRAWL_EXTRA_ARGS)
+	json=$($gsky_crawler $src_file $CRAWL_EXTRA_ARGS)
 	echo -e "$src_file\tgdal\t$json"
 }
 
 export -f gdal_json
+export gsky_crawler=$gsky_crawler
 export GDAL_PAM_ENABLED=NO
+export GDAL_NETCDF_VERIFY_DIMS=NO
 
 cat $file_list | concurrent -i -l $conc_limit xargs bash -c 'gdal_json "$@"' _ | gzip > $crawl_file
 
