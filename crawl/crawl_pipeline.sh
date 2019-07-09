@@ -51,8 +51,10 @@ echo "INFO: file list to crawl: $file_list"
 echo "INFO: crawl output file: $crawl_file"
 
 gdal_json() {
+	set -e
 	src_file="$1"
 	json=$($gsky_crawler $src_file $CRAWL_EXTRA_ARGS)
+	[[ -z "$json" ]] && exit 1
 	echo -e "$src_file\tgdal\t$json"
 }
 
