@@ -55,7 +55,12 @@ gdal_json() {
 	src_file="$1"
 	json=$($gsky_crawler $src_file $CRAWL_EXTRA_ARGS)
 	[[ -z "$json" ]] && exit 1
-	echo -e "$src_file\tgdal\t$json"
+	if [ -z "$CRAWL_RAW_RECORD" ]
+	then
+		echo -e "$src_file\tgdal\t$json"
+	else
+		echo -e "$json"
+	fi
 }
 
 export -f gdal_json
@@ -64,4 +69,3 @@ export GDAL_PAM_ENABLED=NO
 export GDAL_NETCDF_VERIFY_DIMS=NO
 
 cat $file_list | concurrent -i -l $conc_limit xargs bash -c 'gdal_json "$@"' _ | gzip > $crawl_file
-
