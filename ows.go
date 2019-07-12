@@ -138,9 +138,24 @@ func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r
 			return
 		}
 
+		newConf := &utils.Config{}
+		newConf.ServiceConfig = conf.ServiceConfig
+		for _, layer := range conf.Layers {
+			newLayer := utils.Layer{
+				Name: layer.Name,
+				Title: layer.Title,
+				Abstract: layer.Abstract,
+				Styles: layer.Styles,
+				AxesInfo: layer.AxesInfo,
+			}
+			newConf.Layers = append(newConf.Layers, newLayer)
+		}
+		conf = newConf
+
 		for iLayer := range conf.Layers {
 			conf.GetLayerDates(iLayer, *verbose)
 		}
+		
 
 		w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate, max-age=0")
 		err := utils.ExecuteWriteTemplateFile(w, conf,

@@ -150,6 +150,7 @@ type Layer struct {
 	GrpcTileXSize                float64      `json:"grpc_tile_x_size"`
 	GrpcTileYSize                float64      `json:"grpc_tile_y_size"`
 	ColourScale                  int          `json:"colour_scale"`
+	TimestampsLoadStrategy       string       `json:"timestamps_load_strategy"`
 }
 
 // Process contains all the details that a WPS needs
@@ -928,7 +929,9 @@ func (config *Config) LoadConfigFile(configFile string, verbose bool) error {
 		}
 		config.Layers[i].FeatureInfoExpressions = featureInfoExpr
 
-		config.GetLayerDates(i, verbose)
+		if config.Layers[i].TimestampsLoadStrategy != "on_demand" {
+			config.GetLayerDates(i, verbose)
+		}
 
 		config.Layers[i].OWSHostname = config.ServiceConfig.OWSHostname
 
