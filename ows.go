@@ -138,24 +138,10 @@ func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r
 			return
 		}
 
-		newConf := &utils.Config{}
-		newConf.ServiceConfig = conf.ServiceConfig
-		for _, layer := range conf.Layers {
-			newLayer := utils.Layer{
-				Name: layer.Name,
-				Title: layer.Title,
-				Abstract: layer.Abstract,
-				Styles: layer.Styles,
-				AxesInfo: layer.AxesInfo,
-			}
-			newConf.Layers = append(newConf.Layers, newLayer)
-		}
-		conf = newConf
-
+		conf = conf.Copy()
 		for iLayer := range conf.Layers {
 			conf.GetLayerDates(iLayer, *verbose)
 		}
-		
 
 		w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate, max-age=0")
 		err := utils.ExecuteWriteTemplateFile(w, conf,
@@ -495,11 +481,9 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 			return
 		}
 
-		newConf := *conf
-		newConf.Layers = make([]utils.Layer, len(newConf.Layers))
-		for i, layer := range conf.Layers {
+		newConf := conf.Copy()
+		for i := range newConf.Layers {
 			conf.GetLayerDates(i, *verbose)
-			newConf.Layers[i] = layer
 			newConf.Layers[i].Dates = []string{newConf.Layers[i].Dates[0], newConf.Layers[i].Dates[len(newConf.Layers[i].Dates)-1]}
 		}
 
