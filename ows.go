@@ -138,6 +138,7 @@ func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r
 			return
 		}
 
+		conf = conf.Copy()
 		for iLayer := range conf.Layers {
 			conf.GetLayerDates(iLayer, *verbose)
 		}
@@ -480,11 +481,9 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 			return
 		}
 
-		newConf := *conf
-		newConf.Layers = make([]utils.Layer, len(newConf.Layers))
-		for i, layer := range conf.Layers {
+		newConf := conf.Copy()
+		for i := range newConf.Layers {
 			conf.GetLayerDates(i, *verbose)
-			newConf.Layers[i] = layer
 			newConf.Layers[i].Dates = []string{newConf.Layers[i].Dates[0], newConf.Layers[i].Dates[len(newConf.Layers[i].Dates)-1]}
 		}
 

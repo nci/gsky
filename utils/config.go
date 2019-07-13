@@ -150,6 +150,7 @@ type Layer struct {
 	GrpcTileXSize                float64      `json:"grpc_tile_x_size"`
 	GrpcTileYSize                float64      `json:"grpc_tile_y_size"`
 	ColourScale                  int          `json:"colour_scale"`
+	TimestampsLoadStrategy       string       `json:"timestamps_load_strategy"`
 }
 
 // Process contains all the details that a WPS needs
@@ -639,6 +640,44 @@ const DefaultWcsMaxTileHeight = 1024
 const DefaultLegendWidth = 160
 const DefaultLegendHeight = 320
 
+// CopyConfig makes a deep copy of the certain fields of the config object.
+// For the time being, we only copy the fields required for GetCapabilities.
+func (config *Config) Copy() *Config {
+	newConf := &Config{}
+	newConf.ServiceConfig = ServiceConfig{
+		OWSHostname: config.ServiceConfig.OWSHostname,
+		NameSpace:   config.ServiceConfig.NameSpace,
+		MASAddress:  config.ServiceConfig.MASAddress,
+	}
+
+	newConf.Layers = make([]Layer, len(config.Layers))
+	for i, layer := range config.Layers {
+		if len(layer.InputLayers) > 0 && len(strings.TrimSpace(layer.DataSource)) == 0 {
+			newConf.Layers[i] = layer
+			continue
+		}
+		newConf.Layers[i] = Layer{
+			Name:           layer.Name,
+			Title:          layer.Title,
+			Abstract:       layer.Abstract,
+			NameSpace:      layer.NameSpace,
+			Styles:         layer.Styles,
+			AxesInfo:       layer.AxesInfo,
+			StepDays:       layer.StepDays,
+			StepHours:      layer.StepHours,
+			StepMinutes:    layer.StepMinutes,
+			StartISODate:   layer.StartISODate,
+			EndISODate:     layer.EndISODate,
+			TimeGen:        layer.TimeGen,
+			Accum:          layer.Accum,
+			DataSource:     layer.DataSource,
+			RGBExpressions: layer.RGBExpressions,
+		}
+	}
+
+	return newConf
+}
+
 // GetLayerDates loads dates for the ith layer
 func (config *Config) GetLayerDates(iLayer int, verbose bool) {
 	layer := config.Layers[iLayer]
@@ -928,7 +967,9 @@ func (config *Config) LoadConfigFile(configFile string, verbose bool) error {
 		}
 		config.Layers[i].FeatureInfoExpressions = featureInfoExpr
 
-		config.GetLayerDates(i, verbose)
+		if config.Layers[i].TimestampsLoadStrategy != "on_demand" {
+			config.GetLayerDates(i, verbose)
+		}
 
 		config.Layers[i].OWSHostname = config.ServiceConfig.OWSHostname
 
