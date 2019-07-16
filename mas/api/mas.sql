@@ -226,6 +226,46 @@ create or replace function mas_intersect_polygons(
       limit_str := format(' limit %1$s ', limit_val);
     end if;
 
+    -- this is the fast path - non-spatial query
+    if bbox is null then
+      str := format($f$
+          select
+            distinct pa_path as file
+          from
+            polygons
+          inner join paths
+              on po_hash = pa_hash
+          where
+            (
+              -- no times
+              %1$L::timestamptz is null
+
+              -- %1$L::timestamptz only
+              or (%1$L::timestamptz is not null and %2$L::timestamptz is null
+                and %1$L::timestamptz between po_min_stamp and po_max_stamp
+                and %1$L::timestamptz = any(po_stamps)
+              )
+
+              -- %1$L::timestamptz and %2$L::timestamptz range overlaps stamps
+              or (%1$L::timestamptz is not null and %2$L::timestamptz is not null
+                and (%1$L::timestamptz - interval '1 second', %2$L::timestamptz + interval '1 second') overlaps (po_min_stamp, po_max_stamp)
+              )
+            )
+            and (%3$L is null
+              or po_name = any(%3$L)
+            )
+            and (%4$L is null
+              or po_pixel_x::bigint = %4$L::bigint
+            )
+            and path_hash(%5$L) = any(pa_parents)
+            %6$s
+
+          $f$, time_a, time_b, namespaces, resolution, gpath, limit_str);
+
+      return str;
+
+    end if;
+
     for rec in select ps_srid as srid from polygon_srids loop
 
       parts := array_append(parts, format($f$
@@ -351,56 +391,60 @@ create or replace function mas_intersects(
     perform mas_reset();
     perform mas_view(gpath);
 
-    -- &srs=[auth_name]:[auth_srid], eg EPSG:3857
-    srid := (
-      select spatial_ref_sys.srid
-      from spatial_ref_sys
-      where srs ~ '^[A-Z]+[:][0-9]+$'
-        and auth_name = split_part(srs, ':', 1)
-        and auth_srid = split_part(srs, ':', 2)::integer
-    );
+    if srs is null or wkt is null then
+      segmask := null;
+    else
+      -- &srs=[auth_name]:[auth_srid], eg EPSG:3857
+      srid := (
+        select spatial_ref_sys.srid
+        from spatial_ref_sys
+        where srs ~ '^[A-Z]+[:][0-9]+$'
+          and auth_name = split_part(srs, ':', 1)
+          and auth_srid = split_part(srs, ':', 2)::integer
+      );
 
-    if srid is null then
-      raise exception 'unknown SRS';
-    end if;
+      if srid is null then
+        raise exception 'unknown SRS';
+      end if;
 
-    in_geom := ST_GeomFromText(wkt, srid);
-    if in_geom is null then
-      raise exception 'invalid wkt from user inputs';
-    end if;
+      in_geom := ST_GeomFromText(wkt, srid);
+      if in_geom is null then
+        raise exception 'invalid wkt from user inputs';
+      end if;
 
-    if identity_tol is null then
-      identity_tol := -1.0;
-    end if;
+      if identity_tol is null then
+        identity_tol := -1.0;
+      end if;
 
-    if dp_tol is null then
-      dp_tol := -1.0;
-    end if;
+      if dp_tol is null then
+        dp_tol := -1.0;
+      end if;
 
-    if ST_NPoints(in_geom) > 100 and identity_tol >= 0 and dp_tol >= 0 then
-      mask := ST_SimplifyPreserveTopology(ST_RemoveRepeatedPoints(in_geom, identity_tol), dp_tol);
-      if mask is null then
+      if ST_NPoints(in_geom) > 100 and identity_tol >= 0 and dp_tol >= 0 then
+        mask := ST_SimplifyPreserveTopology(ST_RemoveRepeatedPoints(in_geom, identity_tol), dp_tol);
+        if mask is null then
+          mask := in_geom;
+        end if;
+      else
         mask := in_geom;
       end if;
-    else
-      mask := in_geom;
-    end if;
 
-    if mask is null then
-      raise exception 'invalid WKT';
-    end if;
+      if mask is null then
+        raise exception 'invalid WKT';
+      end if;
 
-    if n_seg is null then
-      n_seg := 2;
-    end if;
+      if n_seg is null then
+        n_seg := 2;
+      end if;
 
-    -- Intersection occurs in the dataset's original projection. Make
-    -- sure the wgs84 bounding box covers roughly the same area after
-    -- transformation.
-    segmask := ST_Segmentize(
-      mask,
-      ceil((ST_XMax(mask)-ST_XMin(mask))/n_seg) -- degree lat/lon max segment length
-    );
+      -- Intersection occurs in the dataset's original projection. Make
+      -- sure the wgs84 bounding box covers roughly the same area after
+      -- transformation.
+      segmask := ST_Segmentize(
+        mask,
+        ceil((ST_XMax(mask)-ST_XMin(mask))/n_seg) -- degree lat/lon max segment length
+      );
+    end if;
 
     if limit_val is null then
       limit_val := -1;
