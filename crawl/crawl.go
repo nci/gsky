@@ -31,6 +31,7 @@ func main() {
 	approx := true
 	sentinel2Yaml := false
 	var configFile string
+	ncMetadata := false
 
 	if len(os.Args) > 2 {
 		flagSet := flag.NewFlagSet("Usage", flag.ExitOnError)
@@ -39,6 +40,7 @@ func main() {
 		flagSet.BoolVar(&exact, "exact", false, "Compute exact statistics")
 		flagSet.BoolVar(&sentinel2Yaml, "sentinel2_yaml", false, "Extract sentinel2 metadata from its yaml files")
 		flagSet.StringVar(&configFile, "conf", "", "Crawl config file")
+		flagSet.BoolVar(&ncMetadata, "nc_md", false, "Look for netCDF metadata")
 		flagSet.Parse(os.Args[2:])
 
 		approx = !exact
@@ -61,6 +63,11 @@ func main() {
 			ensure(rErr)
 			err = utils.Unmarshal([]byte(cfg), config)
 			ensure(err)
+		} else {
+			ruleSet := extr.RuleSet{
+				NcMetadata: ncMetadata,
+			}
+			config.RuleSets = append(config.RuleSets, ruleSet)
 		}
 		geoFile, err = extr.ExtractGDALInfo(path, concLimit, approx, config)
 	}
