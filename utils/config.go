@@ -151,6 +151,7 @@ type Layer struct {
 	GrpcTileYSize                float64      `json:"grpc_tile_y_size"`
 	ColourScale                  int          `json:"colour_scale"`
 	TimestampsLoadStrategy       string       `json:"timestamps_load_strategy"`
+	MasQueryHint                 string       `json:"mas_query_hint"`
 }
 
 // Process contains all the details that a WPS needs
@@ -672,6 +673,7 @@ func (config *Config) Copy() *Config {
 			Accum:          layer.Accum,
 			DataSource:     layer.DataSource,
 			RGBExpressions: layer.RGBExpressions,
+			TimestampToken: layer.TimestampToken,
 		}
 	}
 
