@@ -45,55 +45,18 @@ import (
 	"io/ioutil"
 	"log"
 	"path/filepath"
+	"strings"
 	"time"
 	"unsafe"
 )
 
-type ArdBand struct {
-	Info struct {
-		Geotransform []float64
-		Height       int
-		Width        int
-	}
-
-	Path string
-}
-
-type ArdMetadata struct {
-	Format struct {
-		Name string
-	}
-
-	Extent struct {
-		Center_dt string
-	}
-
-	Grid_spatial struct {
-		Projection struct {
-			Geo_ref_Points struct {
-				Ll struct {
-					X string
-					Y string
-				}
-				Lr struct {
-					X string
-					Y string
-				}
-				Ul struct {
-					X string
-					Y string
-				}
-				Ur struct {
-					X string
-					Y string
-				}
-			}
-			Spatial_reference string
-		}
-	}
-
-	Image struct {
-		Bands map[string]*ArdBand
+func ExtractYaml(filename string, family string) (*GeoFile, error) {
+	if family == "sentinel2" {
+		return ExtractSentinel2Yaml(filename)
+	} else if family == "landsat" {
+		return ExtractLandsatYaml(filename)
+	} else {
+		return nil, fmt.Errorf("unsupported yaml family: %s", family)
 	}
 }
 
@@ -101,6 +64,54 @@ func ExtractSentinel2Yaml(filename string) (*GeoFile, error) {
 	rawData, err := ioutil.ReadFile(filename)
 	if err != nil {
 		return nil, err
+	}
+
+	type ArdBand struct {
+		Info struct {
+			Geotransform []float64
+			Height       int
+			Width        int
+		}
+
+		Path string
+	}
+
+	type ArdMetadata struct {
+		Format struct {
+			Name string
+		}
+
+		Extent struct {
+			Center_dt string
+		}
+
+		Grid_spatial struct {
+			Projection struct {
+				Geo_ref_Points struct {
+					Ll struct {
+						X string
+						Y string
+					}
+					Lr struct {
+						X string
+						Y string
+					}
+					Ul struct {
+						X string
+						Y string
+					}
+					Ur struct {
+						X string
+						Y string
+					}
+				}
+				Spatial_reference string
+			}
+		}
+
+		Image struct {
+			Bands map[string]*ArdBand
+		}
 	}
 
 	ard := ArdMetadata{}
@@ -163,6 +174,97 @@ func ExtractSentinel2Yaml(filename string) (*GeoFile, error) {
 	}
 
 	return &geoFile, nil
+}
+
+func ExtractLandsatYaml(filename string) (*GeoFile, error) {
+	rawData, err := ioutil.ReadFile(filename)
+	if err != nil {
+		return nil, err
+	}
+
+	md := make(map[string]interface{})
+
+	err = yaml.Unmarshal(rawData, &md)
+	if err != nil {
+		return nil, err
+	}
+
+	geoMd := &GeoMetaData{}
+
+	if crsRaw, ok := md["crs"]; ok {
+		srs := crsRaw.(string)
+
+		cSrs := C.CString(srs)
+
+		cProjWkt := C.getWktText(cSrs, 0)
+		geoMd.ProjWKT = C.GoString(cProjWkt)
+		C.free(unsafe.Pointer(cProjWkt))
+
+		cProj4 := C.getWktText(cSrs, 1)
+		geoMd.Proj4 = C.GoString(cProj4)
+		C.free(unsafe.Pointer(cProj4))
+
+		C.free(unsafe.Pointer(cSrs))
+	}
+
+	if geometryRaw, ok := md["geometry"]; ok {
+		coordinates := geometryRaw.(map[interface{}]interface{})["coordinates"]
+		var points []string
+		for _, coordRaw := range coordinates.([]interface{})[0].([]interface{}) {
+			coord := coordRaw.([]interface{})
+			x := coord[0]
+			y := coord[1]
+			point := fmt.Sprintf("%f %f", x, y)
+			points = append(points, point)
+		}
+		geoMd.Polygon = "POLYGON ((" + strings.Join(points, ",") + " ))"
+	}
+
+	if propsRaw, ok := md["properties"]; ok {
+		datetimeRaw := propsRaw.(map[interface{}]interface{})["datetime"].(string)
+		parts := strings.Split(datetimeRaw, " ")
+		if len(parts) != 2 {
+			return nil, fmt.Errorf("invalid datetime format: %v", datetimeRaw)
+		}
+
+		datetime := fmt.Sprintf("%sT%sZ", parts[0], parts[1][:len("00:05:18")])
+		t, err := time.ParseInLocation("2006-01-02T15:04:05Z", datetime, time.UTC)
+		if err == nil {
+			geoMd.TimeStamps = []time.Time{t}
+		}
+	}
+
+	fn, err := filepath.Abs(filename)
+	if err != nil {
+		return nil, err
+	}
+
+	geoFile := &GeoFile{FileName: fn, Driver: "GTiff"}
+	filePath := filepath.Dir(fn)
+	if bandsRaw, ok := md["measurements"]; ok {
+		bands := bandsRaw.(map[interface{}]interface{})
+		for band := range bands {
+			ns := band.(string)
+			dsName := bands[band].(map[interface{}]interface{})["path"].(string)
+			dsPath := filepath.Join(filePath, dsName)
+
+			ds := &GeoMetaData{
+				DataSetName:  dsPath,
+				NameSpace:    ns,
+				Type:         "Int16",
+				RasterCount:  1,
+				TimeStamps:   geoMd.TimeStamps,
+				GeoTransform: []float64{0, 0, 0, 0, 0, 0},
+				Polygon:      geoMd.Polygon,
+				ProjWKT:      geoMd.ProjWKT,
+				Proj4:        geoMd.Proj4,
+			}
+
+			geoFile.DataSets = append(geoFile.DataSets, ds)
+		}
+	}
+
+	return geoFile, nil
 }
 
 func getBandDataType(bandName string) string {
