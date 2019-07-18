@@ -674,6 +674,7 @@ func (config *Config) Copy() *Config {
 			DataSource:     layer.DataSource,
 			RGBExpressions: layer.RGBExpressions,
 			TimestampToken: layer.TimestampToken,
+			Dates:          layer.Dates,
 		}
 	}
 
