@@ -25,6 +25,7 @@ reduction of overheads in grpc (de-)serialisation and network traffic.
 #include "ogr_srs_api.h"
 #include "cpl_string.h"
 #include "gdal_utils.h"
+#include <stdio.h>
 #cgo pkg-config: gdal
 
 typedef struct {
@@ -80,10 +81,26 @@ int roundCoord(double coord, int maxExtent) {
 
 int warp_operation_fast(const char *srcFilePath, char *srcProjRef, double *srcGeot, const char **geoLocOpts, const char *dstProjRef, double *dstGeot, int dstXImageSize, int dstYImageSize, int band, void **dstBuf, int *dstBufSize, int *dstBbox, double *noData, GDALDataType *dType)
 {
-	GDALDatasetH hSrcDS = GDALOpen(srcFilePath, GA_ReadOnly);
-        if(!hSrcDS) {
-                return 1;
-        }
+	GDALDatasetH hSrcDS = NULL;
+	const char *netCDFSig = "NETCDF:";
+	if strncmp(srcFilePath, netCDFSig, strlen(netCDFSig)) {
+		hSrcDS = GDALOpen(srcFilePath, GA_ReadOnly);
+	} else {
+		char **openOpts;
+		openOpts = CSLAddNameValue(openOpts, "coord_query", "no");
+
+		char bandStr[20];
+		sprintf(bandStr, "%d", band);
+		openOpts = CSLAddNameValue(openOpts, "band_query", bandStr);
+		hSrcDS = GDALOpenEx(srcFilePath, GA_ReadOnly, NULL, (const char **)openOpts, NULL);
+		CSLDestroy(openOpts);
+
+		band = 1;
+	}
+
+	if(!hSrcDS) {
+		return 1;
+	}
 
 	if(srcProjRef == NULL) {
 		srcProjRef = (char *)GDALGetProjectionRef(hSrcDS);
