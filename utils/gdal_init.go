@@ -39,6 +39,7 @@ func registerGDALDrivers() {
 
 	// Find out which drivers are present
 	C.GDALAllRegister()
+	return
 	for i := 0; i < int(C.GDALGetDriverCount()); i++ {
 		driver := C.GDALGetDriver(C.int(i))
 		switch C.GoString(C.GDALGetDriverShortName(driver)) {
@@ -60,7 +61,13 @@ func registerGDALDrivers() {
 	// De-register all the drivers again
 	for i := 0; i < int(C.GDALGetDriverCount()); i++ {
 		driver := C.GDALGetDriver(C.int(i))
-		C.GDALDeregisterDriver(driver)
+		switch C.GoString(C.GDALGetDriverShortName(driver)) {
+		case "GSKY_netCDF":
+			continue
+		default:
+			C.GDALDeregisterDriver(driver)
+		}
+
 	}
 
 	// Register these drivers first for higher performance when

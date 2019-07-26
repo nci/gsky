@@ -29,7 +29,7 @@
 #include "netcdfdataset.h"
 #include "cpl_time.h"
 
-CPL_CVSID("$Id: netcdflayer.cpp 7d078e0357d2998edfa713422e607cbadf77f9ff 2018-04-08 22:11:28 +0200 Even Rouault $")
+CPL_CVSID("$Id$")
 
 /************************************************************************/
 /*                            netCDFLayer()                             */

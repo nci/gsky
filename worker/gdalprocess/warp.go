@@ -83,11 +83,12 @@ int warp_operation_fast(const char *srcFilePath, char *srcProjRef, double *srcGe
 {
 	GDALDatasetH hSrcDS = NULL;
 	const char *netCDFSig = "NETCDF:";
-	if strncmp(srcFilePath, netCDFSig, strlen(netCDFSig)) {
+	if(strncmp(srcFilePath, netCDFSig, strlen(netCDFSig))) {
 		hSrcDS = GDALOpen(srcFilePath, GA_ReadOnly);
 	} else {
 		char **openOpts;
 		openOpts = CSLAddNameValue(openOpts, "coord_query", "no");
+		openOpts = CSLAddNameValue(openOpts, "md_query", "no");
 
 		char bandStr[20];
 		sprintf(bandStr, "%d", band);
@@ -95,6 +96,7 @@ int warp_operation_fast(const char *srcFilePath, char *srcProjRef, double *srcGe
 		hSrcDS = GDALOpenEx(srcFilePath, GA_ReadOnly, NULL, (const char **)openOpts, NULL);
 		CSLDestroy(openOpts);
 
+		// band = 1 assumes GSKY_netCDF GDAL driver is already loaded. Otherwise our results will be incorrect.
 		band = 1;
 	}
 
@@ -493,6 +495,7 @@ func WarpRaster(in *pb.GeoRPCGranule, debug bool) *pb.Result {
 	var dstBufC unsafe.Pointer
 	var noData float64
 	var dType C.GDALDataType
+
 	cErr := C.warp_operation_fast(filePathC, srcProjRefC, pSrcGeot, pGeoLoc, dstProjRefC, (*C.double)(&in.DstGeot[0]), C.int(in.Width), C.int(in.Height), C.int(in.Bands[0]), (*unsafe.Pointer)(&dstBufC), (*C.int)(&dstBufSize), (*C.int)(&dstBboxC[0]), (*C.double)(&noData), (*C.GDALDataType)(&dType))
 	if cErr != 0 {
 		return &pb.Result{Error: dump(fmt.Sprintf("warp_operation() fail: %v", int(cErr)))}

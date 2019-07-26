@@ -17,7 +17,7 @@ ifeq ($(strip $(GOBIN)),)
 endif
 GDALCFLAGS=$(shell pkg-config gdal --cflags)
 GDALLDLAGS=$(shell pkg-config gdal --libs)
-NCCFLAGS="-DNETCDF_HAS_NC4 -DNETCDF_HAS_NC2 -DHAVE_HDF4 -DHAVE_HDF5 $(shell nc-config --includedir)"
+NCCFLAGS=-DNETCDF_HAS_NC4 -DNETCDF_HAS_NC2 -DHAVE_HDF4 -DHAVE_HDF5 -DENABLE_UFFD -I$(shell nc-config --includedir)
 NCLDFLAGS=$(shell nc-config --libs)
 
 all: concurrent gdal_GSKY_netCDF.so pkg-config
@@ -29,7 +29,7 @@ check test: pkg-config
 	bats testsuite
 
 gdal_GSKY_netCDF.so: libs/gdal/frmts/gsky_netcdf/*.cpp
-	$(CXX) -std=c++11 -Wall -shared -fPIC -fvisibility=hidden -O3 $(NCCFLAGS) $(GDALCFLAGS) $(NCLDFLAGS) $(GDALLDFLAGS) $< -o $@
+	$(CXX) -std=c++11 -Wall -shared -fPIC -fvisibility=hidden -Ofast $(NCCFLAGS) $(GDALCFLAGS) $(NCLDFLAGS) $(GDALLDFLAGS) $< -o $@
 
 concurrent: src/concurrent.c
 	$(CC) -std=c99 -Wall -O2 $< -o $@

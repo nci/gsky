@@ -1,5 +1,5 @@
 /******************************************************************************
- * $Id: netcdfdataset.h 747442274b44f53e85c1532d3dae82e623d4f56b 2018-08-08 13:31:38 +0200 Even Rouault $
+ * $Id$
  *
  * Project:  netCDF read/write Driver
  * Purpose:  GDAL bindings over netCDF library.
@@ -123,10 +123,34 @@ typedef enum
 static const int NCDF_DEFLATE_LEVEL    = 1;  /* best time/size ratio */
 
 /* helper for libnetcdf errors */
-#define NCDF_ERR(status) if ( status != NC_NOERR ){ \
-CPLError( CE_Failure,CPLE_AppDefined, \
-"netcdf error #%d : %s .\nat (%s,%s,%d)\n",status, nc_strerror(status), \
-__FILE__, __FUNCTION__, __LINE__ ); }
+#define NCDF_ERR(status)                                                \
+    do {                                                                \
+        int NCDF_ERR_status_ = (status);                                \
+        if( NCDF_ERR_status_ != NC_NOERR )                              \
+        {                                                               \
+            CPLError(CE_Failure, CPLE_AppDefined,                       \
+                     "netcdf error #%d : %s .\nat (%s,%s,%d)\n",        \
+                     status, nc_strerror(NCDF_ERR_status_),             \
+                     __FILE__, __FUNCTION__, __LINE__);                 \
+        }                                                               \
+    } while(0)
+
+#define NCDF_ERR_RET(status)                    \
+    do {                                        \
+        int NCDF_ERR_RET_status_ = (status);    \
+        if( NCDF_ERR_RET_status_ != NC_NOERR )  \
+        {                                       \
+            NCDF_ERR(NCDF_ERR_RET_status_);     \
+            return CE_Failure;                  \
+        }                                       \
+    } while(0)
+
+#define ERR_RET(eErr)                           \
+    do {                                        \
+        CPLErr ERR_RET_eErr_ = (eErr);          \
+        if( ERR_RET_eErr_ != CE_None )          \
+            return ERR_RET_eErr_;               \
+    } while(0)
 
 /* Check for NC2 support in case it was not enabled at compile time. */
 /* NC4 has to be detected at compile as it requires a special build of netcdf-4. */
@@ -757,6 +781,7 @@ class netCDFDataset final: public GDALPamDataset
 {
     friend class netCDFRasterBand; //TMP
     friend class netCDFLayer;
+    bool         mdQuery;
 
     typedef enum
     {
@@ -774,6 +799,7 @@ class netCDFDataset final: public GDALPamDataset
 #ifdef ENABLE_UFFD
     cpl_uffd_context *pCtx = nullptr;
 #endif
+    int           nSubDatasets;
     char          **papszSubDatasets;
     char          **papszMetadata;
     CPLStringList papszDimName;
@@ -793,6 +819,7 @@ class netCDFDataset final: public GDALPamDataset
     int          nYDimID;
     bool         bIsProjected;
     bool         bIsGeographic;
+    bool         bSwitchedXY = false;
 
     /* state vars */
     bool         bDefineMode;
@@ -820,9 +847,13 @@ class netCDFDataset final: public GDALPamDataset
     static double       rint( double );
 
     double       FetchCopyParm( const char *pszGridMappingValue,
-                                const char *pszParm, double dfDefault );
+                                const char *pszParm, double dfDefault,
+                                bool *pbFound=nullptr );
 
     char **      FetchStandardParallels( const char *pszGridMappingValue );
+
+    const char *FetchAttr( const char *pszVarFullName, const char *pszAttr );
+    const char *FetchAttr( int nGroupId, int nVarId, const char *pszAttr );
 
     void ProcessCreationOptions( );
     int DefVarDeflate( int nVarId, bool bChunkingArg=true );
@@ -836,12 +867,12 @@ class netCDFDataset final: public GDALPamDataset
 
     CPLErr      ReadAttributes( int, int );
 
-    void  CreateSubDatasetList( );
+    void  CreateSubDatasetList( int nGroupId );
 
-    void  SetProjectionFromVar( int, bool bReadSRSOnly );
+    void  SetProjectionFromVar( int nGroupId, int nVarId, bool bReadSRSOnly );
 
-    int ProcessCFGeolocation( int );
-    CPLErr Set1DGeolocation( int nVarId, const char *szDimName );
+    int ProcessCFGeolocation( int nGroupId, int nVarId );
+    CPLErr Set1DGeolocation( int nGroupId, int nVarId, const char *szDimName );
     double * Get1DGeolocation( const char *szDimName, int &nVarLen );
 
     static bool CloneAttributes(int old_cdfid, int new_cdfid, int nSrcVarId, int nDstVarId);
@@ -850,6 +881,15 @@ class netCDFDataset final: public GDALPamDataset
                          int nDimIdToGrow, size_t nNewSize);
     bool GrowDim(int nLayerId, int nDimIdToGrow, size_t nNewSize);
 
+    CPLErr FilterVars( int nCdfId, bool bKeepRasters, bool bKeepVectors,
+                       char **papszIgnoreVars, int *pnRasterVars,
+                       int *pnGroupId, int *pnVarId, int *pnIgnoredVars );
+    CPLErr CreateGrpVectorLayers( int nCdfId, CPLString osFeatureType,
+                                  std::vector<int> anPotentialVectorVarID,
+                                  std::map<int, int> oMapDimIdToCount,
+                                  int nVarXId, int nVarYId, int nVarZId,
+                                  int nProfileDimId, int nParentIndexVarID,
+                                  bool bKeepRasters );
   protected:
 
     CPLXMLNode *SerializeToXML( const char *pszVRTPath ) override;
@@ -867,8 +907,14 @@ class netCDFDataset final: public GDALPamDataset
     /* Projection/GT */
     CPLErr      GetGeoTransform( double * ) override;
     CPLErr      SetGeoTransform (double *) override;
-    const char * GetProjectionRef() override;
-    CPLErr      SetProjection (const char *) override;
+    const char * _GetProjectionRef() override;
+    CPLErr      _SetProjection (const char *) override;
+    const OGRSpatialReference* GetSpatialRef() const override {
+        return GetSpatialRefFromOldGetProjectionRef();
+    }
+    CPLErr SetSpatialRef(const OGRSpatialReference* poSRS) override {
+        return OldSetProjectionFromSetSpatialRef(poSRS);
+    }
 
     virtual char      **GetMetadataDomainList() override;
     char ** GetMetadata( const char * ) override;
