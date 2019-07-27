@@ -5115,9 +5115,6 @@ double netCDFDataset::rint( double dfX )
 CPLErr netCDFDataset::ReadAttributes( int cdfidIn, int var)
 
 {
-    if(!mdQuery) {
-      return CE_None;
-    }
     char *pszVarFullName = nullptr;
     ERR_RET(NCDFGetVarFullName(cdfidIn, var, &pszVarFullName));
     size_t nMetaNameSize = sizeof(char) * (strlen(pszVarFullName) + 1

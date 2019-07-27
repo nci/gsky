@@ -83,21 +83,25 @@ int warp_operation_fast(const char *srcFilePath, char *srcProjRef, double *srcGe
 {
 	GDALDatasetH hSrcDS = NULL;
 	const char *netCDFSig = "NETCDF:";
-	if(strncmp(srcFilePath, netCDFSig, strlen(netCDFSig))) {
+
+	if(strncmp(srcFilePath, netCDFSig, strlen(netCDFSig)) && strncmp(srcFilePath+strlen(srcFilePath)-3, ".nc", strlen(".nc"))) {
 		hSrcDS = GDALOpen(srcFilePath, GA_ReadOnly);
 	} else {
-		char **openOpts;
-		openOpts = CSLAddNameValue(openOpts, "coord_query", "no");
-		openOpts = CSLAddNameValue(openOpts, "md_query", "no");
+		char bandQuery[20];
+		sprintf(bandQuery, "band_query=%d", band);
 
-		char bandStr[20];
-		sprintf(bandStr, "%d", band);
-		openOpts = CSLAddNameValue(openOpts, "band_query", bandStr);
-		hSrcDS = GDALOpenEx(srcFilePath, GA_ReadOnly, NULL, (const char **)openOpts, NULL);
-		CSLDestroy(openOpts);
+		const char *openOpts[] = {"md_query=no", bandQuery, NULL};
 
-		// band = 1 assumes GSKY_netCDF GDAL driver is already loaded. Otherwise our results will be incorrect.
-		band = 1;
+		hSrcDS = GDALOpenEx(srcFilePath, GA_ReadOnly, NULL, openOpts, NULL);
+		if(hSrcDS) {
+			GDALDriverH hDriver = GDALGetDatasetDriver(hSrcDS);
+			const char *driverName = GDALGetDriverShortName(hDriver);
+
+			const char *gskySig = "GSKY_netCDF";
+			if(!strncmp(driverName, gskySig, strlen(gskySig))) {
+				band = 1;
+			}
+		}
 	}
 
 	if(!hSrcDS) {
@@ -227,8 +231,7 @@ int warp_operation_fast(const char *srcFilePath, char *srcProjRef, double *srcGe
         int nXBlocks = (srcXSize + srcXBlockSize - 1) / srcXBlockSize;
         int nYBlocks = (srcYSize + srcYBlockSize - 1) / srcYBlockSize;
 
-        void **blockList = (void **)malloc(nXBlocks * nYBlocks * sizeof(void *));
-        memset(blockList, 0, nXBlocks * nYBlocks * sizeof(void *));
+        void **blockList = NULL;
 
         *dType = GDALGetRasterDataType(hBand);
 	const GDALDataType srcDataType = *dType;
@@ -252,11 +255,12 @@ int warp_operation_fast(const char *srcFilePath, char *srcProjRef, double *srcGe
         double *dz = (double *)malloc(dstXSize * sizeof(double));
         int *bSuccess = (int *)malloc(dstXSize * sizeof(int));
 
-        int iDstX, iDstY;
+        int iDstX, iDstY, _iDstX;
         for(iDstX = 0; iDstX < dstXSize; iDstX++) {
                 dx[dstXSize+iDstX] = iDstX + 0.5 + dstXOff;
         }
 
+	int bCache = -1;
 	for(iDstY = 0; iDstY < dstYSize; iDstY++) {
                 memcpy(dx, dx + dstXSize, dstXSize * sizeof(double));
                 const double dfY = iDstY + 0.5 + dstYOff;
@@ -274,15 +278,59 @@ int warp_operation_fast(const char *srcFilePath, char *srcProjRef, double *srcGe
                         const int iSrcY = (int)(dy[iDstX] + 1.0e-10);
                         if(iSrcX >= srcXSize || iSrcY >= srcYSize) continue;
 
+			// If the distance between two consecutive iSrcX are less than srcXBlockSize, we cache the blocks.
+			// Otherwise we only allocate a single buffer of block size and keep overwriting this buffer.
+			// This caching strategy is merely heuristic but appears working across various datasets.
+			if(bCache == -1) {
+				int iSrcXPrev = -1;
+				int iSrcXCurr = -1;
+				int srcStride = -1;
+				for(_iDstX = iDstX; _iDstX < dstXSize; _iDstX++) {
+					if(!bSuccess[_iDstX]) continue;
+					if(dx[_iDstX] < 0) continue;
+					const int _iSrcX = (int)(dx[_iDstX] + 1.0e-10);
+					if(_iSrcX >= srcXSize) continue;
+
+					if(iSrcXPrev < 0) {
+						iSrcXPrev = _iSrcX;
+					} else {
+						iSrcXCurr = _iSrcX;
+						break;
+					}
+				}
+
+				if(iSrcXPrev >= 0 && iSrcXCurr < iSrcXPrev) {
+					iSrcXCurr = iSrcXPrev;
+				}
+				srcStride = iSrcXCurr - iSrcXPrev;
+
+				bCache = srcStride >= 0 && srcStride < srcXBlockSize;
+
+				if(!bCache) {
+					blockList = (void **)malloc(sizeof(void *));
+					blockList[0] = malloc(srcXBlockSize * srcYBlockSize * srcDataSize);
+				} else {
+					blockList = (void **)malloc(nXBlocks * nYBlocks * sizeof(void *));
+					memset(blockList, 0, nXBlocks * nYBlocks * sizeof(void *));
+				}
+			}
+
                         int iXBlock = iSrcX / srcXBlockSize;
                         int iYBlock = iSrcY / srcYBlockSize;
-                        int iBlock = iXBlock + iYBlock * nXBlocks;
+                        int iBlock = 0;
 
-                        if(!blockList[iBlock]) {
-                                blockList[iBlock] = malloc(srcXBlockSize * srcYBlockSize * srcDataSize);
-                                err = GDALReadBlock(hBand, iXBlock, iYBlock, blockList[iBlock]);
+			if(!bCache) {
+				err = GDALReadBlock(hBand, iXBlock, iYBlock, blockList[0]);
 				if(err != CE_None) continue;
-                        }
+
+			} else {
+				iBlock = iXBlock + iYBlock * nXBlocks;
+	                        if(!blockList[iBlock]) {
+					blockList[iBlock] = malloc(srcXBlockSize * srcYBlockSize * srcDataSize);
+					err = GDALReadBlock(hBand, iXBlock, iYBlock, blockList[iBlock]);
+					if(err != CE_None) continue;
+				}
+			}
 
                         int iXBlockOff = iSrcX % srcXBlockSize;
                         int iYBlockOff = iSrcY % srcYBlockSize;
@@ -309,14 +357,17 @@ int warp_operation_fast(const char *srcFilePath, char *srcProjRef, double *srcGe
 		}
 	}
 
-	int iBlock;
-        for(iBlock = 0; iBlock < nXBlocks * nYBlocks; iBlock++) {
-                if(blockList[iBlock]) {
-                        free(blockList[iBlock]);
-                }
-        }
+	if(blockList) {
+		int iBlock;
+		int nBlocks = bCache > 0 ? nXBlocks * nYBlocks : 1;
+		for(iBlock = 0; iBlock < nBlocks; iBlock++) {
+			if(blockList[iBlock]) {
+				free(blockList[iBlock]);
+			}
+		}
 
-        free(blockList);
+		free(blockList);
+	}
         free(dx);
         free(dy);
         free(dz);
