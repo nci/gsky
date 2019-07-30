@@ -15,14 +15,21 @@ GOBIN=$(shell go env GOBIN)
 ifeq ($(strip $(GOBIN)),)
   GOBIN=$(shell go env GOPATH)/bin
 endif
+GDALCFLAGS=$(shell pkg-config gdal --cflags)
+GDALLDLAGS=$(shell pkg-config gdal --libs)
+NCCFLAGS=-DNETCDF_HAS_NC4 -DNETCDF_HAS_NC2 -DHAVE_HDF4 -DHAVE_HDF5 -DENABLE_UFFD -I$(shell nc-config --includedir)
+NCLDFLAGS=$(shell nc-config --libs)
 
-all: concurrent pkg-config
+all: concurrent gdal_GSKY_netCDF.so pkg-config
 	go get ./...
 	go install -ldflags=$(LDFLAGS) ./...
 
 check test: pkg-config
 	go test ./...
 	bats testsuite
+
+gdal_GSKY_netCDF.so: libs/gdal/frmts/gsky_netcdf/*.cpp
+	$(CXX) -std=c++11 -Wall -shared -fPIC -fvisibility=hidden -Ofast $(NCCFLAGS) $(GDALCFLAGS) $(NCLDFLAGS) $(GDALLDFLAGS) $< -o $@
 
 concurrent: src/concurrent.c
 	$(CC) -std=c99 -Wall -O2 $< -o $@
@@ -38,6 +45,7 @@ install:
 	install -d $(datarootdir)/gsky/static
 	install -d $(datarootdir)/mas
 	install concurrent $(bindir)
+	install gdal_GSKY_netCDF.so $(sbindir)
 	install $(GOBIN)/gsky $(sbindir)/gsky-ows
 	install $(GOBIN)/gdal-process $(sbindir)/gsky-gdal-process
 	install $(GOBIN)/grpc-server $(sbindir)/gsky-rpc
@@ -62,3 +70,4 @@ distclean: clean
 .PHONY: pkg-config
 pkg-config:
 	pkg-config --exists gdal
+	nc-config --version

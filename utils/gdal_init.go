@@ -7,11 +7,17 @@ import "C"
 
 import (
 	"os"
+	"path/filepath"
 )
 
 func InitGdal() {
 	setDefaultEnv("GDAL_NETCDF_VERIFY_DIMS", "NO")
 	setDefaultEnv("GDAL_PAM_ENABLED", "NO")
+
+	exeFilePath, err := os.Executable()
+	if err == nil {
+		setDefaultEnv("GDAL_DRIVER_PATH", filepath.Dir(exeFilePath))
+	}
 
 	registerGDALDrivers()
 }
@@ -29,13 +35,16 @@ func registerGDALDrivers() {
 	// drivers. This places common drivers at the front of the
 	// driver list.
 	var haveNetCDF, haveHDF4, haveHDF5, haveJP2OpenJPEG bool
-	var haveGTiff bool
+	var haveGTiff, haveGSKYNetCDF bool
 
 	// Find out which drivers are present
 	C.GDALAllRegister()
+	return
 	for i := 0; i < int(C.GDALGetDriverCount()); i++ {
 		driver := C.GDALGetDriver(C.int(i))
 		switch C.GoString(C.GDALGetDriverShortName(driver)) {
+		case "GSKY_netCDF":
+			haveGSKYNetCDF = true
 		case "netCDF":
 			haveNetCDF = true
 		case "HDF4":
@@ -52,12 +61,18 @@ func registerGDALDrivers() {
 	// De-register all the drivers again
 	for i := 0; i < int(C.GDALGetDriverCount()); i++ {
 		driver := C.GDALGetDriver(C.int(i))
-		C.GDALDeregisterDriver(driver)
+		switch C.GoString(C.GDALGetDriverShortName(driver)) {
+		case "GSKY_netCDF":
+			continue
+		default:
+			C.GDALDeregisterDriver(driver)
+		}
+
 	}
 
 	// Register these drivers first for higher performance when
 	// opening files (drivers are interrogated in a linear scan)
-	if haveNetCDF {
+	if !haveGSKYNetCDF && haveNetCDF {
 		C.GDALRegister_netCDF()
 	}
 	if haveGTiff {
