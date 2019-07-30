@@ -73,8 +73,8 @@ How To Compile the Source
 
 Dependencies:
 
-+ Go > 1.6.0
-+ GDAL > 2.1.0
++ Go > 1.11.0
++ GDAL > 3.0.0
 + Various Go packages (handled by the build system)
 
 ```console
