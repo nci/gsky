@@ -64,10 +64,17 @@ func main() {
 			err = utils.Unmarshal([]byte(cfg), config)
 			ensure(err)
 		} else {
-			ruleSet := extr.RuleSet{
-				NcMetadata: ncMetadata,
+			if ncMetadata {
+				ruleSet := extr.RuleSet{
+					NcMetadata: ncMetadata,
+					NameSpace:  extr.NSDataset,
+					SRSText:    extr.SRSDetect,
+					Proj4Text:  extr.Proj4Detect,
+					Pattern:    `.+`,
+					TimeAxis:   &extr.DatasetAxis{},
+				}
+				config.RuleSets = append(config.RuleSets, ruleSet)
 			}
-			config.RuleSets = append(config.RuleSets, ruleSet)
 		}
 		geoFile, err = extr.ExtractGDALInfo(path, concLimit, approx, config)
 	}
