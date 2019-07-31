@@ -23,7 +23,7 @@ import (
 
 type server struct {
 	PoolSize int
-	Pool *pp.ProcessPool
+	Pool     *pp.ProcessPool
 }
 
 func (s *server) Process(ctx context.Context, in *pb.GeoRPCGranule) (*pb.Result, error) {
