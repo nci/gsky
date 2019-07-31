@@ -15,11 +15,15 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 
 	"github.com/CloudyKit/jet"
 	goeval "github.com/edisonguo/govaluate"
+	pb "github.com/nci/gsky/worker/gdalservice"
+	"golang.org/x/net/context"
+	"google.golang.org/grpc"
 )
 
 var EtcDir = "."
@@ -28,6 +32,32 @@ var DataDir = "."
 const ReservedMemorySize = 1.5 * 1024 * 1024 * 1024
 const ColourLinearScale = 0
 const ColourLogScale = 1
+
+const DefaultRecvMsgSize = 10 * 1024 * 1024
+
+const DefaultWmsPolygonSegments = 2
+const DefaultWcsPolygonSegments = 10
+
+const DefaultWmsTimeout = 20
+const DefaultWcsTimeout = 30
+
+const DefaultGrpcWmsConcPerNode = 16
+const DefaultGrpcWcsConcPerNode = 16
+
+const DefaultWmsPolygonShardConcLimit = 2
+const DefaultWcsPolygonShardConcLimit = 2
+
+const DefaultWmsMaxWidth = 512
+const DefaultWmsMaxHeight = 512
+const DefaultWcsMaxWidth = 50000
+const DefaultWcsMaxHeight = 30000
+const DefaultWcsMaxTileWidth = 1024
+const DefaultWcsMaxTileHeight = 1024
+
+const DefaultLegendWidth = 160
+const DefaultLegendHeight = 320
+
+const DefaultConcGrpcWorkerQuery = 64
 
 type ServiceConfig struct {
 	OWSHostname       string `json:"ows_hostname"`
@@ -617,30 +647,6 @@ func Unmarshal(data []byte, i interface{}) error {
 	return nil
 }
 
-const DefaultRecvMsgSize = 10 * 1024 * 1024
-
-const DefaultWmsPolygonSegments = 2
-const DefaultWcsPolygonSegments = 10
-
-const DefaultWmsTimeout = 20
-const DefaultWcsTimeout = 30
-
-const DefaultGrpcWmsConcPerNode = 16
-const DefaultGrpcWcsConcPerNode = 16
-
-const DefaultWmsPolygonShardConcLimit = 2
-const DefaultWcsPolygonShardConcLimit = 2
-
-const DefaultWmsMaxWidth = 512
-const DefaultWmsMaxHeight = 512
-const DefaultWcsMaxWidth = 50000
-const DefaultWcsMaxHeight = 30000
-const DefaultWcsMaxTileWidth = 1024
-const DefaultWcsMaxTileHeight = 1024
-
-const DefaultLegendWidth = 160
-const DefaultLegendHeight = 320
-
 // CopyConfig makes a deep copy of the certain fields of the config object.
 // For the time being, we only copy the fields required for GetCapabilities.
 func (config *Config) Copy() *Config {
@@ -924,6 +930,71 @@ func LoadConfigFileTemplate(configFile string) ([]byte, error) {
 	return []byte(escapedStr), nil
 }
 
+func getGrpcPoolSize(config *Config, verbose bool) int {
+	opts := []grpc.DialOption{
+		grpc.WithInsecure(),
+		grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(DefaultRecvMsgSize)),
+	}
+
+	workerNodes := config.ServiceConfig.WorkerNodes
+	var connPool []*grpc.ClientConn
+	var effectiveWorkerNodes []string
+	for i := 0; i < len(workerNodes); i++ {
+		conn, err := grpc.Dial(workerNodes[i], opts...)
+		if err != nil {
+			log.Printf("gRPC connection problem: %v", err)
+			continue
+		}
+		defer conn.Close()
+
+		connPool = append(connPool, conn)
+		effectiveWorkerNodes = append(effectiveWorkerNodes, workerNodes[i])
+	}
+
+	var wg sync.WaitGroup
+	wg.Add(len(connPool))
+
+	concLimit := make(chan bool, DefaultConcGrpcWorkerQuery)
+	workerPoolSizes := make([]int, len(connPool))
+	for i := 0; i < len(connPool); i++ {
+		concLimit <- true
+		go func(i int) {
+			defer wg.Done()
+			defer func() { <-concLimit }()
+			c := pb.NewGDALClient(connPool[i])
+			req := &pb.GeoRPCGranule{Operation: "worker_info"}
+
+			ctx := context.Background()
+			ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
+			r, err := c.Process(ctx, req)
+			cancel()
+			if err == nil {
+				workerPoolSizes[i] = int(r.WorkerInfo.PoolSize)
+			} else {
+				if verbose {
+					log.Printf("Failed to query gRPC worker %s, %v", effectiveWorkerNodes[i], err)
+				}
+			}
+		}(i)
+	}
+	wg.Wait()
+
+	avgPoolSize := 0.0
+	cnt := 0.0
+	for _, ps := range workerPoolSizes {
+		if ps > 0 {
+			avgPoolSize += float64(ps)
+			cnt++
+		}
+	}
+
+	if cnt >= 1 {
+		avgPoolSize /= cnt
+	}
+
+	return int(avgPoolSize + 0.5)
+}
+
 // LoadConfigFile marshalls the config.json document returning an
 // instance of a Config variable containing all the values
 func (config *Config) LoadConfigFile(configFile string, verbose bool) error {
@@ -956,6 +1027,11 @@ func (config *Config) LoadConfigFile(configFile string, verbose bool) error {
 	}
 
 	config.ServiceConfig.MaxGrpcBufferSize = config.ServiceConfig.MaxGrpcBufferSize * 1024 * 1024
+
+	grpcPoolSize := getGrpcPoolSize(config, verbose)
+	if verbose {
+		log.Printf("average grpc worker pool size: %d", grpcPoolSize)
+	}
 
 	for i, layer := range config.Layers {
 		bandExpr, err := ParseBandExpressions(layer.RGBProducts)
@@ -997,11 +1073,19 @@ func (config *Config) LoadConfigFile(configFile string, verbose bool) error {
 		}
 
 		if config.Layers[i].GrpcWmsConcPerNode <= 0 {
-			config.Layers[i].GrpcWmsConcPerNode = DefaultGrpcWmsConcPerNode
+			conc := grpcPoolSize
+			if conc < DefaultGrpcWmsConcPerNode {
+				conc = DefaultGrpcWmsConcPerNode
+			}
+			config.Layers[i].GrpcWmsConcPerNode = conc
 		}
 
 		if config.Layers[i].GrpcWcsConcPerNode <= 0 {
-			config.Layers[i].GrpcWcsConcPerNode = DefaultGrpcWcsConcPerNode
+			conc := grpcPoolSize
+			if conc < DefaultGrpcWcsConcPerNode {
+				conc = DefaultGrpcWcsConcPerNode
+			}
+			config.Layers[i].GrpcWcsConcPerNode = conc
 		}
 
 		if config.Layers[i].WmsPolygonShardConcLimit <= 0 {
