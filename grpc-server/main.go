@@ -22,10 +22,15 @@ import (
 )
 
 type server struct {
+	PoolSize int
 	Pool *pp.ProcessPool
 }
 
 func (s *server) Process(ctx context.Context, in *pb.GeoRPCGranule) (*pb.Result, error) {
+	if in.Operation == "worker_info" {
+		return &pb.Result{WorkerInfo: &pb.WorkerInfo{PoolSize: int32(s.PoolSize)}}, nil
+	}
+
 	rChan := make(chan *pb.Result)
 	defer close(rChan)
 	errChan := make(chan error)
@@ -76,7 +81,7 @@ func main() {
 	}()
 
 	s := grpc.NewServer()
-	pb.RegisterGDALServer(s, &server{Pool: procPool})
+	pb.RegisterGDALServer(s, &server{Pool: procPool, PoolSize: *poolSize})
 
 	lis, err := reuseport.Listen("tcp", fmt.Sprintf(":%d", *port))
 	if err != nil {

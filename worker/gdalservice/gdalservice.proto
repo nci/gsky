@@ -59,12 +59,17 @@ message GeoFile {
     repeated GeoMetaData dataSets = 3;
 }
 
+message WorkerInfo {
+    int32 poolSize = 1; 
+}
+
 message Result {
     repeated TimeSeries timeSeries = 1;
     Raster raster = 2;
     GeoFile info = 3;
     string error = 4;
     repeated int32 shape = 5;
+    WorkerInfo workerInfo = 6;
 }
 
 service GDAL {

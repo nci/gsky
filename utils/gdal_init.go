@@ -39,7 +39,6 @@ func registerGDALDrivers() {
 
 	// Find out which drivers are present
 	C.GDALAllRegister()
-	return
 	for i := 0; i < int(C.GDALGetDriverCount()); i++ {
 		driver := C.GDALGetDriver(C.int(i))
 		switch C.GoString(C.GDALGetDriverShortName(driver)) {

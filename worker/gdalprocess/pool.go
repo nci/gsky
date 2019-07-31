@@ -5,6 +5,8 @@ import (
 	"log"
 )
 
+const DefaultQueueSizePerProcess = 200
+
 type ProcessPool struct {
 	Pool      []*Process
 	TaskQueue chan *Task
@@ -12,7 +14,7 @@ type ProcessPool struct {
 }
 
 func (p *ProcessPool) AddQueue(task *Task) {
-	if len(p.TaskQueue) > 390 {
+	if len(p.TaskQueue) > DefaultQueueSizePerProcess*len(p.Pool)-10 {
 		task.Error <- fmt.Errorf("Pool TaskQueue is full")
 		return
 	}
@@ -29,7 +31,7 @@ func (p *ProcessPool) CreateProcess(executable string, port int, debug bool) (*P
 
 func CreateProcessPool(n int, executable string, port int, debug bool) (*ProcessPool, error) {
 
-	p := &ProcessPool{[]*Process{}, make(chan *Task, 400), make(chan *ErrorMsg)}
+	p := &ProcessPool{[]*Process{}, make(chan *Task, DefaultQueueSizePerProcess*n), make(chan *ErrorMsg)}
 
 	go func() {
 		for {
