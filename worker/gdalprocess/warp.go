@@ -92,7 +92,7 @@ int warp_operation_fast(const char *srcFilePath, char *srcProjRef, double *srcGe
 
 		const char *openOpts[] = {"md_query=no", bandQuery, NULL};
 
-		hSrcDS = GDALOpenEx(srcFilePath, GA_ReadOnly, NULL, openOpts, NULL);
+		hSrcDS = GDALOpenEx(srcFilePath, GA_ReadOnly|GDAL_OF_RASTER, NULL, openOpts, NULL);
 		if(hSrcDS) {
 			GDALDriverH hDriver = GDALGetDatasetDriver(hSrcDS);
 			const char *driverName = GDALGetDriverShortName(hDriver);
