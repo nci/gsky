@@ -20,7 +20,7 @@ GDALLDLAGS=$(shell pkg-config gdal --libs)
 NCCFLAGS=-DNETCDF_HAS_NC4 -DNETCDF_HAS_NC2 -DHAVE_HDF4 -DHAVE_HDF5 -DENABLE_UFFD -I$(shell nc-config --includedir)
 NCLDFLAGS=$(shell nc-config --libs)
 
-all: concurrent gdal_GSKY_netCDF.so pkg-config
+all: pkg-config concurrent gdal_GSKY_netCDF.so
 	go get ./...
 	go install -ldflags=$(LDFLAGS) ./...
 
