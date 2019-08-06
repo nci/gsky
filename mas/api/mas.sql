@@ -628,3 +628,58 @@ create or replace function mas_timestamps(
 
   end
 $$;
+
+-- Find geospatial and temporal extents 
+
+create or replace function mas_spatial_temporal_extents(
+  gpath      text,        -- file path to search
+  namespace  text[]       -- the variable name
+)
+  returns jsonb language plpgsql as $$
+  declare
+    result jsonb;
+    shard text;
+  begin
+    if gpath is null then
+      raise exception 'invalid search path';
+    end if;
+
+    perform mas_reset();
+    shard := mas_view(gpath);
+    if shard = '' then
+      return json_build_object(null);
+    end if;
+
+    result := (select
+      jsonb_build_object(
+        'xmin',
+        public.ST_XMin(geom),
+        'ymax',
+        public.ST_YMax(geom),
+        'xmax',
+        public.ST_XMax(geom),
+        'ymin',
+        public.ST_YMin(geom),
+        'min_stamp',
+        min_stamp,
+        'max_stamp',
+        max_stamp
+      )
+      from (
+        select
+          public.ST_Envelope(public.ST_Collect(public.ST_Transform(po_polygon, 3857))) geom,
+          min(po_min_stamp)::timestamptz at time zone 'UTC' as min_stamp,
+          max(po_max_stamp)::timestamptz at time zone 'UTC' as max_stamp
+        from polygons
+        inner join paths
+          on pa_hash = po_hash
+        where public.path_hash(gpath) = any(pa_parents)
+        and (namespace is null or po_name = any(namespace))
+      ) g
+    );
+
+    perform mas_reset();
+    return result;
+
+    end
+$$;

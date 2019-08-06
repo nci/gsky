@@ -108,8 +108,18 @@ func handler(response http.ResponseWriter, request *http.Request) {
 			request.FormValue("token"),
 		).Scan(&payload)
 
+	} else if _, ok := query["extents"]; ok {
+		err = db.QueryRow(
+			`select mas_spatial_temporal_extents(
+				nullif($1,'')::text,
+				string_to_array(nullif($2,''), ',')
+			) as json`,
+			request.URL.Path,
+			request.FormValue("namespace"),
+		).Scan(&payload)
+
 	} else {
-		httpJSONError(response, errors.New("unknown operation; currently supported: ?intersects, ?timestamps"), 400)
+		httpJSONError(response, errors.New("unknown operation; currently supported: ?intersects, ?timestamps, ?extents"), 400)
 		return
 	}
 
