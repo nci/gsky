@@ -585,7 +585,7 @@ func doSelectionByRange(axis *DatasetAxis, tileAxis *GeoTileAxis, geoReq *GeoTil
 					startVal = *tileAxis.Start
 					nVals = 1
 				}
-				if startVal < axis.Params[0] || startVal > axis.Params[len(axis.Params)-1] {
+				if axis.Params[0]-startVal > 1e-06 || startVal-axis.Params[len(axis.Params)-1] > 1e-06 {
 					return true, nil
 				}
 
