@@ -650,6 +650,21 @@ create or replace function mas_spatial_temporal_extents(
       return json_build_object(null);
     end if;
 
+    if namespace is null then
+      namespace := (select array_agg(po_name)
+        from (
+          select distinct
+            po_name
+          from polygons
+          inner join paths
+            on po_hash = pa_hash
+          where public.path_hash(gpath) = any(pa_parents)
+          and po_name is not null
+          order by po_name
+        ) p
+      );
+    end if;
+
     result := (select
       jsonb_build_object(
         'xmin',
@@ -663,7 +678,9 @@ create or replace function mas_spatial_temporal_extents(
         'min_stamp',
         min_stamp,
         'max_stamp',
-        max_stamp
+        max_stamp,
+        'variables',
+        namespace
       )
       from (
         select
@@ -674,7 +691,7 @@ create or replace function mas_spatial_temporal_extents(
         inner join paths
           on pa_hash = po_hash
         where public.path_hash(gpath) = any(pa_parents)
-        and (namespace is null or po_name = any(namespace))
+        and po_name = any(namespace)
       ) g
     );
 
