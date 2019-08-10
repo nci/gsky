@@ -292,6 +292,13 @@ func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r
 			colourScale = *params.ColourScale
 		}
 
+		xRes := (params.BBox[2] - params.BBox[0]) / float64(*params.Width)
+		yRes := (params.BBox[3] - params.BBox[1]) / float64(*params.Height)
+		reqRes := xRes
+		if yRes > reqRes {
+			reqRes = yRes
+		}
+
 		geoReq := &proc.GeoTileRequest{ConfigPayLoad: proc.ConfigPayLoad{NameSpaces: styleLayer.RGBExpressions.VarList,
 			BandExpr: styleLayer.RGBExpressions,
 			Mask:     styleLayer.Mask,
@@ -311,6 +318,7 @@ func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r
 			GrpcTileXSize:       conf.Layers[idx].GrpcTileXSize,
 			GrpcTileYSize:       conf.Layers[idx].GrpcTileYSize,
 			MasQueryHint:        conf.Layers[idx].MasQueryHint,
+			ReqRes:              reqRes,
 		},
 			Collection: styleLayer.DataSource,
 			CRS:        *params.CRS,
@@ -333,25 +341,35 @@ func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r
 			geoReq.ConfigPayLoad.BandExpr = params.BandExpr
 		}
 
+		masAddress := styleLayer.MASAddress
+		hasOverview := len(styleLayer.Overviews) > 0
+		if hasOverview {
+			if reqRes > styleLayer.ZoomLimit {
+				iOvr := 0
+				for i := 0; i < len(styleLayer.Overviews); i++ {
+					if styleLayer.Overviews[i].ZoomLimit > styleLayer.ZoomLimit {
+						break
+					}
+					iOvr = i
+				}
+				ovr := styleLayer.Overviews[iOvr]
+				geoReq.Collection = ovr.DataSource
+				masAddress = ovr.MASAddress
+			}
+		}
+
 		ctx, ctxCancel := context.WithCancel(ctx)
 		defer ctxCancel()
 		errChan := make(chan error, 100)
 
-		xRes := (params.BBox[2] - params.BBox[0]) / float64(*params.Width)
-		yRes := (params.BBox[3] - params.BBox[1]) / float64(*params.Height)
-		reqRes := xRes
-		if yRes > reqRes {
-			reqRes = yRes
-		}
-
 		timeoutCtx, timeoutCancel := context.WithTimeout(context.Background(), time.Duration(conf.Layers[idx].WmsTimeout)*time.Second)
 		defer timeoutCancel()
 
-		tp := proc.InitTilePipeline(ctx, conf.ServiceConfig.MASAddress, conf.ServiceConfig.WorkerNodes, conf.Layers[idx].MaxGrpcRecvMsgSize, conf.Layers[idx].WmsPolygonShardConcLimit, conf.ServiceConfig.MaxGrpcBufferSize, errChan)
+		tp := proc.InitTilePipeline(ctx, masAddress, conf.ServiceConfig.WorkerNodes, conf.Layers[idx].MaxGrpcRecvMsgSize, conf.Layers[idx].WmsPolygonShardConcLimit, conf.ServiceConfig.MaxGrpcBufferSize, errChan)
 		tp.CurrentLayer = styleLayer
 		tp.DataSources = configMap
 
-		if conf.Layers[idx].ZoomLimit != 0.0 && reqRes > conf.Layers[idx].ZoomLimit {
+		if !hasOverview && styleLayer.ZoomLimit != 0.0 && reqRes > styleLayer.ZoomLimit {
 			geoReq.Mask = nil
 			geoReq.QueryLimit = 1
 

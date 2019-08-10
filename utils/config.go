@@ -69,18 +69,6 @@ type ServiceConfig struct {
 	MaxGrpcBufferSize int      `json:"max_grpc_buffer_size"`
 }
 
-// CacheLevel contains the source files of one layer as well as the
-// max and min resolutions it represents.  Its fields encode the path
-// to the collection and the maximum and minimum resolution that can
-// be served.  This enables the definition of different versions of
-// the same dataset with different resolutions to speedup response
-// times.
-type CacheLevel struct {
-	Path   string  `json:"path"`
-	MinRes float64 `json:"min_res"`
-	MaxRes float64 `json:"max_res"`
-}
-
 type Mask struct {
 	ID         string   `json:"id"`
 	Value      string   `json:"value"`
@@ -112,14 +100,15 @@ type LayerAxis struct {
 // Layer contains all the details that a layer needs
 // to be published and rendered
 type Layer struct {
-	OWSHostname string `json:"ows_hostname"`
-	NameSpace   string `json:"namespace"`
-	Name        string `json:"name"`
-	Title       string `json:"title"`
-	Abstract    string `json:"abstract"`
-	MetadataURL string `json:"metadata_url"`
-	DataURL     string `json:"data_url"`
-	//CacheLevels  []CacheLevel `json:"cache_levels"`
+	OWSHostname                  string   `json:"ows_hostname"`
+	MASAddress                   string   `json:"mas_address"`
+	NameSpace                    string   `json:"namespace"`
+	Name                         string   `json:"name"`
+	Title                        string   `json:"title"`
+	Abstract                     string   `json:"abstract"`
+	MetadataURL                  string   `json:"metadata_url"`
+	DataURL                      string   `json:"data_url"`
+	Overviews                    []Layer  `json:"overviews"`
 	InputLayers                  []Layer  `json:"input_layers"`
 	DisableServices              []string `json:"disable_services"`
 	DisableServicesMap           map[string]bool
@@ -134,7 +123,6 @@ type Layer struct {
 	StepMinutes                  int      `json:"step_minutes"`
 	Accum                        bool     `json:"accum"`
 	TimeGen                      string   `json:"time_generator"`
-	ResFilter                    *int     `json:"resolution_filter"`
 	Dates                        []string `json:"dates"`
 	RGBProducts                  []string `json:"rgb_products"`
 	RGBExpressions               *BandExpressions
@@ -510,12 +498,36 @@ func LoadAllConfigFiles(rootDir string, verbose bool) (map[string]*Config, error
 				if relPath == "." {
 					ns = ""
 				}
+
+				if len(config.Layers[i].MASAddress) == 0 {
+					config.Layers[i].MASAddress = config.ServiceConfig.MASAddress
+				}
+
+				if len(config.Layers[i].Overviews) > 0 {
+					for ii, ovr := range config.Layers[i].Overviews {
+						if len(ovr.DataSource) == 0 {
+							return fmt.Errorf("%s, %s: overview[%d] has no data_source", config.Layers[i].Name, ns, ii)
+						}
+
+						if ovr.ZoomLimit <= 0 {
+							return fmt.Errorf("%s, %s: overview[%d] has no zoom_limit", config.Layers[i].Name, ns, ii)
+						}
+
+						if len(config.Layers[i].Overviews[ii].MASAddress) == 0 {
+							config.Layers[i].Overviews[ii].MASAddress = config.Layers[i].MASAddress
+						}
+					}
+					sort.Slice(config.Layers[i].Overviews, func(m, n int) bool { return config.Layers[m].ZoomLimit < config.Layers[n].ZoomLimit })
+				}
 				config.Layers[i].NameSpace = ns
 				for j := range config.Layers[i].Styles {
 					config.Layers[i].Styles[j].OWSHostname = config.Layers[i].OWSHostname
 					config.Layers[i].Styles[j].NameSpace = config.Layers[i].NameSpace
 					if len(config.Layers[i].Styles[j].DataSource) == 0 {
 						config.Layers[i].Styles[j].DataSource = config.Layers[i].DataSource
+					}
+					if len(config.Layers[i].Styles[j].MASAddress) == 0 {
+						config.Layers[i].Styles[j].MASAddress = config.Layers[i].MASAddress
 					}
 					if config.Layers[i].Styles[j].LegendWidth <= 0 {
 						config.Layers[i].Styles[j].LegendWidth = DefaultLegendWidth
@@ -545,11 +557,23 @@ func LoadAllConfigFiles(rootDir string, verbose bool) (map[string]*Config, error
 					if len(config.Layers[i].Styles[j].DisableServices) == 0 && len(config.Layers[i].DisableServices) > 0 {
 						config.Layers[i].Styles[j].DisableServices = config.Layers[i].DisableServices
 					}
+
+					if len(config.Layers[i].Styles[j].Overviews) == 0 && len(config.Layers[i].Overviews) > 0 {
+						config.Layers[i].Styles[j].Overviews = config.Layers[i].Overviews
+					}
+
+					if config.Layers[i].Styles[j].ZoomLimit == 0.0 && config.Layers[i].ZoomLimit != 0.0 {
+						config.Layers[i].Styles[j].ZoomLimit = config.Layers[i].ZoomLimit
+					}
 				}
 			}
 		}
 		return nil
 	})
+
+	if err != nil {
+		return nil, err
+	}
 
 	if err == nil && len(configMap) == 0 {
 		err = fmt.Errorf("No config file found")

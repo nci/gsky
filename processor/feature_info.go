@@ -195,12 +195,6 @@ func getRaster(ctx context.Context, params utils.WMSParams, conf *utils.Config, 
 		bandExpr = styleLayer.RGBExpressions
 	}
 
-	if conf.Layers[idx].ZoomLimit != 0.0 && reqRes > conf.Layers[idx].ZoomLimit {
-		ftInfo.Namespaces = bandExpr.ExprNames
-		ftInfo.Raster = []utils.Raster{&utils.ByteRaster{NameSpace: "ZoomOut"}}
-		return ftInfo, nil
-	}
-
 	if params.Height == nil || params.Width == nil {
 		return nil, fmt.Errorf("Request should contain valid 'width' and 'height' parameters.")
 	}
@@ -246,7 +240,7 @@ func getRaster(ctx context.Context, params utils.WMSParams, conf *utils.Config, 
 	geoReq := &GeoTileRequest{ConfigPayLoad: ConfigPayLoad{NameSpaces: namespaces,
 		BandExpr:            bandExpr,
 		Mask:                styleLayer.Mask,
-		ZoomLimit:           conf.Layers[idx].ZoomLimit,
+		ZoomLimit:           styleLayer.ZoomLimit,
 		PolygonSegments:     conf.Layers[idx].WmsPolygonSegments,
 		GrpcConcLimit:       conf.Layers[idx].GrpcWmsConcPerNode,
 		QueryLimit:          -1,
@@ -276,12 +270,35 @@ func getRaster(ctx context.Context, params utils.WMSParams, conf *utils.Config, 
 		geoReq.ConfigPayLoad.BandExpr = params.BandExpr
 	}
 
+	masAddress := styleLayer.MASAddress
+	hasOverview := len(styleLayer.Overviews) > 0
+	if hasOverview {
+		if reqRes > styleLayer.ZoomLimit {
+			iOvr := 0
+			for i := 0; i < len(styleLayer.Overviews); i++ {
+				if styleLayer.Overviews[i].ZoomLimit > styleLayer.ZoomLimit {
+					break
+				}
+				iOvr = i
+			}
+			ovr := styleLayer.Overviews[iOvr]
+			geoReq.Collection = ovr.DataSource
+			masAddress = ovr.MASAddress
+		}
+	}
+
+	if !hasOverview && styleLayer.ZoomLimit != 0.0 && reqRes > styleLayer.ZoomLimit {
+		ftInfo.Namespaces = bandExpr.ExprNames
+		ftInfo.Raster = []utils.Raster{&utils.ByteRaster{NameSpace: "ZoomOut"}}
+		return ftInfo, nil
+	}
+
 	ctx, ctxCancel := context.WithCancel(ctx)
 	defer ctxCancel()
 	errChan := make(chan error, 100)
 
 	var outRaster []utils.Raster
-	tp := InitTilePipeline(ctx, conf.ServiceConfig.MASAddress, conf.ServiceConfig.WorkerNodes, conf.Layers[idx].MaxGrpcRecvMsgSize, conf.Layers[idx].WmsPolygonShardConcLimit, conf.ServiceConfig.MaxGrpcBufferSize, errChan)
+	tp := InitTilePipeline(ctx, masAddress, conf.ServiceConfig.WorkerNodes, conf.Layers[idx].MaxGrpcRecvMsgSize, conf.Layers[idx].WmsPolygonShardConcLimit, conf.ServiceConfig.MaxGrpcBufferSize, errChan)
 	tp.CurrentLayer = styleLayer
 	tp.DataSources = configMap
 
