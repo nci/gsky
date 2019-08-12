@@ -595,7 +595,11 @@ func LoadAllConfigFiles(rootDir string, verbose bool) (map[string]*Config, error
 				for _, refLayer := range config.Layers[i].InputLayers {
 					refNameSpace := refLayer.NameSpace
 					if len(refNameSpace) == 0 {
-						refNameSpace = config.Layers[i].NameSpace
+						if len(config.Layers[i].NameSpace) == 0 {
+							refNameSpace = "."
+						} else {
+							refNameSpace = config.Layers[i].NameSpace
+						}
 					}
 
 					conf, found := configMap[refNameSpace]
