@@ -343,7 +343,7 @@ func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r
 		masAddress := styleLayer.MASAddress
 		hasOverview := len(styleLayer.Overviews) > 0
 		if hasOverview {
-			iOvr := utils.FindLayerBestOverview(styleLayer, reqRes)
+			iOvr := utils.FindLayerBestOverview(styleLayer, reqRes, true)
 			if iOvr >= 0 {
 				ovr := styleLayer.Overviews[iOvr]
 				geoReq.Collection = ovr.DataSource
@@ -901,7 +901,7 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 				bbox, err := utils.GetCanonicalBbox(geoReq.CRS, geoReq.BBox)
 				if err == nil {
 					reqRes := utils.GetPixelResolution(bbox, geoReq.Width, geoReq.Height)
-					iOvr := utils.FindLayerBestOverview(styleLayer, reqRes)
+					iOvr := utils.FindLayerBestOverview(styleLayer, reqRes, false)
 					if iOvr >= 0 {
 						ovr := styleLayer.Overviews[iOvr]
 						geoReq.Collection = ovr.DataSource
