@@ -301,12 +301,12 @@ func EncodeGdalOpen(tempDir string, blockXSize int, blockYSize int, format strin
 		return nil, "", fmt.Errorf("Unsupported encoding format: %v", format)
 	}
 
-	for _, opt := range driverOptions {
-		defer C.free(unsafe.Pointer(opt))
-	}
-
 	if rType == "SignedByte" {
 		driverOptions = append(driverOptions, C.CString("PIXELTYPE=SIGNEDBYTE"))
+	}
+
+	for _, opt := range driverOptions {
+		defer C.free(unsafe.Pointer(opt))
 	}
 
 	// NULL pointer is used to terminate the point array by gdal

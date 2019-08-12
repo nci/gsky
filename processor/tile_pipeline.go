@@ -29,6 +29,7 @@ type GeoReqContext struct {
 	Layer      *utils.Layer
 	StyleLayer *utils.Layer
 	GeoReq     *GeoTileRequest
+	MASAddress string
 }
 
 const fusedBandName = "fuse"
@@ -150,7 +151,7 @@ func (dp *TilePipeline) processDeps(geoReq *GeoTileRequest, verbose bool) ([]*Fl
 	if err != nil {
 		return nil, err
 	}
-	dp.prepareInputGeoRequests(geoReq, depLayers)
+	dp.prepareInputGeoRequests(geoReq, depLayers, true)
 
 	var timestamp time.Time
 	if geoReq.StartTime != nil {
@@ -160,7 +161,7 @@ func (dp *TilePipeline) processDeps(geoReq *GeoTileRequest, verbose bool) ([]*Fl
 	}
 
 	for idx, reqCtx := range depLayers {
-		tp := InitTilePipeline(dp.Context, reqCtx.Service.MASAddress, reqCtx.Service.WorkerNodes, reqCtx.Layer.MaxGrpcRecvMsgSize, reqCtx.Layer.WmsPolygonShardConcLimit, reqCtx.Service.MaxGrpcBufferSize, errChan)
+		tp := InitTilePipeline(dp.Context, reqCtx.MASAddress, reqCtx.Service.WorkerNodes, reqCtx.Layer.MaxGrpcRecvMsgSize, reqCtx.Layer.WmsPolygonShardConcLimit, reqCtx.Service.MaxGrpcBufferSize, errChan)
 
 		req := reqCtx.GeoReq
 		select {
@@ -224,7 +225,7 @@ func (dp *TilePipeline) processDeps(geoReq *GeoTileRequest, verbose bool) ([]*Fl
 	}
 
 	if len(rasters) == 0 {
-		for idx, _ := range depLayers {
+		for idx := 0; idx < len(geoReq.BandExpr.Expressions); idx++ {
 			emptyRaster := &utils.ByteRaster{Data: make([]uint8, geoReq.Height*geoReq.Width), NoData: 0, Height: geoReq.Height, Width: geoReq.Width, NameSpace: utils.EmptyTileNS}
 			emptyFlex, _ := getFlexRaster(idx, timestamp, geoReq, emptyRaster)
 			rasters = append(rasters, emptyFlex)
@@ -243,11 +244,11 @@ func (dp *TilePipeline) getDepFileList(geoReq *GeoTileRequest, verbose bool) ([]
 	if err != nil {
 		return nil, err
 	}
-	dp.prepareInputGeoRequests(geoReq, depLayers)
+	dp.prepareInputGeoRequests(geoReq, depLayers, false)
 
 	granCount := 0
 	for idx, reqCtx := range depLayers {
-		tp := InitTilePipeline(dp.Context, reqCtx.Service.MASAddress, reqCtx.Service.WorkerNodes, reqCtx.Layer.MaxGrpcRecvMsgSize, reqCtx.Layer.WmsPolygonShardConcLimit, reqCtx.Service.MaxGrpcBufferSize, errChan)
+		tp := InitTilePipeline(dp.Context, reqCtx.MASAddress, reqCtx.Service.WorkerNodes, reqCtx.Layer.MaxGrpcRecvMsgSize, reqCtx.Layer.WmsPolygonShardConcLimit, reqCtx.Service.MaxGrpcBufferSize, errChan)
 
 		req := reqCtx.GeoReq
 		grans, err := tp.GetFileList(req, verbose)
@@ -326,7 +327,7 @@ func (dp *TilePipeline) findDepLayers() ([]*GeoReqContext, error) {
 	return layers, nil
 }
 
-func (dp *TilePipeline) prepareInputGeoRequests(geoReq *GeoTileRequest, depLayers []*GeoReqContext) {
+func (dp *TilePipeline) prepareInputGeoRequests(geoReq *GeoTileRequest, depLayers []*GeoReqContext, useOverview bool) {
 	for _, ctx := range depLayers {
 		styleLayer := ctx.StyleLayer
 		ctx.GeoReq = &GeoTileRequest{ConfigPayLoad: ConfigPayLoad{NameSpaces: styleLayer.RGBExpressions.VarList,
@@ -357,6 +358,21 @@ func (dp *TilePipeline) prepareInputGeoRequests(geoReq *GeoTileRequest, depLayer
 			EndTime:    geoReq.EndTime,
 			Axes:       geoReq.Axes,
 		}
+
+		masAddress := styleLayer.MASAddress
+		if useOverview {
+			hasOverview := len(styleLayer.Overviews) > 0
+			if hasOverview {
+				iOvr := utils.FindLayerBestOverview(styleLayer, geoReq.ReqRes)
+				if iOvr >= 0 {
+					ovr := styleLayer.Overviews[iOvr]
+					ctx.GeoReq.Collection = ovr.DataSource
+					masAddress = ovr.MASAddress
+
+				}
+			}
+		}
+		ctx.MASAddress = masAddress
 	}
 }
 

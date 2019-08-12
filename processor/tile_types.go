@@ -31,6 +31,7 @@ type ConfigPayLoad struct {
 	GrpcTileXSize         float64
 	GrpcTileYSize         float64
 	MasQueryHint          string
+	ReqRes                float64
 }
 
 type GeoTileIdxSelector struct {

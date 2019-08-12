@@ -165,13 +165,6 @@ func getRaster(ctx context.Context, params utils.WMSParams, conf *utils.Config, 
 		return nil, fmt.Errorf("Request should contain a valid 'bbox' parameter.")
 	}
 
-	xRes := (params.BBox[2] - params.BBox[0]) / float64(*params.Width)
-	yRes := (params.BBox[3] - params.BBox[1]) / float64(*params.Height)
-	reqRes := xRes
-	if yRes > reqRes {
-		reqRes = yRes
-	}
-
 	styleIdx, err := utils.GetLayerStyleIndex(params, conf, idx)
 	if err != nil {
 		return nil, err
@@ -193,12 +186,6 @@ func getRaster(ctx context.Context, params utils.WMSParams, conf *utils.Config, 
 	} else {
 		namespaces = styleLayer.RGBExpressions.VarList
 		bandExpr = styleLayer.RGBExpressions
-	}
-
-	if conf.Layers[idx].ZoomLimit != 0.0 && reqRes > conf.Layers[idx].ZoomLimit {
-		ftInfo.Namespaces = bandExpr.ExprNames
-		ftInfo.Raster = []utils.Raster{&utils.ByteRaster{NameSpace: "ZoomOut"}}
-		return ftInfo, nil
 	}
 
 	if params.Height == nil || params.Width == nil {
@@ -225,15 +212,21 @@ func getRaster(ctx context.Context, params utils.WMSParams, conf *utils.Config, 
 		endTime = &eT
 	}
 
+	bbox, err := utils.GetCanonicalBbox(*params.CRS, params.BBox)
+	if err != nil {
+		bbox = params.BBox
+	}
+	reqRes := utils.GetPixelResolution(bbox, *params.Width, *params.Height)
+
 	// We construct a 2x2 image corresponding to an infinitesimal bounding box
 	// to approximate a pixel.
 	// We observed several order of magnitude of performance improvement as a
 	// result of such an approximation.
-	xmin := params.BBox[0] + float64(*params.X)*xRes
-	ymin := params.BBox[3] - float64(*params.Y)*yRes
+	xmin := params.BBox[0] + float64(*params.X)*reqRes
+	ymin := params.BBox[3] - float64(*params.Y)*reqRes
 
-	xmax := params.BBox[0] + float64(*params.X+1)*xRes
-	ymax := params.BBox[3] - float64(*params.Y-1)*xRes
+	xmax := params.BBox[0] + float64(*params.X+1)*reqRes
+	ymax := params.BBox[3] - float64(*params.Y-1)*reqRes
 
 	*params.Height = 2
 	*params.Width = 2
@@ -246,7 +239,7 @@ func getRaster(ctx context.Context, params utils.WMSParams, conf *utils.Config, 
 	geoReq := &GeoTileRequest{ConfigPayLoad: ConfigPayLoad{NameSpaces: namespaces,
 		BandExpr:            bandExpr,
 		Mask:                styleLayer.Mask,
-		ZoomLimit:           conf.Layers[idx].ZoomLimit,
+		ZoomLimit:           styleLayer.ZoomLimit,
 		PolygonSegments:     conf.Layers[idx].WmsPolygonSegments,
 		GrpcConcLimit:       conf.Layers[idx].GrpcWmsConcPerNode,
 		QueryLimit:          -1,
@@ -276,12 +269,29 @@ func getRaster(ctx context.Context, params utils.WMSParams, conf *utils.Config, 
 		geoReq.ConfigPayLoad.BandExpr = params.BandExpr
 	}
 
+	masAddress := styleLayer.MASAddress
+	hasOverview := len(styleLayer.Overviews) > 0
+	if hasOverview {
+		iOvr := utils.FindLayerBestOverview(styleLayer, reqRes)
+		if iOvr >= 0 {
+			ovr := styleLayer.Overviews[iOvr]
+			geoReq.Collection = ovr.DataSource
+			masAddress = ovr.MASAddress
+		}
+	}
+
+	if !hasOverview && styleLayer.ZoomLimit != 0.0 && reqRes > styleLayer.ZoomLimit {
+		ftInfo.Namespaces = bandExpr.ExprNames
+		ftInfo.Raster = []utils.Raster{&utils.ByteRaster{NameSpace: "ZoomOut"}}
+		return ftInfo, nil
+	}
+
 	ctx, ctxCancel := context.WithCancel(ctx)
 	defer ctxCancel()
 	errChan := make(chan error, 100)
 
 	var outRaster []utils.Raster
-	tp := InitTilePipeline(ctx, conf.ServiceConfig.MASAddress, conf.ServiceConfig.WorkerNodes, conf.Layers[idx].MaxGrpcRecvMsgSize, conf.Layers[idx].WmsPolygonShardConcLimit, conf.ServiceConfig.MaxGrpcBufferSize, errChan)
+	tp := InitTilePipeline(ctx, masAddress, conf.ServiceConfig.WorkerNodes, conf.Layers[idx].MaxGrpcRecvMsgSize, conf.Layers[idx].WmsPolygonShardConcLimit, conf.ServiceConfig.MaxGrpcBufferSize, errChan)
 	tp.CurrentLayer = styleLayer
 	tp.DataSources = configMap
 
