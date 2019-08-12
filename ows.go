@@ -292,12 +292,11 @@ func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r
 			colourScale = *params.ColourScale
 		}
 
-		xRes := (params.BBox[2] - params.BBox[0]) / float64(*params.Width)
-		yRes := (params.BBox[3] - params.BBox[1]) / float64(*params.Height)
-		reqRes := xRes
-		if yRes > reqRes {
-			reqRes = yRes
+		bbox, err := utils.GetCanonicalBbox(*params.CRS, params.BBox)
+		if err != nil {
+			bbox = params.BBox
 		}
+		reqRes := utils.GetPixelResolution(bbox, *params.Width, *params.Height)
 
 		geoReq := &proc.GeoTileRequest{ConfigPayLoad: proc.ConfigPayLoad{NameSpaces: styleLayer.RGBExpressions.VarList,
 			BandExpr: styleLayer.RGBExpressions,
@@ -344,14 +343,8 @@ func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r
 		masAddress := styleLayer.MASAddress
 		hasOverview := len(styleLayer.Overviews) > 0
 		if hasOverview {
-			if reqRes > styleLayer.ZoomLimit {
-				iOvr := 0
-				for i := 0; i < len(styleLayer.Overviews); i++ {
-					if styleLayer.Overviews[i].ZoomLimit > styleLayer.ZoomLimit {
-						break
-					}
-					iOvr = i
-				}
+			iOvr := utils.FindLayerBestOverview(styleLayer, reqRes)
+			if iOvr >= 0 {
 				ovr := styleLayer.Overviews[iOvr]
 				geoReq.Collection = ovr.DataSource
 				masAddress = ovr.MASAddress
@@ -897,10 +890,26 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 		isInit := false
 		var bandNames []string
 
-		tp := proc.InitTilePipeline(ctx, conf.ServiceConfig.MASAddress, conf.ServiceConfig.WorkerNodes, conf.Layers[idx].MaxGrpcRecvMsgSize, conf.Layers[idx].WcsPolygonShardConcLimit, conf.ServiceConfig.MaxGrpcBufferSize, errChan)
+		tp := proc.InitTilePipeline(ctx, styleLayer.MASAddress, conf.ServiceConfig.WorkerNodes, conf.Layers[idx].MaxGrpcRecvMsgSize, conf.Layers[idx].WcsPolygonShardConcLimit, conf.ServiceConfig.MaxGrpcBufferSize, errChan)
 		for ir, geoReq := range workerTileRequests[0] {
 			if *verbose {
 				Info.Printf("WCS: processing tile (%d of %d): xOff:%v, yOff:%v, width:%v, height:%v", ir+1, len(workerTileRequests[0]), geoReq.OffX, geoReq.OffY, geoReq.Width, geoReq.Height)
+			}
+
+			hasOverview := len(styleLayer.Overviews) > 0
+			if hasOverview {
+				bbox, err := utils.GetCanonicalBbox(geoReq.CRS, geoReq.BBox)
+				if err == nil {
+					reqRes := utils.GetPixelResolution(bbox, geoReq.Width, geoReq.Height)
+					iOvr := utils.FindLayerBestOverview(styleLayer, reqRes)
+					if iOvr >= 0 {
+						ovr := styleLayer.Overviews[iOvr]
+						geoReq.Collection = ovr.DataSource
+						tp.MASAddress = ovr.MASAddress
+					}
+				} else if *verbose {
+					Info.Printf("WCS: processing tile (%d of %d): %v", err)
+				}
 			}
 
 			select {

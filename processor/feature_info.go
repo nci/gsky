@@ -165,13 +165,6 @@ func getRaster(ctx context.Context, params utils.WMSParams, conf *utils.Config, 
 		return nil, fmt.Errorf("Request should contain a valid 'bbox' parameter.")
 	}
 
-	xRes := (params.BBox[2] - params.BBox[0]) / float64(*params.Width)
-	yRes := (params.BBox[3] - params.BBox[1]) / float64(*params.Height)
-	reqRes := xRes
-	if yRes > reqRes {
-		reqRes = yRes
-	}
-
 	styleIdx, err := utils.GetLayerStyleIndex(params, conf, idx)
 	if err != nil {
 		return nil, err
@@ -219,15 +212,21 @@ func getRaster(ctx context.Context, params utils.WMSParams, conf *utils.Config, 
 		endTime = &eT
 	}
 
+	bbox, err := utils.GetCanonicalBbox(*params.CRS, params.BBox)
+	if err != nil {
+		bbox = params.BBox
+	}
+	reqRes := utils.GetPixelResolution(bbox, *params.Width, *params.Height)
+
 	// We construct a 2x2 image corresponding to an infinitesimal bounding box
 	// to approximate a pixel.
 	// We observed several order of magnitude of performance improvement as a
 	// result of such an approximation.
-	xmin := params.BBox[0] + float64(*params.X)*xRes
-	ymin := params.BBox[3] - float64(*params.Y)*yRes
+	xmin := params.BBox[0] + float64(*params.X)*reqRes
+	ymin := params.BBox[3] - float64(*params.Y)*reqRes
 
-	xmax := params.BBox[0] + float64(*params.X+1)*xRes
-	ymax := params.BBox[3] - float64(*params.Y-1)*xRes
+	xmax := params.BBox[0] + float64(*params.X+1)*reqRes
+	ymax := params.BBox[3] - float64(*params.Y-1)*reqRes
 
 	*params.Height = 2
 	*params.Width = 2
@@ -273,14 +272,8 @@ func getRaster(ctx context.Context, params utils.WMSParams, conf *utils.Config, 
 	masAddress := styleLayer.MASAddress
 	hasOverview := len(styleLayer.Overviews) > 0
 	if hasOverview {
-		if reqRes > styleLayer.ZoomLimit {
-			iOvr := 0
-			for i := 0; i < len(styleLayer.Overviews); i++ {
-				if styleLayer.Overviews[i].ZoomLimit > styleLayer.ZoomLimit {
-					break
-				}
-				iOvr = i
-			}
+		iOvr := utils.FindLayerBestOverview(styleLayer, reqRes)
+		if iOvr >= 0 {
 			ovr := styleLayer.Overviews[iOvr]
 			geoReq.Collection = ovr.DataSource
 			masAddress = ovr.MASAddress

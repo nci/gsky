@@ -1,5 +1,9 @@
 package utils
 
+//#include "gdal_alg.h"
+//#cgo pkg-config: gdal
+import "C"
+
 import (
 	"encoding/json"
 	"fmt"
@@ -10,6 +14,7 @@ import (
 	"strings"
 	"text/template"
 	"time"
+	"unsafe"
 )
 
 const ISOZeroTime = "0001-01-01T00:00:00.000Z"
@@ -435,4 +440,62 @@ func CheckDisableServices(layer *Layer, service string) bool {
 	}
 
 	return false
+}
+
+func GetCanonicalBbox(srs string, bbox []float64) ([]float64, error) {
+	srs = strings.ToUpper(strings.TrimSpace(srs))
+	if srs == "EPSG:3857" {
+		return bbox, nil
+	}
+
+	var opts []*C.char
+	opts = append(opts, C.CString(fmt.Sprintf("SRC_SRS=%s", srs)))
+	opts = append(opts, C.CString("DST_SRS=EPSG:3857"))
+	for _, opt := range opts {
+		defer C.free(unsafe.Pointer(opt))
+	}
+	opts = append(opts, nil)
+	transformArg := C.GDALCreateGenImgProjTransformer2(nil, nil, &opts[0])
+	if transformArg == nil {
+		return bbox, fmt.Errorf("GDALCreateGenImgProjTransformer2 failed")
+	}
+	defer C.GDALDestroyGenImgProjTransformer(transformArg)
+
+	dx := []C.double{C.double(bbox[0]), C.double(bbox[2])}
+	dy := []C.double{C.double(bbox[1]), C.double(bbox[3])}
+	dz := make([]C.double, 2)
+	bSuccess := make([]C.int, 2)
+
+	C.GDALGenImgProjTransform(transformArg, C.int(0), 2, &dx[0], &dy[0], &dz[0], &bSuccess[0])
+	if bSuccess[0] != 0 && bSuccess[1] != 0 {
+		return []float64{float64(dx[0]), float64(dy[0]), float64(dx[1]), float64(dy[1])}, nil
+	} else {
+
+		return bbox, fmt.Errorf("GDALGenImgProjTransform failed")
+	}
+}
+
+func GetPixelResolution(bbox []float64, width int, height int) float64 {
+	xRes := (bbox[2] - bbox[0]) / float64(width)
+	yRes := (bbox[3] - bbox[1]) / float64(height)
+	reqRes := xRes
+	if yRes > reqRes {
+		reqRes = yRes
+	}
+	return reqRes
+}
+
+func FindLayerBestOverview(layer *Layer, reqRes float64) int {
+	bestOvr := -1
+	if reqRes > layer.ZoomLimit {
+		iOvr := 0
+		for i := 0; i < len(layer.Overviews); i++ {
+			if layer.Overviews[i].ZoomLimit > layer.ZoomLimit {
+				break
+			}
+			iOvr = i
+		}
+		bestOvr = iOvr
+	}
+	return bestOvr
 }

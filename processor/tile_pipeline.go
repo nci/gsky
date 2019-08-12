@@ -362,18 +362,13 @@ func (dp *TilePipeline) prepareInputGeoRequests(geoReq *GeoTileRequest, depLayer
 		masAddress := styleLayer.MASAddress
 		if useOverview {
 			hasOverview := len(styleLayer.Overviews) > 0
-			if hasOverview && geoReq.ReqRes > styleLayer.ZoomLimit {
-				if geoReq.ReqRes > styleLayer.ZoomLimit {
-					iOvr := 0
-					for i := 0; i < len(styleLayer.Overviews); i++ {
-						if styleLayer.Overviews[i].ZoomLimit > styleLayer.ZoomLimit {
-							break
-						}
-						iOvr = i
-					}
+			if hasOverview {
+				iOvr := utils.FindLayerBestOverview(styleLayer, geoReq.ReqRes)
+				if iOvr >= 0 {
 					ovr := styleLayer.Overviews[iOvr]
 					ctx.GeoReq.Collection = ovr.DataSource
 					masAddress = ovr.MASAddress
+
 				}
 			}
 		}
