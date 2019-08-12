@@ -286,7 +286,11 @@ func (dp *TilePipeline) findDepLayers() ([]*GeoReqContext, error) {
 	for _, refLayer := range dp.CurrentLayer.InputLayers {
 		refNameSpace := refLayer.NameSpace
 		if len(refNameSpace) == 0 {
-			refNameSpace = dp.CurrentLayer.NameSpace
+			if len(dp.CurrentLayer.NameSpace) == 0 {
+				refNameSpace = "."
+			} else {
+				refNameSpace = dp.CurrentLayer.NameSpace
+			}
 		}
 
 		config, found := dp.DataSources[refNameSpace]
