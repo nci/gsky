@@ -485,9 +485,15 @@ func GetPixelResolution(bbox []float64, width int, height int) float64 {
 	return reqRes
 }
 
-func FindLayerBestOverview(layer *Layer, reqRes float64) int {
+func FindLayerBestOverview(layer *Layer, reqRes float64, allowExtrapolation bool) int {
 	bestOvr := -1
 	if reqRes > layer.ZoomLimit {
+		if !allowExtrapolation {
+			if layer.Overviews[0].ZoomLimit > reqRes {
+				return -1
+			}
+		}
+
 		iOvr := 0
 		for i := 0; i < len(layer.Overviews); i++ {
 			if layer.Overviews[i].ZoomLimit > layer.ZoomLimit {
