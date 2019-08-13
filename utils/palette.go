@@ -19,7 +19,7 @@ func InterpolateColor(a, b color.RGBA, i, sectionLength int) color.RGBA {
 	return color.RGBA{InterpolateUint8(a.R, b.R, i, sectionLength),
 		InterpolateUint8(a.G, b.G, i, sectionLength),
 		InterpolateUint8(a.B, b.B, i, sectionLength),
-		255}
+		a.A}
 }
 
 // GradientRGBAPalette returns a palette of 256 colors creating an
