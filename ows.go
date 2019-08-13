@@ -908,7 +908,7 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 						tp.MASAddress = ovr.MASAddress
 					}
 				} else if *verbose {
-					Info.Printf("WCS: processing tile (%d of %d): %v", err)
+					Info.Printf("WCS: processing tile (%d of %d): %v", ir+1, len(workerTileRequests[0]), err)
 				}
 			}
 
