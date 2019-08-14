@@ -32,6 +32,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/nci/gsky/metrics"
 	proc "github.com/nci/gsky/processor"
 	"github.com/nci/gsky/utils"
 
@@ -61,6 +62,8 @@ var (
 	Error *log.Logger
 	Info  *log.Logger
 )
+
+var metricsLogger metrics.Logger
 
 // init initialises the Error logger, checks
 // required files are in place  and sets Config struct.
@@ -122,11 +125,14 @@ func init() {
 	reWPSMap = utils.CompileWPSRegexMap()
 
 	utils.InitGdal()
+
+	metricsLogger = metrics.NewStdoutLogger()
 }
 
-func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, reqURL string, w http.ResponseWriter) {
+func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, reqURL string, w http.ResponseWriter, metricsCollector *metrics.MetricsCollector) {
 
 	if params.Request == nil {
+		metricsCollector.Info.HTTPStatus = 400
 		http.Error(w, "Malformed WMS, a Request field needs to be specified", 400)
 		return
 	}
@@ -134,6 +140,7 @@ func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r
 	switch *params.Request {
 	case "GetCapabilities":
 		if params.Version != nil && !utils.CheckWMSVersion(*params.Version) {
+			metricsCollector.Info.HTTPStatus = 400
 			http.Error(w, fmt.Sprintf("This server can only accept WMS requests compliant with version 1.1.1 and 1.3.0: %s", reqURL), 400)
 			return
 		}
@@ -147,12 +154,14 @@ func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r
 		err := utils.ExecuteWriteTemplateFile(w, conf,
 			utils.DataDir+"/templates/WMS_GetCapabilities.tpl")
 		if err != nil {
+			metricsCollector.Info.HTTPStatus = 500
 			http.Error(w, err.Error(), 500)
 		}
 	case "GetFeatureInfo":
 		x, y, err := utils.GetCoordinates(params)
 		if err != nil {
 			Error.Printf("%s\n", err)
+			metricsCollector.Info.HTTPStatus = 400
 			http.Error(w, fmt.Sprintf("Malformed WMS GetFeatureInfo request: %v", err), 400)
 			return
 		}
@@ -160,12 +169,14 @@ func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r
 		if params.Time == nil {
 			idx, err := utils.GetLayerIndex(params, conf)
 			if err != nil {
+				metricsCollector.Info.HTTPStatus = 400
 				http.Error(w, fmt.Sprintf("Malformed getFeatureInfo request: %s", reqURL), 400)
 				return
 			}
 
 			currentTime, err := utils.GetCurrentTimeStamp(conf.Layers[idx].Dates)
 			if err != nil {
+				metricsCollector.Info.HTTPStatus = 400
 				http.Error(w, fmt.Sprintf("%v: %s", err, reqURL), 400)
 				return
 			}
@@ -174,7 +185,7 @@ func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r
 
 		timeStr := fmt.Sprintf(`"time": "%s"`, (*params.Time).Format(utils.ISOFormat))
 
-		feat_info, err := proc.GetFeatureInfo(ctx, params, conf, configMap, *verbose)
+		feat_info, err := proc.GetFeatureInfo(ctx, params, conf, configMap, *verbose, metricsCollector)
 		if err != nil {
 			feat_info = fmt.Sprintf(`"error": "%v"`, err)
 			Error.Printf("%v\n", err)
@@ -187,6 +198,7 @@ func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r
 		idx, err := utils.GetLayerIndex(params, conf)
 		if err != nil {
 			Error.Printf("%s\n", err)
+			metricsCollector.Info.HTTPStatus = 400
 			http.Error(w, fmt.Sprintf("Malformed WMS DescribeLayer request: %v", err), 400)
 			return
 		}
@@ -194,11 +206,13 @@ func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r
 		err = utils.ExecuteWriteTemplateFile(w, conf.Layers[idx],
 			utils.DataDir+"/templates/WMS_DescribeLayer.tpl")
 		if err != nil {
+			metricsCollector.Info.HTTPStatus = 500
 			http.Error(w, err.Error(), 500)
 		}
 
 	case "GetMap":
 		if params.Version == nil || !utils.CheckWMSVersion(*params.Version) {
+			metricsCollector.Info.HTTPStatus = 400
 			http.Error(w, fmt.Sprintf("This server can only accept WMS requests compliant with version 1.1.1 and 1.3.0: %s", reqURL), 400)
 			return
 		}
@@ -206,26 +220,31 @@ func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r
 		idx, err := utils.GetLayerIndex(params, conf)
 		if err != nil {
 			Error.Printf("%s\n", err)
+			metricsCollector.Info.HTTPStatus = 400
 			http.Error(w, fmt.Sprintf("Malformed WMS GetMap request: %v", err), 400)
 			return
 		}
 		if params.Time == nil {
 			currentTime, err := utils.GetCurrentTimeStamp(conf.Layers[idx].Dates)
 			if err != nil {
+				metricsCollector.Info.HTTPStatus = 400
 				http.Error(w, fmt.Sprintf("%v: %s", err, reqURL), 400)
 				return
 			}
 			params.Time = currentTime
 		}
 		if params.CRS == nil {
+			metricsCollector.Info.HTTPStatus = 400
 			http.Error(w, fmt.Sprintf("Request %s should contain a valid ISO 'crs/srs' parameter.", reqURL), 400)
 			return
 		}
 		if len(params.BBox) != 4 {
+			metricsCollector.Info.HTTPStatus = 400
 			http.Error(w, fmt.Sprintf("Request %s should contain a valid 'bbox' parameter.", reqURL), 400)
 			return
 		}
 		if params.Height == nil || params.Width == nil {
+			metricsCollector.Info.HTTPStatus = 400
 			http.Error(w, fmt.Sprintf("Request %s should contain valid 'width' and 'height' parameters.", reqURL), 400)
 			return
 		}
@@ -253,6 +272,7 @@ func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r
 		styleIdx, err := utils.GetLayerStyleIndex(params, conf, idx)
 		if err != nil {
 			Error.Printf("%s\n", err)
+			metricsCollector.Info.HTTPStatus = 400
 			http.Error(w, fmt.Sprintf("Malformed WMS GetMap request: %v", err), 400)
 			return
 		}
@@ -264,6 +284,7 @@ func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r
 
 		if utils.CheckDisableServices(styleLayer, "wms") {
 			Error.Printf("WMS GetMap is disabled for this layer")
+			metricsCollector.Info.HTTPStatus = 400
 			http.Error(w, "WMS GetMap is disabled for this layer", 400)
 			return
 		}
@@ -318,6 +339,7 @@ func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r
 			GrpcTileYSize:       conf.Layers[idx].GrpcTileYSize,
 			MasQueryHint:        conf.Layers[idx].MasQueryHint,
 			ReqRes:              reqRes,
+			MetricsCollector:    metricsCollector,
 		},
 			Collection: styleLayer.DataSource,
 			CRS:        *params.CRS,
@@ -381,6 +403,7 @@ func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r
 				out, err := utils.GetEmptyTile(utils.DataDir+"/zoom.png", *params.Height, *params.Width)
 				if err != nil {
 					Info.Printf("Error in the utils.GetEmptyTile(zoom.png): %v\n", err)
+					metricsCollector.Info.HTTPStatus = 500
 					http.Error(w, err.Error(), 500)
 					return
 				}
@@ -389,6 +412,7 @@ func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r
 				out, err := utils.GetEmptyTile("", *params.Height, *params.Width)
 				if err != nil {
 					Info.Printf("Error in the utils.GetEmptyTile(): %v\n", err)
+					metricsCollector.Info.HTTPStatus = 500
 					http.Error(w, err.Error(), 500)
 				} else {
 					w.Write(out)
@@ -409,6 +433,7 @@ func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r
 			norm, err := utils.Scale(res, scaleParams)
 			if err != nil {
 				Info.Printf("Error in the utils.Scale: %v\n", err)
+				metricsCollector.Info.HTTPStatus = 500
 				http.Error(w, err.Error(), 500)
 				return
 			}
@@ -417,6 +442,7 @@ func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r
 				out, err := utils.GetEmptyTile(conf.Layers[idx].NoDataLegendPath, *params.Height, *params.Width)
 				if err != nil {
 					Info.Printf("Error in the utils.GetEmptyTile(): %v\n", err)
+					metricsCollector.Info.HTTPStatus = 500
 					http.Error(w, err.Error(), 500)
 				} else {
 					w.Write(out)
@@ -427,18 +453,22 @@ func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r
 			out, err := utils.EncodePNG(norm, palette)
 			if err != nil {
 				Info.Printf("Error in the utils.EncodePNG: %v\n", err)
+				metricsCollector.Info.HTTPStatus = 500
 				http.Error(w, err.Error(), 500)
 				return
 			}
 			w.Write(out)
 		case err := <-errChan:
 			Info.Printf("Error in the pipeline: %v\n", err)
+			metricsCollector.Info.HTTPStatus = 500
 			http.Error(w, err.Error(), 500)
 		case <-ctx.Done():
 			Error.Printf("Context cancelled with message: %v\n", ctx.Err())
+			metricsCollector.Info.HTTPStatus = 500
 			http.Error(w, ctx.Err().Error(), 500)
 		case <-timeoutCtx.Done():
 			Error.Printf("WMS pipeline timed out, threshold:%v seconds", conf.Layers[idx].WmsTimeout)
+			metricsCollector.Info.HTTPStatus = 500
 			http.Error(w, "WMS request timed out", 500)
 		}
 		return
@@ -451,6 +481,7 @@ func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r
 				utils.ExecuteWriteTemplateFile(w, params.Layers[0],
 					utils.DataDir+"/templates/WMS_ServiceException.tpl")
 			} else {
+				metricsCollector.Info.HTTPStatus = 400
 				http.Error(w, err.Error(), 400)
 			}
 			return
@@ -458,6 +489,7 @@ func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r
 		styleIdx, err := utils.GetLayerStyleIndex(params, conf, idx)
 		if err != nil {
 			Error.Printf("%s\n", err)
+			metricsCollector.Info.HTTPStatus = 400
 			http.Error(w, fmt.Sprintf("Malformed WMS GetMap request: %v", err), 400)
 			return
 		}
@@ -470,25 +502,29 @@ func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r
 		b, err := ioutil.ReadFile(styleLayer.LegendPath)
 		if err != nil {
 			Error.Printf("Error reading legend image: %v, %v\n", styleLayer.LegendPath, err)
+			metricsCollector.Info.HTTPStatus = 500
 			http.Error(w, "Legend graphics not found", 500)
 			return
 		}
 		w.Write(b)
 
 	default:
+		metricsCollector.Info.HTTPStatus = 400
 		http.Error(w, fmt.Sprintf("%s not recognised.", *params.Request), 400)
 	}
 
 }
 
-func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, reqURL string, w http.ResponseWriter, query map[string][]string) {
+func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, reqURL string, w http.ResponseWriter, query map[string][]string, metricsCollector *metrics.MetricsCollector) {
 	if params.Request == nil {
+		metricsCollector.Info.HTTPStatus = 400
 		http.Error(w, "Malformed WCS, a Request field needs to be specified", 400)
 	}
 
 	switch *params.Request {
 	case "GetCapabilities":
 		if params.Version != nil && !utils.CheckWCSVersion(*params.Version) {
+			metricsCollector.Info.HTTPStatus = 400
 			http.Error(w, fmt.Sprintf("This server can only accept WCS requests compliant with version 1.0.0: %s", reqURL), 400)
 			return
 		}
@@ -502,6 +538,7 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 		w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate, max-age=0")
 		err := utils.ExecuteWriteTemplateFile(w, &newConf, utils.DataDir+"/templates/WCS_GetCapabilities.tpl")
 		if err != nil {
+			metricsCollector.Info.HTTPStatus = 500
 			http.Error(w, err.Error(), 500)
 		}
 
@@ -509,6 +546,7 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 		idx, err := utils.GetCoverageIndex(params, conf)
 		if err != nil {
 			Info.Printf("Error in the pipeline: %v\n", err)
+			metricsCollector.Info.HTTPStatus = 400
 			http.Error(w, fmt.Sprintf("Malformed WMS DescribeCoverage request: %v", err), 400)
 			return
 		}
@@ -520,12 +558,14 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 
 	case "GetCoverage":
 		if params.Version == nil || !utils.CheckWCSVersion(*params.Version) {
+			metricsCollector.Info.HTTPStatus = 400
 			http.Error(w, fmt.Sprintf("This server can only accept WCS requests compliant with version 1.0.0: %s", reqURL), 400)
 			return
 		}
 
 		idx, err := utils.GetCoverageIndex(params, conf)
 		if err != nil {
+			metricsCollector.Info.HTTPStatus = 400
 			http.Error(w, fmt.Sprintf("%v: %s", err, reqURL), 400)
 			return
 		}
@@ -533,24 +573,29 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 		if params.Time == nil {
 			currentTime, err := utils.GetCurrentTimeStamp(conf.Layers[idx].Dates)
 			if err != nil {
+				metricsCollector.Info.HTTPStatus = 400
 				http.Error(w, fmt.Sprintf("%v: %s", err, reqURL), 400)
 				return
 			}
 			params.Time = currentTime
 		}
 		if params.CRS == nil {
+			metricsCollector.Info.HTTPStatus = 400
 			http.Error(w, fmt.Sprintf("Request %s should contain a valid ISO 'crs/srs' parameter.", reqURL), 400)
 			return
 		}
 		if len(params.BBox) != 4 {
+			metricsCollector.Info.HTTPStatus = 400
 			http.Error(w, fmt.Sprintf("Request %s should contain a valid 'bbox' parameter.", reqURL), 400)
 			return
 		}
 		if params.Height == nil || params.Width == nil {
+			metricsCollector.Info.HTTPStatus = 400
 			http.Error(w, fmt.Sprintf("Request %s should contain valid 'width' and 'height' parameters.", reqURL), 400)
 			return
 		}
 		if params.Format == nil {
+			metricsCollector.Info.HTTPStatus = 400
 			http.Error(w, fmt.Sprintf("Unsupported encoding format"), 400)
 			return
 		}
@@ -565,12 +610,14 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 		styleIdx, err := utils.GetCoverageStyleIndex(params, conf, idx)
 		if err != nil {
 			Error.Printf("%s\n", err)
+			metricsCollector.Info.HTTPStatus = 400
 			http.Error(w, fmt.Sprintf("Malformed WCS GetCoverage request: %v", err), 400)
 			return
 		} else if styleIdx < 0 {
 			styleCount := len(conf.Layers[idx].Styles)
 			if styleCount > 1 && params.BandExpr == nil {
 				Error.Printf("WCS style not specified")
+				metricsCollector.Info.HTTPStatus = 400
 				http.Error(w, "WCS style not specified", 400)
 				return
 			} else if styleCount == 1 {
@@ -585,6 +632,7 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 
 		if utils.CheckDisableServices(styleLayer, "wcs") {
 			Error.Printf("WCS GetCoverage is disabled for this layer")
+			metricsCollector.Info.HTTPStatus = 400
 			http.Error(w, "WCS GetCoverage is disabled for this layer", 400)
 			return
 		}
@@ -619,6 +667,7 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 				GrpcTileXSize:       conf.Layers[idx].GrpcTileXSize,
 				GrpcTileYSize:       conf.Layers[idx].GrpcTileYSize,
 				MasQueryHint:        conf.Layers[idx].MasQueryHint,
+				MetricsCollector:    metricsCollector,
 			},
 				Collection: styleLayer.DataSource,
 				CRS:        *params.CRS,
@@ -656,6 +705,7 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 
 		epsg, err := utils.ExtractEPSGCode(*params.CRS)
 		if err != nil {
+			metricsCollector.Info.HTTPStatus = 400
 			http.Error(w, fmt.Sprintf("Invalid CRS code %s", *params.CRS), 400)
 			return
 		}
@@ -664,6 +714,7 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 			if isWorker {
 				msg := "WCS: worker width or height negative"
 				Info.Printf(msg)
+				metricsCollector.Info.HTTPStatus = 500
 				http.Error(w, msg, 500)
 				return
 			}
@@ -687,6 +738,7 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 			} else {
 				errMsg := "WCS: failed to compute output extent"
 				Info.Printf(errMsg, err)
+				metricsCollector.Info.HTTPStatus = 500
 				http.Error(w, errMsg, 500)
 				return
 			}
@@ -694,6 +746,7 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 		}
 
 		if *params.Height > conf.Layers[idx].WcsMaxHeight || *params.Width > conf.Layers[idx].WcsMaxWidth {
+			metricsCollector.Info.HTTPStatus = 400
 			http.Error(w, fmt.Sprintf("Requested width/height is too large, max width:%d, height:%d", conf.Layers[idx].WcsMaxWidth, conf.Layers[idx].WcsMaxHeight), 400)
 			return
 		}
@@ -765,6 +818,7 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 		} else {
 			for _, qParams := range []string{"wwidth", "wheight", "woffx", "woffy"} {
 				if len(query[qParams]) != len(query["wbbox"]) {
+					metricsCollector.Info.HTTPStatus = 400
 					http.Error(w, fmt.Sprintf("worker parameter %v has different length from wbbox: %v", qParams, reqURL), 400)
 					return
 				}
@@ -793,6 +847,7 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 
 				workerParams, err := utils.WMSParamsChecker(wParams, reWMSMap)
 				if err != nil {
+					metricsCollector.Info.HTTPStatus = 400
 					http.Error(w, fmt.Sprintf("worker parameter error: %v", err), 400)
 					return
 				}
@@ -832,6 +887,7 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 				if err != nil {
 					errMsg := fmt.Sprintf("WCS: worker NewRequest error: %v", err)
 					Info.Printf(errMsg)
+					metricsCollector.Info.HTTPStatus = 500
 					http.Error(w, errMsg, 500)
 					return
 				}
@@ -841,6 +897,7 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 				if err != nil {
 					errMsg := fmt.Sprintf("WCS: failed to create raster temp file for WCS worker: %v", err)
 					Info.Printf(errMsg)
+					metricsCollector.Info.HTTPStatus = 500
 					http.Error(w, errMsg, 500)
 					return
 				}
@@ -920,6 +977,7 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 						utils.RemoveGdalTempFile(masterTempFile)
 						errMsg := fmt.Sprintf("EncodeGdalOpen() failed: %v", err)
 						Info.Printf(errMsg)
+						metricsCollector.Info.HTTPStatus = 500
 						http.Error(w, errMsg, 500)
 						return
 					}
@@ -932,6 +990,7 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 				bn, err := utils.EncodeGdal(hDstDS, res, geoReq.OffX, geoReq.OffY)
 				if err != nil {
 					Info.Printf("Error in the utils.EncodeGdal: %v\n", err)
+					metricsCollector.Info.HTTPStatus = 500
 					http.Error(w, err.Error(), 500)
 					return
 				}
@@ -939,18 +998,22 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 
 			case err := <-errChan:
 				Info.Printf("WCS: error in the pipeline: %v\n", err)
+				metricsCollector.Info.HTTPStatus = 500
 				http.Error(w, err.Error(), 500)
 				return
 			case err := <-workerErrChan:
 				Info.Printf("WCS worker error: %v\n", err)
+				metricsCollector.Info.HTTPStatus = 500
 				http.Error(w, err.Error(), 500)
 				return
 			case <-ctx.Done():
 				Error.Printf("Context cancelled with message: %v\n", ctx.Err())
+				metricsCollector.Info.HTTPStatus = 500
 				http.Error(w, ctx.Err().Error(), 500)
 				return
 			case <-timeoutCtx.Done():
 				Error.Printf("WCS pipeline timed out, threshold:%v seconds", conf.Layers[idx].WcsTimeout)
+				metricsCollector.Info.HTTPStatus = 500
 				http.Error(w, "WCS pipeline timed out", 500)
 				return
 			}
@@ -986,6 +1049,7 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 					err := utils.EncodeGdalMerge(ctx, hDstDS, "geotiff", workerTempFileName, width, height, offX, offY)
 					if err != nil {
 						Info.Printf("%v\n", err)
+						metricsCollector.Info.HTTPStatus = 500
 						http.Error(w, err.Error(), 500)
 						return
 					}
@@ -1002,10 +1066,12 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 					}
 				case err := <-workerErrChan:
 					Info.Printf("%v\n", err)
+					metricsCollector.Info.HTTPStatus = 500
 					http.Error(w, err.Error(), 500)
 					return
 				case <-ctx.Done():
 					Error.Printf("Context cancelled with message: %v\n", ctx.Err())
+					metricsCollector.Info.HTTPStatus = 500
 					http.Error(w, ctx.Err().Error(), 500)
 					return
 				}
@@ -1024,6 +1090,7 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 			if err != nil {
 				errMsg := fmt.Sprintf("DAP: error: %v", err)
 				Info.Printf(errMsg)
+				metricsCollector.Info.HTTPStatus = 500
 				http.Error(w, errMsg, 500)
 			}
 			return
@@ -1052,6 +1119,7 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 		if err != nil {
 			errMsg := fmt.Sprintf("Error opening raster file: %v", err)
 			Info.Printf(errMsg)
+			metricsCollector.Info.HTTPStatus = 500
 			http.Error(w, errMsg, 500)
 		}
 		defer fileHandle.Close()
@@ -1060,6 +1128,7 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 		if err != nil {
 			errMsg := fmt.Sprintf("file stat() failed: %v", err)
 			Info.Printf(errMsg)
+			metricsCollector.Info.HTTPStatus = 500
 			http.Error(w, errMsg, 500)
 		}
 		w.Header().Set("Content-Length", fmt.Sprintf("%d", fileInfo.Size()))
@@ -1068,6 +1137,7 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 		if err != nil {
 			errMsg := fmt.Sprintf("SendFile failed: %v", err)
 			Info.Printf(errMsg)
+			metricsCollector.Info.HTTPStatus = 500
 			http.Error(w, errMsg, 500)
 		}
 
@@ -1078,13 +1148,15 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 		return
 
 	default:
+		metricsCollector.Info.HTTPStatus = 400
 		http.Error(w, fmt.Sprintf("%s not recognised.", *params.Request), 400)
 	}
 }
 
-func serveWPS(ctx context.Context, params utils.WPSParams, conf *utils.Config, reqURL string, w http.ResponseWriter) {
+func serveWPS(ctx context.Context, params utils.WPSParams, conf *utils.Config, reqURL string, w http.ResponseWriter, metricsCollector *metrics.MetricsCollector) {
 
 	if params.Request == nil {
+		metricsCollector.Info.HTTPStatus = 400
 		http.Error(w, "Malformed WPS, a Request field needs to be specified", 400)
 		return
 	}
@@ -1094,12 +1166,14 @@ func serveWPS(ctx context.Context, params utils.WPSParams, conf *utils.Config, r
 		err := utils.ExecuteWriteTemplateFile(w, conf,
 			utils.DataDir+"/templates/WPS_GetCapabilities.tpl")
 		if err != nil {
+			metricsCollector.Info.HTTPStatus = 500
 			http.Error(w, err.Error(), 500)
 		}
 	case "DescribeProcess":
 		idx, err := utils.GetProcessIndex(params, conf)
 		if err != nil {
 			Error.Printf("Requested process not found: %v, %v\n", err, reqURL)
+			metricsCollector.Info.HTTPStatus = 400
 			http.Error(w, fmt.Sprintf("%v: %s", err, reqURL), 400)
 			return
 		}
@@ -1107,24 +1181,28 @@ func serveWPS(ctx context.Context, params utils.WPSParams, conf *utils.Config, r
 		err = utils.ExecuteWriteTemplateFile(w, process,
 			utils.DataDir+"/templates/WPS_DescribeProcess.tpl")
 		if err != nil {
+			metricsCollector.Info.HTTPStatus = 500
 			http.Error(w, err.Error(), 500)
 		}
 	case "Execute":
 		idx, err := utils.GetProcessIndex(params, conf)
 		if err != nil {
 			Error.Printf("Requested process not found: %v, %v\n", err, reqURL)
+			metricsCollector.Info.HTTPStatus = 400
 			http.Error(w, fmt.Sprintf("%v: %s", err, reqURL), 400)
 			return
 		}
 		process := conf.Processes[idx]
 		if len(process.DataSources) == 0 {
 			Error.Printf("No data source specified")
+			metricsCollector.Info.HTTPStatus = 500
 			http.Error(w, "No data source specified", 500)
 			return
 		}
 
 		if len(params.FeatCol.Features) == 0 {
 			Info.Printf("The request does not contain the 'feature' property.\n")
+			metricsCollector.Info.HTTPStatus = 400
 			http.Error(w, "The request does not contain the 'feature' property", 400)
 			return
 		}
@@ -1143,12 +1221,14 @@ func serveWPS(ctx context.Context, params utils.WPSParams, conf *utils.Config, r
 			}
 			if area == 0.0 || area > process.MaxArea {
 				Info.Printf("The requested area %.02f, is too large.\n", area)
+				metricsCollector.Info.HTTPStatus = 400
 				http.Error(w, "The requested area is too large. Please try with a smaller one.", 400)
 				return
 			}
 			feat, _ = json.Marshal(&geo.Feature{Type: "Feature", Geometry: geom})
 
 		default:
+			metricsCollector.Info.HTTPStatus = 400
 			http.Error(w, "Geometry not supported. Only Features containing Polygon or MultiPolygon are available..", 400)
 			return
 		}
@@ -1221,12 +1301,13 @@ func serveWPS(ctx context.Context, params utils.WPSParams, conf *utils.Config, r
 			}
 
 			geoReq := proc.GeoDrillRequest{Geometry: string(feat),
-				CRS:        "EPSG:4326",
-				Collection: dataSource.DataSource,
-				NameSpaces: dataSource.RGBExpressions.VarList,
-				BandExpr:   dataSource.RGBExpressions,
-				StartTime:  startDateTime,
-				EndTime:    endDateTime,
+				CRS:              "EPSG:4326",
+				Collection:       dataSource.DataSource,
+				NameSpaces:       dataSource.RGBExpressions.VarList,
+				BandExpr:         dataSource.RGBExpressions,
+				StartTime:        startDateTime,
+				EndTime:          endDateTime,
+				MetricsCollector: metricsCollector,
 			}
 
 			dp := proc.InitDrillPipeline(ctx, conf.ServiceConfig.MASAddress, conf.ServiceConfig.WorkerNodes, process.IdentityTol, process.DpTol, errChan)
@@ -1241,10 +1322,12 @@ func serveWPS(ctx context.Context, params utils.WPSParams, conf *utils.Config, r
 				result += res
 			case err := <-errChan:
 				Info.Printf("Error in the pipeline: %v\n", err)
+				metricsCollector.Info.HTTPStatus = 500
 				http.Error(w, err.Error(), 500)
 				return
 			case <-ctx.Done():
 				Error.Printf("Context cancelled with message: %v\n", ctx.Err())
+				metricsCollector.Info.HTTPStatus = 500
 				http.Error(w, ctx.Err().Error(), 500)
 				return
 			}
@@ -1252,10 +1335,12 @@ func serveWPS(ctx context.Context, params utils.WPSParams, conf *utils.Config, r
 
 		err = utils.ExecuteWriteTemplateFile(w, result, utils.DataDir+"/templates/WPS_Execute.tpl")
 		if err != nil {
+			metricsCollector.Info.HTTPStatus = 500
 			http.Error(w, err.Error(), 500)
 		}
 
 	default:
+		metricsCollector.Info.HTTPStatus = 400
 		http.Error(w, fmt.Sprintf("%s not recognised.", *params.Request), 400)
 	}
 }
@@ -1268,12 +1353,34 @@ func generalHandler(conf *utils.Config, w http.ResponseWriter, r *http.Request) 
 	}
 	ctx := r.Context()
 
+	metricsCollector := metrics.NewMetricsCollector(metricsLogger)
+	defer metricsCollector.Log()
+
+	t0 := time.Now()
+	metricsCollector.Info.ReqTime = t0.Format(utils.ISOFormat)
+	defer func() { metricsCollector.Info.ReqDuration = time.Since(t0) }()
+
+	reqUrl, e := url.QueryUnescape(r.URL.String())
+	if e == nil {
+		metricsCollector.Info.URL = reqUrl
+	} else {
+		metricsCollector.Info.URL = r.URL.String()
+	}
+
+	remoteAddr := w.Header().Get("X-Real-IP")
+	if len(remoteAddr) == 0 {
+		remoteAddr = r.RemoteAddr
+	}
+	metricsCollector.Info.RemoteAddr = r.RemoteAddr
+	metricsCollector.Info.HTTPStatus = 200
+
 	var query map[string][]string
 	var err error
 	switch r.Method {
 	case "POST":
 		query, err = utils.ParsePost(r.Body)
 		if err != nil {
+			metricsCollector.Info.HTTPStatus = 400
 			http.Error(w, fmt.Sprintf("Error parsing WPS POST payload: %s", err), 400)
 			return
 		}
@@ -1281,6 +1388,7 @@ func generalHandler(conf *utils.Config, w http.ResponseWriter, r *http.Request) 
 	case "GET":
 		query, err = utils.ParseQuery(r.URL.RawQuery)
 		if err != nil {
+			metricsCollector.Info.HTTPStatus = 400
 			http.Error(w, fmt.Sprintf("Failed to parse query: %v", err), 400)
 			return
 		}
@@ -1288,10 +1396,11 @@ func generalHandler(conf *utils.Config, w http.ResponseWriter, r *http.Request) 
 
 	if _, fOK := query["dap4.ce"]; fOK {
 		if len(query["dap4.ce"]) == 0 {
+			metricsCollector.Info.HTTPStatus = 400
 			http.Error(w, "Failed to parse dap4.ce", 400)
 			return
 		}
-		serveDap(ctx, conf, r.URL.String(), w, query)
+		serveDap(ctx, conf, r.URL.String(), w, query, metricsCollector)
 		return
 	}
 
@@ -1315,6 +1424,7 @@ func generalHandler(conf *utils.Config, w http.ResponseWriter, r *http.Request) 
 		}
 
 		if !canInferService {
+			metricsCollector.Info.HTTPStatus = 400
 			http.Error(w, fmt.Sprintf("Not a OWS request. Request does not contain a 'service' parameter."), 400)
 			return
 		}
@@ -1324,25 +1434,29 @@ func generalHandler(conf *utils.Config, w http.ResponseWriter, r *http.Request) 
 	case "WMS":
 		params, err := utils.WMSParamsChecker(query, reWMSMap)
 		if err != nil {
+			metricsCollector.Info.HTTPStatus = 400
 			http.Error(w, fmt.Sprintf("Wrong WMS parameters on URL: %s", err), 400)
 			return
 		}
-		serveWMS(ctx, params, conf, r.URL.String(), w)
+		serveWMS(ctx, params, conf, r.URL.String(), w, metricsCollector)
 	case "WCS":
 		params, err := utils.WCSParamsChecker(query, reWCSMap)
 		if err != nil {
+			metricsCollector.Info.HTTPStatus = 400
 			http.Error(w, fmt.Sprintf("Wrong WCS parameters on URL: %s", err), 400)
 			return
 		}
-		serveWCS(ctx, params, conf, r.URL.String(), w, query)
+		serveWCS(ctx, params, conf, r.URL.String(), w, query, metricsCollector)
 	case "WPS":
 		params, err := utils.WPSParamsChecker(query, reWPSMap)
 		if err != nil {
+			metricsCollector.Info.HTTPStatus = 400
 			http.Error(w, fmt.Sprintf("Wrong WPS parameters on URL: %s", err), 400)
 			return
 		}
-		serveWPS(ctx, params, conf, r.URL.String(), w)
+		serveWPS(ctx, params, conf, r.URL.String(), w, metricsCollector)
 	default:
+		metricsCollector.Info.HTTPStatus = 400
 		http.Error(w, fmt.Sprintf("Not a valid OWS request. URL %s does not contain a valid 'request' parameter.", r.URL.String()), 400)
 		return
 	}

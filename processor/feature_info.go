@@ -3,10 +3,12 @@ package processor
 import (
 	"context"
 	"fmt"
-	"github.com/nci/gsky/utils"
 	"sort"
 	"strings"
 	"time"
+
+	"github.com/nci/gsky/metrics"
+	"github.com/nci/gsky/utils"
 )
 
 type featureInfo struct {
@@ -16,8 +18,8 @@ type featureInfo struct {
 	DsDates    []string
 }
 
-func GetFeatureInfo(ctx context.Context, params utils.WMSParams, conf *utils.Config, configMap map[string]*utils.Config, verbose bool) (string, error) {
-	ftInfo, err := getRaster(ctx, params, conf, configMap, verbose)
+func GetFeatureInfo(ctx context.Context, params utils.WMSParams, conf *utils.Config, configMap map[string]*utils.Config, verbose bool, metricsCollector *metrics.MetricsCollector) (string, error) {
+	ftInfo, err := getRaster(ctx, params, conf, configMap, verbose, metricsCollector)
 	if err != nil {
 		return "", err
 	}
@@ -148,7 +150,7 @@ func GetFeatureInfo(ctx context.Context, params utils.WMSParams, conf *utils.Con
 	return out, nil
 }
 
-func getRaster(ctx context.Context, params utils.WMSParams, conf *utils.Config, configMap map[string]*utils.Config, verbose bool) (*featureInfo, error) {
+func getRaster(ctx context.Context, params utils.WMSParams, conf *utils.Config, configMap map[string]*utils.Config, verbose bool, metricsCollector *metrics.MetricsCollector) (*featureInfo, error) {
 	ftInfo := &featureInfo{}
 
 	idx, err := utils.GetLayerIndex(params, conf)
@@ -247,6 +249,7 @@ func getRaster(ctx context.Context, params utils.WMSParams, conf *utils.Config, 
 		UserSrcGeoTransform: conf.Layers[idx].UserSrcGeoTransform,
 		AxisMapping:         conf.Layers[idx].WmsAxisMapping,
 		MasQueryHint:        conf.Layers[idx].MasQueryHint,
+		MetricsCollector:    metricsCollector,
 	},
 		Collection: styleLayer.DataSource,
 		CRS:        *params.CRS,

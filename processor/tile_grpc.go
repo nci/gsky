@@ -11,6 +11,7 @@ import (
 	"math/rand"
 	"sort"
 	"sync"
+	"time"
 	"unsafe"
 
 	pb "github.com/nci/gsky/worker/gdalservice"
@@ -47,6 +48,8 @@ func (gi *GeoRasterGRPC) Run(polyLimiter *ConcLimiter, varList []string, verbose
 		defer log.Printf("tile grpc done")
 	}
 	defer close(gi.Out)
+
+	t0 := time.Now()
 
 	var grans []*GeoTileGranule
 	availNamespaces := make(map[string]bool)
@@ -94,6 +97,10 @@ func (gi *GeoRasterGRPC) Run(polyLimiter *ConcLimiter, varList []string, verbose
 	if err != nil {
 		gi.Error <- err
 		return
+	}
+
+	if g0.MetricsCollector != nil {
+		defer func() { g0.MetricsCollector.Info.RPC.Duration += time.Since(t0) }()
 	}
 
 	if g0.GrpcTileXSize > 0.0 || g0.GrpcTileYSize > 0.0 {
@@ -149,6 +156,10 @@ func (gi *GeoRasterGRPC) Run(polyLimiter *ConcLimiter, varList []string, verbose
 		if verbose {
 			log.Printf("tile grpc: %v tiled granules", len(grans))
 		}
+	}
+
+	if g0.MetricsCollector != nil {
+		g0.MetricsCollector.Info.RPC.NumTiledGranules += len(grans)
 	}
 
 	// We divide the GeoTileGranules (i.e. inputs) into shards whose key is the

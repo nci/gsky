@@ -41,6 +41,11 @@ func (gi *GeoDrillGRPC) Run(bandStrides int, decileCount int, verbose bool) {
 		inputs = append(inputs, gran)
 	}
 
+	if geoReq.MetricsCollector != nil {
+		defer func() { geoReq.MetricsCollector.Info.RPC.Duration += time.Since(start) }()
+		geoReq.MetricsCollector.Info.RPC.NumTiledGranules += len(inputs)
+	}
+
 	if len(inputs) == 0 {
 		return
 	}
