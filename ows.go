@@ -29,6 +29,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"runtime"
+	"strconv"
 	"strings"
 	"time"
 
@@ -49,6 +50,7 @@ var (
 	port            = flag.Int("p", 8080, "Server listening port.")
 	serverDataDir   = flag.String("data_dir", utils.DataDir, "Server data directory.")
 	serverConfigDir = flag.String("conf_dir", utils.EtcDir, "Server config directory.")
+	serverLogDir    = flag.String("log_dir", "", "Server log directory.")
 	validateConfig  = flag.Bool("check_conf", false, "Validate server config files.")
 	dumpConfig      = flag.Bool("dump_conf", false, "Dump server config files.")
 	verbose         = flag.Bool("v", false, "Verbose mode for more server outputs.")
@@ -126,7 +128,33 @@ func init() {
 
 	utils.InitGdal()
 
-	metricsLogger = metrics.NewStdoutLogger()
+	if len(*serverLogDir) > 0 {
+		if *serverLogDir == "-" {
+			metricsLogger = metrics.NewStdoutLogger()
+		} else {
+			maxLogFileSize := int64(0)
+			if val, ok := os.LookupEnv("GSKY_MAX_LOG_FILE_SIZE"); ok {
+				valInt, e := strconv.ParseInt(val, 10, 64)
+				if e == nil {
+					maxLogFileSize = valInt
+				} else {
+					Error.Printf("invalid GSKY_MAX_LOG_FILE_SIZE: %v", e)
+				}
+			}
+
+			maxLogFiles := 0
+			if val, ok := os.LookupEnv("GSKY_MAX_LOG_FILES"); ok {
+				valInt, e := strconv.ParseInt(val, 10, 32)
+				if e == nil {
+					maxLogFiles = int(valInt)
+				} else {
+					Error.Printf("invalid GSKY_MAX_LOG_FILES: %v", e)
+				}
+			}
+
+			metricsLogger = metrics.NewFileLogger(*serverLogDir, maxLogFileSize, maxLogFiles, *verbose)
+		}
+	}
 }
 
 func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, reqURL string, w http.ResponseWriter, metricsCollector *metrics.MetricsCollector) {
@@ -1216,6 +1244,7 @@ func serveWPS(ctx context.Context, params utils.WPSParams, conf *utils.Config, r
 
 		case *geo.Polygon, *geo.MultiPolygon:
 			area := utils.GetArea(geom)
+			metricsCollector.Info.Indexer.GeometryArea = area
 			if *verbose {
 				log.Println("Requested polygon has an area of", area)
 			}

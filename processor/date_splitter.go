@@ -21,7 +21,7 @@ func (ts *TimeSplitter) Run() {
 	for geoReq := range ts.In {
 		if ts.YearStep > 0 {
 			for t := geoReq.StartTime; t.Before(geoReq.EndTime); t = t.AddDate(ts.YearStep, 0, 0) {
-				ts.Out <- &GeoDrillRequest{geoReq.Geometry, geoReq.CRS, geoReq.Collection, geoReq.NameSpaces, geoReq.BandExpr, t, t.AddDate(ts.YearStep, 0, 0)}
+				ts.Out <- &GeoDrillRequest{geoReq.Geometry, geoReq.CRS, geoReq.Collection, geoReq.NameSpaces, geoReq.BandExpr, t, t.AddDate(ts.YearStep, 0, 0), geoReq.MetricsCollector}
 			}
 		} else {
 			ts.Out <- geoReq

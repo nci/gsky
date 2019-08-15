@@ -41,17 +41,18 @@ func (gi *GeoDrillGRPC) Run(bandStrides int, decileCount int, verbose bool) {
 		inputs = append(inputs, gran)
 	}
 
+	if len(inputs) == 0 {
+		return
+	}
+
+	geoReq := inputs[0]
 	if geoReq.MetricsCollector != nil {
 		defer func() { geoReq.MetricsCollector.Info.RPC.Duration += time.Since(start) }()
 		geoReq.MetricsCollector.Info.RPC.NumTiledGranules += len(inputs)
 	}
 
-	if len(inputs) == 0 {
-		return
-	}
-
 	var inputsRecompute []*GeoDrillGranule
-	if inputs[0].Approx {
+	if geoReq.Approx {
 		for _, gran := range inputs {
 			if len(gran.Means) == 0 || len(gran.TimeStamps) != len(gran.Means) || len(gran.SampleCounts) != len(gran.Means) {
 				inputsRecompute = append(inputsRecompute, gran)

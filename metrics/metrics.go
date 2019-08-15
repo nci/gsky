@@ -1,15 +1,18 @@
 package metrics
 
 import (
+	"bytes"
+	"encoding/json"
 	"time"
 )
 
 type IndexerInfo struct {
-	Duration    time.Duration `json:"duration"`
-	Query       string        `json:"query"`
-	Polygon     string        `json:"polygon"`
-	NumFiles    int           `json:"num_files"`
-	NumGranules int           `json:"num_granules"`
+	Duration     time.Duration `json:"duration"`
+	Query        string        `json:"query"`
+	Geometry     string        `json:"geometry"`
+	GeometryArea float64       `json:"geometry_area"`
+	NumFiles     int           `json:"num_files"`
+	NumGranules  int           `json:"num_granules"`
 }
 
 type RPCInfo struct {
@@ -30,6 +33,18 @@ type MetricsInfo struct {
 type MetricsCollector struct {
 	Info   *MetricsInfo
 	logger Logger
+}
+
+func (i *MetricsInfo) ToJSON() (string, error) {
+	buf := new(bytes.Buffer)
+	enc := json.NewEncoder(buf)
+	enc.SetEscapeHTML(false)
+	err := enc.Encode(i)
+	if err == nil {
+		return buf.String(), nil
+	} else {
+		return "", err
+	}
 }
 
 func NewMetricsCollector(logger Logger) *MetricsCollector {

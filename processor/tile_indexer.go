@@ -173,8 +173,8 @@ func (p *TileIndexer) Run(verbose bool) {
 						geoReq.MetricsCollector.Info.Indexer.Query = url
 					}
 
-					if len(geoReq.MetricsCollector.Info.Indexer.Polygon) == 0 {
-						geoReq.MetricsCollector.Info.Indexer.Polygon = bboxWkt
+					if len(geoReq.MetricsCollector.Info.Indexer.Geometry) == 0 {
+						geoReq.MetricsCollector.Info.Indexer.Geometry = bboxWkt
 					}
 				}
 				isInit = false

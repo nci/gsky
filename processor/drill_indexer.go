@@ -118,8 +118,8 @@ func (p *DrillIndexer) Run(verbose bool) {
 					geoReq.MetricsCollector.Info.Indexer.Query = reqURL
 				}
 
-				if len(geoReq.MetricsCollector.Info.Indexer.Polygon) == 0 {
-					geoReq.MetricsCollector.Info.Indexer.Polygon = postBodyStr
+				if len(geoReq.MetricsCollector.Info.Indexer.Geometry) == 0 {
+					geoReq.MetricsCollector.Info.Indexer.Geometry = postBody["wkt"][0]
 				}
 				geoReq.MetricsCollector.Info.Indexer.NumFiles += len(metadata.GDALDatasets)
 				geoReq.MetricsCollector.Info.Indexer.NumGranules += len(metadata.GDALDatasets)
