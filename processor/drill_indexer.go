@@ -50,6 +50,8 @@ const DefaultMaxLogLength = 3000
 
 func (p *DrillIndexer) Run(verbose bool) {
 	defer close(p.Out)
+	t0 := time.Now()
+	isInit := true
 	for geoReq := range p.In {
 		var feat geo.Feature
 		err := json.Unmarshal([]byte(geoReq.Geometry), &feat)
@@ -109,12 +111,29 @@ func (p *DrillIndexer) Run(verbose bool) {
 			continue
 		}
 
+		if isInit {
+			if geoReq.MetricsCollector != nil {
+				defer func() { geoReq.MetricsCollector.Info.Indexer.Duration += time.Since(t0) }()
+				if len(geoReq.MetricsCollector.Info.Indexer.Query) == 0 {
+					geoReq.MetricsCollector.Info.Indexer.Query = reqURL
+				}
+
+				if len(geoReq.MetricsCollector.Info.Indexer.Geometry) == 0 {
+					geoReq.MetricsCollector.Info.Indexer.Geometry = postBody["wkt"][0]
+				}
+				geoReq.MetricsCollector.Info.Indexer.NumFiles += len(metadata.GDALDatasets)
+				geoReq.MetricsCollector.Info.Indexer.NumGranules += len(metadata.GDALDatasets)
+			}
+
+			isInit = false
+		}
+
 		switch len(metadata.GDALDatasets) {
 		case 0:
-			p.Out <- &GeoDrillGranule{"NULL", utils.EmptyTileNS, "Byte", nil, geoReq.Geometry, geoReq.CRS, nil, nil, 0, false}
+			p.Out <- &GeoDrillGranule{"NULL", utils.EmptyTileNS, "Byte", nil, geoReq.Geometry, geoReq.CRS, nil, nil, 0, false, geoReq.MetricsCollector}
 		default:
 			for _, ds := range metadata.GDALDatasets {
-				p.Out <- &GeoDrillGranule{ds.DSName, ds.NameSpace, ds.ArrayType, ds.TimeStamps, geoReq.Geometry, geoReq.CRS, ds.Means, ds.SampleCounts, ds.NoData, p.Approx}
+				p.Out <- &GeoDrillGranule{ds.DSName, ds.NameSpace, ds.ArrayType, ds.TimeStamps, geoReq.Geometry, geoReq.CRS, ds.Means, ds.SampleCounts, ds.NoData, p.Approx, geoReq.MetricsCollector}
 			}
 		}
 	}

@@ -3,6 +3,7 @@ package processor
 import (
 	"time"
 
+	"github.com/nci/gsky/metrics"
 	"github.com/nci/gsky/utils"
 )
 
@@ -32,6 +33,7 @@ type ConfigPayLoad struct {
 	GrpcTileYSize         float64
 	MasQueryHint          string
 	ReqRes                float64
+	MetricsCollector      *metrics.MetricsCollector
 }
 
 type GeoTileIdxSelector struct {

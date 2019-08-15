@@ -91,6 +91,8 @@ func (p *TileIndexer) Run(verbose bool) {
 	}
 	defer close(p.Out)
 
+	t0 := time.Now()
+	isInit := true
 	for geoReq := range p.In {
 		select {
 		case <-p.Context.Done():
@@ -164,6 +166,20 @@ func (p *TileIndexer) Run(verbose bool) {
 			} else {
 				url = strings.Replace(fmt.Sprintf("http://%s%s?intersects&metadata=gdal&time=%s&until=%s&srs=%s&wkt=%s&namespace=%s&nseg=%d&limit=%d", p.APIAddress, geoReq.Collection, geoReq.StartTime.Format(ISOFormat), geoReq.EndTime.Format(ISOFormat), geoReq.CRS, bboxWkt, nameSpaces, geoReq.PolygonSegments, geoReq.QueryLimit), " ", "%20", -1)
 			}
+			if isInit {
+				if geoReq.MetricsCollector != nil {
+					defer func() { geoReq.MetricsCollector.Info.Indexer.Duration += time.Since(t0) }()
+					if len(geoReq.MetricsCollector.Info.Indexer.Query) == 0 {
+						geoReq.MetricsCollector.Info.Indexer.Query = url
+					}
+
+					if len(geoReq.MetricsCollector.Info.Indexer.Geometry) == 0 {
+						geoReq.MetricsCollector.Info.Indexer.Geometry = bboxWkt
+					}
+				}
+				isInit = false
+			}
+
 			if verbose {
 				log.Println(url)
 			}
@@ -219,6 +235,9 @@ func URLIndexGet(ctx context.Context, url string, geoReq *GeoTileRequest, errCha
 		return
 	}
 
+	if geoReq.MetricsCollector != nil {
+		geoReq.MetricsCollector.Info.Indexer.NumFiles += len(metadata.GDALDatasets)
+	}
 	if verbose {
 		log.Printf("tile indexer: %d files", len(metadata.GDALDatasets))
 	}
@@ -458,6 +477,9 @@ func URLIndexGet(ctx context.Context, url string, geoReq *GeoTileRequest, errCha
 		}
 		//log.Printf("%#v, %#v", geoReq.ConfigPayLoad, newConfigPayLoad)
 
+		if geoReq.MetricsCollector != nil {
+			geoReq.MetricsCollector.Info.Indexer.NumGranules += len(granList)
+		}
 		if verbose {
 			log.Printf("tile indexer: %d granules", len(granList))
 		}

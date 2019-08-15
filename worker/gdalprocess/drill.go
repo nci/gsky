@@ -58,9 +58,6 @@ func DrillDataset(in *pb.GeoRPCGranule) *pb.Result {
 	}
 	defer C.GDALClose(ds)
 
-	geoTrans := make([]float64, 6)
-	C.GDALGetGeoTransform(ds, (*C.double)(&geoTrans[0]))
-
 	cGeom := C.CString(string(geomGeoJSON))
 	defer C.free(unsafe.Pointer(cGeom))
 	geom := C.OGR_G_CreateGeometryFromJson(cGeom)
@@ -69,14 +66,15 @@ func DrillDataset(in *pb.GeoRPCGranule) *pb.Result {
 		log.Println(msg)
 		return &pb.Result{Error: msg}
 	}
-	defer C.OGR_G_DestroyGeometry(geom)
 
 	selSRS := C.OSRNewSpatialReference(cWGS84WKT)
 	defer C.OSRDestroySpatialReference(selSRS)
 
 	C.OGR_G_AssignSpatialReference(geom, selSRS)
 
-	return readData(ds, in.Bands, geom, int(in.BandStrides), int(in.DrillDecileCount))
+	res := readData(ds, in.Bands, geom, int(in.BandStrides), int(in.DrillDecileCount))
+	C.OGR_G_DestroyGeometry(geom)
+	return res
 }
 
 func readData(ds C.GDALDatasetH, bands []int32, geom C.OGRGeometryH, bandStrides int, decileCount int) *pb.Result {
@@ -334,6 +332,7 @@ func getDrillFileDescriptor(ds C.GDALDatasetH, g C.OGRGeometryH) DrillFileDescri
 		defer C.OSRDestroySpatialReference(desSRS)
 		srcSRS := C.OSRNewSpatialReference(cWGS84WKT)
 		defer C.OSRDestroySpatialReference(srcSRS)
+		C.OSRSetAxisMappingStrategy(srcSRS, C.OAMS_TRADITIONAL_GIS_ORDER)
 		trans := C.OCTNewCoordinateTransformation(srcSRS, desSRS)
 		C.OGR_G_Transform(gCopy, trans)
 	}

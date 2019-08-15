@@ -6,14 +6,16 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/nci/gsky/metrics"
 	"github.com/nci/gsky/utils"
 )
 
-func serveDap(ctx context.Context, conf *utils.Config, reqURL string, w http.ResponseWriter, query map[string][]string) {
+func serveDap(ctx context.Context, conf *utils.Config, reqURL string, w http.ResponseWriter, query map[string][]string, metricsCollector *metrics.MetricsCollector) {
 	ceStr := query["dap4.ce"][0]
 	ce, err := utils.ParseDap4ConstraintExpr(ceStr)
 	if err != nil {
 		logDapError(err)
+		metricsCollector.Info.HTTPStatus = 400
 		http.Error(w, fmt.Sprintf("Failed to parse dap4.ce: %v", err), 400)
 		return
 	}
@@ -25,11 +27,12 @@ func serveDap(ctx context.Context, conf *utils.Config, reqURL string, w http.Res
 	wcsParams, err := dapToWcs(ce, conf)
 	if err != nil {
 		logDapError(err)
+		metricsCollector.Info.HTTPStatus = 400
 		http.Error(w, fmt.Sprintf("Failed to parse dap4.ce: %v", err), 400)
 		return
 	}
 
-	serveWCS(ctx, *wcsParams, conf, reqURL, w, query)
+	serveWCS(ctx, *wcsParams, conf, reqURL, w, query, metricsCollector)
 }
 
 func dapToWcs(ce *utils.DapConstraints, conf *utils.Config) (*utils.WCSParams, error) {
