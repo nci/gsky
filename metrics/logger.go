@@ -30,8 +30,8 @@ func (l *StdoutLogger) Log(info *MetricsInfo) {
 	}
 }
 
-const defaultQueueSize = 2000
 const defaultLogWriters = 2
+const defaultQueueSize = 1000 * defaultLogWriters
 const defaultMaxLogFileSize = 1024 * 1024 * 1024
 const defaultMaxLogFiles = 10
 
@@ -66,7 +66,11 @@ func NewFileLogger(logDir string, maxLogFileSize int64, maxLogFiles int, verbose
 }
 
 func (l *FileLogger) Log(info *MetricsInfo) {
-	l.MetricsQueue <- info
+	select {
+	case l.MetricsQueue <- info:
+	default:
+		log.Printf("FileLogger: queue is full")
+	}
 }
 
 func (l *FileLogger) startLogWriter(idx int) {
