@@ -58,5 +58,7 @@ func NewMetricsCollector(logger Logger) *MetricsCollector {
 }
 
 func (m *MetricsCollector) Log() {
-	m.logger.Log(m.Info)
+	if m.logger != nil {
+		m.logger.Log(m.Info)
+	}
 }
