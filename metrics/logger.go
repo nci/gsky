@@ -34,6 +34,7 @@ const defaultLogWriters = 2
 const defaultQueueSize = 1000 * defaultLogWriters
 const defaultMaxLogFileSize = 1024 * 1024 * 1024
 const defaultMaxLogFiles = 10
+const defaultLogFilePattern = "%d.log"
 
 type FileLogger struct {
 	MetricsQueue   chan *MetricsInfo
@@ -100,7 +101,7 @@ func (l *FileLogger) startLogWriter(idx int) {
 }
 
 func (l *FileLogger) openLogFile(idx int) (*os.File, error) {
-	logFilePath := path.Join(l.LogDir, fmt.Sprintf("log%d", idx))
+	logFilePath := path.Join(l.LogDir, fmt.Sprintf(defaultLogFilePattern, idx))
 	return os.OpenFile(logFilePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 }
 
@@ -112,10 +113,10 @@ func (l *FileLogger) tryRotateLogFile(currFile *os.File, idx int) (*os.File, err
 	}
 
 	if info.Size() >= l.MaxLogFileSize {
-		currLogFilePath := path.Join(l.LogDir, fmt.Sprintf("log%d", idx))
+		currLogFilePath := path.Join(l.LogDir, fmt.Sprintf(defaultLogFilePattern, idx))
 		var rotatedLogFilePath string
 		for i := 0; i < l.MaxLogFiles; i++ {
-			filePath := path.Join(l.LogDir, fmt.Sprintf("log%d.%d", idx, i))
+			filePath := path.Join(l.LogDir, fmt.Sprintf(defaultLogFilePattern+".%d", idx, i))
 			if _, err := os.Stat(filePath); os.IsNotExist(err) {
 				rotatedLogFilePath = filePath
 				break
@@ -139,7 +140,7 @@ func (l *FileLogger) tryRotateLogFile(currFile *os.File, idx int) (*os.File, err
 				fileName := filepath.Base(file.Name())
 				fn := strings.TrimSuffix(fileName, path.Ext(fileName))
 
-				if fn != fmt.Sprintf("log%d", idx) {
+				if fn != fmt.Sprintf(defaultLogFilePattern, idx) {
 					continue
 				}
 
@@ -152,7 +153,7 @@ func (l *FileLogger) tryRotateLogFile(currFile *os.File, idx int) (*os.File, err
 			if oldestFile != nil {
 				rotatedLogFilePath = path.Join(l.LogDir, oldestFile.Name())
 			} else {
-				rotatedLogFilePath = path.Join(l.LogDir, fmt.Sprintf("log%d.%d", idx, 0))
+				rotatedLogFilePath = path.Join(l.LogDir, fmt.Sprintf(defaultLogFilePattern+".%d", idx, 0))
 			}
 
 			if l.Verbose {
