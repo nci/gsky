@@ -161,9 +161,37 @@ func (dp *TilePipeline) processDeps(geoReq *GeoTileRequest, verbose bool) ([]*Fl
 	}
 
 	for idx, reqCtx := range depLayers {
+		req := reqCtx.GeoReq
+		if len(reqCtx.Layer.EffectiveStartDate) > 0 && len(reqCtx.Layer.EffectiveEndDate) > 0 {
+			t0, e0 := time.Parse(utils.ISOFormat, reqCtx.Layer.EffectiveStartDate)
+			t1, e1 := time.Parse(utils.ISOFormat, reqCtx.Layer.EffectiveEndDate)
+			if e0 == nil && e1 == nil {
+				ts0 := t0.Unix()
+				ts1 := t1.Unix()
+
+				reqT0 := int64(-1)
+				if geoReq.StartTime != nil {
+					reqT0 = geoReq.StartTime.Unix()
+				}
+
+				reqT1 := int64(-1)
+				if geoReq.EndTime != nil {
+					reqT1 = geoReq.EndTime.Unix()
+				}
+
+				isInRange := reqT0 >= ts0 && reqT0 <= ts1 || reqT1 >= ts0 && reqT1 <= ts1
+				if !isInRange {
+					if verbose {
+						log.Printf("fusion pipeline(%d of %d): skip processing, requsted time range [%v, %v] out of layer time range [%v, %v]", idx+1, len(depLayers), geoReq.StartTime, geoReq.EndTime, t0, t1)
+					}
+					continue
+				}
+			}
+
+		}
+
 		tp := InitTilePipeline(dp.Context, reqCtx.MASAddress, reqCtx.Service.WorkerNodes, reqCtx.Layer.MaxGrpcRecvMsgSize, reqCtx.Layer.WmsPolygonShardConcLimit, reqCtx.Service.MaxGrpcBufferSize, errChan)
 
-		req := reqCtx.GeoReq
 		select {
 		case res := <-tp.Process(req, verbose):
 			timeDelta := time.Second * time.Duration(-idx)
