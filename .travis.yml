@@ -2,7 +2,7 @@ dist: bionic
 language: go
 go: 1.11.x
 env:
-  - PREFIX=$HOME/local PROJVER=6.1.1 GDALVER=3.0.1 NJOBS=2
+  - PREFIX=$HOME/local PROJVER=6.1.1 GDALVER=3.0.1 OPENJPVER=2.3.1 NJOBS=2
 services:
   - postgresql
 cache:
@@ -18,8 +18,6 @@ addons:
     - libhdf4-dev
     - libhdf5-dev
     - libnetcdf-dev
-#    - libopenjpeg-dev
-#    - openjpeg-tools
 
 before_script:
   - sudo service postgresql stop
@@ -43,21 +41,21 @@ install:
   - export PGUSER=postgres
   - >
     if ! test -f $PREFIX/lib/libgdal.a ; then
-      wget --quiet https://github.com/uclouvain/openjpeg/archive/v2.3.1.tar.gz || exit 1
-      tar xf v2.3.1.tar.gz
-      (cd openjpeg-2.3.1 && mkdir build && cd build && cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$PREFIX && make -j${NJOBS} install)
+      wget --quiet https://github.com/uclouvain/openjpeg/archive/v${OPENJPVER}.tar.gz || exit 1
+      tar xf v${OPENJPVER}.tar.gz
+      (cd openjpeg-${OPENJPVER} && mkdir build && cd build && cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$PREFIX && make -s -j${NJOBS} install)
       wget --quiet https://github.com/OSGeo/PROJ/releases/download/$PROJVER/proj-$PROJVER.tar.gz || exit 1
       tar xf proj-$PROJVER.tar.gz
-      (cd proj-$PROJVER && ./configure --prefix=$PREFIX && make -j${NJOBS} install)
+      (cd proj-$PROJVER && ./configure --prefix=$PREFIX && make -s -j${NJOBS} install)
       wget --quiet http://download.osgeo.org/gdal/$GDALVER/gdal-$GDALVER.tar.gz{,.md5} || exit 1
       md5sum gdal-$GDALVER.tar.gz | cmp - gdal-$GDALVER.tar.gz.md5 || exit 1
       tar xf gdal-$GDALVER.tar.gz
-      export LD_LIBRARY_PATH=$PREFIX/lib:$LD_LIBRARY_PATH
-      export CPPFLAGS=-I$PREFIX/include
-      export CXXFLAGS=-I$PREFIX/include
-      export CFLAGS=-I$PREFIX/include
-      export LDFLAGS=-L$PREFIX/lib
-      (cd gdal-$GDALVER && ./configure --with-openjpeg --prefix=$PREFIX && make -j${NJOBS} install)
+      #export LD_LIBRARY_PATH=$PREFIX/lib:$LD_LIBRARY_PATH
+      #export CPPFLAGS=-I$PREFIX/include
+      #export CXXFLAGS=-I$PREFIX/include
+      #export CFLAGS=-I$PREFIX/include
+      #export LDFLAGS=-L$PREFIX/lib
+      (cd gdal-$GDALVER && ./configure --prefix=$PREFIX && make -s -j${NJOBS} install)
     fi
 
 script:
@@ -67,3 +65,4 @@ script:
   - gofmt -d $TRAVIS_BUILD_DIR
   # Ensure that gofmt -d produces zero diff output
   - test -z "$(gofmt -d $TRAVIS_BUILD_DIR)"
+  - cd $TRAVIS_BUILD_DIR && ./configure && make all
