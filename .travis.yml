@@ -1,7 +1,8 @@
+dist: bionic
 language: go
 go: 1.11.x
 env:
-  - PREFIX=$HOME/local PROJVER=6.1.1 GDALVER=3.0.1 NJOBS=2
+  - PREFIX=$HOME/local PROJVER=6.1.1 GDALVER=3.0.1 OPENJPVER=2.3.1 NJOBS=2
 services:
   - postgresql
 cache:
@@ -17,8 +18,6 @@ addons:
     - libhdf4-dev
     - libhdf5-dev
     - libnetcdf-dev
-    - libopenjpeg-dev
-    - openjpeg-tools
 
 before_script:
   - sudo service postgresql stop
@@ -31,6 +30,7 @@ before_script:
 install:
   - git clone https://github.com/sstephenson/bats.git
   - (cd bats && git checkout 03608115df2071fff4eaaff1605768c275e5f81f && ./install.sh $PREFIX)
+  - export PKG_CONFIG_PATH=$PREFIX/lib/pkgconfig
   - export LD_LIBRARY_PATH=$PREFIX/lib:$LD_LIBRARY_PATH
   - export CPPFLAGS=-I$PREFIX/include
   - export CXXFLAGS=-I$PREFIX/include
@@ -41,23 +41,23 @@ install:
   - export PGUSER=postgres
   - >
     if ! test -f $PREFIX/lib/libgdal.a ; then
+      wget --quiet https://github.com/uclouvain/openjpeg/archive/v${OPENJPVER}.tar.gz || exit 1
+      tar xf v${OPENJPVER}.tar.gz
+      (cd openjpeg-${OPENJPVER} && mkdir build && cd build && cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$PREFIX && make -j${NJOBS} install)
       wget --quiet https://github.com/OSGeo/PROJ/releases/download/$PROJVER/proj-$PROJVER.tar.gz || exit 1
-      tar xfvz proj-$PROJVER.tar.gz
+      tar xf proj-$PROJVER.tar.gz
       (cd proj-$PROJVER && ./configure --prefix=$PREFIX && make -j${NJOBS} install)
       wget --quiet http://download.osgeo.org/gdal/$GDALVER/gdal-$GDALVER.tar.gz{,.md5} || exit 1
       md5sum gdal-$GDALVER.tar.gz | cmp - gdal-$GDALVER.tar.gz.md5 || exit 1
-      tar xfvz gdal-$GDALVER.tar.gz
-      export LD_LIBRARY_PATH=$PREFIX/lib:$LD_LIBRARY_PATH
-      export CPPFLAGS=-I$PREFIX/include
-      export CXXFLAGS=-I$PREFIX/include
-      export CFLAGS=-I$PREFIX/include
-      export LDFLAGS=-L$PREFIX/lib
-      (cd gdal-$GDALVER && ./configure --with-openjpeg --prefix=$PREFIX && make -j${NJOBS} install)
+      tar xf gdal-$GDALVER.tar.gz
+      (cd gdal-$GDALVER && ./configure --prefix=$PREFIX && make -j${NJOBS} install)
     fi
 
 script:
   - cd $TRAVIS_BUILD_DIR/mas/db && psql -f schema.sql
+  - cd $TRAVIS_BUILD_DIR/mas/api && psql -f mas.sql
   - go tool vet $TRAVIS_BUILD_DIR
   - gofmt -d $TRAVIS_BUILD_DIR
   # Ensure that gofmt -d produces zero diff output
   - test -z "$(gofmt -d $TRAVIS_BUILD_DIR)"
+  - cd $TRAVIS_BUILD_DIR && ./configure && make all
