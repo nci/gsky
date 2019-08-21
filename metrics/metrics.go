@@ -93,6 +93,7 @@ func (i *MetricsInfo) normaliseURL(u *URLInfo) error {
 	}
 
 	u.Host = r.Host
+	u.Path = r.Path
 	query, err := utils.ParseQuery(r.RawQuery)
 	if err != nil {
 		return err
