@@ -169,12 +169,16 @@ func (p *TileIndexer) Run(verbose bool) {
 			if isInit {
 				if geoReq.MetricsCollector != nil {
 					defer func() { geoReq.MetricsCollector.Info.Indexer.Duration += time.Since(t0) }()
-					if len(geoReq.MetricsCollector.Info.Indexer.Query) == 0 {
-						geoReq.MetricsCollector.Info.Indexer.Query = url
+					if len(geoReq.MetricsCollector.Info.Indexer.URL.RawURL) == 0 {
+						geoReq.MetricsCollector.Info.Indexer.URL.RawURL = url
 					}
 
 					if len(geoReq.MetricsCollector.Info.Indexer.Geometry) == 0 {
 						geoReq.MetricsCollector.Info.Indexer.Geometry = bboxWkt
+					}
+
+					if len(geoReq.MetricsCollector.Info.Indexer.SRS) == 0 {
+						geoReq.MetricsCollector.Info.Indexer.SRS = geoReq.CRS
 					}
 				}
 				isInit = false

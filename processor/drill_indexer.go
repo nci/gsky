@@ -114,12 +114,16 @@ func (p *DrillIndexer) Run(verbose bool) {
 		if isInit {
 			if geoReq.MetricsCollector != nil {
 				defer func() { geoReq.MetricsCollector.Info.Indexer.Duration += time.Since(t0) }()
-				if len(geoReq.MetricsCollector.Info.Indexer.Query) == 0 {
-					geoReq.MetricsCollector.Info.Indexer.Query = reqURL
+				if len(geoReq.MetricsCollector.Info.Indexer.URL.RawURL) == 0 {
+					geoReq.MetricsCollector.Info.Indexer.URL.RawURL = reqURL
 				}
 
 				if len(geoReq.MetricsCollector.Info.Indexer.Geometry) == 0 {
 					geoReq.MetricsCollector.Info.Indexer.Geometry = postBody["wkt"][0]
+				}
+
+				if len(geoReq.MetricsCollector.Info.Indexer.SRS) == 0 {
+					geoReq.MetricsCollector.Info.Indexer.SRS = "EPSG:4326"
 				}
 				geoReq.MetricsCollector.Info.Indexer.NumFiles += len(metadata.GDALDatasets)
 				geoReq.MetricsCollector.Info.Indexer.NumGranules += len(metadata.GDALDatasets)
