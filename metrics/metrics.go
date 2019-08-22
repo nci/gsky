@@ -28,10 +28,10 @@ type IndexerInfo struct {
 	Duration     time.Duration `json:"duration"`
 	URL          URLInfo       `json:"url"`
 	Geometry     string        `json:"geometry"`
-	SRS          string
-	GeometryArea float64 `json:"geometry_area"`
-	NumFiles     int     `json:"num_files"`
-	NumGranules  int     `json:"num_granules"`
+	SRS          string        `json:"-"`
+	GeometryArea float64       `json:"geometry_area"`
+	NumFiles     int           `json:"num_files"`
+	NumGranules  int           `json:"num_granules"`
 }
 
 type RPCInfo struct {
