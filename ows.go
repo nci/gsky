@@ -1391,9 +1391,9 @@ func generalHandler(conf *utils.Config, w http.ResponseWriter, r *http.Request) 
 
 	reqUrl, e := url.QueryUnescape(r.URL.String())
 	if e == nil {
-		metricsCollector.Info.URL = reqUrl
+		metricsCollector.Info.URL.RawURL = reqUrl
 	} else {
-		metricsCollector.Info.URL = r.URL.String()
+		metricsCollector.Info.URL.RawURL = r.URL.String()
 	}
 
 	remoteAddr := w.Header().Get("X-Real-IP")
