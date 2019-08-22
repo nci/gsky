@@ -4,7 +4,7 @@ MAINTAINER GSKY Developers <help@nci.org.au>
 RUN apt-get update \
       && apt-get install -y --no-install-recommends \
         ca-certificates libreadline-dev cmake openssl curl wget git \
-        pkg-config unzip autoconf build-essential bison flex vim less
+        pkg-config unzip autoconf automake libtool build-essential bison flex vim less
 
 COPY ./build_deps.sh /
 RUN ./build_deps.sh

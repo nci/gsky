@@ -3,9 +3,9 @@ set -xeu
 
 prefix=${PREFIX:-/usr}
 
-v=10.4
+v=11.5
 (set -xeu
-wget -q https://ftp.postgresql.org/pub/source/v10.4/postgresql-${v}.tar.gz
+wget -q https://ftp.postgresql.org/pub/source/v${v}/postgresql-${v}.tar.gz
 tar -xf postgresql-${v}.tar.gz
 cd postgresql-${v}
 ./configure --prefix="$prefix"

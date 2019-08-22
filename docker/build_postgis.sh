@@ -1,7 +1,7 @@
 #!/bin/bash
 set -xeu
 
-v=2.4.4
+v=2.5.2
 (set -xeu
 wget -q https://download.osgeo.org/postgis/source/postgis-${v}.tar.gz
 tar -xf postgis-${v}.tar.gz
