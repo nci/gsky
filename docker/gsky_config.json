@@ -17,8 +17,7 @@
         "phot_veg",
         "nphot_veg"
       ],
-      "clip_value":100,
-      "zoom_limit":10000
+      "clip_value":100
     },
 
     {
@@ -49,22 +48,14 @@
           "rgb_products":[
               "phot_veg",
               "nphot_veg",
-              "bare_soil"
+              "bare_soil",
+              "phot_veg + nphot_veg"
           ],
-          "band_eval":["phot_veg + nphot_veg"],
           "start_isodate":"2001-02-18T00:00:00.000Z",
-          "end_isodate":"now",
+          "end_isodate":"",
           "metadata_url":"/gsky/share/gsky/templates/WPS_Outputs/geometryDrill/geoglam_fc.tpl"
-        },
-
-        { "data_source": "/gdata",
-          "rgb_products":[
-              "bare_soil"
-          ],
-          "start_isodate":"2001-02-18T00:00:00.000Z",
-          "end_isodate":"now",
-          "metadata_url":"/gsky/share/gsky/templates/WPS_Outputs/geometryDrill/chirps2.0.tpl"
         }
+
       ],
       "identifier":"geometryDrill",
       "title":"Geometry Drill",
@@ -72,11 +63,18 @@
       "max_area": 10000,
       "complex_data":[
         {
-          "identifier":"PolygonGeometry",
+          "identifier":"geometry",
           "title":"Geometry",
           "abstract":"",
           "mime_type":"application/vnd.geo+json",
-          "schema":"http://geojson.org/geojson-spec.html#polygon"
+          "schema":"http://geojson.org/geojson-spec.html",
+          "min_occurs": 1
+        }
+      ],
+      "literal_data": [
+        {
+          "identifier":"geometry_id",
+          "title":"Geometry ID"
         }
       ]
     }

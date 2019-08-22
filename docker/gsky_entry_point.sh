@@ -10,10 +10,14 @@ masapi_port=8888
 rpc_port=6000
 ows_port=8080
 
+rm -rf /var/run/postgresql
+mkdir -p /var/run/postgresql
+
+bash /ingest_sample_data.sh
+
 su -p -c "pg_ctl -w start" -l "$PGUSER"
 
 # masapi requires postgresql unix domain socket under /var/run
-mkdir -p /var/run/postgresql
 ln -s /tmp/.s.PGSQL.5432 /var/run/postgresql/.s.PGSQL.5432 
 
 ./gsky/bin/masapi -port $masapi_port -pool 2 > masapi_output.log 2>&1 &
@@ -29,10 +33,12 @@ then
 fi
 
 ./gsky/bin/gsky-rpc -p $rpc_port -n $n_cores > rpc_output.log 2>&1 &
-./gsky/bin/gsky-ows -p $ows_port &
+sleep 1
+
+./gsky/bin/gsky-ows -p $ows_port -v &
+sleep 0.5
 
 set +x
-sleep 0.5
 echo
 echo
 echo '=========================================================='
