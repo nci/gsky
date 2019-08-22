@@ -63,4 +63,3 @@ script:
   - mkdir -p $(go env GOPATH)/src/github.com/nci
   - cp -r $TRAVIS_BUILD_DIR $(go env GOPATH)/src/github.com/nci/gsky
   - cd $TRAVIS_BUILD_DIR && ./configure && make all
-  - cat $(go env GOPATH)/src/github.com/nci/gsky/.travis.yml
