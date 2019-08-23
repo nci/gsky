@@ -13,6 +13,7 @@ import (
 func InitGdal() {
 	setDefaultEnv("GDAL_NETCDF_VERIFY_DIMS", "NO")
 	setDefaultEnv("GDAL_PAM_ENABLED", "NO")
+	setDefaultEnv("GDAL_DISABLE_READDIR_ON_OPEN", "YES")
 
 	exeFilePath, err := os.Executable()
 	if err == nil {
