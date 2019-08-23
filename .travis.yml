@@ -61,5 +61,5 @@ script:
   # Ensure that gofmt -d produces zero diff output
   - test -z "$(gofmt -d $TRAVIS_BUILD_DIR)"
   - mkdir -p $(go env GOPATH)/src/github.com/nci
-  - cp -r $TRAVIS_BUILD_DIR $(go env GOPATH)/src/github.com/nci/gsky
+  - [ -d "$(go env GOPATH)/src/github.com/nci/gsky" ] || cp -r $TRAVIS_BUILD_DIR $(go env GOPATH)/src/github.com/nci/gsky
   - cd $TRAVIS_BUILD_DIR && ./configure && make all
