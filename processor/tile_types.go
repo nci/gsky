@@ -58,6 +58,7 @@ type GeoTileRequest struct {
 	Collection    string
 	CRS           string
 	BBox          []float64
+	OrigBBox      []float64
 	Height, Width int
 	OffX, OffY    int
 	StartTime     *time.Time

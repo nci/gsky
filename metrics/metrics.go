@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"net"
 	"net/url"
 	"time"
 	"unsafe"
@@ -44,6 +45,8 @@ type MetricsInfo struct {
 	ReqDuration time.Duration `json:"req_duration"`
 	URL         URLInfo       `json:"url"`
 	RemoteAddr  string        `json:"remote_addr"`
+	RemoteHost  string        `json:"remote_host"`
+	RemotePort  string        `json:"remote_port"`
 	HTTPStatus  int           `json:"http_status"`
 	Indexer     *IndexerInfo  `json:"indexer"`
 	RPC         *RPCInfo      `json:"rpc"`
@@ -54,9 +57,29 @@ type MetricsCollector struct {
 	logger Logger
 }
 
+func NewMetricsCollector(logger Logger) *MetricsCollector {
+	return &MetricsCollector{
+		Info: &MetricsInfo{
+			Indexer: &IndexerInfo{},
+			RPC:     &RPCInfo{},
+		},
+		logger: logger,
+	}
+}
+
+func (m *MetricsCollector) Log() {
+	if m.logger != nil {
+		m.logger.Log(m.Info)
+	}
+}
+
 func (i *MetricsInfo) ToJSON() (string, error) {
+	err := i.normaliseNetworkAddr(i.RemoteAddr)
+	if err != nil {
+		log.Printf("metrics: normaliseNetworkAddr() error: %v", err)
+	}
 	i.normaliseURLs()
-	err := i.normaliseGeometry()
+	err = i.normaliseGeometry()
 	if err != nil {
 		log.Printf("metrics: normaliseGeometry() error: %v", err)
 	}
@@ -70,6 +93,18 @@ func (i *MetricsInfo) ToJSON() (string, error) {
 	} else {
 		return "", err
 	}
+}
+
+func (i *MetricsInfo) normaliseNetworkAddr(addr string) error {
+	host, port, err := net.SplitHostPort(addr)
+	if err != nil {
+		return err
+	}
+
+	i.RemoteHost = host
+	i.RemotePort = port
+
+	return nil
 }
 
 func (i *MetricsInfo) normaliseURLs() {
@@ -115,7 +150,15 @@ func (i *MetricsInfo) normaliseURL(u *URLInfo) error {
 }
 
 func (i *MetricsInfo) normaliseGeometry() error {
-	if i.Indexer != nil && len(i.Indexer.Geometry) > 0 && i.Indexer.SRS != "EPSG:4326" {
+	if i.Indexer != nil && len(i.Indexer.Geometry) == 0 {
+		i.Indexer.Geometry = "POLYGON EMPTY"
+		return nil
+	} else if i.Indexer != nil && len(i.Indexer.Geometry) > 0 {
+		// WPS case
+		if i.Indexer.GeometryArea > 0 && i.Indexer.SRS == "EPSG:4326" {
+			return nil
+		}
+
 		geomWktTmpC := C.CString(i.Indexer.Geometry)
 		//OGR_G_CreateFromWkt() internally updates the pointer. We need to back it up for freeing the heap later.
 		geomWktC := geomWktTmpC
@@ -145,6 +188,7 @@ func (i *MetricsInfo) normaliseGeometry() error {
 			C.OGR_G_ExportToWkt(geom, &dstGeomWkt)
 			i.Indexer.Geometry = C.GoString(dstGeomWkt)
 			C.free(unsafe.Pointer(dstGeomWkt))
+			i.Indexer.GeometryArea = float64(C.OGR_G_Area(geom))
 		} else {
 			return fmt.Errorf("Failed to transform geometry: %v", ret)
 		}
@@ -155,20 +199,4 @@ func (i *MetricsInfo) normaliseGeometry() error {
 
 	}
 	return nil
-}
-
-func NewMetricsCollector(logger Logger) *MetricsCollector {
-	return &MetricsCollector{
-		Info: &MetricsInfo{
-			Indexer: &IndexerInfo{},
-			RPC:     &RPCInfo{},
-		},
-		logger: logger,
-	}
-}
-
-func (m *MetricsCollector) Log() {
-	if m.logger != nil {
-		m.logger.Log(m.Info)
-	}
 }
