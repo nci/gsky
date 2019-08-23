@@ -6,8 +6,8 @@ scratch. To build a docker image, please run the following command:
 
 ```
 cd docker
-docker build --build-arg sample_data_dir=geoglam_fc_sample_data/gdata \
-    --build-arg gsky_repo="<unofficial gsky git repo/branch>" .
+docker build --build-arg sample_data_dir=<geoglam sample data dir> \
+    --build-arg gsky_repo="<gsky git repo branch>" .
 ```
 
 Build Arguments
