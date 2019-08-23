@@ -85,23 +85,16 @@ int warp_operation_fast(const char *srcFilePath, char *srcProjRef, double *srcGe
 	const char *netCDFSig = "NETCDF:";
 
 	if(strncmp(srcFilePath, netCDFSig, strlen(netCDFSig)) && strncmp(srcFilePath+strlen(srcFilePath)-3, ".nc", strlen(".nc"))) {
-		hSrcDS = GDALOpen(srcFilePath, GA_ReadOnly);
+		hSrcDS = GDALOpenEx(srcFilePath, GA_ReadOnly|GDAL_OF_RASTER, NULL, NULL, NULL);
 	} else {
 		char bandQuery[20];
 		sprintf(bandQuery, "band_query=%d", band);
 
 		const char *openOpts[] = {"md_query=no", bandQuery, NULL};
+		const char *drivers[] = {"GSKY_netCDF", NULL};
 
-		hSrcDS = GDALOpenEx(srcFilePath, GA_ReadOnly|GDAL_OF_RASTER, NULL, openOpts, NULL);
-		if(hSrcDS) {
-			GDALDriverH hDriver = GDALGetDatasetDriver(hSrcDS);
-			const char *driverName = GDALGetDriverShortName(hDriver);
-
-			const char *gskySig = "GSKY_netCDF";
-			if(!strncmp(driverName, gskySig, strlen(gskySig))) {
-				band = 1;
-			}
-		}
+		hSrcDS = GDALOpenEx(srcFilePath, GA_ReadOnly|GDAL_OF_RASTER, drivers, openOpts, NULL);
+		band = 1;
 	}
 
 	if(!hSrcDS) {

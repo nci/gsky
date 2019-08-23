@@ -13,7 +13,7 @@ import (
 func InitGdal() {
 	setDefaultEnv("GDAL_NETCDF_VERIFY_DIMS", "NO")
 	setDefaultEnv("GDAL_PAM_ENABLED", "NO")
-	setDefaultEnv("GDAL_DISABLE_READDIR_ON_OPEN", "YES")
+	setDefaultEnv("GDAL_DISABLE_READDIR_ON_OPEN", "EMPTY_DIR")
 
 	exeFilePath, err := os.Executable()
 	if err == nil {
@@ -72,11 +72,12 @@ func registerGDALDrivers() {
 
 	// Register these drivers first for higher performance when
 	// opening files (drivers are interrogated in a linear scan)
-	if !haveGSKYNetCDF && haveNetCDF {
-		C.GDALRegister_netCDF()
-	}
 	if haveGTiff {
 		C.GDALRegister_GTiff()
+	}
+
+	if !haveGSKYNetCDF && haveNetCDF {
+		C.GDALRegister_netCDF()
 	}
 
 	if haveHDF4 {
