@@ -6,17 +6,17 @@ scratch. To build a docker image, please run the following command:
 
 ```
 cd docker
-docker build --build-arg sample_data_dir=geoglam_fc_sample_data/gdata \
-    --build-arg gsky_repo="<unofficial gsky git repo/branch>" .
+docker build --build-arg sample_data_dir=<geoglam sample data dir> \
+    --build-arg gsky_repo="<gsky git repo branch>" .
 ```
 
 Build Arguments
 ---------------
 
 1. `sample_data_dir` is the directory path for the sample data. To obtain sample
-   data for reproducible builds, please pull the `v0` tagged image using the
-   following command: `docker pull gjmouse/gsky:v0`. The sample data files are
-   under `/gpath` of the `v0` image. Please also be aware that `sample_data_dir`
+   data for reproducible builds, please pull the `v1` tagged image using the
+   following command: `docker pull gjmouse/gsky:v1`. The sample data files are
+   under `/gpath` of the `v1` image. Please also be aware that `sample_data_dir`
    must be a relative path under `gsky/docker` directory. This is a restriction
    imposed by docker `ADD` command.
 
