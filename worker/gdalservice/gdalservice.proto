@@ -63,6 +63,12 @@ message WorkerInfo {
     int32 poolSize = 1; 
 }
 
+message WorkerMetrics {
+    int64 bytesRead = 1;
+    int64 userTime = 2;
+    int64 sysTime = 3;
+}
+
 message Result {
     repeated TimeSeries timeSeries = 1;
     Raster raster = 2;
@@ -70,6 +76,7 @@ message Result {
     string error = 4;
     repeated int32 shape = 5;
     WorkerInfo workerInfo = 6;
+    WorkerMetrics metrics = 7;
 }
 
 service GDAL {

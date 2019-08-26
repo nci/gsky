@@ -79,8 +79,10 @@ int roundCoord(double coord, int maxExtent) {
 	return c;
 }
 
-int warp_operation_fast(const char *srcFilePath, char *srcProjRef, double *srcGeot, const char **geoLocOpts, const char *dstProjRef, double *dstGeot, int dstXImageSize, int dstYImageSize, int band, void **dstBuf, int *dstBufSize, int *dstBbox, double *noData, GDALDataType *dType)
+int warp_operation_fast(const char *srcFilePath, char *srcProjRef, double *srcGeot, const char **geoLocOpts, const char *dstProjRef, double *dstGeot, int dstXImageSize, int dstYImageSize, int band, void **dstBuf, int *dstBufSize, int *dstBbox, double *noData, GDALDataType *dType, int *bytesRead)
 {
+	*bytesRead = 0;
+
 	GDALDatasetH hSrcDS = NULL;
 	const char *netCDFSig = "NETCDF:";
 
@@ -254,6 +256,7 @@ int warp_operation_fast(const char *srcFilePath, char *srcProjRef, double *srcGe
         }
 
 	int bCache = -1;
+	int nBlocksRead = 0;
 	for(iDstY = 0; iDstY < dstYSize; iDstY++) {
                 memcpy(dx, dx + dstXSize, dstXSize * sizeof(double));
                 const double dfY = iDstY + 0.5 + dstYOff;
@@ -315,6 +318,7 @@ int warp_operation_fast(const char *srcFilePath, char *srcProjRef, double *srcGe
 			if(!bCache) {
 				err = GDALReadBlock(hBand, iXBlock, iYBlock, blockList[0]);
 				if(err != CE_None) continue;
+				nBlocksRead++;
 
 			} else {
 				iBlock = iXBlock + iYBlock * nXBlocks;
@@ -322,6 +326,7 @@ int warp_operation_fast(const char *srcFilePath, char *srcProjRef, double *srcGe
 					blockList[iBlock] = malloc(srcXBlockSize * srcYBlockSize * srcDataSize);
 					err = GDALReadBlock(hBand, iXBlock, iYBlock, blockList[iBlock]);
 					if(err != CE_None) continue;
+					nBlocksRead++;
 				}
 			}
 
@@ -337,6 +342,8 @@ int warp_operation_fast(const char *srcFilePath, char *srcProjRef, double *srcGe
 			}
                 }
         }
+
+	*bytesRead = srcXBlockSize * srcYBlockSize * srcDataSize * nBlocksRead;
 
 	dstBbox[0] = dstXOff;
         dstBbox[1] = dstYOff;
@@ -407,6 +414,7 @@ import (
 	"log"
 	"math"
 	"reflect"
+	"syscall"
 	"unsafe"
 
 	pb "github.com/nci/gsky/worker/gdalservice"
@@ -539,10 +547,21 @@ func WarpRaster(in *pb.GeoRPCGranule, debug bool) *pb.Result {
 	var dstBufC unsafe.Pointer
 	var noData float64
 	var dType C.GDALDataType
+	var bytesReadC C.int
 
-	cErr := C.warp_operation_fast(filePathC, srcProjRefC, pSrcGeot, pGeoLoc, dstProjRefC, (*C.double)(&in.DstGeot[0]), C.int(in.Width), C.int(in.Height), C.int(in.Bands[0]), (*unsafe.Pointer)(&dstBufC), (*C.int)(&dstBufSize), (*C.int)(&dstBboxC[0]), (*C.double)(&noData), (*C.GDALDataType)(&dType))
+	var resUsage0, resUsage1 syscall.Rusage
+	syscall.Getrusage(syscall.RUSAGE_THREAD, &resUsage0)
+	cErr := C.warp_operation_fast(filePathC, srcProjRefC, pSrcGeot, pGeoLoc, dstProjRefC, (*C.double)(&in.DstGeot[0]), C.int(in.Width), C.int(in.Height), C.int(in.Bands[0]), (*unsafe.Pointer)(&dstBufC), (*C.int)(&dstBufSize), (*C.int)(&dstBboxC[0]), (*C.double)(&noData), (*C.GDALDataType)(&dType), &bytesReadC)
+	syscall.Getrusage(syscall.RUSAGE_SELF, &resUsage1)
+
+	metrics := &pb.WorkerMetrics{
+		BytesRead: int64(bytesReadC),
+		UserTime:  resUsage1.Utime.Nano() - resUsage0.Utime.Nano(),
+		SysTime:   resUsage1.Stime.Nano() - resUsage0.Stime.Nano(),
+	}
+
 	if cErr != 0 {
-		return &pb.Result{Error: dump(fmt.Sprintf("warp_operation() fail: %v", int(cErr)))}
+		return &pb.Result{Error: dump(fmt.Sprintf("warp_operation() fail: %v", int(cErr))), Metrics: metrics}
 	}
 
 	if debug {
@@ -564,5 +583,5 @@ func WarpRaster(in *pb.GeoRPCGranule, debug bool) *pb.Result {
 		rasterType = GDALTypes[dType]
 	}
 
-	return &pb.Result{Raster: &pb.Raster{Data: bboxCanvas, NoData: noData, RasterType: rasterType, Bbox: dstBbox}, Error: "OK"}
+	return &pb.Result{Raster: &pb.Raster{Data: bboxCanvas, NoData: noData, RasterType: rasterType, Bbox: dstBbox}, Error: "OK", Metrics: metrics}
 }

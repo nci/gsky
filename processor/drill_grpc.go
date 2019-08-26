@@ -109,6 +109,22 @@ func (gi *GeoDrillGRPC) Run(bandStrides int, decileCount int, verbose bool) {
 		conns[i] = conn
 	}
 
+	metrics := make([]*pb.WorkerMetrics, len(inputsRecompute))
+	for i := 0; i < len(metrics); i++ {
+		metrics[i] = &pb.WorkerMetrics{}
+	}
+	defer func() {
+		if geoReq.MetricsCollector != nil {
+			for i := 0; i < len(metrics); i++ {
+				if metrics[i] != nil {
+					geoReq.MetricsCollector.Info.RPC.BytesRead += metrics[i].BytesRead
+					geoReq.MetricsCollector.Info.RPC.UserTime += metrics[i].UserTime
+					geoReq.MetricsCollector.Info.RPC.SysTime += metrics[i].SysTime
+				}
+			}
+		}
+	}()
+
 	cLimiter := NewConcLimiter(DefaultWpsConcLimit * len(conns))
 	workerStart := rand.Intn(len(conns))
 	i := 0
@@ -127,6 +143,7 @@ func (gi *GeoDrillGRPC) Run(bandStrides int, decileCount int, verbose bool) {
 
 				granule := &pb.GeoRPCGranule{Operation: "drill", Path: g.Path, Geometry: g.Geometry, Bands: bands, BandStrides: int32(bandStrides), DrillDecileCount: int32(decileCount)}
 				r, err := c.Process(gi.Context, granule)
+				metrics[iTile-1] = r.Metrics
 				if err != nil {
 					gi.Error <- err
 					r = &pb.Result{}

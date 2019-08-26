@@ -38,6 +38,9 @@ type IndexerInfo struct {
 type RPCInfo struct {
 	Duration         time.Duration `json:"duration"`
 	NumTiledGranules int           `json:"num_tiled_granules"`
+	BytesRead        int64         `json:"bytes_read"`
+	UserTime         int64         `json:"user_time"`
+	SysTime          int64         `json:"sys_time"`
 }
 
 type MetricsInfo struct {
