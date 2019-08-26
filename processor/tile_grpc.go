@@ -206,6 +206,20 @@ func (gi *GeoRasterGRPC) Run(polyLimiter *ConcLimiter, varList []string, verbose
 
 	}
 
+	accumMetrics := make([]*pb.WorkerMetrics, len(gransByShard))
+	for i := 0; i < len(accumMetrics); i++ {
+		accumMetrics[i] = &pb.WorkerMetrics{}
+	}
+	defer func() {
+		if g0.MetricsCollector != nil {
+			for i := 0; i < len(accumMetrics); i++ {
+				g0.MetricsCollector.Info.RPC.BytesRead += accumMetrics[i].BytesRead
+				g0.MetricsCollector.Info.RPC.UserTime += accumMetrics[i].UserTime
+				g0.MetricsCollector.Info.RPC.SysTime += accumMetrics[i].SysTime
+			}
+		}
+	}()
+
 	if gi.MaxGrpcBufferSize > 0 {
 		// We figure the sizes of each shard and then sort them in descending order.
 		// We then compute the total size of the top PolygonShardConcLimit shards.
@@ -279,11 +293,12 @@ func (gi *GeoRasterGRPC) Run(polyLimiter *ConcLimiter, varList []string, verbose
 
 	cLimiter := NewConcLimiter(g0.GrpcConcLimit * len(connPool))
 	granCounter := 0
-	for _, polyGrans := range gransByShard {
+	for ipo, polyGrans := range gransByShard {
 		polyLimiter.Increase()
 		go func(polyGrans []*GeoTileGranule, granCounter int) {
 			defer wg.Done()
 			outRasters := make([]*FlexRaster, len(polyGrans))
+			outMetrics := make([]*pb.WorkerMetrics, len(polyGrans))
 
 			var wgRpc sync.WaitGroup
 			for iGran := range polyGrans {
@@ -308,6 +323,7 @@ func (gi *GeoRasterGRPC) Run(polyLimiter *ConcLimiter, varList []string, verbose
 							gi.sendError(err)
 							r = &pb.Result{Raster: &pb.Raster{Data: make([]uint8, g.Width*g.Height), RasterType: "Byte", NoData: -1.}}
 						}
+						outMetrics[idx] = r.Metrics
 						if len(r.Raster.Bbox) == 0 {
 							r.Raster.Bbox = []int32{0, 0, int32(g.Width), int32(g.Height)}
 						}
@@ -327,6 +343,13 @@ func (gi *GeoRasterGRPC) Run(polyLimiter *ConcLimiter, varList []string, verbose
 
 			}
 			wgRpc.Wait()
+			for i := 0; i < len(outMetrics); i++ {
+				if outMetrics[i] != nil {
+					accumMetrics[ipo].BytesRead += outMetrics[i].BytesRead
+					accumMetrics[ipo].UserTime += outMetrics[i].UserTime
+					accumMetrics[ipo].SysTime += outMetrics[i].SysTime
+				}
+			}
 
 			select {
 			case <-gi.Context.Done():

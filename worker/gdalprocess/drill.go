@@ -16,6 +16,7 @@ import (
 	"log"
 	"math"
 	"sort"
+	"syscall"
 	"unsafe"
 
 	"encoding/json"
@@ -99,6 +100,10 @@ func readData(ds C.GDALDatasetH, bands []int32, geom C.OGRGeometryH, bandStrides
 	}
 
 	nodata := float32(C.GDALGetRasterNoDataValue(bandH, nil))
+	metrics := &pb.WorkerMetrics{}
+
+	var resUsage0, resUsage1 syscall.Rusage
+	syscall.Getrusage(syscall.RUSAGE_SELF, &resUsage0)
 
 	// If we have a lot of bands, one may want to seek an approximate algorithm
 	// to speed up the computation especially the RasterIO operation.
@@ -123,6 +128,7 @@ func readData(ds C.GDALDatasetH, bands []int32, geom C.OGRGeometryH, bandStrides
 
 		dataBuf := make([]float32, dsDscr.CountX*dsDscr.CountY*int32(effectiveNBands))
 		C.GDALDatasetRasterIO(ds, C.GF_Read, C.int(dsDscr.OffX), C.int(dsDscr.OffY), C.int(dsDscr.CountX), C.int(dsDscr.CountY), unsafe.Pointer(&dataBuf[0]), C.int(dsDscr.CountX), C.int(dsDscr.CountY), C.GDT_Float32, C.int(effectiveNBands), (*C.int)(unsafe.Pointer(&bandsRead[0])), 0, 0, 0)
+		metrics.BytesRead += int64(len(dataBuf)) * int64(dSize)
 
 		boundAvgs := make([]*pb.TimeSeries, effectiveNBands*nCols)
 		bandSize := int(dsDscr.CountX * dsDscr.CountY)
@@ -188,9 +194,12 @@ func readData(ds C.GDALDatasetH, bands []int32, geom C.OGRGeometryH, bandStrides
 		}
 
 	}
+	syscall.Getrusage(syscall.RUSAGE_SELF, &resUsage1)
+	metrics.UserTime = resUsage1.Utime.Nano() - resUsage0.Utime.Nano()
+	metrics.SysTime = resUsage1.Stime.Nano() - resUsage0.Stime.Nano()
 
 	nRows := len(avgs) / nCols
-	return &pb.Result{TimeSeries: avgs, Shape: []int32{int32(nRows), int32(nCols)}, Error: "OK"}
+	return &pb.Result{TimeSeries: avgs, Shape: []int32{int32(nRows), int32(nCols)}, Error: "OK", Metrics: metrics}
 }
 
 func computeDeciles(decileCount int, dataBuf []float32, bandSize int, bandOffset int, nodata float32, dsDscr *DrillFileDescriptor) []float32 {
