@@ -77,12 +77,9 @@ func (m *MetricsCollector) Log() {
 }
 
 func (i *MetricsInfo) ToJSON() (string, error) {
-	err := i.normaliseNetworkAddr(i.RemoteAddr)
-	if err != nil {
-		log.Printf("metrics: normaliseNetworkAddr() error: %v", err)
-	}
+	i.normaliseNetworkAddr(i.RemoteAddr)
 	i.normaliseURLs()
-	err = i.normaliseGeometry()
+	err := i.normaliseGeometry()
 	if err != nil {
 		log.Printf("metrics: normaliseGeometry() error: %v", err)
 	}
@@ -98,16 +95,14 @@ func (i *MetricsInfo) ToJSON() (string, error) {
 	}
 }
 
-func (i *MetricsInfo) normaliseNetworkAddr(addr string) error {
+func (i *MetricsInfo) normaliseNetworkAddr(addr string) {
 	host, port, err := net.SplitHostPort(addr)
-	if err != nil {
-		return err
+	if err == nil {
+		i.RemoteHost = host
+		i.RemotePort = port
+	} else {
+		i.RemoteHost = addr
 	}
-
-	i.RemoteHost = host
-	i.RemotePort = port
-
-	return nil
 }
 
 func (i *MetricsInfo) normaliseURLs() {
