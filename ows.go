@@ -1398,11 +1398,8 @@ func generalHandler(conf *utils.Config, w http.ResponseWriter, r *http.Request) 
 		metricsCollector.Info.URL.RawURL = r.URL.String()
 	}
 
-	remoteAddr := w.Header().Get("X-Real-IP")
-	if len(remoteAddr) == 0 {
-		remoteAddr = r.RemoteAddr
-	}
-	metricsCollector.Info.RemoteAddr = r.RemoteAddr
+	remoteAddr := utils.ParseRemoteAddr(r)
+	metricsCollector.Info.RemoteAddr = remoteAddr
 	metricsCollector.Info.HTTPStatus = 200
 
 	var query map[string][]string

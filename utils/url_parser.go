@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"net/http"
 	"net/url"
 	"strings"
 )
@@ -125,4 +126,19 @@ func ParseQuery(query string) (m url.Values, err error) {
 		m[key] = append(m[key], value)
 	}
 	return m, err
+}
+
+func ParseRemoteAddr(r *http.Request) string {
+	remoteAddr := r.Header.Get("X-Forwarded-For")
+	if len(remoteAddr) > 0 {
+		remoteAddr = strings.Split(remoteAddr, ",")[0]
+		return strings.TrimSpace(remoteAddr)
+	}
+
+	remoteAddr = r.Header.Get("X-Real-IP")
+	if len(remoteAddr) > 0 {
+		return strings.TrimSpace(remoteAddr)
+	}
+
+	return r.RemoteAddr
 }
