@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"time"
 	"unsafe"
+	"strings"
 
 	"github.com/nci/gsky/utils"
 )
@@ -44,9 +45,11 @@ func InitTilePipeline(ctx context.Context, masAddr string, rpcAddr []string, max
 		MASAddress:            masAddr,
 		MaxGrpcBufferSize:     maxGrpcBufferSize,
 	}
+
 }
 
 func (dp *TilePipeline) Process(geoReq *GeoTileRequest, verbose bool) chan []utils.Raster {
+
 	i := NewTileIndexer(dp.Context, dp.MASAddress, dp.Error)
 	m := NewRasterMerger(dp.Context, dp.Error)
 	grpcTiler := NewRasterGRPC(dp.Context, dp.RPCAddress, dp.MaxGrpcRecvMsgSize, dp.PolygonShardConcLimit, dp.MaxGrpcBufferSize, dp.Error)
@@ -67,6 +70,36 @@ func (dp *TilePipeline) Process(geoReq *GeoTileRequest, verbose bool) chan []uti
 		}
 
 		if hasFusedBand {
+			var aggTime time.Duration
+			if geoReq.StartTime != nil && geoReq.EndTime != nil {
+				aggTime = geoReq.EndTime.Sub(*geoReq.StartTime)	
+			}
+
+			for k, axis := range geoReq.Axes {
+				log.Printf("iiiiiiiiiiiiii %v", k)
+				if k != "weighted_time" {
+					continue
+				}
+
+				if len(axis.InValues) < 2 {
+					continue
+				}
+
+				for _, val := range axis.InValues {
+					startTime := time.Unix(int64(val), 0)	
+					geoReq.StartTime = &startTime
+					var endTime time.Time
+					if geoReq.EndTime != nil {
+						endTime = startTime.Add(aggTime)
+						geoReq.EndTime = &endTime
+					}
+
+					log.Printf("xxxxxxxxxxxxxxxxxxxx %#v, %#v", *geoReq.StartTime, *geoReq.EndTime)
+				}
+
+				break
+			}
+
 			rasters, err := dp.processDeps(geoReq, verbose)
 			if err != nil {
 				dp.Error <- err
@@ -495,7 +528,8 @@ func (dp *TilePipeline) checkFusedBandNames(geoReq *GeoTileRequest) ([]string, b
 	hasFusedBand := false
 	for _, ns := range geoReq.BandExpr.VarList {
 		if len(ns) > len(fusedBandName) && ns[:len(fusedBandName)] == fusedBandName {
-			_, err := strconv.ParseInt(ns[len(fusedBandName):], 10, 64)
+			fusedNs := strings.Split(ns[len(fusedBandName):], "_")[0]
+			_, err := strconv.ParseInt(fusedNs, 10, 64)
 			if err != nil {
 				return nil, false, fmt.Errorf("invalid namespace: %v", ns)
 			}

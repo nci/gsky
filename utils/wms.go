@@ -103,6 +103,8 @@ func CheckWMSVersion(version string) bool {
 // WMSParams struct.
 func WMSParamsChecker(params map[string][]string, compREMap map[string]*regexp.Regexp) (WMSParams, error) {
 
+	var wmsParams WMSParams
+
 	jsonFields := []string{}
 
 	if service, serviceOK := params["service"]; serviceOK {
@@ -169,9 +171,34 @@ func WMSParamsChecker(params map[string][]string, compREMap map[string]*regexp.R
 		}
 	}
 
-	if time, timeOK := params["time"]; timeOK {
-		if compREMap["time"].MatchString(time[0]) {
-			jsonFields = append(jsonFields, fmt.Sprintf(`"time":"%s"`, time[0]))
+	if timeRaw, timeOK := params["time"]; timeOK {
+		var times []string
+		for _, t := range strings.Split(timeRaw[0], ",") {
+			t = strings.TrimSpace(t)
+			if len(t) == 0 {
+				continue
+			}
+
+			if compREMap["time"].MatchString(t) {
+				times = append(times, t)
+			}
+		}
+		if len(times) == 0 {
+			return wmsParams, fmt.Errorf("invalid time format")
+		} else {
+			jsonFields = append(jsonFields, fmt.Sprintf(`"time":"%s"`, times[0]))
+			if len(times) > 1 {
+				axis := &AxisParam{Name: "weighted_time", Aggregate: 0}
+				for _, tStr := range times {
+					t, err := time.Parse(ISOFormat, tStr)	
+					if err != nil {
+						return wmsParams, fmt.Errorf("invalid time format")
+					}
+					val := float64(t.Unix())
+					axis.InValues = append(axis.InValues, val)
+				}
+				wmsParams.Axes = append(wmsParams.Axes, axis)
+			}
 		}
 	}
 
@@ -194,8 +221,6 @@ func WMSParamsChecker(params map[string][]string, compREMap map[string]*regexp.R
 			jsonFields = append(jsonFields, fmt.Sprintf(`"styles":["%s"]`, strings.Replace(styles[0], ",", "\",\"", -1)))
 		}
 	}
-
-	var wmsParams WMSParams
 
 	axesInfo := []string{}
 
