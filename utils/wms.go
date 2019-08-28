@@ -183,6 +183,7 @@ func WMSParamsChecker(params map[string][]string, compREMap map[string]*regexp.R
 				times = append(times, t)
 			}
 		}
+
 		if len(times) == 0 {
 			return wmsParams, fmt.Errorf("invalid time format")
 		} else {
@@ -190,7 +191,7 @@ func WMSParamsChecker(params map[string][]string, compREMap map[string]*regexp.R
 			if len(times) > 1 {
 				axis := &AxisParam{Name: "weighted_time", Aggregate: 0}
 				for _, tStr := range times {
-					t, err := time.Parse(ISOFormat, tStr)	
+					t, err := time.Parse(ISOFormat, tStr)
 					if err != nil {
 						return wmsParams, fmt.Errorf("invalid time format")
 					}
@@ -299,10 +300,12 @@ func WMSParamsChecker(params map[string][]string, compREMap map[string]*regexp.R
 	jsonFields = append(jsonFields, fmt.Sprintf(`"axes":[%s]`, strings.Join(axesInfo, ",")))
 	jsonParams := fmt.Sprintf("{%s}", strings.Join(jsonFields, ","))
 
+	axesTmp := wmsParams.Axes
 	err := json.Unmarshal([]byte(jsonParams), &wmsParams)
 	if err != nil {
 		return wmsParams, err
 	}
+	wmsParams.Axes = axesTmp
 
 	if subsets, subsetsOK := params["subset"]; subsetsOK {
 		sub := strings.Join(subsets, ";")

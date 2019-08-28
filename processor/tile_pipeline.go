@@ -6,9 +6,9 @@ import (
 	"log"
 	"reflect"
 	"strconv"
+	"strings"
 	"time"
 	"unsafe"
-	"strings"
 
 	"github.com/nci/gsky/utils"
 )
@@ -72,11 +72,11 @@ func (dp *TilePipeline) Process(geoReq *GeoTileRequest, verbose bool) chan []uti
 		if hasFusedBand {
 			var aggTime time.Duration
 			if geoReq.StartTime != nil && geoReq.EndTime != nil {
-				aggTime = geoReq.EndTime.Sub(*geoReq.StartTime)	
+				aggTime = geoReq.EndTime.Sub(*geoReq.StartTime)
 			}
 
+			var weightedGeoReqs []*GeoTileRequest
 			for k, axis := range geoReq.Axes {
-				log.Printf("iiiiiiiiiiiiii %v", k)
 				if k != "weighted_time" {
 					continue
 				}
@@ -86,29 +86,42 @@ func (dp *TilePipeline) Process(geoReq *GeoTileRequest, verbose bool) chan []uti
 				}
 
 				for _, val := range axis.InValues {
-					startTime := time.Unix(int64(val), 0)	
-					geoReq.StartTime = &startTime
+					gr := &GeoTileRequest{}
+					startTime := time.Unix(int64(val), 0).UTC()
+					gr.StartTime = &startTime
 					var endTime time.Time
 					if geoReq.EndTime != nil {
 						endTime = startTime.Add(aggTime)
-						geoReq.EndTime = &endTime
+						gr.EndTime = &endTime
 					}
-
-					log.Printf("xxxxxxxxxxxxxxxxxxxx %#v, %#v", *geoReq.StartTime, *geoReq.EndTime)
+					weightedGeoReqs = append(weightedGeoReqs, gr)
 				}
-
 				break
 			}
-
-			rasters, err := dp.processDeps(geoReq, verbose)
-			if err != nil {
-				dp.Error <- err
-				close(m.In)
-				return m.Out
+			isTimeWeighted := len(weightedGeoReqs) > 0
+			if !isTimeWeighted {
+				weightedGeoReqs = append(weightedGeoReqs, geoReq)
 			}
 
-			polyLimiter.Increase()
-			m.In <- rasters
+			for iw, wgr := range weightedGeoReqs {
+				geoReq.StartTime = wgr.StartTime
+				geoReq.EndTime = wgr.EndTime
+				rasters, err := dp.processDeps(geoReq, verbose)
+				if err != nil {
+					dp.Error <- err
+					close(m.In)
+					return m.Out
+				}
+
+				if isTimeWeighted {
+					for _, raster := range rasters {
+						raster.NameSpace = fmt.Sprintf("%s_%d", raster.NameSpace, iw)
+					}
+				}
+
+				polyLimiter.Increase()
+				m.In <- rasters
+			}
 
 			if len(otherVars) == 0 {
 				close(m.In)
