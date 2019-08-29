@@ -65,6 +65,8 @@ func ParsePost(rc io.ReadCloser) (map[string][]string, error) {
 			parsedBody["geometry"] = []string{fmt.Sprintf(`geometry=%s`, input.Data.ComplexData)}
 		} else if inputID == "geometry_id" {
 			parsedBody["geometry_id"] = []string{input.Data.LiteralData}
+		} else if strings.Index(inputID, "_clip_lower") >= 0 || strings.Index(inputID, "_clip_upper") >= 0 {
+			parsedBody[inputID] = []string{input.Data.LiteralData}
 		}
 	}
 
@@ -82,6 +84,8 @@ type WPSParams struct {
 	Product       *string               `json:"product"`
 	FeatCol       geo.FeatureCollection `json:"feature_collection"`
 	GeometryId    *string               `json:"geometry_id"`
+	ClipUppers    map[string]float32    `json:"clip_uppers"`
+	ClipLowers    map[string]float32    `json:"clip_lowers"`
 }
 
 // WPSRegexpMap maps WPS request parameters to
@@ -207,6 +211,28 @@ func WPSParamsChecker(params map[string][]string, compREMap map[string]*regexp.R
 
 	if geometryId, geometryIdOk := params["geometry_id"]; geometryIdOk {
 		jsonFields = append(jsonFields, fmt.Sprintf(`"geometry_id":"%s"`, geometryId[0]))
+	}
+
+	var clipLowerFields []string
+	for k, p := range params {
+		if strings.Index(k, "_clip_lower") >= 0 {
+			clipLowerFields = append(clipLowerFields, fmt.Sprintf(`"%s":%s`, k, p[0]))
+		}
+	}
+	if len(clipLowerFields) > 0 {
+		clipLower := strings.Join(clipLowerFields, ",")
+		jsonFields = append(jsonFields, fmt.Sprintf(`"clip_lowers":{%s}`, clipLower))
+	}
+
+	var clipUpperFields []string
+	for k, p := range params {
+		if strings.Index(k, "_clip_upper") >= 0 {
+			clipUpperFields = append(clipUpperFields, fmt.Sprintf(`"%s":%s`, k, p[0]))
+		}
+	}
+	if len(clipUpperFields) > 0 {
+		clipUpper := strings.Join(clipUpperFields, ",")
+		jsonFields = append(jsonFields, fmt.Sprintf(`"clip_uppers":{%s}`, clipUpper))
 	}
 
 	jsonParams := fmt.Sprintf("{%s}", strings.Join(jsonFields, ","))

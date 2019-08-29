@@ -1331,6 +1331,22 @@ func serveWPS(ctx context.Context, params utils.WPSParams, conf *utils.Config, r
 				}
 			}
 
+			clipUpper := float32(math.MaxFloat32)
+			if cu, cuOk := params.ClipUppers[fmt.Sprintf("%s_clip_upper", dataSource.Name)]; cuOk {
+				clipUpper = cu
+			}
+
+			clipLower := float32(-math.MaxFloat32)
+			if cl, clOk := params.ClipLowers[fmt.Sprintf("%s_clip_lower", dataSource.Name)]; clOk {
+				clipLower = cl
+			}
+
+			if clipLower > clipUpper {
+				metricsCollector.Info.HTTPStatus = 400
+				http.Error(w, "clipLower greater than clipUpper", 400)
+				return
+			}
+
 			geoReq := proc.GeoDrillRequest{Geometry: string(feat),
 				CRS:              "EPSG:4326",
 				Collection:       dataSource.DataSource,
@@ -1338,6 +1354,8 @@ func serveWPS(ctx context.Context, params utils.WPSParams, conf *utils.Config, r
 				BandExpr:         dataSource.RGBExpressions,
 				StartTime:        startDateTime,
 				EndTime:          endDateTime,
+				ClipUpper:        clipUpper,
+				ClipLower:        clipLower,
 				MetricsCollector: metricsCollector,
 			}
 

@@ -17,6 +17,8 @@ type GeoDrillRequest struct {
 	BandExpr         *utils.BandExpressions
 	StartTime        time.Time
 	EndTime          time.Time
+	ClipUpper        float32
+	ClipLower        float32
 	MetricsCollector *metrics.MetricsCollector
 }
 
@@ -31,6 +33,8 @@ type GeoDrillGranule struct {
 	SampleCounts     []int
 	NoData           float64
 	Approx           bool
+	ClipUpper        float32
+	ClipLower        float32
 	MetricsCollector *metrics.MetricsCollector
 }
 

@@ -18,6 +18,8 @@ message GeoRPCGranule {
     int32 bandStrides = 11;
     repeated string geoLocOpts = 12;
     int32 drillDecileCount = 13;
+    float clipUpper = 14;
+    float clipLower = 15;
 }
 
 message Raster {
