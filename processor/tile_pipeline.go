@@ -6,6 +6,7 @@ import (
 	"log"
 	"reflect"
 	"strconv"
+	"strings"
 	"time"
 	"unsafe"
 
@@ -44,9 +45,11 @@ func InitTilePipeline(ctx context.Context, masAddr string, rpcAddr []string, max
 		MASAddress:            masAddr,
 		MaxGrpcBufferSize:     maxGrpcBufferSize,
 	}
+
 }
 
 func (dp *TilePipeline) Process(geoReq *GeoTileRequest, verbose bool) chan []utils.Raster {
+
 	i := NewTileIndexer(dp.Context, dp.MASAddress, dp.Error)
 	m := NewRasterMerger(dp.Context, dp.Error)
 	grpcTiler := NewRasterGRPC(dp.Context, dp.RPCAddress, dp.MaxGrpcRecvMsgSize, dp.PolygonShardConcLimit, dp.MaxGrpcBufferSize, dp.Error)
@@ -67,15 +70,58 @@ func (dp *TilePipeline) Process(geoReq *GeoTileRequest, verbose bool) chan []uti
 		}
 
 		if hasFusedBand {
-			rasters, err := dp.processDeps(geoReq, verbose)
-			if err != nil {
-				dp.Error <- err
-				close(m.In)
-				return m.Out
+			var aggTime time.Duration
+			if geoReq.StartTime != nil && geoReq.EndTime != nil {
+				aggTime = geoReq.EndTime.Sub(*geoReq.StartTime)
 			}
 
-			polyLimiter.Increase()
-			m.In <- rasters
+			var weightedGeoReqs []*GeoTileRequest
+			for k, axis := range geoReq.Axes {
+				if k != utils.WeightedTimeAxis {
+					continue
+				}
+
+				if len(axis.InValues) < 2 {
+					continue
+				}
+
+				for _, val := range axis.InValues {
+					gr := &GeoTileRequest{}
+					startTime := time.Unix(int64(val), 0).UTC()
+					gr.StartTime = &startTime
+					var endTime time.Time
+					if geoReq.EndTime != nil {
+						endTime = startTime.Add(aggTime)
+						gr.EndTime = &endTime
+					}
+					weightedGeoReqs = append(weightedGeoReqs, gr)
+				}
+				break
+			}
+			isTimeWeighted := len(weightedGeoReqs) > 0
+			if !isTimeWeighted {
+				weightedGeoReqs = append(weightedGeoReqs, geoReq)
+			}
+
+			for iw, wgr := range weightedGeoReqs {
+				geoReq.StartTime = wgr.StartTime
+				geoReq.EndTime = wgr.EndTime
+				rasters, err := dp.processDeps(geoReq, verbose)
+				if err != nil {
+					dp.Error <- err
+					close(m.In)
+					return m.Out
+				}
+
+				if isTimeWeighted {
+					for _, raster := range rasters {
+						raster.NameSpace = fmt.Sprintf("%s_%d", raster.NameSpace, iw)
+					}
+				}
+
+				polyLimiter.Increase()
+				m.In <- rasters
+			}
 
 			if len(otherVars) == 0 {
 				close(m.In)
@@ -495,7 +541,8 @@ func (dp *TilePipeline) checkFusedBandNames(geoReq *GeoTileRequest) ([]string, b
 	hasFusedBand := false
 	for _, ns := range geoReq.BandExpr.VarList {
 		if len(ns) > len(fusedBandName) && ns[:len(fusedBandName)] == fusedBandName {
-			_, err := strconv.ParseInt(ns[len(fusedBandName):], 10, 64)
+			fusedNs := strings.Split(ns[len(fusedBandName):], "_")[0]
+			_, err := strconv.ParseInt(fusedNs, 10, 64)
 			if err != nil {
 				return nil, false, fmt.Errorf("invalid namespace: %v", ns)
 			}

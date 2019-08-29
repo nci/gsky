@@ -18,6 +18,7 @@ import (
 )
 
 const ISOZeroTime = "0001-01-01T00:00:00.000Z"
+const WeightedTimeAxis = "weighted_time"
 
 type AxisIdxSelector struct {
 	Start   *int
@@ -103,6 +104,8 @@ func CheckWMSVersion(version string) bool {
 // WMSParams struct.
 func WMSParamsChecker(params map[string][]string, compREMap map[string]*regexp.Regexp) (WMSParams, error) {
 
+	var wmsParams WMSParams
+
 	jsonFields := []string{}
 
 	if service, serviceOK := params["service"]; serviceOK {
@@ -169,9 +172,35 @@ func WMSParamsChecker(params map[string][]string, compREMap map[string]*regexp.R
 		}
 	}
 
-	if time, timeOK := params["time"]; timeOK {
-		if compREMap["time"].MatchString(time[0]) {
-			jsonFields = append(jsonFields, fmt.Sprintf(`"time":"%s"`, time[0]))
+	if timeRaw, timeOK := params["time"]; timeOK {
+		var times []string
+		for _, t := range strings.Split(timeRaw[0], ",") {
+			t = strings.TrimSpace(t)
+			if len(t) == 0 {
+				continue
+			}
+
+			if compREMap["time"].MatchString(t) {
+				times = append(times, t)
+			}
+		}
+
+		if len(times) == 0 {
+			return wmsParams, fmt.Errorf("invalid time format")
+		} else {
+			jsonFields = append(jsonFields, fmt.Sprintf(`"time":"%s"`, times[0]))
+			if len(times) > 1 {
+				axis := &AxisParam{Name: WeightedTimeAxis, Aggregate: 0}
+				for _, tStr := range times {
+					t, err := time.Parse(ISOFormat, tStr)
+					if err != nil {
+						return wmsParams, fmt.Errorf("invalid time format")
+					}
+					val := float64(t.Unix())
+					axis.InValues = append(axis.InValues, val)
+				}
+				wmsParams.Axes = append(wmsParams.Axes, axis)
+			}
 		}
 	}
 
@@ -194,8 +223,6 @@ func WMSParamsChecker(params map[string][]string, compREMap map[string]*regexp.R
 			jsonFields = append(jsonFields, fmt.Sprintf(`"styles":["%s"]`, strings.Replace(styles[0], ",", "\",\"", -1)))
 		}
 	}
-
-	var wmsParams WMSParams
 
 	axesInfo := []string{}
 
@@ -274,10 +301,12 @@ func WMSParamsChecker(params map[string][]string, compREMap map[string]*regexp.R
 	jsonFields = append(jsonFields, fmt.Sprintf(`"axes":[%s]`, strings.Join(axesInfo, ",")))
 	jsonParams := fmt.Sprintf("{%s}", strings.Join(jsonFields, ","))
 
+	axesTmp := wmsParams.Axes
 	err := json.Unmarshal([]byte(jsonParams), &wmsParams)
 	if err != nil {
 		return wmsParams, err
 	}
+	wmsParams.Axes = axesTmp
 
 	if subsets, subsetsOK := params["subset"]; subsetsOK {
 		sub := strings.Join(subsets, ";")
