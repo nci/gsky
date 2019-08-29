@@ -564,7 +564,15 @@ func (enc *RasterMerger) Run(polyLimiter *ConcLimiter, bandExpr *utils.BandExpre
 	bandVars := make([]*utils.Float32Raster, len(nameSpaces))
 
 	for i, ns := range nameSpaces {
-		canvas := canvasMap[ns]
+		canvas, found := canvasMap[ns]
+		if !found {
+			var knownNs []string
+			for k, _ := range canvasMap {
+				knownNs = append(knownNs, k)
+			}
+			enc.sendError(fmt.Errorf("unknown namespace: %v, valid namespaces: %v", ns, knownNs))
+			return
+		}
 		headr := *(*reflect.SliceHeader)(unsafe.Pointer(&canvas.Data))
 		switch canvas.Type {
 		case "SignedByte":
