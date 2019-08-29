@@ -18,6 +18,7 @@ import (
 )
 
 const ISOZeroTime = "0001-01-01T00:00:00.000Z"
+const WeightedTimeAxis = "weighted_time"
 
 type AxisIdxSelector struct {
 	Start   *int
@@ -189,7 +190,7 @@ func WMSParamsChecker(params map[string][]string, compREMap map[string]*regexp.R
 		} else {
 			jsonFields = append(jsonFields, fmt.Sprintf(`"time":"%s"`, times[0]))
 			if len(times) > 1 {
-				axis := &AxisParam{Name: "weighted_time", Aggregate: 0}
+				axis := &AxisParam{Name: WeightedTimeAxis, Aggregate: 0}
 				for _, tStr := range times {
 					t, err := time.Parse(ISOFormat, tStr)
 					if err != nil {

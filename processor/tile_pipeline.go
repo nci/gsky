@@ -77,7 +77,7 @@ func (dp *TilePipeline) Process(geoReq *GeoTileRequest, verbose bool) chan []uti
 
 			var weightedGeoReqs []*GeoTileRequest
 			for k, axis := range geoReq.Axes {
-				if k != "weighted_time" {
+				if k != utils.WeightedTimeAxis {
 					continue
 				}
 
