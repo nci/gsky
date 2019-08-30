@@ -613,40 +613,90 @@ func doSelectionByRange(axis *DatasetAxis, tileAxis *GeoTileAxis, geoReq *GeoTil
 	if axis.Grid == "enum" {
 		if len(axis.Params) > 0 {
 			if len(tileAxis.InValues) > 0 || (tileAxis.Start != nil && tileAxis.End == nil) {
-				iVal := 0
-				var startVal float64
-				var nVals int
-
-				if len(tileAxis.InValues) > 0 {
-					sort.Slice(tileAxis.InValues, func(i, j int) bool { return tileAxis.InValues[i] <= tileAxis.InValues[j] })
-					startVal = tileAxis.InValues[0]
-					nVals = len(tileAxis.InValues)
-				} else {
-					startVal = *tileAxis.Start
-					nVals = 1
+				if len(tileAxis.InValues) == 0 {
+					tileAxis.InValues = append(tileAxis.InValues, *tileAxis.Start)
 				}
-				if axis.Params[0]-startVal > 1e-06 || startVal-axis.Params[len(axis.Params)-1] > 1e-06 {
+
+				isMonotonic := true
+				minVal := axis.Params[0]
+				maxVal := axis.Params[len(axis.Params)-1]
+				for iv, val := range axis.Params {
+					if val < minVal {
+						minVal = val
+					}
+
+					if val > maxVal {
+						maxVal = val
+					}
+
+					if iv > 0 && isMonotonic && val < axis.Params[iv-1] {
+						isMonotonic = false
+					}
+				}
+
+				var inValues []float64
+				for _, val := range tileAxis.InValues {
+					if minVal-val > 1e-06 || val-maxVal > 1e-06 {
+						continue
+					}
+					inValues = append(inValues, val)
+				}
+
+				if len(inValues) == 0 {
 					return true, nil
 				}
 
-				for iv, val := range axis.Params {
-					if val >= startVal {
-						axisIdx := 0
-						if iv >= 1 && math.Abs(startVal-axis.Params[iv-1]) <= math.Abs(startVal-val) {
-							axisIdx = iv - 1
+				if isMonotonic {
+					iVal := 0
+					var startVal float64
+					var nVals int
+
+					startVal = inValues[0]
+					nVals = len(inValues)
+					if len(inValues) > 1 {
+						sort.Slice(inValues, func(i, j int) bool { return inValues[i] <= inValues[j] })
+					}
+
+					for iv, val := range axis.Params {
+						valFound := false
+						if iv < len(axis.Params)-1 {
+							valFound = val >= startVal
 						} else {
-							axisIdx = iv
+							valFound = startVal-val <= 1e-6
+						}
+						if valFound {
+							axisIdx := 0
+							if iv >= 1 && math.Abs(startVal-axis.Params[iv-1]) <= math.Abs(startVal-val) {
+								axisIdx = iv - 1
+							} else {
+								axisIdx = iv
+							}
+
+							axis.IntersectionIdx = append(axis.IntersectionIdx, axisIdx)
+							axis.IntersectionValues = append(axis.IntersectionValues, axis.Params[axisIdx])
+
+							iVal++
+							if iVal >= nVals {
+								break
+							}
+
+							startVal = inValues[iVal]
+						}
+					}
+				} else {
+					for _, val := range inValues {
+						minDiff := math.MaxFloat64
+						minIdx := 0
+						for iv, pv := range axis.Params {
+							diff := math.Abs(pv - val)
+							if diff < minDiff {
+								minDiff = diff
+								minIdx = iv
+							}
 						}
 
-						axis.IntersectionIdx = append(axis.IntersectionIdx, axisIdx)
-						axis.IntersectionValues = append(axis.IntersectionValues, axis.Params[axisIdx])
-
-						iVal++
-						if iVal >= nVals {
-							break
-						}
-
-						startVal = tileAxis.InValues[iVal]
+						axis.IntersectionIdx = append(axis.IntersectionIdx, minIdx)
+						axis.IntersectionValues = append(axis.IntersectionValues, axis.Params[minIdx])
 					}
 				}
 
