@@ -143,12 +143,12 @@ func (gi *GeoDrillGRPC) Run(bandStrides int, decileCount int, verbose bool) {
 
 				granule := &pb.GeoRPCGranule{Operation: "drill", Path: g.Path, Geometry: g.Geometry, Bands: bands, BandStrides: int32(bandStrides), DrillDecileCount: int32(decileCount), ClipUpper: gran.ClipUpper, ClipLower: gran.ClipLower}
 				r, err := c.Process(gi.Context, granule)
-				metrics[iTile-1] = r.Metrics
 				if err != nil {
 					gi.Error <- err
 					r = &pb.Result{}
 					return
 				}
+				metrics[iTile-1] = r.Metrics
 
 				nCols := int(r.Shape[1])
 				nRows := int(r.Shape[0])
