@@ -782,6 +782,7 @@ class netCDFDataset final: public GDALPamDataset
     friend class netCDFRasterBand; //TMP
     friend class netCDFLayer;
     bool         mdQuery;
+    bool         srsCf;
 
     typedef enum
     {

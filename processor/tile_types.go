@@ -33,6 +33,7 @@ type ConfigPayLoad struct {
 	GrpcTileYSize         float64
 	MasQueryHint          string
 	ReqRes                float64
+	SRSCf                 int
 	MetricsCollector      *metrics.MetricsCollector
 }
 

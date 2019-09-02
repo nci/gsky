@@ -426,6 +426,7 @@ func (dp *TilePipeline) prepareInputGeoRequests(geoReq *GeoTileRequest, depLayer
 			NoReprojection:      geoReq.NoReprojection,
 			AxisMapping:         geoReq.AxisMapping,
 			MasQueryHint:        geoReq.MasQueryHint,
+			SRSCf:               geoReq.SRSCf,
 			MetricsCollector:    geoReq.MetricsCollector,
 		},
 			Collection: styleLayer.DataSource,

@@ -20,6 +20,7 @@ message GeoRPCGranule {
     int32 drillDecileCount = 13;
     float clipUpper = 14;
     float clipLower = 15;
+    int32 sRSCf = 16;
 }
 
 message Raster {

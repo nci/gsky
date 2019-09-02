@@ -79,7 +79,7 @@ int roundCoord(double coord, int maxExtent) {
 	return c;
 }
 
-int warp_operation_fast(const char *srcFilePath, char *srcProjRef, double *srcGeot, const char **geoLocOpts, const char *dstProjRef, double *dstGeot, int dstXImageSize, int dstYImageSize, int band, void **dstBuf, int *dstBufSize, int *dstBbox, double *noData, GDALDataType *dType, int *bytesRead)
+int warp_operation_fast(const char *srcFilePath, char *srcProjRef, double *srcGeot, const char **geoLocOpts, const char *dstProjRef, double *dstGeot, int dstXImageSize, int dstYImageSize, int band, int srsCf, void **dstBuf, int *dstBufSize, int *dstBbox, double *noData, GDALDataType *dType, int *bytesRead)
 {
 	*bytesRead = 0;
 
@@ -92,7 +92,8 @@ int warp_operation_fast(const char *srcFilePath, char *srcProjRef, double *srcGe
 		char bandQuery[20];
 		sprintf(bandQuery, "band_query=%d", band);
 
-		const char *openOpts[] = {"md_query=no", bandQuery, NULL};
+		const char *srsCfOpt = srsCf > 0 ? "srs_cf=yes" : "srs_cf=no";
+		const char *openOpts[] = {"md_query=no", bandQuery, srsCfOpt, NULL};
 		const char *drivers[] = {"GSKY_netCDF", NULL};
 
 		hSrcDS = GDALOpenEx(srcFilePath, GA_ReadOnly|GDAL_OF_RASTER, drivers, openOpts, NULL);
@@ -551,7 +552,7 @@ func WarpRaster(in *pb.GeoRPCGranule, debug bool) *pb.Result {
 
 	var resUsage0, resUsage1 syscall.Rusage
 	syscall.Getrusage(syscall.RUSAGE_THREAD, &resUsage0)
-	cErr := C.warp_operation_fast(filePathC, srcProjRefC, pSrcGeot, pGeoLoc, dstProjRefC, (*C.double)(&in.DstGeot[0]), C.int(in.Width), C.int(in.Height), C.int(in.Bands[0]), (*unsafe.Pointer)(&dstBufC), (*C.int)(&dstBufSize), (*C.int)(&dstBboxC[0]), (*C.double)(&noData), (*C.GDALDataType)(&dType), &bytesReadC)
+	cErr := C.warp_operation_fast(filePathC, srcProjRefC, pSrcGeot, pGeoLoc, dstProjRefC, (*C.double)(&in.DstGeot[0]), C.int(in.Width), C.int(in.Height), C.int(in.Bands[0]), C.int(in.SRSCf), (*unsafe.Pointer)(&dstBufC), (*C.int)(&dstBufSize), (*C.int)(&dstBboxC[0]), (*C.double)(&noData), (*C.GDALDataType)(&dType), &bytesReadC)
 	syscall.Getrusage(syscall.RUSAGE_SELF, &resUsage1)
 
 	metrics := &pb.WorkerMetrics{
