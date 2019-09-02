@@ -428,6 +428,10 @@ func getRPCRaster(ctx context.Context, g *GeoTileGranule, projWKT string, conn *
 		granule.DstSRS = ""
 	}
 
+	if g.SRSCf > 0 {
+		granule.SRSCf = int32(g.SRSCf)
+	}
+
 	r, err := c.Process(ctx, granule)
 	if err != nil {
 		return nil, err

@@ -3663,55 +3663,57 @@ void netCDFDataset::SetProjectionFromVar( int nGroupId, int nVarId,
     {
         if( pszWKT != nullptr )
         {
-            // Compare SRS obtained from CF attributes and GDAL WKT.
-            // If possible use the more complete GDAL WKT.
+            if(!poDS->srsCf) {
+                // Compare SRS obtained from CF attributes and GDAL WKT.
+                // If possible use the more complete GDAL WKT.
 
-            // Set the SRS to the one written by GDAL.
-            if( !bGotCfSRS || poDS->pszProjection == nullptr || ! bIsGdalCfFile )
-            {
-                bGotGdalSRS = true;
-                CPLDebug("GDAL_netCDF", "setting WKT from GDAL");
-                SetProjection(pszWKT);
-            }
-            else
-            {
-                // Use the SRS from GDAL if it doesn't conflict with the one
-                // from CF.
-                OGRSpatialReference oSRSGDAL;
-                oSRSGDAL.importFromWkt(pszWKT);
-                // Set datum to unknown or else datums will not match, see bug
-                // #4281.
-                if( oSRSGDAL.GetAttrNode("DATUM") )
-                    oSRSGDAL.GetAttrNode("DATUM")->GetChild(0)->SetValue("unnamed");
-                // Need this for setprojection autotest.
-                if( oSRSGDAL.GetAttrNode("PROJCS") )
-                    oSRSGDAL.GetAttrNode("PROJCS")->GetChild(0)->SetValue("unnamed");
-                if( oSRSGDAL.GetAttrNode("GEOGCS") )
-                    oSRSGDAL.GetAttrNode("GEOGCS")->GetChild(0)->SetValue("unnamed");
-
-                OGRSpatialReference oSRSForComparison(oSRS);
-                if( oSRSForComparison.GetAttrNode("DATUM") )
-                    oSRSForComparison.GetAttrNode("DATUM")->GetChild(0)->SetValue("unnamed");
-                if( oSRSForComparison.GetAttrNode("PROJCS") )
-                    oSRSForComparison.GetAttrNode("PROJCS")->GetChild(0)->SetValue("unnamed");
-                if( oSRSForComparison.GetAttrNode("GEOGCS") )
-                    oSRSForComparison.GetAttrNode("GEOGCS")->GetChild(0)->SetValue("unnamed");
-
-                if( oSRSForComparison.IsSame(&oSRSGDAL) )
+                // Set the SRS to the one written by GDAL.
+                if( !bGotCfSRS || poDS->pszProjection == nullptr || ! bIsGdalCfFile )
                 {
-#ifdef NCDF_DEBUG
-                    CPLDebug("GDAL_netCDF", "ARE SAME, using GDAL WKT");
-#endif
                     bGotGdalSRS = true;
                     CPLDebug("GDAL_netCDF", "setting WKT from GDAL");
                     SetProjection(pszWKT);
                 }
                 else
                 {
-                    CPLDebug("GDAL_netCDF",
-                             "got WKT from GDAL \n[%s]\nbut not using it "
-                             "because conflicts with CF\n[%s]",
-                             pszWKT, poDS->pszProjection);
+                    // Use the SRS from GDAL if it doesn't conflict with the one
+                    // from CF.
+                    OGRSpatialReference oSRSGDAL;
+                    oSRSGDAL.importFromWkt(pszWKT);
+                    // Set datum to unknown or else datums will not match, see bug
+                    // #4281.
+                    if( oSRSGDAL.GetAttrNode("DATUM") )
+                        oSRSGDAL.GetAttrNode("DATUM")->GetChild(0)->SetValue("unnamed");
+                    // Need this for setprojection autotest.
+                    if( oSRSGDAL.GetAttrNode("PROJCS") )
+                        oSRSGDAL.GetAttrNode("PROJCS")->GetChild(0)->SetValue("unnamed");
+                    if( oSRSGDAL.GetAttrNode("GEOGCS") )
+                        oSRSGDAL.GetAttrNode("GEOGCS")->GetChild(0)->SetValue("unnamed");
+
+                    OGRSpatialReference oSRSForComparison(oSRS);
+                    if( oSRSForComparison.GetAttrNode("DATUM") )
+                        oSRSForComparison.GetAttrNode("DATUM")->GetChild(0)->SetValue("unnamed");
+                    if( oSRSForComparison.GetAttrNode("PROJCS") )
+                        oSRSForComparison.GetAttrNode("PROJCS")->GetChild(0)->SetValue("unnamed");
+                    if( oSRSForComparison.GetAttrNode("GEOGCS") )
+                        oSRSForComparison.GetAttrNode("GEOGCS")->GetChild(0)->SetValue("unnamed");
+
+                    if( oSRSForComparison.IsSame(&oSRSGDAL) )
+                    {
+    #ifdef NCDF_DEBUG
+                        CPLDebug("GDAL_netCDF", "ARE SAME, using GDAL WKT");
+    #endif
+                        bGotGdalSRS = true;
+                        CPLDebug("GDAL_netCDF", "setting WKT from GDAL");
+                        SetProjection(pszWKT);
+                    }
+                    else
+                    {
+                        CPLDebug("GDAL_netCDF",
+                                 "got WKT from GDAL \n[%s]\nbut not using it "
+                                 "because conflicts with CF\n[%s]",
+                                 pszWKT, poDS->pszProjection);
+                    }
                 }
             }
 
@@ -7017,6 +7019,10 @@ GDALDataset *netCDFDataset::Open( GDALOpenInfo *poOpenInfo )
         }
     }
 
+    const char *srsCf = CSLFetchNameValue(poOpenInfo->papszOpenOptions, "srs_cf");
+    bool srsCfOnly = srsCf == nullptr ? false : CPLTestBool(srsCf);
+    poDS->srsCf = srsCfOnly;
+
     // Try opening the dataset.
 #if defined(NCDF_DEBUG) && defined(ENABLE_UFFD)
     CPLDebug("GDAL_netCDF", "calling nc_open_mem(%s)", poDS->osFilename.c_str());
@@ -8808,10 +8814,13 @@ extern "C" void __attribute__((visibility("default"))) GDALRegister_GSKY_netCDF(
     "of bands. >1 comma-seperated list of bands' default=''/>"
 "   <Option name='coord_query' type='boolean' "
     "description='Whether to query coordinate variables. "
-    "Setting to no to improve performance' default='YES'/>"
+    "Setting to NO to improve performance' default='YES'/>"
 "   <Option name='md_query' type='boolean' "
     "description='Whether to query metadata. "
-    "Setting to no to improve performance' default='YES'/>"
+    "Setting to NO to improve performance' default='YES'/>"
+"   <Option name='srs_cf' type='boolean' "
+    "description='Whether to prefer CF SRS. "
+    "Setting to YES to prefer CF SRS over GDAL SRS' default='NO'/>"
 "</OpenOptionList>" );
 
     // Make driver config and capabilities available.

@@ -170,6 +170,7 @@ type Layer struct {
 	ColourScale                  int          `json:"colour_scale"`
 	TimestampsLoadStrategy       string       `json:"timestamps_load_strategy"`
 	MasQueryHint                 string       `json:"mas_query_hint"`
+	SRSCf                        int          `json:"srs_cf"`
 }
 
 // Process contains all the details that a WPS needs
