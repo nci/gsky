@@ -306,8 +306,10 @@ func WMSParamsChecker(params map[string][]string, compREMap map[string]*regexp.R
 	if err != nil {
 		return wmsParams, err
 	}
-	for k, axis := range axesTmp {
-		wmsParams.Axes[k] = axis
+	for _, axis := range axesTmp {
+		if axis != nil {
+			wmsParams.Axes = append(wmsParams.Axes, axis)
+		}
 	}
 
 	if subsets, subsetsOK := params["subset"]; subsetsOK {
