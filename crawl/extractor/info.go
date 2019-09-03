@@ -547,10 +547,10 @@ func getNCTime(sdsName string, hSubdataset C.GDALDatasetH, ruleSet *RuleSet) ([]
 			if err != nil {
 				return times, fmt.Errorf("Problem parsing dates with dataset %s", sdsName)
 			}
-			d, _ := math.Modf(tF)
+			d, f := math.Modf(tF)
 			var t time.Time
 			if stepUnitStr == "days" {
-				t = startDate.AddDate(0, 0, int(d))
+				t = startDate.AddDate(0, 0, int(d)).Add(time.Duration(f * float64(durationUnits["days"])))
 			} else if stepUnitStr == "months" {
 				t = startDate.AddDate(0, int(d), 0)
 			} else if stepUnitStr == "years" {
