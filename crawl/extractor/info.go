@@ -365,8 +365,12 @@ func parseName(path string, config *Config) (*RuleSet, map[string]string, time.T
 	for _, ruleSet := range CollectionRuleSets {
 		re := regexp.MustCompile(ruleSet.Pattern)
 
-		if re.MatchString(basename) {
-			match := re.FindStringSubmatch(basename)
+		fname := basename
+		if ruleSet.MatchFullPath {
+			fname = path
+		}
+		if re.MatchString(fname) {
+			match := re.FindStringSubmatch(fname)
 
 			result := make(map[string]string)
 			for i, name := range re.SubexpNames() {

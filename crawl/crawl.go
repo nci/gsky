@@ -66,12 +66,13 @@ func main() {
 		} else {
 			if ncMetadata {
 				ruleSet := extr.RuleSet{
-					NcMetadata: ncMetadata,
-					NameSpace:  extr.NSDataset,
-					SRSText:    extr.SRSDetect,
-					Proj4Text:  extr.Proj4Detect,
-					Pattern:    `.+`,
-					TimeAxis:   &extr.DatasetAxis{},
+					NcMetadata:    ncMetadata,
+					NameSpace:     extr.NSDataset,
+					SRSText:       extr.SRSDetect,
+					Proj4Text:     extr.Proj4Detect,
+					Pattern:       `.+`,
+					MatchFullPath: true,
+					TimeAxis:      &extr.DatasetAxis{},
 				}
 				config.RuleSets = append(config.RuleSets, ruleSet)
 			}
