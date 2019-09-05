@@ -11,12 +11,18 @@ then
 fi
 
 shard="$1"
-craw_file="$2"
+crawl_file="$2"
 
 gpath=${GPATH:-''}
+filters=${FILTERS:-''}
 
 get_gpath () {
-	crawl_res=$(zcat "$1" |tail -n 1)
+	if [ -z "$filters" ]
+	then
+		crawl_res=$(zcat "$1" | head -n1)
+	else
+		crawl_res=$(zcat "$1" | head -n1 | sed $filters)
+	fi
 	IFS=$'\t' read -r -a crawl_parts <<< "$crawl_res"
 	if [ ${#crawl_parts[@]} -ne 3 ]
 	then
@@ -78,7 +84,7 @@ assert_gpath () {
 
 if [ -z "$gpath" ]
 then
-	gpath=$(get_gpath "$craw_file")
+	gpath=$(get_gpath "$crawl_file")
 	assert_gpath $?
 fi
 
@@ -112,7 +118,12 @@ do
 	abs_filepath=$(readlink -f "$crawl_file")
 	echo "INFO: ingesting $abs_filepath"
 
-	(cd "$here" && zcat "${abs_filepath}" | bash shard_ingest.sh "${shard}")
+	if [ -z "$filters" ]
+	then
+		(cd "$here" && zcat "${abs_filepath}" | bash shard_ingest.sh "${shard}")
+	else
+		(cd "$here" && zcat "${abs_filepath}" | sed $filters | bash shard_ingest.sh "${shard}")
+	fi
 done
 
 (cd "$here" && bash shard_refresh.sh "${shard}")
