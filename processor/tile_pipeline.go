@@ -237,6 +237,8 @@ func (dp *TilePipeline) processDeps(geoReq *GeoTileRequest, verbose bool) ([]*Fl
 		}
 
 		tp := InitTilePipeline(dp.Context, reqCtx.MASAddress, reqCtx.Service.WorkerNodes, reqCtx.Layer.MaxGrpcRecvMsgSize, reqCtx.Layer.WmsPolygonShardConcLimit, reqCtx.Service.MaxGrpcBufferSize, errChan)
+		tp.CurrentLayer = reqCtx.StyleLayer
+		tp.DataSources = dp.DataSources
 
 		select {
 		case res := <-tp.Process(req, verbose):
@@ -323,6 +325,8 @@ func (dp *TilePipeline) getDepFileList(geoReq *GeoTileRequest, verbose bool) ([]
 	granCount := 0
 	for idx, reqCtx := range depLayers {
 		tp := InitTilePipeline(dp.Context, reqCtx.MASAddress, reqCtx.Service.WorkerNodes, reqCtx.Layer.MaxGrpcRecvMsgSize, reqCtx.Layer.WmsPolygonShardConcLimit, reqCtx.Service.MaxGrpcBufferSize, errChan)
+		tp.CurrentLayer = reqCtx.StyleLayer
+		tp.DataSources = dp.DataSources
 
 		req := reqCtx.GeoReq
 		grans, err := tp.GetFileList(req, verbose)
