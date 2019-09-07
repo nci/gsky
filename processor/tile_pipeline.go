@@ -62,7 +62,7 @@ func (dp *TilePipeline) Process(geoReq *GeoTileRequest, verbose bool) chan []uti
 
 	varList := geoReq.BandExpr.VarList
 	if dp.CurrentLayer != nil && len(dp.CurrentLayer.InputLayers) > 0 {
-		otherVars, hasFusedBand, err := dp.checkFusedBandNames(geoReq)
+		otherVars, hasFusedBand, supportTimeWeighted, err := dp.checkFusedBandNames(geoReq)
 		if err != nil {
 			dp.Error <- err
 			close(m.In)
@@ -76,27 +76,29 @@ func (dp *TilePipeline) Process(geoReq *GeoTileRequest, verbose bool) chan []uti
 			}
 
 			var weightedGeoReqs []*GeoTileRequest
-			for k, axis := range geoReq.Axes {
-				if k != utils.WeightedTimeAxis {
-					continue
-				}
-
-				if len(axis.InValues) < 2 {
-					continue
-				}
-
-				for _, val := range axis.InValues {
-					gr := &GeoTileRequest{}
-					startTime := time.Unix(int64(val), 0).UTC()
-					gr.StartTime = &startTime
-					var endTime time.Time
-					if geoReq.EndTime != nil {
-						endTime = startTime.Add(aggTime)
-						gr.EndTime = &endTime
+			if supportTimeWeighted {
+				for k, axis := range geoReq.Axes {
+					if k != utils.WeightedTimeAxis {
+						continue
 					}
-					weightedGeoReqs = append(weightedGeoReqs, gr)
+
+					if len(axis.InValues) < 2 {
+						continue
+					}
+
+					for _, val := range axis.InValues {
+						gr := &GeoTileRequest{}
+						startTime := time.Unix(int64(val), 0).UTC()
+						gr.StartTime = &startTime
+						var endTime time.Time
+						if geoReq.EndTime != nil {
+							endTime = startTime.Add(aggTime)
+							gr.EndTime = &endTime
+						}
+						weightedGeoReqs = append(weightedGeoReqs, gr)
+					}
+					break
 				}
-				break
 			}
 			isTimeWeighted := len(weightedGeoReqs) > 0
 			if !isTimeWeighted {
@@ -147,7 +149,7 @@ func (dp *TilePipeline) GetFileList(geoReq *GeoTileRequest, verbose bool) ([]*Ge
 	i := NewTileIndexer(dp.Context, dp.MASAddress, dp.Error)
 
 	if dp.CurrentLayer != nil && len(dp.CurrentLayer.InputLayers) > 0 {
-		otherVars, hasFusedBand, err := dp.checkFusedBandNames(geoReq)
+		otherVars, hasFusedBand, _, err := dp.checkFusedBandNames(geoReq)
 		if err != nil {
 			return nil, err
 		}
@@ -228,7 +230,7 @@ func (dp *TilePipeline) processDeps(geoReq *GeoTileRequest, verbose bool) ([]*Fl
 				isInRange := reqT0 >= ts0 && reqT0 <= ts1 || reqT1 >= ts0 && reqT1 <= ts1
 				if !isInRange {
 					if verbose {
-						log.Printf("fusion pipeline(%d of %d): skip processing, requsted time range [%v, %v] out of layer time range [%v, %v]", idx+1, len(depLayers), geoReq.StartTime, geoReq.EndTime, t0, t1)
+						log.Printf("fusion pipeline '%v' (%d of %d): skip processing, requsted time range [%v, %v] out of layer time range [%v, %v]", reqCtx.Layer.Name, idx+1, len(depLayers), geoReq.StartTime, geoReq.EndTime, t0, t1)
 					}
 					continue
 				}
@@ -253,12 +255,12 @@ func (dp *TilePipeline) processDeps(geoReq *GeoTileRequest, verbose bool) ([]*Fl
 
 				norm, err := utils.Scale(res, scaleParams)
 				if err != nil {
-					return nil, fmt.Errorf("fusion pipeline(%d of %d) utils.Scale error: %v", idx+1, len(depLayers), err)
+					return nil, fmt.Errorf("fusion pipeline '%v' (%d of %d) utils.Scale error: %v", reqCtx.Layer.Name, idx+1, len(depLayers), err)
 				}
 
 				if len(norm) == 0 || norm[0].Width == 0 || norm[0].Height == 0 || norm[0].NameSpace == "EmptyTile" {
 					if verbose {
-						log.Printf("fusion pipeline(%d of %d): empty tile", idx+1, len(depLayers))
+						log.Printf("fusion pipeline '%v' (%d of %d): empty tile", reqCtx.Layer.Name, idx+1, len(depLayers))
 					}
 					break
 				}
@@ -283,20 +285,20 @@ func (dp *TilePipeline) processDeps(geoReq *GeoTileRequest, verbose bool) ([]*Fl
 			}
 
 			if verbose {
-				log.Printf("fusion pipeline(%d of %d) done", idx+1, len(depLayers))
+				log.Printf("fusion pipeline '%v' (%d of %d) done", reqCtx.Layer.Name, idx+1, len(depLayers))
 			}
 
 			if allFilled {
 				if verbose {
-					log.Printf("fusion pipeline(%d of %d) early stopping, all pixels are filled", idx+1, len(depLayers))
+					log.Printf("fusion pipeline '%v' (%d of %d) early stopping, all pixels are filled", reqCtx.Layer.Name, idx+1, len(depLayers))
 				}
 				return rasters, nil
 			}
 
 		case err := <-errChan:
-			return nil, fmt.Errorf("Error in the fusion pipeline(%d of %d): %v", idx+1, len(depLayers), err)
+			return nil, fmt.Errorf("Error in the fusion pipeline '%v' (%d of %d): %v", reqCtx.Layer.Name, idx+1, len(depLayers), err)
 		case <-tp.Context.Done():
-			return nil, fmt.Errorf("Context cancelled in fusion pipeline(%d of %d)", idx+1, len(depLayers))
+			return nil, fmt.Errorf("Context cancelled in fusion pipeline '%v' (%d of %d)", reqCtx.Layer.Name, idx+1, len(depLayers))
 		}
 	}
 
@@ -331,7 +333,7 @@ func (dp *TilePipeline) getDepFileList(geoReq *GeoTileRequest, verbose bool) ([]
 		req := reqCtx.GeoReq
 		grans, err := tp.GetFileList(req, verbose)
 		if err != nil {
-			return nil, fmt.Errorf("fusion pipeline(%d of %d) tile indexer error: %v", idx+1, len(depLayers), err)
+			return nil, fmt.Errorf("fusion pipeline '%v' (%d of %d) tile indexer error: %v", reqCtx.Layer.Name, idx+1, len(depLayers), err)
 		}
 
 		for _, g := range grans {
@@ -343,7 +345,7 @@ func (dp *TilePipeline) getDepFileList(geoReq *GeoTileRequest, verbose bool) ([]
 
 				if granCount >= geoReq.QueryLimit {
 					if verbose {
-						log.Printf("fusion pipeline(%d of %d) tile indexer early stopping, query limit reached", idx+1, len(depLayers))
+						log.Printf("fusion pipeline '%v' (%d of %d) tile indexer early stopping, query limit reached", reqCtx.Layer.Name, idx+1, len(depLayers))
 					}
 					return totalGrans, nil
 				}
@@ -351,7 +353,7 @@ func (dp *TilePipeline) getDepFileList(geoReq *GeoTileRequest, verbose bool) ([]
 		}
 
 		if verbose {
-			log.Printf("fusion pipeline(%d of %d) tile indexer done", idx+1, len(depLayers))
+			log.Printf("fusion pipeline '%v' (%d of %d) tile indexer done", reqCtx.Layer.Name, idx+1, len(depLayers))
 		}
 	}
 
@@ -541,21 +543,25 @@ func getFlexRaster(idx int, timestamp time.Time, req *GeoTileRequest, raster uti
 	return flex, allFilled
 }
 
-func (dp *TilePipeline) checkFusedBandNames(geoReq *GeoTileRequest) ([]string, bool, error) {
+func (dp *TilePipeline) checkFusedBandNames(geoReq *GeoTileRequest) ([]string, bool, bool, error) {
 	var otherVars []string
 	hasFusedBand := false
+	isTimeWeighted := true
 	for _, ns := range geoReq.BandExpr.VarList {
 		if len(ns) > len(fusedBandName) && ns[:len(fusedBandName)] == fusedBandName {
-			fusedNs := strings.Split(ns[len(fusedBandName):], "_")[0]
-			_, err := strconv.ParseInt(fusedNs, 10, 64)
+			fusedNs := strings.Split(ns[len(fusedBandName):], "_")
+			_, err := strconv.ParseInt(fusedNs[0], 10, 64)
 			if err != nil {
-				return nil, false, fmt.Errorf("invalid namespace: %v", ns)
+				return nil, false, false, fmt.Errorf("invalid namespace: %v", ns)
 			}
 
 			hasFusedBand = true
+			if len(fusedNs) != 2 {
+				isTimeWeighted = false
+			}
 			continue
 		}
 		otherVars = append(otherVars, ns)
 	}
-	return otherVars, hasFusedBand, nil
+	return otherVars, hasFusedBand, isTimeWeighted, nil
 }

@@ -583,7 +583,7 @@ func LoadAllConfigFiles(rootDir string, verbose bool) (map[string]*Config, error
 
 	for _, config := range configMap {
 		for i := range config.Layers {
-			err = config.processBlendedTimestamps(i, configMap)
+			err = config.processFusionTimestamps(i, configMap)
 			if err != nil {
 				return nil, err
 			}
@@ -639,7 +639,7 @@ func hasBlendedService(layer *Layer) bool {
 	return false
 }
 
-func (config *Config) processBlendedTimestamps(i int, configMap map[string]*Config) error {
+func (config *Config) processFusionTimestamps(i int, configMap map[string]*Config) error {
 	var inputLayers []Layer
 	if len(config.Layers[i].InputLayers) > 0 {
 		inputLayers = config.Layers[i].InputLayers
@@ -678,6 +678,12 @@ func (config *Config) processBlendedTimestamps(i int, configMap map[string]*Conf
 			}
 
 			layer := &conf.Layers[layerIdx]
+			if hasBlendedService(layer) && len(layer.Dates) == 0 && len(strings.TrimSpace(layer.EffectiveStartDate)) == 0 && len(strings.TrimSpace(layer.EffectiveEndDate)) == 0 {
+				err := config.processFusionTimestamps(layerIdx, configMap)
+				if err != nil {
+					return err
+				}
+			}
 			for _, dt := range layer.Dates {
 				if _, found := tsLookup[dt]; !found {
 					tsLookup[dt] = true
@@ -692,15 +698,12 @@ func (config *Config) processBlendedTimestamps(i int, configMap map[string]*Conf
 			return t1.Before(t2)
 		})
 
-		log.Printf("iiiiiiiiii %v, %v", config.Layers[i].Name, len(timestamps))
 		if len(timestamps) > 0 {
 			config.Layers[i].Dates = timestamps
 			config.Layers[i].EffectiveStartDate = timestamps[0]
 			config.Layers[i].EffectiveEndDate = timestamps[len(timestamps)-1]
 		}
-
 	}
-
 	return nil
 }
 
