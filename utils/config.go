@@ -583,64 +583,9 @@ func LoadAllConfigFiles(rootDir string, verbose bool) (map[string]*Config, error
 
 	for _, config := range configMap {
 		for i := range config.Layers {
-			var inputLayers []Layer
-			if len(config.Layers[i].InputLayers) > 0 {
-				inputLayers = config.Layers[i].InputLayers
-			} else if len(config.Layers[i].Styles) > 0 && len(config.Layers[i].Styles[0].InputLayers) > 0 {
-				inputLayers = config.Layers[i].Styles[0].InputLayers
-			}
-			if len(inputLayers) > 0 {
-				var timestamps []string
-				tsLookup := make(map[string]bool)
-				for _, dt := range config.Layers[i].Dates {
-					if _, found := tsLookup[dt]; !found {
-						tsLookup[dt] = true
-						timestamps = append(timestamps, dt)
-					}
-				}
-
-				for _, refLayer := range inputLayers {
-					refNameSpace := refLayer.NameSpace
-					if len(refNameSpace) == 0 {
-						if len(config.Layers[i].NameSpace) == 0 {
-							refNameSpace = "."
-						} else {
-							refNameSpace = config.Layers[i].NameSpace
-						}
-					}
-
-					conf, found := configMap[refNameSpace]
-					if !found {
-						return nil, fmt.Errorf("namespace %s not found referenced by %s", refNameSpace, refLayer.Name)
-					}
-
-					params := WMSParams{Layers: []string{refLayer.Name}}
-					layerIdx, err := GetLayerIndex(params, conf)
-					if err != nil {
-						return nil, err
-					}
-
-					layer := &conf.Layers[layerIdx]
-					for _, dt := range layer.Dates {
-						if _, found := tsLookup[dt]; !found {
-							tsLookup[dt] = true
-							timestamps = append(timestamps, dt)
-						}
-					}
-				}
-
-				sort.Slice(timestamps, func(i, j int) bool {
-					t1, _ := time.Parse(ISOFormat, timestamps[i])
-					t2, _ := time.Parse(ISOFormat, timestamps[j])
-					return t1.Before(t2)
-				})
-
-				if len(timestamps) > 0 {
-					config.Layers[i].Dates = timestamps
-					config.Layers[i].EffectiveStartDate = timestamps[0]
-					config.Layers[i].EffectiveEndDate = timestamps[len(timestamps)-1]
-				}
-
+			err = config.processFusionTimestamps(i, configMap)
+			if err != nil {
+				return nil, err
 			}
 		}
 	}
@@ -692,6 +637,74 @@ func hasBlendedService(layer *Layer) bool {
 	}
 
 	return false
+}
+
+func (config *Config) processFusionTimestamps(i int, configMap map[string]*Config) error {
+	var inputLayers []Layer
+	if len(config.Layers[i].InputLayers) > 0 {
+		inputLayers = config.Layers[i].InputLayers
+	} else if len(config.Layers[i].Styles) > 0 && len(config.Layers[i].Styles[0].InputLayers) > 0 {
+		inputLayers = config.Layers[i].Styles[0].InputLayers
+	}
+	if len(inputLayers) > 0 {
+		var timestamps []string
+		tsLookup := make(map[string]bool)
+		for _, dt := range config.Layers[i].Dates {
+			if _, found := tsLookup[dt]; !found {
+				tsLookup[dt] = true
+				timestamps = append(timestamps, dt)
+			}
+		}
+
+		for _, refLayer := range inputLayers {
+			refNameSpace := refLayer.NameSpace
+			if len(refNameSpace) == 0 {
+				if len(config.Layers[i].NameSpace) == 0 {
+					refNameSpace = "."
+				} else {
+					refNameSpace = config.Layers[i].NameSpace
+				}
+			}
+
+			conf, found := configMap[refNameSpace]
+			if !found {
+				return fmt.Errorf("namespace %s not found referenced by %s", refNameSpace, refLayer.Name)
+			}
+
+			params := WMSParams{Layers: []string{refLayer.Name}}
+			layerIdx, err := GetLayerIndex(params, conf)
+			if err != nil {
+				return err
+			}
+
+			layer := &conf.Layers[layerIdx]
+			if hasBlendedService(layer) && len(layer.Dates) == 0 && len(strings.TrimSpace(layer.EffectiveStartDate)) == 0 && len(strings.TrimSpace(layer.EffectiveEndDate)) == 0 {
+				err := config.processFusionTimestamps(layerIdx, configMap)
+				if err != nil {
+					return err
+				}
+			}
+			for _, dt := range layer.Dates {
+				if _, found := tsLookup[dt]; !found {
+					tsLookup[dt] = true
+					timestamps = append(timestamps, dt)
+				}
+			}
+		}
+
+		sort.Slice(timestamps, func(i, j int) bool {
+			t1, _ := time.Parse(ISOFormat, timestamps[i])
+			t2, _ := time.Parse(ISOFormat, timestamps[j])
+			return t1.Before(t2)
+		})
+
+		if len(timestamps) > 0 {
+			config.Layers[i].Dates = timestamps
+			config.Layers[i].EffectiveStartDate = timestamps[0]
+			config.Layers[i].EffectiveEndDate = timestamps[len(timestamps)-1]
+		}
+	}
+	return nil
 }
 
 // CopyConfig makes a deep copy of the certain fields of the config object.
