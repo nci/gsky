@@ -131,12 +131,12 @@ func (p *TileIndexer) Run(verbose bool) {
 						}
 					} else {
 						if axis.Start != nil {
-							minTime := time.Unix(int64(*axis.Start), 0)
+							minTime := time.Unix(int64(*axis.Start), 0).UTC()
 							geoReq.StartTime = &minTime
 						}
 
 						if axis.End != nil {
-							maxTime := time.Unix(int64(*axis.End), 0)
+							maxTime := time.Unix(int64(*axis.End), 0).UTC()
 							geoReq.EndTime = &maxTime
 						}
 					}
@@ -371,7 +371,7 @@ func URLIndexGet(ctx context.Context, url string, geoReq *GeoTileRequest, errCha
 
 						var readableNs string
 						if ds.Axes[i].Name == "time" {
-							ts := time.Unix(int64(ds.Axes[i].IntersectionValues[axisIdxCnt[i]]), 0)
+							ts := time.Unix(int64(ds.Axes[i].IntersectionValues[axisIdxCnt[i]]), 0).UTC()
 							readableNs = fmt.Sprintf("%v", ts.Format(ISOFormat))
 						} else {
 							readableNs = fmt.Sprintf("%v", ds.Axes[i].IntersectionValues[axisIdxCnt[i]])

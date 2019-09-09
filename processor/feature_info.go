@@ -320,7 +320,7 @@ func getRaster(ctx context.Context, params utils.WMSParams, conf *utils.Config, 
 			continue
 		}
 
-		tm := time.Unix(int64(geo.TimeStamp), 0)
+		tm := time.Unix(int64(geo.TimeStamp), 0).UTC()
 		normalizedTm := time.Date(tm.Year(), tm.Month(), tm.Day(), 0, 0, 0, 0, time.UTC)
 		if _, found := timestampLookup[normalizedTm]; found {
 			continue
@@ -341,7 +341,7 @@ func getRaster(ctx context.Context, params utils.WMSParams, conf *utils.Config, 
 		}
 		for i := range pixelFiles[:maxDates] {
 			ts := pixelFiles[maxDates-1-i].TimeStamp
-			tm := time.Unix(int64(ts), 0)
+			tm := time.Unix(int64(ts), 0).UTC()
 			normalizedTm := time.Date(tm.Year(), tm.Month(), tm.Day(), 0, 0, 0, 0, time.UTC).Format(dateFormat)
 			topDsDates = append(topDsDates, normalizedTm)
 		}
