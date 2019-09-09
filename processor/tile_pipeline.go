@@ -303,7 +303,7 @@ func (dp *TilePipeline) processDeps(geoReq *GeoTileRequest, verbose bool) ([]*Fl
 	}
 
 	if len(rasters) == 0 {
-		for idx := 0; idx < len(geoReq.BandExpr.Expressions); idx++ {
+		for idx := 0; idx < len(geoReq.BandExpr.ExprNames); idx++ {
 			emptyRaster := &utils.ByteRaster{Data: make([]uint8, geoReq.Height*geoReq.Width), NoData: 0, Height: geoReq.Height, Width: geoReq.Width, NameSpace: utils.EmptyTileNS}
 			emptyFlex, _ := getFlexRaster(idx, timestamp, geoReq, emptyRaster)
 			rasters = append(rasters, emptyFlex)
