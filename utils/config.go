@@ -587,6 +587,10 @@ func LoadAllConfigFiles(rootDir string, verbose bool) (map[string]*Config, error
 			if err != nil {
 				return nil, err
 			}
+			err = config.processFusionColourPalette(i, configMap)
+			if err != nil {
+				return nil, err
+			}
 		}
 	}
 
@@ -639,6 +643,39 @@ func hasBlendedService(layer *Layer) bool {
 	return false
 }
 
+func (config *Config) getFusionRefLayer(i int, refLayer *Layer, configMap map[string]*Config) (int, int, error) {
+	refNameSpace := refLayer.NameSpace
+	if len(refNameSpace) == 0 {
+		if len(config.Layers[i].NameSpace) == 0 {
+			refNameSpace = "."
+		} else {
+			refNameSpace = config.Layers[i].NameSpace
+		}
+	}
+
+	conf, found := configMap[refNameSpace]
+	if !found {
+		return -1, -1, fmt.Errorf("namespace %s not found referenced by %s", refNameSpace, refLayer.Name)
+	}
+
+	params := WMSParams{Layers: []string{refLayer.Name}}
+	layerIdx, err := GetLayerIndex(params, conf)
+	if err != nil {
+		return -1, -1, err
+	}
+
+	styleIdx := -1
+	if len(refLayer.Styles) > 0 {
+		styleParams := WMSParams{Styles: []string{refLayer.Styles[0].Name}}
+		styleIdx, err = GetLayerStyleIndex(styleParams, conf, layerIdx)
+		if err != nil {
+			return layerIdx, -1, err
+		}
+	}
+
+	return layerIdx, styleIdx, nil
+}
+
 func (config *Config) processFusionTimestamps(i int, configMap map[string]*Config) error {
 	var inputLayers []Layer
 	if len(config.Layers[i].InputLayers) > 0 {
@@ -657,27 +694,11 @@ func (config *Config) processFusionTimestamps(i int, configMap map[string]*Confi
 		}
 
 		for _, refLayer := range inputLayers {
-			refNameSpace := refLayer.NameSpace
-			if len(refNameSpace) == 0 {
-				if len(config.Layers[i].NameSpace) == 0 {
-					refNameSpace = "."
-				} else {
-					refNameSpace = config.Layers[i].NameSpace
-				}
-			}
-
-			conf, found := configMap[refNameSpace]
-			if !found {
-				return fmt.Errorf("namespace %s not found referenced by %s", refNameSpace, refLayer.Name)
-			}
-
-			params := WMSParams{Layers: []string{refLayer.Name}}
-			layerIdx, err := GetLayerIndex(params, conf)
+			layerIdx, _, err := config.getFusionRefLayer(i, &refLayer, configMap)
 			if err != nil {
 				return err
 			}
-
-			layer := &conf.Layers[layerIdx]
+			layer := &configMap[refLayer.NameSpace].Layers[layerIdx]
 			if hasBlendedService(layer) && len(layer.Dates) == 0 && len(strings.TrimSpace(layer.EffectiveStartDate)) == 0 && len(strings.TrimSpace(layer.EffectiveEndDate)) == 0 {
 				err := config.processFusionTimestamps(layerIdx, configMap)
 				if err != nil {
@@ -702,6 +723,77 @@ func (config *Config) processFusionTimestamps(i int, configMap map[string]*Confi
 			config.Layers[i].Dates = timestamps
 			config.Layers[i].EffectiveStartDate = timestamps[0]
 			config.Layers[i].EffectiveEndDate = timestamps[len(timestamps)-1]
+		}
+	}
+	return nil
+}
+
+func (config *Config) processFusionColourPalette(i int, configMap map[string]*Config) error {
+	var inputLayers []Layer
+	if len(config.Layers[i].InputLayers) > 0 {
+		inputLayers = config.Layers[i].InputLayers
+	} else if len(config.Layers[i].Styles) > 0 && len(config.Layers[i].Styles[0].InputLayers) > 0 {
+		inputLayers = config.Layers[i].Styles[0].InputLayers
+	}
+
+	if len(inputLayers) > 0 {
+		if len(config.Layers[i].Styles) == 0 {
+			if len(config.Layers[i].RGBProducts) != 1 {
+				return nil
+			}
+			if config.Layers[i].Palette != nil {
+				return nil
+			}
+
+			refLayer := config.Layers[i].InputLayers[0]
+			layerIdx, styleIdx, err := config.getFusionRefLayer(i, &refLayer, configMap)
+			if err != nil {
+				return err
+			}
+
+			layer := &configMap[refLayer.NameSpace].Layers[layerIdx]
+			layerBase := layer
+			if styleIdx >= 0 {
+				layer = &configMap[refLayer.NameSpace].Layers[layerIdx].Styles[styleIdx]
+			}
+
+			if hasBlendedService(layerBase) && layer.Palette == nil {
+				err := config.processFusionColourPalette(layerIdx, configMap)
+				if err != nil {
+					return err
+				}
+			}
+
+			config.Layers[i].Palette = layer.Palette
+		} else {
+			for j := range config.Layers[i].Styles {
+				if len(config.Layers[i].Styles[j].RGBProducts) != 1 {
+					continue
+				}
+				if config.Layers[i].Styles[j].Palette != nil {
+					continue
+				}
+
+				refLayer := config.Layers[i].Styles[j].InputLayers[0]
+				layerIdx, styleIdx, err := config.getFusionRefLayer(i, &refLayer, configMap)
+				if err != nil {
+					return err
+				}
+				layer := &configMap[refLayer.NameSpace].Layers[layerIdx]
+				layerBase := layer
+				if styleIdx >= 0 {
+					layer = &configMap[refLayer.NameSpace].Layers[layerIdx].Styles[styleIdx]
+				}
+
+				if hasBlendedService(layerBase) && layer.Palette == nil {
+					err := config.processFusionColourPalette(layerIdx, configMap)
+					if err != nil {
+						return err
+					}
+				}
+
+				config.Layers[i].Styles[j].Palette = layer.Palette
+			}
 		}
 	}
 	return nil
