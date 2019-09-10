@@ -122,10 +122,10 @@ func (p *TileIndexer) Run(verbose bool) {
 							}
 						}
 
-						minTime := time.Unix(int64(minVal), 0)
+						minTime := time.Unix(int64(minVal), 0).UTC()
 						geoReq.StartTime = &minTime
 
-						maxTime := time.Unix(int64(maxVal), 0)
+						maxTime := time.Unix(int64(maxVal), 0).UTC()
 						if maxVal > minVal {
 							geoReq.EndTime = &maxTime
 						}
