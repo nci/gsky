@@ -643,7 +643,7 @@ func hasBlendedService(layer *Layer) bool {
 	return false
 }
 
-func (config *Config) getFusionRefLayer(i int, refLayer *Layer, configMap map[string]*Config) (int, int, error) {
+func (config *Config) getFusionRefLayer(i int, refLayer *Layer, configMap map[string]*Config) (int, int, string, error) {
 	refNameSpace := refLayer.NameSpace
 	if len(refNameSpace) == 0 {
 		if len(config.Layers[i].NameSpace) == 0 {
@@ -655,13 +655,13 @@ func (config *Config) getFusionRefLayer(i int, refLayer *Layer, configMap map[st
 
 	conf, found := configMap[refNameSpace]
 	if !found {
-		return -1, -1, fmt.Errorf("namespace %s not found referenced by %s", refNameSpace, refLayer.Name)
+		return -1, -1, "", fmt.Errorf("namespace %s not found referenced by %s", refNameSpace, refLayer.Name)
 	}
 
 	params := WMSParams{Layers: []string{refLayer.Name}}
 	layerIdx, err := GetLayerIndex(params, conf)
 	if err != nil {
-		return -1, -1, err
+		return -1, -1, "", err
 	}
 
 	styleIdx := -1
@@ -669,11 +669,11 @@ func (config *Config) getFusionRefLayer(i int, refLayer *Layer, configMap map[st
 		styleParams := WMSParams{Styles: []string{refLayer.Styles[0].Name}}
 		styleIdx, err = GetLayerStyleIndex(styleParams, conf, layerIdx)
 		if err != nil {
-			return layerIdx, -1, err
+			return layerIdx, -1, "", err
 		}
 	}
 
-	return layerIdx, styleIdx, nil
+	return layerIdx, styleIdx, refNameSpace, nil
 }
 
 func (config *Config) processFusionTimestamps(i int, configMap map[string]*Config) error {
@@ -694,11 +694,11 @@ func (config *Config) processFusionTimestamps(i int, configMap map[string]*Confi
 		}
 
 		for _, refLayer := range inputLayers {
-			layerIdx, _, err := config.getFusionRefLayer(i, &refLayer, configMap)
+			layerIdx, _, refNameSpace, err := config.getFusionRefLayer(i, &refLayer, configMap)
 			if err != nil {
 				return err
 			}
-			layer := &configMap[refLayer.NameSpace].Layers[layerIdx]
+			layer := &configMap[refNameSpace].Layers[layerIdx]
 			if hasBlendedService(layer) && len(layer.Dates) == 0 && len(strings.TrimSpace(layer.EffectiveStartDate)) == 0 && len(strings.TrimSpace(layer.EffectiveEndDate)) == 0 {
 				err := config.processFusionTimestamps(layerIdx, configMap)
 				if err != nil {
@@ -746,12 +746,12 @@ func (config *Config) processFusionColourPalette(i int, configMap map[string]*Co
 			}
 
 			refLayer := config.Layers[i].InputLayers[0]
-			layerIdx, styleIdx, err := config.getFusionRefLayer(i, &refLayer, configMap)
+			layerIdx, styleIdx, refNameSpace, err := config.getFusionRefLayer(i, &refLayer, configMap)
 			if err != nil {
 				return err
 			}
 
-			layer := &configMap[refLayer.NameSpace].Layers[layerIdx]
+			layer := &configMap[refNameSpace].Layers[layerIdx]
 			layerBase := layer
 			if styleIdx >= 0 {
 				layer = &configMap[refLayer.NameSpace].Layers[layerIdx].Styles[styleIdx]
@@ -775,11 +775,11 @@ func (config *Config) processFusionColourPalette(i int, configMap map[string]*Co
 				}
 
 				refLayer := config.Layers[i].Styles[j].InputLayers[0]
-				layerIdx, styleIdx, err := config.getFusionRefLayer(i, &refLayer, configMap)
+				layerIdx, styleIdx, refNameSpace, err := config.getFusionRefLayer(i, &refLayer, configMap)
 				if err != nil {
 					return err
 				}
-				layer := &configMap[refLayer.NameSpace].Layers[layerIdx]
+				layer := &configMap[refNameSpace].Layers[layerIdx]
 				layerBase := layer
 				if styleIdx >= 0 {
 					layer = &configMap[refLayer.NameSpace].Layers[layerIdx].Styles[styleIdx]
