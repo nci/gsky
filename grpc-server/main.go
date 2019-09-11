@@ -31,9 +31,9 @@ func (s *server) Process(ctx context.Context, in *pb.GeoRPCGranule) (*pb.Result,
 		return &pb.Result{WorkerInfo: &pb.WorkerInfo{PoolSize: int32(s.PoolSize)}}, nil
 	}
 
-	rChan := make(chan *pb.Result)
+	rChan := make(chan *pb.Result, 1)
 	defer close(rChan)
-	errChan := make(chan error)
+	errChan := make(chan error, 1)
 	defer close(errChan)
 
 	s.Pool.AddQueue(&pp.Task{Payload: in, Resp: rChan, Error: errChan})
