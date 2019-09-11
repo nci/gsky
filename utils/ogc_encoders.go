@@ -541,6 +541,36 @@ func ExtractEPSGCode(srs string) (int, error) {
 	return strconv.Atoi(srs[5:])
 }
 
+func CheckEmptyTile(rs []Raster) (bool, error) {
+	for _, r := range rs {
+		switch t := r.(type) {
+		case *SignedByteRaster:
+			if isEmptyTile(t.NameSpace) {
+				return true, nil
+			}
+		case *ByteRaster:
+			if isEmptyTile(t.NameSpace) {
+				return true, nil
+			}
+		case *Int16Raster:
+			if isEmptyTile(t.NameSpace) {
+				return true, nil
+			}
+		case *UInt16Raster:
+			if isEmptyTile(t.NameSpace) {
+				return true, nil
+			}
+		case *Float32Raster:
+			if isEmptyTile(t.NameSpace) {
+				return true, nil
+			}
+		default:
+			return false, fmt.Errorf("Raster type not implemented")
+		}
+	}
+	return false, nil
+}
+
 func isEmptyTile(namespace string) bool {
 	return len(namespace) >= len(EmptyTileNS) && namespace[:len(EmptyTileNS)] == EmptyTileNS
 }
