@@ -1004,6 +1004,13 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 			select {
 			case res := <-tp.Process(geoReq, *verbose):
 				if !isInit {
+					if ir < len(workerTileRequests[0])-1 {
+						isEmptyTile, _ := utils.CheckEmptyTile(res)
+						if isEmptyTile {
+							continue
+						}
+					}
+
 					hDstDS, masterTempFile, err = utils.EncodeGdalOpen(conf.ServiceConfig.TempDir, 1024, 256, driverFormat, geot, epsg, res, *params.Width, *params.Height, len(res))
 					if err != nil {
 						utils.RemoveGdalTempFile(masterTempFile)
