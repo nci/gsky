@@ -73,12 +73,12 @@ func DrillDataset(in *pb.GeoRPCGranule) *pb.Result {
 
 	C.OGR_G_AssignSpatialReference(geom, selSRS)
 
-	res := readData(ds, in.Bands, geom, int(in.BandStrides), int(in.DrillDecileCount), in.ClipUpper, in.ClipLower)
+	res := readData(ds, in.Bands, geom, int(in.BandStrides), int(in.DrillDecileCount), int(in.PixelCount), in.ClipUpper, in.ClipLower)
 	C.OGR_G_DestroyGeometry(geom)
 	return res
 }
 
-func readData(ds C.GDALDatasetH, bands []int32, geom C.OGRGeometryH, bandStrides int, decileCount int, clipUpper float32, clipLower float32) *pb.Result {
+func readData(ds C.GDALDatasetH, bands []int32, geom C.OGRGeometryH, bandStrides int, decileCount int, pixelCount int, clipUpper float32, clipLower float32) *pb.Result {
 	nCols := 1 + decileCount
 
 	avgs := []*pb.TimeSeries{}
@@ -141,11 +141,19 @@ func readData(ds C.GDALDatasetH, bands []int32, geom C.OGRGeometryH, bandStrides
 			for i := 0; i < bandSize; i++ {
 				if dsDscr.Mask.Pix[i] == 255 && dataBuf[i+bandOffset] != nodata {
 					val := dataBuf[i+bandOffset]
+					if pixelCount != 0 {
+						total++
+					}
+
 					if val < clipLower || val > clipUpper {
 						continue
 					}
-					sum += val
-					total++
+					if pixelCount == 0 {
+						sum += val
+						total++
+					} else {
+						sum += 1.0
+					}
 				}
 			}
 

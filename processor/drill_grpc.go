@@ -29,7 +29,7 @@ func NewDrillGRPC(ctx context.Context, serverAddress []string, errChan chan erro
 	}
 }
 
-func (gi *GeoDrillGRPC) Run(bandStrides int, decileCount int, verbose bool) {
+func (gi *GeoDrillGRPC) Run(bandStrides int, decileCount int, pixelCount int, verbose bool) {
 	defer close(gi.Out)
 	start := time.Now()
 
@@ -141,7 +141,7 @@ func (gi *GeoDrillGRPC) Run(bandStrides int, decileCount int, verbose bool) {
 				c := pb.NewGDALClient(conns[(iTile+workerStart)%len(conns)])
 				bands, err := getBands(g.TimeStamps)
 
-				granule := &pb.GeoRPCGranule{Operation: "drill", Path: g.Path, Geometry: g.Geometry, Bands: bands, BandStrides: int32(bandStrides), DrillDecileCount: int32(decileCount), ClipUpper: gran.ClipUpper, ClipLower: gran.ClipLower}
+				granule := &pb.GeoRPCGranule{Operation: "drill", Path: g.Path, Geometry: g.Geometry, Bands: bands, BandStrides: int32(bandStrides), DrillDecileCount: int32(decileCount), ClipUpper: gran.ClipUpper, ClipLower: gran.ClipLower, PixelCount: int32(pixelCount)}
 				r, err := c.Process(gi.Context, granule)
 				if err != nil {
 					gi.Error <- err

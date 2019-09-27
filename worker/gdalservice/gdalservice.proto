@@ -21,6 +21,7 @@ message GeoRPCGranule {
     float clipUpper = 14;
     float clipLower = 15;
     int32 sRSCf = 16;
+    int32 pixelCount = 17;
 }
 
 message Raster {
