@@ -1504,6 +1504,18 @@ func generalHandler(conf *utils.Config, w http.ResponseWriter, r *http.Request) 
 		serveWCS(ctx, params, conf, r.URL.String(), w, query, metricsCollector)
 	case "WPS":
 		params, err := utils.WPSParamsChecker(query, reWPSMap)
+		if _, hasId := query["identifier"]; hasId && r.Method == "POST" {
+			if params.Identifier != nil {
+				url := metricsCollector.Info.URL.RawURL
+				var sep string
+				if len(query) > 0 {
+					sep = "&"
+				} else {
+					sep = "?"
+				}
+				metricsCollector.Info.URL.RawURL = fmt.Sprintf("%s%sidentifier=%s", url, sep, *params.Identifier)
+			}
+		}
 		if err != nil {
 			metricsCollector.Info.HTTPStatus = 400
 			http.Error(w, fmt.Sprintf("Wrong WPS parameters on URL: %s", err), 400)
