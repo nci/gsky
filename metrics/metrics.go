@@ -60,6 +60,8 @@ type MetricsCollector struct {
 	logger Logger
 }
 
+var reservedQueryParams = map[string]bool{"bbox": true, "coverage": true, "crs": true, "dptol": true, "height": true, "identifier": true, "identitytol": true, "layer": true, "layers": true, "limit": true, "namespace": true, "nseg": true, "request": true, "service": true, "srs": true, "styles": true, "time": true, "until": true, "version": true, "width": true, "wkt": true}
+
 func NewMetricsCollector(logger Logger) *MetricsCollector {
 	return &MetricsCollector{
 		Info: &MetricsInfo{
@@ -136,6 +138,9 @@ func (i *MetricsInfo) normaliseURL(u *URLInfo) error {
 		u.Query = make(map[string]string)
 	}
 	for k, v := range query {
+		if _, found := reservedQueryParams[k]; !found {
+			continue
+		}
 		if len(v) == 1 {
 			u.Query[k] = v[0]
 		} else if len(v) > 1 {
