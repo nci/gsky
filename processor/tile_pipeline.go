@@ -108,6 +108,9 @@ func (dp *TilePipeline) Process(geoReq *GeoTileRequest, verbose bool) chan []uti
 			for iw, wgr := range weightedGeoReqs {
 				geoReq.StartTime = wgr.StartTime
 				geoReq.EndTime = wgr.EndTime
+				if isTimeWeighted {
+					geoReq.FusionUnscale = 1
+				}
 				rasters, err := dp.processDeps(geoReq, verbose)
 				if err != nil {
 					dp.Error <- err
@@ -208,6 +211,7 @@ func (dp *TilePipeline) processDeps(geoReq *GeoTileRequest, verbose bool) ([]*Fl
 		timestamp = time.Now().UTC()
 	}
 
+	var normRaster utils.Raster
 	for idx, reqCtx := range depLayers {
 		req := reqCtx.GeoReq
 		if len(reqCtx.Layer.EffectiveStartDate) > 0 && len(reqCtx.Layer.EffectiveEndDate) > 0 {
@@ -247,7 +251,7 @@ func (dp *TilePipeline) processDeps(geoReq *GeoTileRequest, verbose bool) ([]*Fl
 			timeDelta := time.Second * time.Duration(-idx)
 			hasScaleParams := !(req.ScaleParams.Offset == 0 && req.ScaleParams.Scale == 0 && req.ScaleParams.Clip == 0)
 			allFilled := true
-			if hasScaleParams {
+			if req.FusionUnscale == 0 && hasScaleParams {
 				scaleParams := utils.ScaleParams{Offset: req.ScaleParams.Offset,
 					Scale: req.ScaleParams.Scale,
 					Clip:  req.ScaleParams.Clip,
@@ -267,7 +271,7 @@ func (dp *TilePipeline) processDeps(geoReq *GeoTileRequest, verbose bool) ([]*Fl
 
 				for j := range norm {
 					norm[j].NoData = 0xFF
-					flex, filled := getFlexRaster(j, timestamp.Add(timeDelta), geoReq, norm[j])
+					flex, filled := getFlexRaster(j, timestamp.Add(timeDelta), geoReq, norm[j], nil)
 					rasters = append(rasters, flex)
 					if !filled {
 						allFilled = filled
@@ -275,7 +279,10 @@ func (dp *TilePipeline) processDeps(geoReq *GeoTileRequest, verbose bool) ([]*Fl
 				}
 			} else {
 				for j := range res {
-					flex, filled := getFlexRaster(j, timestamp.Add(timeDelta), geoReq, res[j])
+					if idx == 0 && j == 0 {
+						normRaster = res[0]
+					}
+					flex, filled := getFlexRaster(j, timestamp.Add(timeDelta), geoReq, res[j], normRaster)
 					rasters = append(rasters, flex)
 					if !filled {
 						allFilled = filled
@@ -305,7 +312,7 @@ func (dp *TilePipeline) processDeps(geoReq *GeoTileRequest, verbose bool) ([]*Fl
 	if len(rasters) == 0 {
 		for idx := 0; idx < len(geoReq.BandExpr.ExprNames); idx++ {
 			emptyRaster := &utils.ByteRaster{Data: make([]uint8, geoReq.Height*geoReq.Width), NoData: 0, Height: geoReq.Height, Width: geoReq.Width, NameSpace: utils.EmptyTileNS}
-			emptyFlex, _ := getFlexRaster(idx, timestamp, geoReq, emptyRaster)
+			emptyFlex, _ := getFlexRaster(idx, timestamp, geoReq, emptyRaster, nil)
 			rasters = append(rasters, emptyFlex)
 		}
 	}
@@ -433,6 +440,7 @@ func (dp *TilePipeline) prepareInputGeoRequests(geoReq *GeoTileRequest, depLayer
 			AxisMapping:         geoReq.AxisMapping,
 			MasQueryHint:        geoReq.MasQueryHint,
 			SRSCf:               geoReq.SRSCf,
+			FusionUnscale:       geoReq.FusionUnscale,
 			MetricsCollector:    geoReq.MetricsCollector,
 		},
 			Collection: styleLayer.DataSource,
@@ -462,11 +470,13 @@ func (dp *TilePipeline) prepareInputGeoRequests(geoReq *GeoTileRequest, depLayer
 	}
 }
 
-func getFlexRaster(idx int, timestamp time.Time, req *GeoTileRequest, raster utils.Raster) (*FlexRaster, bool) {
+func getFlexRaster(idx int, timestamp time.Time, req *GeoTileRequest, raster utils.Raster, normRaster utils.Raster) (*FlexRaster, bool) {
 	namespace := fmt.Sprintf(fusedBandName+"%d", idx)
 	flex := &FlexRaster{ConfigPayLoad: ConfigPayLoad{NameSpaces: req.ConfigPayLoad.NameSpaces}, NameSpace: namespace, TimeStamp: float64(timestamp.Unix()), Polygon: "dummy_polygon", Height: req.Height, Width: req.Width, DataHeight: req.Height, DataWidth: req.Width}
 
 	allFilled := true
+	var normNoData float64
+	normalise := false
 	switch t := raster.(type) {
 	case *utils.SignedByteRaster:
 		flex.Type = "SignedByte"
@@ -474,10 +484,21 @@ func getFlexRaster(idx int, timestamp time.Time, req *GeoTileRequest, raster uti
 		headr := *(*reflect.SliceHeader)(unsafe.Pointer(&t.Data))
 		flex.Data = *(*[]uint8)(unsafe.Pointer(&headr))
 		noData := int8(t.NoData)
+		if normRaster != nil {
+			normNoData = normRaster.(*utils.SignedByteRaster).NoData
+			if int8(normNoData) != noData {
+				normalise = true
+				flex.NoData = normNoData
+			}
+		}
 		for i := range t.Data {
 			if t.Data[i] == noData {
 				allFilled = false
-				break
+				if !normalise {
+					break
+				} else {
+					t.Data[i] = int8(normNoData)
+				}
 			}
 		}
 
@@ -486,10 +507,22 @@ func getFlexRaster(idx int, timestamp time.Time, req *GeoTileRequest, raster uti
 		flex.NoData = t.NoData
 		flex.Data = t.Data
 		noData := uint8(t.NoData)
+		if normRaster != nil {
+			normNoData = normRaster.(*utils.ByteRaster).NoData
+			if uint8(normNoData) != noData {
+				normalise = true
+				flex.NoData = normNoData
+			}
+		}
 		for i := range t.Data {
 			if t.Data[i] == noData {
 				allFilled = false
-				break
+				if !normalise {
+					break
+				} else {
+					t.Data[i] = uint8(normNoData)
+				}
+
 			}
 		}
 
@@ -501,10 +534,21 @@ func getFlexRaster(idx int, timestamp time.Time, req *GeoTileRequest, raster uti
 		headr.Cap *= SizeofInt16
 		flex.Data = *(*[]uint8)(unsafe.Pointer(&headr))
 		noData := int16(t.NoData)
+		if normRaster != nil {
+			normNoData = normRaster.(*utils.Int16Raster).NoData
+			if int16(normNoData) != noData {
+				normalise = true
+				flex.NoData = normNoData
+			}
+		}
 		for i := range t.Data {
 			if t.Data[i] == noData {
 				allFilled = false
-				break
+				if !normalise {
+					break
+				} else {
+					t.Data[i] = int16(normNoData)
+				}
 			}
 		}
 
@@ -516,10 +560,21 @@ func getFlexRaster(idx int, timestamp time.Time, req *GeoTileRequest, raster uti
 		headr.Cap *= SizeofUint16
 		flex.Data = *(*[]uint8)(unsafe.Pointer(&headr))
 		noData := uint16(t.NoData)
+		if normRaster != nil {
+			normNoData = normRaster.(*utils.UInt16Raster).NoData
+			if uint16(normNoData) != noData {
+				normalise = true
+				flex.NoData = normNoData
+			}
+		}
 		for i := range t.Data {
 			if t.Data[i] == noData {
 				allFilled = false
-				break
+				if !normalise {
+					break
+				} else {
+					t.Data[i] = uint16(normNoData)
+				}
 			}
 		}
 
@@ -531,10 +586,21 @@ func getFlexRaster(idx int, timestamp time.Time, req *GeoTileRequest, raster uti
 		headr.Cap *= SizeofFloat32
 		flex.Data = *(*[]uint8)(unsafe.Pointer(&headr))
 		noData := float32(t.NoData)
+		if normRaster != nil {
+			normNoData = normRaster.(*utils.Float32Raster).NoData
+			if float32(normNoData) != noData {
+				normalise = true
+				flex.NoData = normNoData
+			}
+		}
 		for i := range t.Data {
 			if t.Data[i] == noData {
 				allFilled = false
-				break
+				if !normalise {
+					break
+				} else {
+					t.Data[i] = float32(normNoData)
+				}
 			}
 		}
 

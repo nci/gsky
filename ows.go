@@ -698,6 +698,7 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 				GrpcTileYSize:       conf.Layers[idx].GrpcTileYSize,
 				MasQueryHint:        conf.Layers[idx].MasQueryHint,
 				SRSCf:               conf.Layers[idx].SRSCf,
+				FusionUnscale:       1,
 				MetricsCollector:    metricsCollector,
 			},
 				Collection: styleLayer.DataSource,

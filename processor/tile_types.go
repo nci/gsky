@@ -34,6 +34,7 @@ type ConfigPayLoad struct {
 	MasQueryHint          string
 	ReqRes                float64
 	SRSCf                 int
+	FusionUnscale         int
 	MetricsCollector      *metrics.MetricsCollector
 }
 
