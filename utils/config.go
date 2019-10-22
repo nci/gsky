@@ -484,7 +484,9 @@ func LoadAllConfigFiles(rootDir string, verbose bool) (map[string]*Config, error
 		if !info.IsDir() && info.Name() == "config.json" {
 			absPath, _ := filepath.Abs(path)
 			relPath, _ := filepath.Rel(rootDir, filepath.Dir(path))
-			log.Printf("Loading config file: %s under namespace: %s\n", absPath, relPath)
+			if verbose {
+				log.Printf("Loading config file: %s under namespace: %s\n", absPath, relPath)
+			}
 
 			config := &Config{}
 			e := config.LoadConfigFile(absPath, verbose)
@@ -1166,7 +1168,9 @@ func (config *Config) LoadConfigFile(configFile string, verbose bool) error {
 	}
 
 	if len(config.ServiceConfig.TempDir) > 0 {
-		log.Printf("Creating temp directory: %v", config.ServiceConfig.TempDir)
+		if verbose {
+			log.Printf("Creating temp directory: %v", config.ServiceConfig.TempDir)
+		}
 		err := os.MkdirAll(config.ServiceConfig.TempDir, os.ModePerm)
 		if err != nil {
 			return fmt.Errorf("error creating temp directory: %v", err)
