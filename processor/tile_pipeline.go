@@ -485,10 +485,12 @@ func getFlexRaster(idx int, timestamp time.Time, req *GeoTileRequest, raster uti
 		flex.Data = *(*[]uint8)(unsafe.Pointer(&headr))
 		noData := int8(t.NoData)
 		if normRaster != nil {
-			normNoData = normRaster.(*utils.SignedByteRaster).NoData
-			if int8(normNoData) != noData {
-				normalise = true
-				flex.NoData = normNoData
+			if r, ok := normRaster.(*utils.SignedByteRaster); ok {
+				normNoData = r.NoData
+				if int8(normNoData) != noData {
+					normalise = true
+					flex.NoData = normNoData
+				}
 			}
 		}
 		for i := range t.Data {
@@ -508,10 +510,12 @@ func getFlexRaster(idx int, timestamp time.Time, req *GeoTileRequest, raster uti
 		flex.Data = t.Data
 		noData := uint8(t.NoData)
 		if normRaster != nil {
-			normNoData = normRaster.(*utils.ByteRaster).NoData
-			if uint8(normNoData) != noData {
-				normalise = true
-				flex.NoData = normNoData
+			if r, ok := normRaster.(*utils.ByteRaster); ok {
+				normNoData = r.NoData
+				if uint8(normNoData) != noData {
+					normalise = true
+					flex.NoData = normNoData
+				}
 			}
 		}
 		for i := range t.Data {
@@ -535,10 +539,12 @@ func getFlexRaster(idx int, timestamp time.Time, req *GeoTileRequest, raster uti
 		flex.Data = *(*[]uint8)(unsafe.Pointer(&headr))
 		noData := int16(t.NoData)
 		if normRaster != nil {
-			normNoData = normRaster.(*utils.Int16Raster).NoData
-			if int16(normNoData) != noData {
-				normalise = true
-				flex.NoData = normNoData
+			if r, ok := normRaster.(*utils.Int16Raster); ok {
+				normNoData = r.NoData
+				if int16(normNoData) != noData {
+					normalise = true
+					flex.NoData = normNoData
+				}
 			}
 		}
 		for i := range t.Data {
@@ -561,10 +567,12 @@ func getFlexRaster(idx int, timestamp time.Time, req *GeoTileRequest, raster uti
 		flex.Data = *(*[]uint8)(unsafe.Pointer(&headr))
 		noData := uint16(t.NoData)
 		if normRaster != nil {
-			normNoData = normRaster.(*utils.UInt16Raster).NoData
-			if uint16(normNoData) != noData {
-				normalise = true
-				flex.NoData = normNoData
+			if r, ok := normRaster.(*utils.UInt16Raster); ok {
+				normNoData = r.NoData
+				if uint16(normNoData) != noData {
+					normalise = true
+					flex.NoData = normNoData
+				}
 			}
 		}
 		for i := range t.Data {
@@ -587,10 +595,12 @@ func getFlexRaster(idx int, timestamp time.Time, req *GeoTileRequest, raster uti
 		flex.Data = *(*[]uint8)(unsafe.Pointer(&headr))
 		noData := float32(t.NoData)
 		if normRaster != nil {
-			normNoData = normRaster.(*utils.Float32Raster).NoData
-			if float32(normNoData) != noData {
-				normalise = true
-				flex.NoData = normNoData
+			if r, ok := normRaster.(*utils.Float32Raster); ok {
+				normNoData = r.NoData
+				if float32(normNoData) != noData {
+					normalise = true
+					flex.NoData = normNoData
+				}
 			}
 		}
 		for i := range t.Data {
