@@ -57,8 +57,7 @@ func (dp *TilePipeline) Process(geoReq *GeoTileRequest, verbose bool) chan []uti
 	grpcTiler.In = i.Out
 	m.In = grpcTiler.Out
 
-	polyLimiter := NewConcLimiter(dp.PolygonShardConcLimit)
-	go m.Run(polyLimiter, geoReq.BandExpr, verbose)
+	go m.Run(geoReq.BandExpr, verbose)
 
 	varList := geoReq.BandExpr.VarList
 	if dp.CurrentLayer != nil && len(dp.CurrentLayer.InputLayers) > 0 {
@@ -124,7 +123,6 @@ func (dp *TilePipeline) Process(geoReq *GeoTileRequest, verbose bool) chan []uti
 					}
 				}
 
-				polyLimiter.Increase()
 				m.In <- rasters
 			}
 
@@ -142,7 +140,7 @@ func (dp *TilePipeline) Process(geoReq *GeoTileRequest, verbose bool) chan []uti
 	}()
 
 	go i.Run(verbose)
-	go grpcTiler.Run(polyLimiter, varList, verbose)
+	go grpcTiler.Run(varList, verbose)
 
 	return m.Out
 }
