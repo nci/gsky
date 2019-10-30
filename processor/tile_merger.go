@@ -444,7 +444,7 @@ func ComputeMask(mask *utils.Mask, data []byte, rType string) (out []bool, err e
 	return
 }
 
-func (enc *RasterMerger) Run(polyLimiter *ConcLimiter, bandExpr *utils.BandExpressions, verbose bool) {
+func (enc *RasterMerger) Run(bandExpr *utils.BandExpressions, verbose bool) {
 	if verbose {
 		defer log.Printf("tile merger done")
 	}
@@ -454,7 +454,6 @@ func (enc *RasterMerger) Run(polyLimiter *ConcLimiter, bandExpr *utils.BandExpre
 	for inRasters := range enc.In {
 		select {
 		case <-enc.Context.Done():
-			polyLimiter.Decrease()
 			return
 		default:
 		}
@@ -496,8 +495,6 @@ func (enc *RasterMerger) Run(polyLimiter *ConcLimiter, bandExpr *utils.BandExpre
 			}
 			canvasMap = tmpMap
 		}
-
-		polyLimiter.Decrease()
 	}
 
 	select {
