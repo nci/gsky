@@ -514,7 +514,7 @@ func (enc *RasterMerger) Run(bandExpr *utils.BandExpressions, verbose bool) {
 	}
 
 	if len(nameSpaces) == 0 {
-		enc.Out <- []utils.Raster{&utils.ByteRaster{Data: make([]uint8, 0), Height: 0, Width: 0}}
+		enc.Out <- []utils.Raster{&utils.ByteRaster{Data: make([]uint8, 0), NameSpace: utils.EmptyTileNS, Height: 0, Width: 0}}
 		return
 	}
 

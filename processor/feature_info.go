@@ -26,95 +26,103 @@ func GetFeatureInfo(ctx context.Context, params utils.WMSParams, conf *utils.Con
 
 	out := `"bands": {`
 
+	hasData := true
 	if len(ftInfo.Raster) == 1 {
 		if rs, ok := ftInfo.Raster[0].(*utils.ByteRaster); ok {
-			if rs.NameSpace == "ZoomOut" {
+			var msg string
+			switch rs.NameSpace {
+			case "ZoomOut":
+				msg = "zoom in to view"
+				hasData = false
+			case utils.EmptyTileNS:
+				msg = "n/a"
+				hasData = false
+			}
+
+			if !hasData {
 				for i, ns := range ftInfo.Namespaces {
-					out += fmt.Sprintf(`"%s":"zoom in to view"`, ns)
+					out += fmt.Sprintf(`"%s":"%s"`, ns, msg)
 					if i < len(ftInfo.Namespaces)-1 {
 						out += ","
 					}
 				}
 				out += `}`
-				return out, nil
-			}
-
-			if rs.NameSpace == utils.EmptyTileNS {
-				return "", fmt.Errorf("data unavailable")
 			}
 		}
 	}
 
-	width, height, _, err := utils.ValidateRasterSlice(ftInfo.Raster)
-	if err != nil {
-		return "", err
-	}
-
-	x := *params.X
-	y := *params.Y
-
-	offset := y*width + x
-	if offset >= width*height {
-		return "", fmt.Errorf("x or y out of bound")
-	}
-
-	for i, ns := range ftInfo.Namespaces {
-		r := ftInfo.Raster[i]
-		var valueStr string
-
-		switch t := r.(type) {
-		case *utils.SignedByteRaster:
-			noData := int8(t.NoData)
-			value := t.Data[offset]
-			if value == noData {
-				valueStr = `"n/a"`
-			} else {
-				valueStr = fmt.Sprintf("%v", value)
-			}
-
-		case *utils.ByteRaster:
-			noData := uint8(t.NoData)
-			value := t.Data[offset]
-			if value == noData {
-				valueStr = `"n/a"`
-			} else {
-				valueStr = fmt.Sprintf("%v", value)
-			}
-
-		case *utils.Int16Raster:
-			noData := int16(t.NoData)
-			value := t.Data[offset]
-			if value == noData {
-				valueStr = `"n/a"`
-			} else {
-				valueStr = fmt.Sprintf("%v", value)
-			}
-
-		case *utils.UInt16Raster:
-			noData := uint16(t.NoData)
-			value := t.Data[offset]
-			if value == noData {
-				valueStr = `"n/a"`
-			} else {
-				valueStr = fmt.Sprintf("%v", value)
-			}
-
-		case *utils.Float32Raster:
-			noData := float32(t.NoData)
-			value := t.Data[offset]
-			if value == noData {
-				valueStr = `"n/a"`
-			} else {
-				valueStr = fmt.Sprintf("%v", value)
-			}
+	if hasData {
+		width, height, _, err := utils.ValidateRasterSlice(ftInfo.Raster)
+		if err != nil {
+			return "", err
 		}
 
-		out += fmt.Sprintf(`"%s": %s`, ns, valueStr)
-		if i < len(ftInfo.Namespaces)-1 {
-			out += ","
+		x := *params.X
+		y := *params.Y
+
+		offset := y*width + x
+		if offset >= width*height {
+			return "", fmt.Errorf("x or y out of bound")
 		}
+
+		for i, ns := range ftInfo.Namespaces {
+			r := ftInfo.Raster[i]
+			var valueStr string
+
+			switch t := r.(type) {
+			case *utils.SignedByteRaster:
+				noData := int8(t.NoData)
+				value := t.Data[offset]
+				if value == noData {
+					valueStr = `"n/a"`
+				} else {
+					valueStr = fmt.Sprintf("%v", value)
+				}
+
+			case *utils.ByteRaster:
+				noData := uint8(t.NoData)
+				value := t.Data[offset]
+				if value == noData {
+					valueStr = `"n/a"`
+				} else {
+					valueStr = fmt.Sprintf("%v", value)
+				}
+
+			case *utils.Int16Raster:
+				noData := int16(t.NoData)
+				value := t.Data[offset]
+				if value == noData {
+					valueStr = `"n/a"`
+				} else {
+					valueStr = fmt.Sprintf("%v", value)
+				}
+
+			case *utils.UInt16Raster:
+				noData := uint16(t.NoData)
+				value := t.Data[offset]
+				if value == noData {
+					valueStr = `"n/a"`
+				} else {
+					valueStr = fmt.Sprintf("%v", value)
+				}
+
+			case *utils.Float32Raster:
+				noData := float32(t.NoData)
+				value := t.Data[offset]
+				if value == noData {
+					valueStr = `"n/a"`
+				} else {
+					valueStr = fmt.Sprintf("%v", value)
+				}
+			}
+
+			out += fmt.Sprintf(`"%s": %s`, ns, valueStr)
+			if i < len(ftInfo.Namespaces)-1 {
+				out += ","
+			}
+		}
+		out += `}`
 	}
-	out += `}`
 
 	if len(ftInfo.DsDates) > 0 {
 		out += `, "data_available_for_dates":[`

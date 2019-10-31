@@ -157,6 +157,7 @@ func (dp *TilePipeline) GetFileList(geoReq *GeoTileRequest, verbose bool) ([]*Ge
 
 		if hasFusedBand {
 			grans, err := dp.getDepFileList(geoReq, verbose)
+
 			if err != nil {
 				return nil, err
 			}
@@ -248,7 +249,7 @@ func (dp *TilePipeline) processDeps(geoReq *GeoTileRequest, verbose bool) ([]*Fl
 		case res := <-tp.Process(req, verbose):
 			timeDelta := time.Second * time.Duration(-idx)
 			hasScaleParams := !(req.ScaleParams.Offset == 0 && req.ScaleParams.Scale == 0 && req.ScaleParams.Clip == 0)
-			allFilled := true
+			allFilled := false
 			if req.FusionUnscale == 0 && hasScaleParams {
 				scaleParams := utils.ScaleParams{Offset: req.ScaleParams.Offset,
 					Scale: req.ScaleParams.Scale,
@@ -270,9 +271,11 @@ func (dp *TilePipeline) processDeps(geoReq *GeoTileRequest, verbose bool) ([]*Fl
 				for j := range norm {
 					norm[j].NoData = 0xFF
 					flex, filled := getFlexRaster(j, timestamp.Add(timeDelta), geoReq, norm[j], nil)
-					rasters = append(rasters, flex)
-					if !filled {
-						allFilled = filled
+					if flex != nil {
+						rasters = append(rasters, flex)
+						if !filled {
+							allFilled = filled
+						}
 					}
 				}
 			} else {
@@ -281,11 +284,12 @@ func (dp *TilePipeline) processDeps(geoReq *GeoTileRequest, verbose bool) ([]*Fl
 						normRaster = res[0]
 					}
 					flex, filled := getFlexRaster(j, timestamp.Add(timeDelta), geoReq, res[j], normRaster)
-					rasters = append(rasters, flex)
-					if !filled {
-						allFilled = filled
+					if flex != nil {
+						rasters = append(rasters, flex)
+						if !filled {
+							allFilled = filled
+						}
 					}
-
 				}
 			}
 
@@ -309,7 +313,7 @@ func (dp *TilePipeline) processDeps(geoReq *GeoTileRequest, verbose bool) ([]*Fl
 
 	if len(rasters) == 0 {
 		for idx := 0; idx < len(geoReq.BandExpr.ExprNames); idx++ {
-			emptyRaster := &utils.ByteRaster{Data: make([]uint8, geoReq.Height*geoReq.Width), NoData: 0, Height: geoReq.Height, Width: geoReq.Width, NameSpace: utils.EmptyTileNS}
+			emptyRaster := &utils.ByteRaster{Data: make([]uint8, geoReq.Height*geoReq.Width), NoData: 0, Height: geoReq.Height, Width: geoReq.Width, NameSpace: utils.EmptyTileNS + "_dummy"}
 			emptyFlex, _ := getFlexRaster(idx, timestamp, geoReq, emptyRaster, nil)
 			rasters = append(rasters, emptyFlex)
 		}
@@ -503,6 +507,9 @@ func getFlexRaster(idx int, timestamp time.Time, req *GeoTileRequest, raster uti
 		}
 
 	case *utils.ByteRaster:
+		if t.NameSpace == utils.EmptyTileNS {
+			return nil, false
+		}
 		flex.Type = "Byte"
 		flex.NoData = t.NoData
 		flex.Data = t.Data
