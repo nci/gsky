@@ -756,7 +756,7 @@ func (config *Config) processFusionColourPalette(i int, configMap map[string]*Co
 			layer := &configMap[refNameSpace].Layers[layerIdx]
 			layerBase := layer
 			if styleIdx >= 0 {
-				layer = &configMap[refLayer.NameSpace].Layers[layerIdx].Styles[styleIdx]
+				layer = &configMap[refNameSpace].Layers[layerIdx].Styles[styleIdx]
 			}
 
 			if hasBlendedService(layerBase) && layer.Palette == nil {
@@ -784,7 +784,7 @@ func (config *Config) processFusionColourPalette(i int, configMap map[string]*Co
 				layer := &configMap[refNameSpace].Layers[layerIdx]
 				layerBase := layer
 				if styleIdx >= 0 {
-					layer = &configMap[refLayer.NameSpace].Layers[layerIdx].Styles[styleIdx]
+					layer = &configMap[refNameSpace].Layers[layerIdx].Styles[styleIdx]
 				}
 
 				if hasBlendedService(layerBase) && layer.Palette == nil {
