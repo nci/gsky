@@ -30,6 +30,7 @@ func main() {
 	concLimit := DefaultConcLimit
 	approx := true
 	sentinel2Yaml := false
+	landsatYaml := false
 	var configFile string
 	ncMetadata := false
 
@@ -41,6 +42,7 @@ func main() {
 		flagSet.BoolVar(&sentinel2Yaml, "sentinel2_yaml", false, "Extract sentinel2 metadata from its yaml files")
 		flagSet.StringVar(&configFile, "conf", "", "Crawl config file")
 		flagSet.BoolVar(&ncMetadata, "nc_md", false, "Look for netCDF metadata")
+		flagSet.BoolVar(&landsatYaml, "landsat_yaml", false, "Extract landsat metadata from its yaml files")
 		flagSet.Parse(os.Args[2:])
 
 		approx = !exact
@@ -55,7 +57,9 @@ func main() {
 	var geoFile *extr.GeoFile
 	var err error
 	if sentinel2Yaml {
-		geoFile, err = extr.ExtractSentinel2Yaml(path)
+		geoFile, err = extr.ExtractYaml(path, "sentinel2")
+	} else if landsatYaml {
+		geoFile, err = extr.ExtractYaml(path, "landsat")
 	} else {
 		config := &extr.Config{}
 		if len(configFile) > 0 {
