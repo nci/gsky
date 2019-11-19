@@ -87,23 +87,8 @@ func ExtractSentinel2Yaml(filename string) (*GeoFile, error) {
 
 		Grid_spatial struct {
 			Projection struct {
-				Geo_ref_Points struct {
-					Ll struct {
-						X string
-						Y string
-					}
-					Lr struct {
-						X string
-						Y string
-					}
-					Ul struct {
-						X string
-						Y string
-					}
-					Ur struct {
-						X string
-						Y string
-					}
+				Valid_data struct {
+					Coordinates [][][]string
 				}
 				Spatial_reference string
 			}
@@ -144,6 +129,13 @@ func ExtractSentinel2Yaml(filename string) (*GeoFile, error) {
 
 	C.free(unsafe.Pointer(cSrs))
 
+	var points []string
+	for _, coord := range ard.Grid_spatial.Projection.Valid_data.Coordinates[0] {
+		point := fmt.Sprintf("%s %s", coord[0], coord[1])
+		points = append(points, point)
+	}
+	polygon := "POLYGON ((" + strings.Join(points, ",") + "))"
+
 	for ns, aband := range ard.Image.Bands {
 		ds := &GeoMetaData{
 			DataSetName:  filepath.Join(dsPath, aband.Path),
@@ -154,20 +146,9 @@ func ExtractSentinel2Yaml(filename string) (*GeoFile, error) {
 			XSize:        int32(aband.Info.Width),
 			YSize:        int32(aband.Info.Height),
 			GeoTransform: aband.Info.Geotransform,
-			Polygon: fmt.Sprintf("POLYGON ((%s %s,%s %s,%s %s,%s %s,%s %s))",
-				ard.Grid_spatial.Projection.Geo_ref_Points.Ul.X,
-				ard.Grid_spatial.Projection.Geo_ref_Points.Ul.Y,
-				ard.Grid_spatial.Projection.Geo_ref_Points.Ll.X,
-				ard.Grid_spatial.Projection.Geo_ref_Points.Ll.Y,
-				ard.Grid_spatial.Projection.Geo_ref_Points.Lr.X,
-				ard.Grid_spatial.Projection.Geo_ref_Points.Lr.Y,
-				ard.Grid_spatial.Projection.Geo_ref_Points.Ur.X,
-				ard.Grid_spatial.Projection.Geo_ref_Points.Ur.Y,
-				ard.Grid_spatial.Projection.Geo_ref_Points.Ul.X,
-				ard.Grid_spatial.Projection.Geo_ref_Points.Ul.Y),
-
-			ProjWKT: projWkt,
-			Proj4:   proj4,
+			Polygon:      polygon,
+			ProjWKT:      projWkt,
+			Proj4:        proj4,
 		}
 
 		geoFile.DataSets = append(geoFile.DataSets, ds)
@@ -217,7 +198,7 @@ func ExtractLandsatYaml(filename string) (*GeoFile, error) {
 			point := fmt.Sprintf("%f %f", x, y)
 			points = append(points, point)
 		}
-		geoMd.Polygon = "POLYGON ((" + strings.Join(points, ",") + " ))"
+		geoMd.Polygon = "POLYGON ((" + strings.Join(points, ",") + "))"
 	}
 
 	if propsRaw, ok := md["properties"]; ok {
