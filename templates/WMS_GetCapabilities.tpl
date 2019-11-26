@@ -117,6 +117,7 @@
 				</DataURL>
 				
 				{{ range $styleIdx, $style := $value.Styles }}
+					{{if .Visibility }}
 					<Style>
 						<Name>{{ .Name }}</Name>
 						<Title>{{ .Title }}</Title>
@@ -128,6 +129,7 @@
 						</LegendURL>
 						{{end}}
 					</Style>
+					{{end}}
 				{{end}}
 			</Layer>
 			{{end}}

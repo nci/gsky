@@ -395,6 +395,15 @@ func GetLayerIndex(params WMSParams, config *Config) (int, error) {
 func GetLayerStyleIndex(params WMSParams, config *Config, layerIdx int) (int, error) {
 	if params.Styles != nil {
 		style := strings.TrimSpace(params.Styles[0])
+		if !strings.HasPrefix(style, "__tw__") {
+			for _, axis := range params.Axes {
+				if axis.Name == WeightedTimeAxis {
+					style = "__tw__" + style
+					break
+				}
+			}
+		}
+
 		if len(style) == 0 {
 			if len(config.Layers[layerIdx].Styles) > 0 {
 				return 0, nil
