@@ -171,6 +171,7 @@ type Layer struct {
 	TimestampsLoadStrategy       string       `json:"timestamps_load_strategy"`
 	MasQueryHint                 string       `json:"mas_query_hint"`
 	SRSCf                        int          `json:"srs_cf"`
+	Visibility                   string       `json:"visibility"`
 }
 
 // Process contains all the details that a WPS needs
@@ -567,6 +568,10 @@ func LoadAllConfigFiles(rootDir string, verbose bool) (map[string]*Config, error
 
 					if config.Layers[i].Styles[j].ZoomLimit == 0.0 && config.Layers[i].ZoomLimit != 0.0 {
 						config.Layers[i].Styles[j].ZoomLimit = config.Layers[i].ZoomLimit
+					}
+
+					if !strings.HasPrefix(config.Layers[i].Styles[j].Name, "__") {
+						config.Layers[i].Styles[j].Visibility = "visible"
 					}
 				}
 			}
