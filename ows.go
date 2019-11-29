@@ -211,7 +211,22 @@ func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r
 			params.Time = currentTime
 		}
 
-		timeStr := fmt.Sprintf(`"time": "%s"`, (*params.Time).Format(utils.ISOFormat))
+		var times []string
+		for _, axis := range params.Axes {
+			if axis.Name == utils.WeightedTimeAxis {
+				for _, val := range axis.InValues {
+					t := time.Unix(int64(val), 0).UTC().Format(utils.ISOFormat)
+					times = append(times, fmt.Sprintf(`"%s"`, t))
+				}
+			}
+		}
+
+		var timeStr string
+		if len(times) > 0 {
+			timeStr = fmt.Sprintf(`"times": [%s]`, strings.Join(times, ","))
+		} else {
+			timeStr = fmt.Sprintf(`"time": "%s"`, (*params.Time).Format(utils.ISOFormat))
+		}
 
 		feat_info, err := proc.GetFeatureInfo(ctx, params, conf, configMap, *verbose, metricsCollector)
 		if err != nil {
