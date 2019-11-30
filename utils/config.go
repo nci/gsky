@@ -558,6 +558,14 @@ func LoadAllConfigFiles(rootDir string, verbose bool) (map[string]*Config, error
 						config.Layers[i].Styles[j].InputLayers = config.Layers[i].InputLayers
 					}
 
+					if len(config.Layers[i].Styles[j].InputLayers) > 0 {
+						for k := range config.Layers[i].Styles[j].InputLayers {
+							if len(config.Layers[i].Styles[j].InputLayers[k].Name) == 0 {
+								config.Layers[i].Styles[j].InputLayers[k].Name = config.Layers[i].Name
+							}
+						}
+					}
+
 					if len(config.Layers[i].Styles[j].DisableServices) == 0 && len(config.Layers[i].DisableServices) > 0 {
 						config.Layers[i].Styles[j].DisableServices = config.Layers[i].DisableServices
 					}
