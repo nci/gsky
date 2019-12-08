@@ -4,9 +4,11 @@ import (
 	"bufio"
 	"encoding/json"
 	"flag"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"os"
+	"strings"
 
 	extr "github.com/nci/gsky/crawl/extractor"
 	"github.com/nci/gsky/utils"
@@ -48,46 +50,72 @@ func main() {
 		approx = !exact
 	}
 
+	var err error
+	var pathList []string
 	if path == "-" {
 		scanner := bufio.NewScanner(os.Stdin)
-		scanner.Scan()
-		path = scanner.Text()
-	}
-
-	var geoFile *extr.GeoFile
-	var err error
-	if sentinel2Yaml {
-		geoFile, err = extr.ExtractYaml(path, "sentinel2")
-	} else if landsatYaml {
-		geoFile, err = extr.ExtractYaml(path, "landsat")
-	} else {
-		config := &extr.Config{}
-		if len(configFile) > 0 {
-			cfg, rErr := ioutil.ReadFile(configFile)
-			ensure(rErr)
-			err = utils.Unmarshal([]byte(cfg), config)
-			ensure(err)
-		} else {
-			if ncMetadata {
-				ruleSet := extr.RuleSet{
-					NcMetadata:    ncMetadata,
-					NameSpace:     extr.NSDataset,
-					SRSText:       extr.SRSDetect,
-					Proj4Text:     extr.Proj4Detect,
-					Pattern:       `.+`,
-					MatchFullPath: true,
-					TimeAxis:      &extr.DatasetAxis{},
-				}
-				config.RuleSets = append(config.RuleSets, ruleSet)
+		for scanner.Scan() {
+			file := scanner.Text()
+			file = strings.TrimSpace(file)
+			if len(file) == 0 {
+				continue
 			}
+			pathList = append(pathList, file)
 		}
-		geoFile, err = extr.ExtractGDALInfo(path, concLimit, approx, config)
+		err = scanner.Err()
+		ensure(err)
 	}
-	ensure(err)
 
-	out, err := json.Marshal(&geoFile)
-	ensure(err)
+	if len(pathList) == 0 {
+		ensure(fmt.Errorf("No files from STDIN"))
+	}
 
-	_, err = os.Stdout.Write(out)
-	ensure(err)
+	var cfg []byte
+	var iPath int
+	for iPath, path = range pathList {
+		var geoFile *extr.GeoFile
+		if sentinel2Yaml {
+			geoFile, err = extr.ExtractYaml(path, "sentinel2")
+		} else if landsatYaml {
+			geoFile, err = extr.ExtractYaml(path, "landsat")
+		} else {
+			config := &extr.Config{}
+			if len(configFile) > 0 {
+				if len(cfg) == 0 {
+					cfg, err = ioutil.ReadFile(configFile)
+					ensure(err)
+					err = utils.Unmarshal([]byte(cfg), config)
+					ensure(err)
+				}
+			} else {
+				if ncMetadata {
+					ruleSet := extr.RuleSet{
+						NcMetadata:    ncMetadata,
+						NameSpace:     extr.NSDataset,
+						SRSText:       extr.SRSDetect,
+						Proj4Text:     extr.Proj4Detect,
+						Pattern:       `.+`,
+						MatchFullPath: true,
+						TimeAxis:      &extr.DatasetAxis{},
+					}
+					config.RuleSets = append(config.RuleSets, ruleSet)
+				}
+			}
+			geoFile, err = extr.ExtractGDALInfo(path, concLimit, approx, config)
+		}
+		if err == nil {
+			out, err := json.Marshal(&geoFile)
+			ensure(err)
+
+			var rec string
+			if iPath < len(pathList)-1 {
+				rec = fmt.Sprintf("%s\n", string(out))
+			} else {
+				rec = fmt.Sprintf("%s", string(out))
+			}
+			fmt.Print(rec)
+		} else {
+			os.Stderr.Write([]byte(err.Error()))
+		}
+	}
 }
