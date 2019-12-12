@@ -35,6 +35,7 @@ func main() {
 	landsatYaml := false
 	var configFile string
 	ncMetadata := false
+	var outputFormat string
 
 	if len(os.Args) > 2 {
 		flagSet := flag.NewFlagSet("Usage", flag.ExitOnError)
@@ -45,9 +46,19 @@ func main() {
 		flagSet.StringVar(&configFile, "conf", "", "Crawl config file")
 		flagSet.BoolVar(&ncMetadata, "nc_md", false, "Look for netCDF metadata")
 		flagSet.BoolVar(&landsatYaml, "landsat_yaml", false, "Extract landsat metadata from its yaml files")
+		flagSet.StringVar(&outputFormat, "fmt", "raw", "Output format. Valid values include raw and tsv")
 		flagSet.Parse(os.Args[2:])
 
 		approx = !exact
+	}
+
+	outputFormat = strings.ToLower(strings.TrimSpace(outputFormat))
+	if len(outputFormat) == 0 {
+		outputFormat = "raw"
+	}
+
+	if outputFormat != "raw" && outputFormat != "tsv" {
+		log.Fatal("Valid output formats are raw and tsv")
 	}
 
 	var err error
@@ -107,11 +118,16 @@ func main() {
 			out, err := json.Marshal(&geoFile)
 			ensure(err)
 
+			outStr := string(out)
+			if outputFormat == "tsv" {
+				outStr = fmt.Sprintf("%s\tgdal\t%s", path, string(out))
+			}
+
 			var rec string
 			if iPath < len(pathList)-1 {
-				rec = fmt.Sprintf("%s\n", string(out))
+				rec = fmt.Sprintf("%s\n", outStr)
 			} else {
-				rec = fmt.Sprintf("%s", string(out))
+				rec = fmt.Sprintf("%s", outStr)
 			}
 			fmt.Print(rec)
 		} else {
