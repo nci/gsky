@@ -82,8 +82,7 @@ func main() {
 	}
 
 	var cfg []byte
-	var iPath int
-	for iPath, path = range pathList {
+	for _, path = range pathList {
 		var geoFile *extr.GeoFile
 		if sentinel2Yaml {
 			geoFile, err = extr.ExtractYaml(path, "sentinel2")
@@ -118,17 +117,11 @@ func main() {
 			out, err := json.Marshal(&geoFile)
 			ensure(err)
 
-			outStr := string(out)
+			rec := string(out)
 			if outputFormat == "tsv" {
-				outStr = fmt.Sprintf("%s\tgdal\t%s", path, string(out))
+				rec = fmt.Sprintf("%s\tgdal\t%s\n", path, string(out))
 			}
 
-			var rec string
-			if iPath < len(pathList)-1 {
-				rec = fmt.Sprintf("%s\n", outStr)
-			} else {
-				rec = fmt.Sprintf("%s", outStr)
-			}
 			fmt.Print(rec)
 		} else {
 			os.Stderr.Write([]byte(err.Error()))
