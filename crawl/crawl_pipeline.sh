@@ -47,25 +47,14 @@ fi
 
 crawl_file="$data_dir/${job_id}_gdal.tsv.gz"
 
+total_files=$(cat $file_list | wc -l)
+batch_size=$(echo "batch=${total_files}/${conc_limit}; if(batch<1){batch=1;}; if(batch>10){batch=10;}; batch;"|bc)
+
 echo "INFO: file list to crawl: $file_list"
 echo "INFO: crawl output file: $crawl_file"
+echo "INFO: crawl batch size: $batch_size"
 
-gdal_json() {
-	set -e
-	src_file="$1"
-	json=$($gsky_crawler $src_file $CRAWL_EXTRA_ARGS)
-	[[ -z "$json" ]] && exit 1
-	if [ -z "$CRAWL_RAW_RECORD" ]
-	then
-		echo -e "$src_file\tgdal\t$json"
-	else
-		echo -e "$json"
-	fi
-}
-
-export -f gdal_json
-export gsky_crawler=$gsky_crawler
 export GDAL_PAM_ENABLED=NO
 export GDAL_NETCDF_VERIFY_DIMS=NO
 
-cat $file_list | concurrent -i -l $conc_limit xargs bash -c 'gdal_json "$@"' _ | gzip > $crawl_file
+cat $file_list | concurrent -i -l $conc_limit -b $batch_size $gsky_crawler - -fmt tsv $CRAWL_EXTRA_ARGS | gzip > $crawl_file
