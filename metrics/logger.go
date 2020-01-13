@@ -1,7 +1,9 @@
 package metrics
 
 import (
+	"compress/gzip"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"log"
 	"os"
@@ -106,82 +108,109 @@ func (l *FileLogger) openLogFile(idx int) (*os.File, error) {
 }
 
 func (l *FileLogger) tryRotateLogFile(currFile *os.File, idx int) (*os.File, error) {
-	info, err := currFile.Stat()
-	if err != nil {
-		log.Printf("FileLogger%d: log rotation error: %v", idx, err)
+	var info os.FileInfo
+	var err error
+	if info, err = os.Stat(currFile.Name()); os.IsNotExist(err) {
+		newFile, fErr := l.openLogFile(idx)
+		if fErr != nil {
+			log.Printf("FileLogger%d: log open error: %v", idx, fErr)
+			return currFile, nil
+		}
+		currFile.Close()
+		return newFile, nil
+	}
+
+	if info.Size() < l.MaxLogFileSize {
 		return currFile, nil
 	}
 
-	if info.Size() >= l.MaxLogFileSize {
-		currLogFilePath := path.Join(l.LogDir, fmt.Sprintf(defaultLogFilePattern, idx))
-		var rotatedLogFilePath string
-		for i := 0; i < l.MaxLogFiles; i++ {
-			filePath := path.Join(l.LogDir, fmt.Sprintf(defaultLogFilePattern+".%d", idx, i))
-			if _, err := os.Stat(filePath); os.IsNotExist(err) {
-				rotatedLogFilePath = filePath
-				break
-			}
+	currLogFilePath := path.Join(l.LogDir, fmt.Sprintf(defaultLogFilePattern, idx))
+	var rotatedLogFilePath string
+	for i := 0; i < l.MaxLogFiles; i++ {
+		filePath := path.Join(l.LogDir, fmt.Sprintf(defaultLogFilePattern+".%d", idx, i))
+		if _, err := os.Stat(filePath + ".gz"); os.IsNotExist(err) {
+			rotatedLogFilePath = filePath
+			break
 		}
+	}
 
-		if len(rotatedLogFilePath) == 0 {
-			files, err := ioutil.ReadDir(l.LogDir)
-			if err != nil {
-				log.Printf("FileLogger%d: log rotation error: %v", idx, err)
-				return currFile, nil
-			}
-
-			var oldestFile os.FileInfo
-			oldestTime := time.Now()
-			for _, file := range files {
-				if !file.Mode().IsRegular() {
-					continue
-				}
-
-				fileName := filepath.Base(file.Name())
-				fn := strings.TrimSuffix(fileName, path.Ext(fileName))
-
-				if fn != fmt.Sprintf(defaultLogFilePattern, idx) {
-					continue
-				}
-
-				if file.ModTime().Before(oldestTime) {
-					oldestFile = file
-					oldestTime = file.ModTime()
-				}
-			}
-
-			if oldestFile != nil {
-				rotatedLogFilePath = path.Join(l.LogDir, oldestFile.Name())
-			} else {
-				rotatedLogFilePath = path.Join(l.LogDir, fmt.Sprintf(defaultLogFilePattern+".%d", idx, 0))
-			}
-
-			if l.Verbose {
-				log.Printf("FileLogger%d: maximum number of log files reached, overwriting %s", idx, rotatedLogFilePath)
-			}
-			err = os.Remove(rotatedLogFilePath)
-			if err != nil {
-				log.Printf("FileLogger%d log rotation error: %v", idx, err)
-				return currFile, nil
-			}
-		}
-
-		currFile.Close()
-		err := os.Rename(currLogFilePath, rotatedLogFilePath)
+	if len(rotatedLogFilePath) == 0 {
+		files, err := ioutil.ReadDir(l.LogDir)
 		if err != nil {
 			log.Printf("FileLogger%d: log rotation error: %v", idx, err)
 			return currFile, nil
 		}
 
+		var oldestFileName string
+		oldestTime := time.Now()
+		for _, file := range files {
+			if !file.Mode().IsRegular() {
+				continue
+			}
+
+			fileName := filepath.Base(file.Name())
+			baseFileName := strings.TrimSuffix(fileName, ".gz")
+			fn := strings.TrimSuffix(baseFileName, path.Ext(baseFileName))
+
+			if fn != fmt.Sprintf(defaultLogFilePattern, idx) {
+				continue
+			}
+
+			if file.ModTime().Before(oldestTime) {
+				oldestFileName = baseFileName
+				oldestTime = file.ModTime()
+			}
+		}
+
+		if len(oldestFileName) > 0 {
+			rotatedLogFilePath = path.Join(l.LogDir, oldestFileName)
+		} else {
+			rotatedLogFilePath = path.Join(l.LogDir, fmt.Sprintf(defaultLogFilePattern+".%d", idx, 0))
+		}
+
 		if l.Verbose {
-			log.Printf("FileLogger%d: log file rotated: %v", idx, rotatedLogFilePath)
+			log.Printf("FileLogger%d: maximum number of log files reached, overwriting %s", idx, rotatedLogFilePath)
+		}
+		err = os.Remove(rotatedLogFilePath + ".gz")
+		if err != nil {
+			log.Printf("FileLogger%d log rotation error: %v", idx, err)
+			return currFile, nil
 		}
 	}
 
-	f, err := l.openLogFile(idx)
+	currFile.Sync()
+	err = l.compressLogFile(currLogFilePath, rotatedLogFilePath)
 	if err != nil {
-		log.Printf("FileLogger%d: log rotation error: %v", idx, err)
+		log.Printf("FileLogger%d: log compression error: %v", idx, err)
+		return currFile, nil
 	}
 
-	return f, err
+	currFile.Truncate(0)
+	currFile.Seek(0, 0)
+
+	if l.Verbose {
+		log.Printf("FileLogger%d: log file rotated: %v", idx, rotatedLogFilePath)
+	}
+
+	return currFile, nil
+}
+
+func (l *FileLogger) compressLogFile(currLogFilePath string, rotatedLogFilePath string) error {
+	logFile, err := os.OpenFile(currLogFilePath, os.O_RDONLY, 0644)
+	if err != nil {
+		return err
+	}
+	defer logFile.Close()
+
+	compressedLogFilePath := rotatedLogFilePath + ".gz"
+	compressedLogFile, err := os.OpenFile(compressedLogFilePath, os.O_CREATE|os.O_RDWR, 0644)
+	if err != nil {
+		return err
+	}
+	zipWriter := gzip.NewWriter(compressedLogFile)
+
+	_, err = io.Copy(zipWriter, logFile)
+	zipWriter.Close()
+
+	return err
 }
