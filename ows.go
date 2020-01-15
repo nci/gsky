@@ -142,7 +142,7 @@ func init() {
 				}
 			}
 
-			maxLogFiles := 0
+			maxLogFiles := -1
 			if val, ok := os.LookupEnv("GSKY_MAX_LOG_FILES"); ok {
 				valInt, e := strconv.ParseInt(val, 10, 32)
 				if e == nil {
