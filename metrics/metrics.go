@@ -2,6 +2,7 @@ package metrics
 
 //#include "ogr_api.h"
 //#include "ogr_srs_api.h"
+//#include "cpl_conv.h"
 //#cgo pkg-config: gdal
 import "C"
 
@@ -190,12 +191,13 @@ func (i *MetricsInfo) normaliseGeometry() error {
 			var dstGeomWkt *C.char
 			C.OGR_G_ExportToWkt(geom, &dstGeomWkt)
 			i.Indexer.Geometry = C.GoString(dstGeomWkt)
-			C.free(unsafe.Pointer(dstGeomWkt))
+			C.CPLFree(unsafe.Pointer(dstGeomWkt))
 			i.Indexer.GeometryArea = float64(C.OGR_G_Area(geom))
 		} else {
 			return fmt.Errorf("Failed to transform geometry: %v", ret)
 		}
 
+		C.OCTDestroyCoordinateTransformation(trans)
 		C.OSRDestroySpatialReference(srcSRS)
 		C.OSRDestroySpatialReference(dstSRS)
 		C.OGR_G_DestroyGeometry(geom)
