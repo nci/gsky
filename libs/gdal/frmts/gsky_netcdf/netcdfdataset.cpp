@@ -7017,6 +7017,7 @@ GDALDataset *netCDFDataset::Open( GDALOpenInfo *poOpenInfo )
             int iBand = (int)band - 1;
             reqBands.push_back(iBand);
         }
+        CSLDestroy(psBands);
     }
 
     const char *srsCf = CSLFetchNameValue(poOpenInfo->papszOpenOptions, "srs_cf");
@@ -11280,7 +11281,6 @@ CPLErr netCDFDataset::CreateGrpVectorLayers( int nCdfId,
 static CPLErr NCDFGetCoordAndBoundVarFullNames( int nCdfId,
                                                 char ***ppapszVars )
 {
-    *ppapszVars = nullptr;
     int nVars = 0;
     NCDF_ERR(nc_inq( nCdfId, nullptr, &nVars, nullptr, nullptr));
 
