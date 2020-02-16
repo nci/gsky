@@ -56,10 +56,11 @@ func main() {
 	port := flag.Int("p", 6000, "gRPC server listening port.")
 	poolSize := flag.Int("n", runtime.NumCPU(), "Maximum number of requests handled concurrently.")
 	executable := flag.String("exec", filepath.Dir(os.Args[0])+"/gsky-gdal-process", "Executable filepath")
+	maxTaskProcessed := flag.Int("max_tasks", 20000, "Maximum number of tasks processed before starting gsky-gdal-process.")
 	debug := flag.Bool("debug", false, "verbose logging")
 	flag.Parse()
 
-	procPool, err := pp.CreateProcessPool(*poolSize, *executable, *port, *debug)
+	procPool, err := pp.CreateProcessPool(*poolSize, *executable, *port, *maxTaskProcessed, *debug)
 	if err != nil {
 		log.Printf("Failed to create process pool: %v", err)
 		os.Exit(2)

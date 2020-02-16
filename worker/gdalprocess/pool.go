@@ -3,14 +3,17 @@ package gdalprocess
 import (
 	"fmt"
 	"log"
+	"math/rand"
 )
 
 const DefaultQueueSizePerProcess = 200
 
 type ProcessPool struct {
-	Pool      []*Process
-	TaskQueue chan *Task
-	ErrorMsg  chan *ErrorMsg
+	Pool             []*Process
+	PoolSize         int
+	TaskQueue        chan *Task
+	MaxTaskProcessed int
+	ErrorMsg         chan *ErrorMsg
 }
 
 func (p *ProcessPool) AddQueue(task *Task) {
@@ -23,15 +26,16 @@ func (p *ProcessPool) AddQueue(task *Task) {
 
 func (p *ProcessPool) CreateProcess(executable string, port int, debug bool) (*Process, error) {
 
-	proc := NewProcess(p.TaskQueue, executable, port, p.ErrorMsg, debug)
+	randTasks := rand.Intn(p.PoolSize)
+	proc := NewProcess(p.TaskQueue, executable, port, p.ErrorMsg, p.MaxTaskProcessed+randTasks, debug)
 	err := proc.Start()
 
 	return proc, err
 }
 
-func CreateProcessPool(n int, executable string, port int, debug bool) (*ProcessPool, error) {
+func CreateProcessPool(n int, executable string, port int, maxTaskProcessed int, debug bool) (*ProcessPool, error) {
 
-	p := &ProcessPool{[]*Process{}, make(chan *Task, DefaultQueueSizePerProcess*n), make(chan *ErrorMsg)}
+	p := &ProcessPool{[]*Process{}, n, make(chan *Task, DefaultQueueSizePerProcess*n), maxTaskProcessed, make(chan *ErrorMsg)}
 
 	go func() {
 		for {

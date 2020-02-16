@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"syscall"
+	"time"
 
 	"bufio"
 	"bytes"
@@ -30,15 +31,16 @@ type Task struct {
 }
 
 type Process struct {
-	TaskQueue      chan *Task
-	Address        string
-	TempFile       string
-	Cmd            *exec.Cmd
-	CombinedOutput io.ReadCloser
-	ErrorMsg       chan *ErrorMsg
+	TaskQueue        chan *Task
+	Address          string
+	TempFile         string
+	Cmd              *exec.Cmd
+	CombinedOutput   io.ReadCloser
+	MaxTaskProcessed int
+	ErrorMsg         chan *ErrorMsg
 }
 
-func NewProcess(tQueue chan *Task, binary string, port int, errChan chan *ErrorMsg, debug bool) *Process {
+func NewProcess(tQueue chan *Task, binary string, port int, errChan chan *ErrorMsg, maxTaskProcessed int, debug bool) *Process {
 	debugArg := ""
 	if debug {
 		debugArg = "-debug"
@@ -65,7 +67,7 @@ func NewProcess(tQueue chan *Task, binary string, port int, errChan chan *ErrorM
 		cmd.Stdout = cmd.Stderr
 	}
 
-	return &Process{tQueue, addr, tmpFileName, cmd, combinedOutput, errChan}
+	return &Process{tQueue, addr, tmpFileName, cmd, combinedOutput, maxTaskProcessed, errChan}
 }
 
 func (p *Process) Start() error {
@@ -76,11 +78,30 @@ func (p *Process) Start() error {
 		return err
 	}
 
-	log.Println("Process running with PID", p.Cmd.Process.Pid)
+	log.Printf("Process running with PID:%d, Unix socket:%s, Max tasks:%d", p.Cmd.Process.Pid, p.Address, p.MaxTaskProcessed)
 
 	go func() {
 		defer p.RemoveTempFiles()
 
+		nTrial := 0
+		for {
+			conn, err := net.DialUnix("unix", nil, &net.UnixAddr{Name: p.Address, Net: "unix"})
+			if err == nil {
+				conn.Close()
+				break
+			}
+
+			time.Sleep(10 * time.Millisecond)
+			nTrial++
+
+			if nTrial >= 5000 {
+				syscall.Kill(p.Cmd.Process.Pid, syscall.SIGKILL)
+				p.ErrorMsg <- &ErrorMsg{p.Address, false, fmt.Errorf("Failed to dial to process: %s", p.Address)}
+				return
+			}
+		}
+
+		taskProcessed := 0
 		for task := range p.TaskQueue {
 			conn, err := net.DialUnix("unix", nil, &net.UnixAddr{Name: p.Address, Net: "unix"})
 			if err != nil {
@@ -122,6 +143,13 @@ func (p *Process) Start() error {
 			}
 
 			task.Resp <- out
+
+			taskProcessed++
+			if taskProcessed >= p.MaxTaskProcessed {
+				syscall.Kill(p.Cmd.Process.Pid, syscall.SIGKILL)
+				p.ErrorMsg <- &ErrorMsg{p.Address, false, fmt.Errorf("%d tasked processed, restarting process", taskProcessed)}
+				break
+			}
 		}
 	}()
 
