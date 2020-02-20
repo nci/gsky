@@ -175,7 +175,7 @@ create trigger ingested after insert on ingest
 
 -- All filesystem objects: directories, files, links
 drop table if exists paths cascade;
-create unlogged table paths (
+create table paths (
   pa_hash uuid not null primary key,
   pa_ingested timestamptz not null default now(),
   pa_type public.path_type default null,
@@ -204,7 +204,7 @@ create unlogged table tallies (
 drop table if exists metadata cascade;
 
 -- Raw crawler JSON blobs
-create unlogged table metadata (
+create table metadata (
   md_hash uuid not null,
   md_ingested timestamptz not null default now(),
   md_type text not null,
