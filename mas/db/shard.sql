@@ -424,43 +424,6 @@ create materialized view polygon_srids as
     from
       polygons;
 
--- Test table. Probably to go...
-drop view if exists geometries cascade;
-create view geometries as
-  select
-    po_hash
-      as go_hash,
-    po_name
-      as go_name,
-    po_min_stamp
-      as go_min_stamp,
-    po_max_stamp
-      as go_max_stamp,
-    po_pixel_x
-      as go_pixel_x,
-    po_pixel_y
-      as go_pixel_y,
-    auth_name
-      as go_auth_name,
-    auth_srid
-      as go_auth_srid,
-    public.ST_AsText(po_polygon)
-      as go_wkt,
-    srtext
-      as go_srtext,
-    proj4text
-      as go_proj4text
-  from
-    polygons,
-    lateral (
-      select
-        *
-      from
-        public.spatial_ref_sys
-      where
-        srid = public.ST_SRID(po_polygon)
-    ) a;
-
 -- Extracted NetCDF headers
 drop view if exists netcdf cascade;
 create view netcdf as
