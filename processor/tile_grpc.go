@@ -51,25 +51,42 @@ func (gi *GeoRasterGRPC) Run(varList []string, verbose bool) {
 	t0 := time.Now()
 
 	var grans []*GeoTileGranule
+	var nullGrans []*GeoTileGranule
 	availNamespaces := make(map[string]bool)
+	dedupGrans := make(map[string]bool)
 	i := 0
 	for gran := range gi.In {
-		if gran.Path == "NULL" {
-			gi.Out <- []*FlexRaster{&FlexRaster{ConfigPayLoad: gran.ConfigPayLoad, Data: make([]uint8, gran.Width*gran.Height), Height: gran.Height, Width: gran.Width, OffX: gran.OffX, OffY: gran.OffY, Type: gran.RasterType, NoData: 0.0, NameSpace: gran.NameSpace, TimeStamp: gran.TimeStamp, Polygon: gran.Polygon}}
-			continue
-		} else {
+		if gran.Path != "NULL" {
+			granKey := fmt.Sprintf("%s_%d", gran.Path, gran.BandIdx)
+			if _, hasGran := dedupGrans[granKey]; hasGran {
+				continue
+			}
+			dedupGrans[granKey] = true
+
 			grans = append(grans, gran)
 			if _, found := availNamespaces[gran.VarNameSpace]; !found {
 				availNamespaces[gran.VarNameSpace] = true
 			}
 
 			i++
+		} else {
+			if len(nullGrans) == 0 {
+				nullGrans = append(nullGrans, gran)
+			}
 		}
 	}
 
 	if len(grans) == 0 {
+		if len(nullGrans) > 0 {
+			gran := nullGrans[0]
+			gi.Out <- []*FlexRaster{&FlexRaster{ConfigPayLoad: gran.ConfigPayLoad, Data: make([]uint8, gran.Width*gran.Height), Height: gran.Height, Width: gran.Width, OffX: gran.OffX, OffY: gran.OffY, Type: gran.RasterType, NoData: 0.0, NameSpace: gran.NameSpace, TimeStamp: gran.TimeStamp, Polygon: gran.Polygon}}
+		}
 		return
 	}
+
+	if verbose {
+        	log.Printf("tile grpc: %v effective granules", len(grans))
+        }
 
 	for _, v := range varList {
 		if _, found := availNamespaces[v]; !found {

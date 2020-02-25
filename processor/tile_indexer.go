@@ -191,8 +191,46 @@ func (p *TileIndexer) Run(verbose bool) {
 				log.Println(url)
 			}
 
-			wg.Add(1)
-			go URLIndexGet(p.Context, url, geoReq, p.Error, p.Out, &wg, isEmptyTile, verbose)
+			width := 256
+			height := 256
+			maxXTileSize := int(float64(width) * 0.5)
+			maxYTileSize := int(float64(height) * 0.25)
+
+			clippedBBox := []float64{geoReq.BBox[0], geoReq.BBox[1], geoReq.BBox[2], geoReq.BBox[3]}
+			 //{"xmax": 17377140.0551869, "xmin": 12233937.1231954, "ymax": -1009094.81889849,
+ 			//"ymin": -5659594.7711626,
+			clippedBBox[0] = math.Max(clippedBBox[0], 12233937.1231954)
+			clippedBBox[1] = math.Max(clippedBBox[1], -5659594.7711626)
+
+			clippedBBox[2] = math.Min(clippedBBox[2], 17377140.0551869)
+			clippedBBox[3] = math.Min(clippedBBox[3], -1009094.81889849)
+
+			if clippedBBox[2] < clippedBBox[0] || clippedBBox[3] < clippedBBox[1] {
+				return
+			}
+
+			xRes := (clippedBBox[2] - clippedBBox[0]) / float64(geoReq.Width)
+			yRes := (clippedBBox[3] - clippedBBox[1]) / float64(geoReq.Height)
+
+			for y := 0; y < height; y += maxYTileSize {
+				for x := 0; x < width; x += maxXTileSize {
+					yMin := clippedBBox[1] + float64(y)*yRes
+					yMax := math.Min(clippedBBox[1]+float64(y+maxYTileSize)*yRes, clippedBBox[3])
+					xMin := clippedBBox[0] + float64(x)*xRes
+					xMax := math.Min(clippedBBox[0]+float64(x+maxXTileSize)*xRes, clippedBBox[2])
+
+					bbox := []float64{xMin, yMin, xMax, yMax}
+					bboxWkt = BBox2WKT(bbox)
+					url = p.getIndexerURL(geoReq, nameSpaces, bboxWkt)
+
+					wg.Add(1)
+					go URLIndexGet(p.Context, url, geoReq, p.Error, p.Out, &wg, isEmptyTile, verbose)
+				}
+			}
+
+			//wg.Add(1)
+			//go URLIndexGet(p.Context, url, geoReq, p.Error, p.Out, &wg, isEmptyTile, verbose)
+
 			if geoReq.Mask != nil {
 				maskCollection := geoReq.Mask.DataSource
 				if len(maskCollection) == 0 {
