@@ -85,8 +85,8 @@ func (gi *GeoRasterGRPC) Run(varList []string, verbose bool) {
 	}
 
 	if verbose {
-        	log.Printf("tile grpc: %v effective granules", len(grans))
-        }
+		log.Printf("tile grpc: %v effective granules", len(grans))
+	}
 
 	for _, v := range varList {
 		if _, found := availNamespaces[v]; !found {

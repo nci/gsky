@@ -167,6 +167,10 @@ type Layer struct {
 	WmsAxisMapping               int          `json:"wms_axis_mapping"`
 	GrpcTileXSize                float64      `json:"grpc_tile_x_size"`
 	GrpcTileYSize                float64      `json:"grpc_tile_y_size"`
+	IndexTileXSize               float64      `json:"index_tile_x_size"`
+	IndexTileYSize               float64      `json:"index_tile_y_size"`
+	SpatialExtent                []float64    `json:"spatial_extent"`
+	IndexResLimit                float64      `json:"index_res_limit"`
 	ColourScale                  int          `json:"colour_scale"`
 	TimestampsLoadStrategy       string       `json:"timestamps_load_strategy"`
 	MasQueryHint                 string       `json:"mas_query_hint"`
