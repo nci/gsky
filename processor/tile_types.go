@@ -31,6 +31,10 @@ type ConfigPayLoad struct {
 	AxisMapping           int
 	GrpcTileXSize         float64
 	GrpcTileYSize         float64
+	IndexTileXSize        float64
+	IndexTileYSize        float64
+	SpatialExtent         []float64
+	IndexResLimit         float64
 	MasQueryHint          string
 	ReqRes                float64
 	SRSCf                 int
