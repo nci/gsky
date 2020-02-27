@@ -74,7 +74,7 @@ func NewTileIndexer(ctx context.Context, apiAddr string, errChan chan error) *Ti
 	return &TileIndexer{
 		Context:    ctx,
 		In:         make(chan *GeoTileRequest, 100),
-		Out:        make(chan *GeoTileGranule, 100),
+		Out:        make(chan *GeoTileGranule, 8192),
 		Error:      errChan,
 		APIAddress: apiAddr,
 	}
