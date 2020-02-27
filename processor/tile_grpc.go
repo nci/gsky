@@ -50,88 +50,16 @@ func (gi *GeoRasterGRPC) Run(varList []string, verbose bool) {
 
 	t0 := time.Now()
 
+	var g0 *GeoTileGranule
 	var grans []*GeoTileGranule
 	var nullGrans []*GeoTileGranule
 	availNamespaces := make(map[string]bool)
 	dedupGrans := make(map[string]bool)
-	for gran := range gi.In {
-		if gran.Path != "NULL" {
-			granKey := fmt.Sprintf("%s_%d", gran.Path, gran.BandIdx)
-			dedupGrans[granKey] = true
-			availNamespaces[gran.VarNameSpace] = true
-			grans = append(grans, gran)
-
-			break
-		} else {
-			if len(nullGrans) == 0 {
-				nullGrans = append(nullGrans, gran)
-			}
-		}
-	}
-
-	if len(grans) == 0 {
-		if len(nullGrans) > 0 {
-			gran := nullGrans[0]
-			gi.Out <- []*FlexRaster{&FlexRaster{ConfigPayLoad: gran.ConfigPayLoad, Data: make([]uint8, gran.Width*gran.Height), Height: gran.Height, Width: gran.Width, OffX: gran.OffX, OffY: gran.OffY, Type: gran.RasterType, NoData: 0.0, NameSpace: gran.NameSpace, TimeStamp: gran.TimeStamp, Polygon: gran.Polygon}}
-		}
-		return
-	}
-
-	g0 := grans[0]
-	if g0.MetricsCollector != nil {
-		defer func() { g0.MetricsCollector.Info.RPC.Duration += time.Since(t0) }()
-	}
+	var connPool []*grpc.ClientConn
+	var projWKT string
+	var cLimiter *ConcLimiter
 
 	accumMetrics := &pb.WorkerMetrics{}
-	defer func() {
-		if g0.MetricsCollector != nil {
-			g0.MetricsCollector.Info.RPC.BytesRead += accumMetrics.BytesRead
-			g0.MetricsCollector.Info.RPC.UserTime += accumMetrics.UserTime
-			g0.MetricsCollector.Info.RPC.SysTime += accumMetrics.SysTime
-		}
-	}()
-
-	opts := []grpc.DialOption{
-		grpc.WithInsecure(),
-		grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(gi.MaxGrpcRecvMsgSize)),
-	}
-
-	clientIdx := make([]int, len(gi.Clients))
-	for ic := range clientIdx {
-		clientIdx[ic] = ic
-	}
-	rand.Shuffle(len(clientIdx), func(i, j int) { clientIdx[i], clientIdx[j] = clientIdx[j], clientIdx[i] })
-
-	var connPool []*grpc.ClientConn
-
-	effectivePoolSize := len(gi.Clients)
-	for i := 0; i < effectivePoolSize; i++ {
-		conn, err := grpc.Dial(gi.Clients[clientIdx[i]], opts...)
-		if err != nil {
-			log.Printf("gRPC connection problem: %v", err)
-			continue
-		}
-		defer conn.Close()
-
-		connPool = append(connPool, conn)
-	}
-
-	if len(connPool) == 0 {
-		gi.Error <- fmt.Errorf("All gRPC servers offline")
-		return
-	}
-
-	hSRS := C.OSRNewSpatialReference(nil)
-	defer C.OSRDestroySpatialReference(hSRS)
-	crsC := C.CString(g0.CRS)
-	defer C.free(unsafe.Pointer(crsC))
-	C.OSRSetFromUserInput(hSRS, crsC)
-	var projWKTC *C.char
-	defer C.free(unsafe.Pointer(projWKTC))
-	C.OSRExportToWkt(hSRS, &projWKTC)
-	projWKT := C.GoString(projWKTC)
-
-	cLimiter := NewConcLimiter(g0.GrpcConcLimit * len(connPool))
 
 	var outRasters []*FlexRaster
 	var outMetrics []*pb.WorkerMetrics
@@ -141,6 +69,9 @@ func (gi *GeoRasterGRPC) Run(varList []string, verbose bool) {
 	var wgRpc sync.WaitGroup
 	for inGran := range gi.In {
 		if inGran.Path == "NULL" {
+			if len(nullGrans) == 0 {
+				nullGrans = append(nullGrans, inGran)
+			}
 			continue
 		}
 
@@ -153,6 +84,62 @@ func (gi *GeoRasterGRPC) Run(varList []string, verbose bool) {
 
 		if _, found := availNamespaces[inGran.VarNameSpace]; !found {
 			availNamespaces[inGran.VarNameSpace] = true
+		}
+
+		if iGran == 0 {
+			g0 = grans[0]
+			if g0.MetricsCollector != nil {
+				defer func() { g0.MetricsCollector.Info.RPC.Duration += time.Since(t0) }()
+			}
+
+			defer func() {
+				if g0.MetricsCollector != nil {
+					g0.MetricsCollector.Info.RPC.BytesRead += accumMetrics.BytesRead
+					g0.MetricsCollector.Info.RPC.UserTime += accumMetrics.UserTime
+					g0.MetricsCollector.Info.RPC.SysTime += accumMetrics.SysTime
+				}
+			}()
+
+			opts := []grpc.DialOption{
+				grpc.WithInsecure(),
+				grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(gi.MaxGrpcRecvMsgSize)),
+			}
+
+			clientIdx := make([]int, len(gi.Clients))
+			for ic := range clientIdx {
+				clientIdx[ic] = ic
+			}
+			rand.Shuffle(len(clientIdx), func(i, j int) { clientIdx[i], clientIdx[j] = clientIdx[j], clientIdx[i] })
+
+			effectivePoolSize := len(gi.Clients)
+			for i := 0; i < effectivePoolSize; i++ {
+				conn, err := grpc.Dial(gi.Clients[clientIdx[i]], opts...)
+				if err != nil {
+					log.Printf("gRPC connection problem: %v", err)
+					continue
+				}
+				defer conn.Close()
+
+				connPool = append(connPool, conn)
+			}
+
+			if len(connPool) == 0 {
+				gi.Error <- fmt.Errorf("All gRPC servers offline")
+				return
+			}
+
+			hSRS := C.OSRNewSpatialReference(nil)
+			crsC := C.CString(g0.CRS)
+			C.OSRSetFromUserInput(hSRS, crsC)
+			var projWKTC *C.char
+			C.OSRExportToWkt(hSRS, &projWKTC)
+			projWKT = C.GoString(projWKTC)
+
+			C.free(unsafe.Pointer(projWKTC))
+			C.free(unsafe.Pointer(crsC))
+			C.OSRDestroySpatialReference(hSRS)
+
+			cLimiter = NewConcLimiter(g0.GrpcConcLimit * len(connPool))
 		}
 
 		if g0.GrpcTileXSize > 0.0 || g0.GrpcTileYSize > 0.0 {
@@ -246,21 +233,20 @@ func (gi *GeoRasterGRPC) Run(varList []string, verbose bool) {
 					outRasters[idx] = &FlexRaster{ConfigPayLoad: g.ConfigPayLoad, Data: r.Raster.Data, Height: rawHeight, Width: rawWidth, DataHeight: rHeight, DataWidth: rWidth, OffX: rOffX, OffY: rOffY, Type: r.Raster.RasterType, NoData: r.Raster.NoData, NameSpace: g.NameSpace, TimeStamp: g.TimeStamp, Polygon: g.Polygon}
 				}(gran, iGran)
 			}
-
 			iGran++
 		}
-
 		grans = nil
 	}
+	wgRpc.Wait()
 
-	for _, v := range varList {
-		if _, found := availNamespaces[v]; !found {
-			gi.sendError(fmt.Errorf("band '%v' not found", v))
-			return
+	if iGran == 0 {
+		if len(nullGrans) > 0 {
+			gran := nullGrans[0]
+			gi.Out <- []*FlexRaster{&FlexRaster{ConfigPayLoad: gran.ConfigPayLoad, Data: make([]uint8, gran.Width*gran.Height), Height: gran.Height, Width: gran.Width, OffX: gran.OffX, OffY: gran.OffY, Type: gran.RasterType, NoData: 0.0, NameSpace: gran.NameSpace, TimeStamp: gran.TimeStamp, Polygon: gran.Polygon}}
 		}
+		return
 	}
 
-	wgRpc.Wait()
 	for i := 0; i < len(outMetrics); i++ {
 		if outMetrics[i] != nil {
 			accumMetrics.BytesRead += outMetrics[i].BytesRead
@@ -275,6 +261,13 @@ func (gi *GeoRasterGRPC) Run(varList []string, verbose bool) {
 
 	if verbose {
 		log.Printf("tile grpc: %v effective granules", iGran)
+	}
+
+	for _, v := range varList {
+		if _, found := availNamespaces[v]; !found {
+			gi.sendError(fmt.Errorf("band '%v' not found", v))
+			return
+		}
 	}
 
 	select {
