@@ -341,9 +341,9 @@ create or replace function mas_intersect_polygons(
           path_unhash(po_hash)
         )
           as file
-      from (select distinct(po_hash) as po_hash from (%1$s) u) hashes
+      from (select distinct(po_hash) as po_hash from (%1$s) u %3$s) hashes
 
-      $f$, qstr, bbox
+      $f$, qstr, bbox, limit_str
     );
 
     return str;
