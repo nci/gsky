@@ -151,6 +151,9 @@ func (gi *GeoRasterGRPC) Run(varList []string, verbose bool) {
 			} else if g0.GrpcTileXSize < float64(g0.Width) {
 				maxXTileSize = int(g0.GrpcTileXSize)
 			}
+			if maxXTileSize <= 0 {
+				maxXTileSize = g0.Width
+			}
 
 			maxYTileSize := g0.Height
 			if g0.GrpcTileYSize <= 0.0 {
@@ -159,6 +162,9 @@ func (gi *GeoRasterGRPC) Run(varList []string, verbose bool) {
 				maxYTileSize = int(float64(g0.Height) * g0.GrpcTileYSize)
 			} else if g0.GrpcTileYSize < float64(g0.Height) {
 				maxYTileSize = int(g0.GrpcTileYSize)
+			}
+			if maxYTileSize <= 0 {
+				maxYTileSize = g0.Height
 			}
 
 			var tmpGrans []*GeoTileGranule
