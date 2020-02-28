@@ -12,7 +12,7 @@ discovery and delivery using OGC standards. The most recent release is
 License
 -------
 
-Copyright 2016 - 2019 Australian National University
+Copyright 2016 - 2020 Australian National University
 
 Licensed under the Apache License, Version 2.0 (the "License"); you
 may not use this package except in compliance with the License.  A
