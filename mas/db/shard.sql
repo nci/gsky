@@ -663,6 +663,3 @@ create or replace function refresh_caches()
     return true;
   end
 $$;
-
--- Add this schema to the public views, for cross-project search
-select public.refresh_views();
