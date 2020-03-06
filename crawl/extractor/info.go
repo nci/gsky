@@ -25,6 +25,7 @@ import "C"
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"log"
 	"math"
@@ -355,6 +356,24 @@ func getGeometryWKT(geot []float64, xSize, ySize int, ruleSet *RuleSet) string {
 	return fmt.Sprintf("POLYGON ((%f %f,%f %f,%f %f,%f %f,%f %f))", ulX, ulY, ulX, lrY, lrX, lrY, lrX, ulY, ulX, ulY)
 }
 
+func copyRuleSet(dst interface{}, src interface{}) error {
+	if dst == nil {
+		return fmt.Errorf("dst cannot be nil")
+	}
+	if src == nil {
+		return fmt.Errorf("src cannot be nil")
+	}
+	bytes, err := json.Marshal(src)
+	if err != nil {
+		return fmt.Errorf("Unable to marshal src: %s", err)
+	}
+	err = json.Unmarshal(bytes, dst)
+	if err != nil {
+		return fmt.Errorf("Unable to unmarshal into dst: %s", err)
+	}
+	return nil
+}
+
 func parseName(path string, config *Config) (*RuleSet, map[string]string, time.Time) {
 	_, basename := filepath.Split(path)
 
@@ -378,7 +397,9 @@ func parseName(path string, config *Config) (*RuleSet, map[string]string, time.T
 					result[name] = match[i]
 				}
 			}
-			return &ruleSet, result, parseTime(result)
+			newRuleSet := RuleSet{}
+			copyRuleSet(&newRuleSet, &ruleSet)
+			return &newRuleSet, result, parseTime(result)
 		}
 	}
 	return nil, nil, time.Time{}
