@@ -85,11 +85,16 @@ create or replace function public.ST_SplitDatelineWGS84(polygon geometry)
   end
 $$;
 
-create or replace function ST_TryTransform(polygon geometry, srid integer)
+create or replace function ST_TryTransform(polygon geometry, in_srid integer)
   returns geometry language plpgsql immutable as $$
 
+  declare
+
+    proj4txt    text;
+
   begin
-    return ST_Transform(polygon, srid);
+    proj4txt := (select proj4text from spatial_ref_sys where srid = in_srid limit 1);
+    return ST_SetSRID(ST_Transform(polygon, proj4txt), in_srid);
   exception
     when others then
       return null;
