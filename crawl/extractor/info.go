@@ -38,17 +38,14 @@ import (
 	"text/template"
 	"time"
 	"unsafe"
+
+	"github.com/nci/gsky/utils"
 )
 
 var LogErr *log.Logger
 
 func init() {
-	// By default, gdalinfo automatically saves an auxiliary xml file under the
-	// same folder of the data file. This is problematic for us as the data files
-	// we want to crawl are often owned by someone else.
-	C.CPLSetConfigOption(C.CString("GDAL_PAM_ENABLED"), C.CString("NO"))
-	C.GDALAllRegister()
-
+	utils.InitGdal()
 	LogErr = log.New(os.Stderr, "Crawler: ", log.Ldate|log.Ltime|log.Lshortfile)
 }
 
@@ -101,12 +98,39 @@ func ExtractGDALInfo(path string, concLimit int, approx bool, config *Config) (*
 		for i := C.int(1); i <= nsubds; i++ {
 			concPool <- 1
 			go func(ds []*GeoMetaData, isub int) {
-				defer wg.Done()
+				defer func() {
+					wg.Done()
+					<-concPool
+				}()
+
+				subDSDesc := C.CString(fmt.Sprintf("SUBDATASET_%d_DESC", isub))
+				pszSubdatasetDescC := C.CSLFetchNameValue(metadata, subDSDesc)
+				if pszSubdatasetDescC != nil {
+					pszSubdatasetDesc := C.GoString(pszSubdatasetDescC)
+					arrayStart := strings.Index(pszSubdatasetDesc, "[")
+					arrayEnd := strings.Index(pszSubdatasetDesc, "]")
+					if arrayStart >= 0 && arrayEnd > arrayStart {
+						dimDesc := pszSubdatasetDesc[arrayStart+1 : arrayEnd]
+						dims := strings.Split(dimDesc, "x")
+						if len(dims) >= 2 {
+							// GDAL netCDF driver does not support 1-pixel width/height therefore we check it here.
+							for i := 1; i <= 2; i++ {
+								if dim, err := strconv.ParseInt(dims[len(dims)-i], 10, 32); err == nil {
+									if dim == 1 {
+										return
+									}
+								}
+							}
+						} else {
+							return
+						}
+					}
+				}
+
 				subDSId := C.CString(fmt.Sprintf("SUBDATASET_%d_NAME", isub))
 				pszSubdatasetName := C.CSLFetchNameValue(metadata, subDSId)
 				dsInfo, err := getDataSetInfo(path, pszSubdatasetName, shortName, approx, config)
 
-				<-concPool
 				if err == nil {
 					ds[isub-1] = dsInfo
 				} else {
