@@ -75,6 +75,8 @@ func main() {
 		}
 		err = scanner.Err()
 		ensure(err)
+	} else {
+		pathList = append(pathList, path)
 	}
 
 	if len(pathList) == 0 {
