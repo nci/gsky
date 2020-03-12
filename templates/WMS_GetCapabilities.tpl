@@ -86,7 +86,7 @@
 				<northBoundLatitude>90.0</northBoundLatitude>
 			</EX_GeographicBoundingBox>
 			<BoundingBox CRS="CRS:84" minx="-180.0" miny="-90.0" maxx="180.0" maxy="90.0"/>
-			{{ range $index, $value := .Layers }}
+			{{ range $index, $layer := .Layers }}
 			<Layer queryable="1" opaque="0">
 				<Name>{{ .Name }}</Name>
 				<Title>{{ .Title }}</Title>
@@ -116,7 +116,7 @@
 					<OnlineResource xlink:type="simple" xlink:href="{{ .DataURL }}"/>
 				</DataURL>
 				
-				{{ range $styleIdx, $style := $value.Styles }}
+				{{ range $styleIdx, $style := $layer.Styles }}
 					{{if .Visibility }}
 					<Style>
 						<Name>{{ .Name }}</Name>
@@ -125,7 +125,7 @@
 						{{if .LegendPath }}
 						<LegendURL width="{{ .LegendWidth }}" height="{{ .LegendHeight }}">
 							<Format>image/png</Format>
-							<OnlineResource xlink:type="simple" xlink:href="http://{{ .OWSHostname }}/ows/{{ .NameSpace }}?service=WMS&amp;request=GetLegendGraphic&amp;version=1.3.0&amp;layers={{ $value.Name }}&amp;styles={{ .Name }}"/>
+							<OnlineResource xlink:type="simple" xlink:href="http://{{ $layer.OWSHostname }}/ows/{{ .NameSpace }}?service=WMS&amp;request=GetLegendGraphic&amp;version=1.3.0&amp;layers={{ $layer.Name }}&amp;styles={{ .Name }}"/>
 						</LegendURL>
 						{{end}}
 					</Style>

@@ -10,7 +10,7 @@ import (
 	"github.com/nci/gsky/utils"
 )
 
-func serveDap(ctx context.Context, conf *utils.Config, reqURL string, w http.ResponseWriter, query map[string][]string, metricsCollector *metrics.MetricsCollector) {
+func serveDap(ctx context.Context, conf *utils.Config, r *http.Request, w http.ResponseWriter, query map[string][]string, metricsCollector *metrics.MetricsCollector) {
 	ceStr := query["dap4.ce"][0]
 	ce, err := utils.ParseDap4ConstraintExpr(ceStr)
 	if err != nil {
@@ -32,7 +32,7 @@ func serveDap(ctx context.Context, conf *utils.Config, reqURL string, w http.Res
 		return
 	}
 
-	serveWCS(ctx, *wcsParams, conf, reqURL, w, query, metricsCollector)
+	serveWCS(ctx, *wcsParams, conf, r, w, query, metricsCollector)
 }
 
 func dapToWcs(ce *utils.DapConstraints, conf *utils.Config) (*utils.WCSParams, error) {

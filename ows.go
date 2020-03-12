@@ -157,13 +157,15 @@ func init() {
 	}
 }
 
-func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, reqURL string, w http.ResponseWriter, metricsCollector *metrics.MetricsCollector) {
+func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r *http.Request, w http.ResponseWriter, metricsCollector *metrics.MetricsCollector) {
 
 	if params.Request == nil {
 		metricsCollector.Info.HTTPStatus = 400
 		http.Error(w, "Malformed WMS, a Request field needs to be specified", 400)
 		return
 	}
+
+	reqURL := r.URL.String()
 
 	switch *params.Request {
 	case "GetCapabilities":
@@ -173,7 +175,7 @@ func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r
 			return
 		}
 
-		conf = conf.Copy()
+		conf = conf.Copy(r)
 		for iLayer := range conf.Layers {
 			conf.GetLayerDates(iLayer, *verbose)
 		}
@@ -563,11 +565,13 @@ func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r
 
 }
 
-func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, reqURL string, w http.ResponseWriter, query map[string][]string, metricsCollector *metrics.MetricsCollector) {
+func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r *http.Request, w http.ResponseWriter, query map[string][]string, metricsCollector *metrics.MetricsCollector) {
 	if params.Request == nil {
 		metricsCollector.Info.HTTPStatus = 400
 		http.Error(w, "Malformed WCS, a Request field needs to be specified", 400)
 	}
+
+	reqURL := r.URL.String()
 
 	switch *params.Request {
 	case "GetCapabilities":
@@ -577,10 +581,12 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 			return
 		}
 
-		newConf := conf.Copy()
+		newConf := conf.Copy(r)
 		for i := range newConf.Layers {
 			conf.GetLayerDates(i, *verbose)
-			newConf.Layers[i].Dates = []string{newConf.Layers[i].Dates[0], newConf.Layers[i].Dates[len(newConf.Layers[i].Dates)-1]}
+			if len(newConf.Layers[i].Dates) > 0 {
+				newConf.Layers[i].Dates = []string{newConf.Layers[i].Dates[0], newConf.Layers[i].Dates[len(newConf.Layers[i].Dates)-1]}
+			}
 		}
 
 		err := utils.ExecuteWriteTemplateFile(w, &newConf, utils.DataDir+"/templates/WCS_GetCapabilities.tpl")
@@ -1214,17 +1220,19 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 	}
 }
 
-func serveWPS(ctx context.Context, params utils.WPSParams, conf *utils.Config, reqURL string, w http.ResponseWriter, metricsCollector *metrics.MetricsCollector) {
-
+func serveWPS(ctx context.Context, params utils.WPSParams, conf *utils.Config, r *http.Request, w http.ResponseWriter, metricsCollector *metrics.MetricsCollector) {
 	if params.Request == nil {
 		metricsCollector.Info.HTTPStatus = 400
 		http.Error(w, "Malformed WPS, a Request field needs to be specified", 400)
 		return
 	}
 
+	reqURL := r.URL.String()
+
 	switch *params.Request {
 	case "GetCapabilities":
-		err := utils.ExecuteWriteTemplateFile(w, conf,
+		newConf := conf.Copy(r)
+		err := utils.ExecuteWriteTemplateFile(w, newConf,
 			utils.DataDir+"/templates/WPS_GetCapabilities.tpl")
 		if err != nil {
 			metricsCollector.Info.HTTPStatus = 500
@@ -1478,7 +1486,7 @@ func generalHandler(conf *utils.Config, w http.ResponseWriter, r *http.Request) 
 			http.Error(w, "Failed to parse dap4.ce", 400)
 			return
 		}
-		serveDap(ctx, conf, r.URL.String(), w, query, metricsCollector)
+		serveDap(ctx, conf, r, w, query, metricsCollector)
 		return
 	}
 
@@ -1516,7 +1524,7 @@ func generalHandler(conf *utils.Config, w http.ResponseWriter, r *http.Request) 
 			http.Error(w, fmt.Sprintf("Wrong WMS parameters on URL: %s", err), 400)
 			return
 		}
-		serveWMS(ctx, params, conf, r.URL.String(), w, metricsCollector)
+		serveWMS(ctx, params, conf, r, w, metricsCollector)
 	case "WCS":
 		params, err := utils.WCSParamsChecker(query, reWCSMap)
 		if err != nil {
@@ -1524,7 +1532,7 @@ func generalHandler(conf *utils.Config, w http.ResponseWriter, r *http.Request) 
 			http.Error(w, fmt.Sprintf("Wrong WCS parameters on URL: %s", err), 400)
 			return
 		}
-		serveWCS(ctx, params, conf, r.URL.String(), w, query, metricsCollector)
+		serveWCS(ctx, params, conf, r, w, query, metricsCollector)
 	case "WPS":
 		params, err := utils.WPSParamsChecker(query, reWPSMap)
 		if _, hasId := query["identifier"]; hasId && r.Method == "POST" {
@@ -1544,7 +1552,7 @@ func generalHandler(conf *utils.Config, w http.ResponseWriter, r *http.Request) 
 			http.Error(w, fmt.Sprintf("Wrong WPS parameters on URL: %s", err), 400)
 			return
 		}
-		serveWPS(ctx, params, conf, r.URL.String(), w, metricsCollector)
+		serveWPS(ctx, params, conf, r, w, metricsCollector)
 	default:
 		metricsCollector.Info.HTTPStatus = 400
 		http.Error(w, fmt.Sprintf("Not a valid OWS request. URL %s does not contain a valid 'request' parameter.", r.URL.String()), 400)
