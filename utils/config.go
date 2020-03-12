@@ -820,12 +820,17 @@ func (config *Config) processFusionColourPalette(i int, configMap map[string]*Co
 
 // CopyConfig makes a deep copy of the certain fields of the config object.
 // For the time being, we only copy the fields required for GetCapabilities.
-func (config *Config) Copy() *Config {
+func (config *Config) Copy(r *http.Request) *Config {
 	newConf := &Config{}
 	newConf.ServiceConfig = ServiceConfig{
 		OWSHostname: config.ServiceConfig.OWSHostname,
 		NameSpace:   config.ServiceConfig.NameSpace,
 		MASAddress:  config.ServiceConfig.MASAddress,
+	}
+
+	hasOWSHostname := len(strings.TrimSpace(config.ServiceConfig.OWSHostname)) > 0
+	if !hasOWSHostname {
+		newConf.ServiceConfig.OWSHostname = r.Host
 	}
 
 	newConf.Layers = make([]Layer, len(config.Layers))
@@ -839,6 +844,7 @@ func (config *Config) Copy() *Config {
 			Title:          layer.Title,
 			Abstract:       layer.Abstract,
 			NameSpace:      layer.NameSpace,
+			OWSHostname:    layer.OWSHostname,
 			Styles:         layer.Styles,
 			AxesInfo:       layer.AxesInfo,
 			StepDays:       layer.StepDays,
@@ -853,6 +859,14 @@ func (config *Config) Copy() *Config {
 			TimestampToken: layer.TimestampToken,
 			Dates:          layer.Dates,
 		}
+		if !hasOWSHostname {
+			newConf.Layers[i].OWSHostname = r.Host
+		}
+	}
+
+	newConf.Processes = make([]Process, len(config.Processes))
+	for i, proc := range config.Processes {
+		newConf.Processes[i] = proc
 	}
 
 	return newConf
