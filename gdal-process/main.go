@@ -58,29 +58,28 @@ func dataHandler(conn net.Conn, debug bool, timeout int) {
 	timeoutCtx, timeoutCancel := context.WithTimeout(context.Background(), time.Duration(timeout)*time.Second)
 
 	go func() {
-		switch in.Operation {
-		case "warp":
-			out = gp.WarpRaster(in, debug)
-		case "drill":
-			out = gp.DrillDataset(in)
-		case "extent":
-			out = gp.ComputeReprojectExtent(in)
-		case "info":
-			out = gp.ExtractGDALInfo(in)
-		default:
-			out.Error = fmt.Sprintf("Unknown operation: %s", in.Operation)
+		select {
+		case <-done:
+			timeoutCancel()
+		case <-timeoutCtx.Done():
+			log.Printf("%v timed out in %v seconds", in.Path, timeout)
+			os.Exit(2)
 		}
-
-		done <- true
 	}()
 
-	select {
-	case <-done:
-		timeoutCancel()
-	case <-timeoutCtx.Done():
-		log.Printf("%v timed out in %v seconds", in.Path, timeout)
-		os.Exit(2)
+	switch in.Operation {
+	case "warp":
+		out = gp.WarpRaster(in, debug)
+	case "drill":
+		out = gp.DrillDataset(in)
+	case "extent":
+		out = gp.ComputeReprojectExtent(in)
+	case "info":
+		out = gp.ExtractGDALInfo(in)
+	default:
+		out.Error = fmt.Sprintf("Unknown operation: %s", in.Operation)
 	}
+	done <- true
 
 	err = sendOutput(out, conn)
 	if err != nil {
