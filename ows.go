@@ -1391,6 +1391,8 @@ func serveWPS(ctx context.Context, params utils.WPSParams, conf *utils.Config, r
 				Collection:       dataSource.DataSource,
 				NameSpaces:       dataSource.RGBExpressions.VarList,
 				BandExpr:         dataSource.RGBExpressions,
+				Mask:             dataSource.Mask,
+				VRTURL:           dataSource.VRTURL,
 				StartTime:        startDateTime,
 				EndTime:          endDateTime,
 				ClipUpper:        clipUpper,

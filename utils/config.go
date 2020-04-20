@@ -70,11 +70,12 @@ type ServiceConfig struct {
 }
 
 type Mask struct {
-	ID         string   `json:"id"`
-	Value      string   `json:"value"`
-	DataSource string   `json:"data_source"`
-	Inclusive  bool     `json:"inclusive"`
-	BitTests   []string `json:"bit_tests"`
+	ID            string   `json:"id"`
+	Value         string   `json:"value"`
+	DataSource    string   `json:"data_source"`
+	Inclusive     bool     `json:"inclusive"`
+	BitTests      []string `json:"bit_tests"`
+	IDExpressions *BandExpressions
 }
 
 type Palette struct {
@@ -107,6 +108,7 @@ type Layer struct {
 	Title                        string   `json:"title"`
 	Abstract                     string   `json:"abstract"`
 	MetadataURL                  string   `json:"metadata_url"`
+	VRTURL                       string   `json:"vrt_url"`
 	DataURL                      string   `json:"data_url"`
 	Overviews                    []Layer  `json:"overviews"`
 	InputLayers                  []Layer  `json:"input_layers"`
@@ -1332,6 +1334,15 @@ func (config *Config) LoadConfigFile(configFile string, verbose bool) error {
 				return fmt.Errorf("Process %v, data source %v, RGBExpression parsing error: %v", proc.Identifier, ids, err)
 			}
 			config.Processes[i].DataSources[ids].RGBExpressions = bandExpr
+
+			if ds.Mask != nil {
+				maskBands := []string{ds.Mask.ID}
+				bandExpr, err := ParseBandExpressions(maskBands)
+				if err != nil {
+					return fmt.Errorf("Process %v, data source %v, IDExpression parsing error: %v", proc.Identifier, ids, err)
+				}
+				config.Processes[i].DataSources[ids].Mask.IDExpressions = bandExpr
+			}
 		}
 
 	}
