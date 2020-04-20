@@ -49,6 +49,18 @@ func DrillDataset(in *pb.GeoRPCGranule) *pb.Result {
 		return &pb.Result{Error: msg}
 	}
 
+	if len(in.VRT) > 0 {
+		vrtMgr, err := NewVRTManager([]byte(in.VRT))
+		if err != nil {
+			msg := fmt.Sprintf("VRT Manager error: %v", err)
+			log.Printf(msg)
+			return &pb.Result{Error: msg}
+		}
+		in.Path = vrtMgr.DSFileName
+
+		defer vrtMgr.Close()
+	}
+
 	cPath := C.CString(in.Path)
 	defer C.free(unsafe.Pointer(cPath))
 	ds := C.GDALOpen(cPath, C.GDAL_OF_READONLY)
