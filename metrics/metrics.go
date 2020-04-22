@@ -192,7 +192,11 @@ func (i *MetricsInfo) normaliseGeometry() error {
 			C.OGR_G_ExportToWkt(geom, &dstGeomWkt)
 			i.Indexer.Geometry = C.GoString(dstGeomWkt)
 			C.CPLFree(unsafe.Pointer(dstGeomWkt))
-			i.Indexer.GeometryArea = float64(C.OGR_G_Area(geom))
+			// surpress the warning message "OGR_G_Area() called against non-surface geometry type"
+			geomType := C.OGR_GT_Flatten(C.OGR_G_GetGeometryType(geom))
+			if C.OGR_GT_IsSurface(geomType) != 0 || C.OGR_GT_IsCurve(geomType) != 0 || C.OGR_GT_IsSubClassOf(geomType, C.wkbMultiSurface) != 0 || geomType == C.wkbGeometryCollection {
+				i.Indexer.GeometryArea = float64(C.OGR_G_Area(geom))
+			}
 		} else {
 			return fmt.Errorf("Failed to transform geometry: %v", ret)
 		}
@@ -201,7 +205,6 @@ func (i *MetricsInfo) normaliseGeometry() error {
 		C.OSRDestroySpatialReference(srcSRS)
 		C.OSRDestroySpatialReference(dstSRS)
 		C.OGR_G_DestroyGeometry(geom)
-
 	}
 	return nil
 }
