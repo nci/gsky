@@ -1,13 +1,11 @@
 package gdalprocess
 
-// #include "netcdf.h"
 // #include "gdal.h"
 // #include "gdal_alg.h"
 // #include "ogr_api.h"
 // #include "ogr_srs_api.h"
 // #include "cpl_string.h"
 // #cgo pkg-config: gdal
-// #cgo LDFLAGS: -lnetcdf
 import "C"
 
 import (
@@ -300,6 +298,7 @@ func createMask(ds C.GDALDatasetH, g C.OGRGeometryH, offsetX, offsetY, countX, c
 	}
 
 	ic := C.OGR_G_Clone(g)
+	defer C.OGR_G_DestroyGeometry(ic)
 
 	geomBurnValue := C.double(255)
 	panBandList := []C.int{C.int(1)}
@@ -360,6 +359,8 @@ func getDrillFileDescriptor(ds C.GDALDatasetH, g C.OGRGeometryH) DrillFileDescri
 		gCopy = C.OGR_G_Clone(g)
 	}
 
+	defer C.OGR_G_DestroyGeometry(gCopy)
+
 	if C.GoString(C.GDALGetProjectionRef(ds)) != "" {
 		desSRS := C.OSRNewSpatialReference(C.GDALGetProjectionRef(ds))
 		defer C.OSRDestroySpatialReference(desSRS)
@@ -368,14 +369,14 @@ func getDrillFileDescriptor(ds C.GDALDatasetH, g C.OGRGeometryH) DrillFileDescri
 		C.OSRSetAxisMappingStrategy(srcSRS, C.OAMS_TRADITIONAL_GIS_ORDER)
 		trans := C.OCTNewCoordinateTransformation(srcSRS, desSRS)
 		C.OGR_G_Transform(gCopy, trans)
+		C.OCTDestroyCoordinateTransformation(trans)
 	}
 
 	fileEnv := envelopePolygon(ds)
-	var fileWkt *C.char
-	C.OGR_G_ExportToWkt(fileEnv, &fileWkt)
+	defer C.OGR_G_DestroyGeometry(fileEnv)
+
 	inters := C.OGR_G_Intersection(gCopy, fileEnv)
-	var intersWkt *C.char
-	C.OGR_G_ExportToWkt(inters, &intersWkt)
+	defer C.OGR_G_DestroyGeometry(inters)
 
 	var env C.OGREnvelope
 	C.OGR_G_GetEnvelope(inters, &env)
