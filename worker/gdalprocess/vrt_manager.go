@@ -21,8 +21,8 @@ import (
 
 type VRTDataset struct {
 	XMLName        xml.Name         `xml:"VRTDataset"`
-	RasterXSize    int              `xml:"rasterXSize,attr"`
-	RasterYSize    int              `xml:"rasterYSize,attr"`
+	RasterXSize    float64          `xml:"rasterXSize,attr"`
+	RasterYSize    float64          `xml:"rasterYSize,attr"`
 	SRS            string           `xml:"SRS"`
 	GeoTransform   string           `xml:"GeoTransform"`
 	VRTRasterBands []*VRTRasterBand `xml:"VRTRasterBand"`
@@ -66,7 +66,10 @@ func NewVRTManager(vrt []byte) (*VRTManager, error) {
 
 	newVRT := vrt
 	foundMDTemplate := false
-	for _, band := range vrtDS.VRTRasterBands {
+	for ib, band := range vrtDS.VRTRasterBands {
+		if band.Band <= 0 {
+			band.Band = ib + 1
+		}
 		for _, source := range band.SimpleSources {
 			if source.MetadataTemplate == 1 {
 				pathC := C.CString(source.SourceFileName)
@@ -76,23 +79,58 @@ func NewVRTManager(vrt []byte) (*VRTManager, error) {
 					return nil, fmt.Errorf("GDAL could not open dataset: %s", source.SourceFileName)
 				}
 
-				projRefC := C.GDALGetProjectionRef(ds)
-				vrtDS.SRS = C.GoString(projRefC)
-				if len(vrtDS.SRS) == 0 {
-					vrtDS.SRS = "GEOGCS[\"WGS 84\",DATUM[\"WGS_1984\",SPHEROID[\"WGS 84\",6378137,298.257223563,AUTHORITY[\"EPSG\",\"7030\"]],TOWGS84[0,0,0,0,0,0,0],AUTHORITY[\"EPSG\",\"6326\"]],PRIMEM[\"Greenwich\",0,AUTHORITY[\"EPSG\",\"8901\"]],UNIT[\"degree\",0.0174532925199433,AUTHORITY[\"EPSG\",\"9108\"]],AUTHORITY[\"EPSG\",\"4326\"]]\",\"proj4\":\"+proj=longlat +ellps=WGS84 +towgs84=0,0,0,0,0,0,0 +no_defs \""
+				if len(strings.TrimSpace(vrtDS.SRS)) == 0 {
+					projRefC := C.GDALGetProjectionRef(ds)
+					vrtDS.SRS = C.GoString(projRefC)
+					if len(vrtDS.SRS) == 0 {
+						vrtDS.SRS = "GEOGCS[\"WGS 84\",DATUM[\"WGS_1984\",SPHEROID[\"WGS 84\",6378137,298.257223563,AUTHORITY[\"EPSG\",\"7030\"]],TOWGS84[0,0,0,0,0,0,0],AUTHORITY[\"EPSG\",\"6326\"]],PRIMEM[\"Greenwich\",0,AUTHORITY[\"EPSG\",\"8901\"]],UNIT[\"degree\",0.0174532925199433,AUTHORITY[\"EPSG\",\"9108\"]],AUTHORITY[\"EPSG\",\"4326\"]]\",\"proj4\":\"+proj=longlat +ellps=WGS84 +towgs84=0,0,0,0,0,0,0 +no_defs \""
+					}
 				}
 
-				vrtDS.RasterXSize = int(C.GDALGetRasterXSize(ds))
-				vrtDS.RasterYSize = int(C.GDALGetRasterYSize(ds))
+				xSize := float64(C.GDALGetRasterXSize(ds))
+				ySize := float64(C.GDALGetRasterYSize(ds))
 
-				var geot [6]float64
-				C.GDALGetGeoTransform(ds, (*C.double)(&geot[0]))
+				if vrtDS.RasterXSize <= 0 && vrtDS.RasterYSize <= 0 {
+					vrtDS.RasterXSize = xSize
+					vrtDS.RasterYSize = ySize
+				} else {
+					if vrtDS.RasterXSize > 0 && vrtDS.RasterXSize < 1 {
+						vrtDS.RasterXSize = float64(int(xSize*vrtDS.RasterXSize + 0.5))
+					}
 
-				var geotStr []string
-				for _, v := range geot {
-					geotStr = append(geotStr, fmt.Sprintf("%.5f", v))
+					if vrtDS.RasterYSize > 0 && vrtDS.RasterYSize < 1 {
+						vrtDS.RasterYSize = float64(int(ySize*vrtDS.RasterYSize + 0.5))
+					}
+
+					if vrtDS.RasterXSize <= 0 && vrtDS.RasterYSize > 0 {
+						vrtDS.RasterXSize = float64(int(float64(vrtDS.RasterYSize)*xSize/ySize + 0.5))
+					} else if vrtDS.RasterXSize > 0 && vrtDS.RasterYSize <= 0 {
+						vrtDS.RasterYSize = float64(int(float64(vrtDS.RasterXSize)*ySize/xSize + 0.5))
+					}
 				}
-				vrtDS.GeoTransform = strings.Join(geotStr, ",")
+
+				if vrtDS.RasterXSize < 1 {
+					vrtDS.RasterXSize = 1
+				} else if vrtDS.RasterXSize > xSize {
+					vrtDS.RasterXSize = xSize
+				}
+
+				if vrtDS.RasterYSize < 1 {
+					vrtDS.RasterYSize = 1
+				} else if vrtDS.RasterYSize > ySize {
+					vrtDS.RasterYSize = ySize
+				}
+
+				if len(strings.TrimSpace(vrtDS.GeoTransform)) == 0 {
+					var geot [6]float64
+					C.GDALGetGeoTransform(ds, (*C.double)(&geot[0]))
+
+					var geotStr []string
+					for _, v := range geot {
+						geotStr = append(geotStr, fmt.Sprintf("%.5f", v))
+					}
+					vrtDS.GeoTransform = strings.Join(geotStr, ",")
+				}
 
 				hBand := C.GDALGetRasterBand(ds, 1)
 				band.NoDataValue = float64(C.GDALGetRasterNoDataValue(hBand, nil))
