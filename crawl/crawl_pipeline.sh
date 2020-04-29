@@ -56,5 +56,6 @@ echo "INFO: crawl batch size: $batch_size"
 
 export GDAL_PAM_ENABLED=NO
 export GDAL_NETCDF_VERIFY_DIMS=NO
+CRAWL_EXTRA_ARGS=${CRAWL_EXTRA_ARGS:-''}
 
 cat $file_list | concurrent -i -l $conc_limit -b $batch_size $gsky_crawler - -fmt tsv $CRAWL_EXTRA_ARGS | gzip > $crawl_file
