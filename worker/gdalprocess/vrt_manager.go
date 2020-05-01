@@ -125,6 +125,14 @@ func NewVRTManager(vrt []byte) (*VRTManager, error) {
 					var geot [6]float64
 					C.GDALGetGeoTransform(ds, (*C.double)(&geot[0]))
 
+					if vrtDS.RasterXSize < xSize {
+						geot[1] *= xSize / vrtDS.RasterXSize
+					}
+
+					if vrtDS.RasterYSize < ySize {
+						geot[5] *= ySize / vrtDS.RasterYSize
+					}
+
 					var geotStr []string
 					for _, v := range geot {
 						geotStr = append(geotStr, fmt.Sprintf("%.5f", v))
