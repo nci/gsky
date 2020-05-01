@@ -161,7 +161,7 @@ func (p *TileIndexer) Run(verbose bool) {
 			if geoReq.MasQueryHint != "non_spatial" {
 				bboxWkt = BBox2WKT(geoReq.BBox)
 			}
-			url = p.getIndexerURL(geoReq, nameSpaces, bboxWkt)
+			url = p.getIndexerURL(geoReq, nameSpaces, bboxWkt, geoReq.CRS)
 			if isInit {
 				if geoReq.MetricsCollector != nil {
 					defer func() { geoReq.MetricsCollector.Info.Indexer.Duration += time.Since(t0) }()
@@ -171,7 +171,7 @@ func (p *TileIndexer) Run(verbose bool) {
 					if len(geoReq.MetricsCollector.Info.Indexer.URL.RawURL) == 0 {
 						if len(geoReq.OrigBBox) > 0 {
 							origBboxWkt = BBox2WKT(geoReq.OrigBBox)
-							origURL = p.getIndexerURL(geoReq, nameSpaces, origBboxWkt)
+							origURL = p.getIndexerURL(geoReq, nameSpaces, origBboxWkt, geoReq.CRS)
 						}
 						geoReq.MetricsCollector.Info.Indexer.URL.RawURL = origURL
 					}
@@ -191,52 +191,70 @@ func (p *TileIndexer) Run(verbose bool) {
 				log.Println(url)
 			}
 
-			resWidth := 256
-			resHeight := 256
-			maxXTileSize := int(float64(resWidth) * geoReq.IndexTileXSize)
-			if maxXTileSize <= 0 {
-				maxXTileSize = resWidth
-			}
+			hasSubDivision := false
+			var clippedBBox []float64
+			var err error
 
-			maxYTileSize := int(float64(resHeight) * geoReq.IndexTileYSize)
-			if maxYTileSize <= 0 {
-				maxYTileSize = resHeight
-			}
-
-			clippedBBox := []float64{geoReq.BBox[0], geoReq.BBox[1], geoReq.BBox[2], geoReq.BBox[3]}
 			if len(geoReq.SpatialExtent) >= 4 {
-				clippedBBox[0] = math.Max(clippedBBox[0], geoReq.SpatialExtent[0])
-				clippedBBox[1] = math.Max(clippedBBox[1], geoReq.SpatialExtent[1])
+				clippedBBox, err = utils.GetCanonicalBbox(geoReq.CRS, geoReq.BBox)
+				if err == nil {
+					clippedBBox[0] = math.Max(clippedBBox[0], geoReq.SpatialExtent[0])
+					clippedBBox[1] = math.Max(clippedBBox[1], geoReq.SpatialExtent[1])
 
-				clippedBBox[2] = math.Min(clippedBBox[2], geoReq.SpatialExtent[2])
-				clippedBBox[3] = math.Min(clippedBBox[3], geoReq.SpatialExtent[3])
-			}
+					clippedBBox[2] = math.Min(clippedBBox[2], geoReq.SpatialExtent[2])
+					clippedBBox[3] = math.Min(clippedBBox[3], geoReq.SpatialExtent[3])
 
-			if clippedBBox[2] < clippedBBox[0] || clippedBBox[3] < clippedBBox[1] {
-				p.Out <- &GeoTileGranule{ConfigPayLoad: ConfigPayLoad{NameSpaces: []string{utils.EmptyTileNS}, ScaleParams: geoReq.ScaleParams, Palette: geoReq.Palette}, Path: "NULL", NameSpace: utils.EmptyTileNS, RasterType: "Byte", TimeStamp: 0, BBox: geoReq.BBox, Height: geoReq.Height, Width: geoReq.Width, OffX: geoReq.OffX, OffY: geoReq.OffY, CRS: geoReq.CRS}
-				return
-			}
-
-			xRes := (clippedBBox[2] - clippedBBox[0]) / float64(resWidth)
-			yRes := (clippedBBox[3] - clippedBBox[1]) / float64(resHeight)
-			reqRes := math.Max(xRes, yRes)
-			if geoReq.QueryLimit <= 0 && reqRes > geoReq.IndexResLimit {
-				for y := 0; y < resHeight; y += maxYTileSize {
-					for x := 0; x < resWidth; x += maxXTileSize {
-						yMin := clippedBBox[1] + float64(y)*yRes
-						yMax := math.Min(clippedBBox[1]+float64(y+maxYTileSize)*yRes, clippedBBox[3])
-						xMin := clippedBBox[0] + float64(x)*xRes
-						xMax := math.Min(clippedBBox[0]+float64(x+maxXTileSize)*xRes, clippedBBox[2])
-
-						bbox := []float64{xMin, yMin, xMax, yMax}
-						bboxWkt = BBox2WKT(bbox)
-						url = p.getIndexerURL(geoReq, nameSpaces, bboxWkt)
-
-						wg.Add(1)
-						go URLIndexGet(p.Context, url, geoReq, p.Error, p.Out, &wg, isEmptyTile, verbose)
+					if clippedBBox[2] < clippedBBox[0] || clippedBBox[3] < clippedBBox[1] {
+						p.Out <- &GeoTileGranule{ConfigPayLoad: ConfigPayLoad{NameSpaces: []string{utils.EmptyTileNS}, ScaleParams: geoReq.ScaleParams, Palette: geoReq.Palette}, Path: "NULL", NameSpace: utils.EmptyTileNS, RasterType: "Byte", TimeStamp: 0, BBox: geoReq.BBox, Height: geoReq.Height, Width: geoReq.Width, OffX: geoReq.OffX, OffY: geoReq.OffY, CRS: geoReq.CRS}
+						if verbose {
+							log.Printf("Indexer error: invalid bbox: %v", clippedBBox)
+						}
+						return
 					}
+					hasSubDivision = true
+				} else if verbose {
+					log.Printf("Indexer sub-division error: %v", err)
 				}
-			} else {
+			}
+
+			if hasSubDivision {
+				resWidth := 256
+				resHeight := 256
+				maxXTileSize := int(float64(resWidth) * geoReq.IndexTileXSize)
+				if maxXTileSize <= 0 {
+					maxXTileSize = resWidth
+				}
+
+				maxYTileSize := int(float64(resHeight) * geoReq.IndexTileYSize)
+				if maxYTileSize <= 0 {
+					maxYTileSize = resHeight
+				}
+
+				xRes := (clippedBBox[2] - clippedBBox[0]) / float64(resWidth)
+				yRes := (clippedBBox[3] - clippedBBox[1]) / float64(resHeight)
+				reqRes := math.Max(xRes, yRes)
+				if geoReq.QueryLimit <= 0 && reqRes > geoReq.IndexResLimit {
+					for y := 0; y < resHeight; y += maxYTileSize {
+						for x := 0; x < resWidth; x += maxXTileSize {
+							yMin := clippedBBox[1] + float64(y)*yRes
+							yMax := math.Min(clippedBBox[1]+float64(y+maxYTileSize)*yRes, clippedBBox[3])
+							xMin := clippedBBox[0] + float64(x)*xRes
+							xMax := math.Min(clippedBBox[0]+float64(x+maxXTileSize)*xRes, clippedBBox[2])
+
+							bbox := []float64{xMin, yMin, xMax, yMax}
+							bboxWkt = BBox2WKT(bbox)
+							url = p.getIndexerURL(geoReq, nameSpaces, bboxWkt, "EPSG:3857")
+
+							wg.Add(1)
+							go URLIndexGet(p.Context, url, geoReq, p.Error, p.Out, &wg, isEmptyTile, verbose)
+						}
+					}
+				} else {
+					hasSubDivision = false
+				}
+			}
+
+			if !hasSubDivision {
 				wg.Add(1)
 				go URLIndexGet(p.Context, url, geoReq, p.Error, p.Out, &wg, isEmptyTile, verbose)
 			}
@@ -266,12 +284,12 @@ func (p *TileIndexer) Run(verbose bool) {
 	}
 }
 
-func (p *TileIndexer) getIndexerURL(geoReq *GeoTileRequest, nameSpaces string, bboxWkt string) string {
+func (p *TileIndexer) getIndexerURL(geoReq *GeoTileRequest, nameSpaces string, bboxWkt string, crs string) string {
 	var url string
 	if geoReq.EndTime == nil {
-		url = strings.Replace(fmt.Sprintf("http://%s%s?intersects&metadata=gdal&time=%s&srs=%s&wkt=%s&namespace=%s&nseg=%d&limit=%d", p.APIAddress, geoReq.Collection, geoReq.StartTime.Format(ISOFormat), geoReq.CRS, bboxWkt, nameSpaces, geoReq.PolygonSegments, geoReq.QueryLimit), " ", "%20", -1)
+		url = strings.Replace(fmt.Sprintf("http://%s%s?intersects&metadata=gdal&time=%s&srs=%s&wkt=%s&namespace=%s&nseg=%d&limit=%d", p.APIAddress, geoReq.Collection, geoReq.StartTime.Format(ISOFormat), crs, bboxWkt, nameSpaces, geoReq.PolygonSegments, geoReq.QueryLimit), " ", "%20", -1)
 	} else {
-		url = strings.Replace(fmt.Sprintf("http://%s%s?intersects&metadata=gdal&time=%s&until=%s&srs=%s&wkt=%s&namespace=%s&nseg=%d&limit=%d", p.APIAddress, geoReq.Collection, geoReq.StartTime.Format(ISOFormat), geoReq.EndTime.Format(ISOFormat), geoReq.CRS, bboxWkt, nameSpaces, geoReq.PolygonSegments, geoReq.QueryLimit), " ", "%20", -1)
+		url = strings.Replace(fmt.Sprintf("http://%s%s?intersects&metadata=gdal&time=%s&until=%s&srs=%s&wkt=%s&namespace=%s&nseg=%d&limit=%d", p.APIAddress, geoReq.Collection, geoReq.StartTime.Format(ISOFormat), geoReq.EndTime.Format(ISOFormat), crs, bboxWkt, nameSpaces, geoReq.PolygonSegments, geoReq.QueryLimit), " ", "%20", -1)
 	}
 
 	return url
