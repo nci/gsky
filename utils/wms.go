@@ -486,13 +486,14 @@ func CheckDisableServices(layer *Layer, service string) bool {
 
 func GetCanonicalBbox(srs string, bbox []float64) ([]float64, error) {
 	srs = strings.ToUpper(strings.TrimSpace(srs))
-	if srs == "EPSG:3857" {
+	dst := "EPSG:3857"
+	if srs == dst {
 		return bbox, nil
 	}
 
 	var opts []*C.char
 	opts = append(opts, C.CString(fmt.Sprintf("SRC_SRS=%s", srs)))
-	opts = append(opts, C.CString("DST_SRS=EPSG:3857"))
+	opts = append(opts, C.CString(fmt.Sprintf("DST_SRS=%s", dst)))
 	for _, opt := range opts {
 		defer C.free(unsafe.Pointer(opt))
 	}
@@ -512,7 +513,6 @@ func GetCanonicalBbox(srs string, bbox []float64) ([]float64, error) {
 	if bSuccess[0] != 0 && bSuccess[1] != 0 {
 		return []float64{float64(dx[0]), float64(dy[0]), float64(dx[1]), float64(dy[1])}, nil
 	} else {
-
 		return bbox, fmt.Errorf("GDALGenImgProjTransform failed")
 	}
 }
