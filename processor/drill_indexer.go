@@ -197,30 +197,50 @@ func (p *DrillIndexer) Run(verbose bool) {
 					nMaskGrans := 0
 					nDataGrans := 0
 					for _, gran := range granMasks {
-						if _, found := dataNSLookup[gran.NameSpace]; found {
-							dataGrans = append(dataGrans, gran)
-							nDataGrans++
+						if nDataGrans < len(dataNSLookup) {
+							if _, found := dataNSLookup[gran.NameSpace]; found {
+								dataGrans = append(dataGrans, gran)
+								nDataGrans++
+							}
 						}
 
-						if iv, found := maskNSLookup[gran.NameSpace]; found {
-							maskGrans[iv] = gran
-							nMaskGrans++
+						if nMaskGrans < len(maskNSLookup) {
+							if iv, found := maskNSLookup[gran.NameSpace]; found {
+								maskGrans[iv] = gran
+								nMaskGrans++
+							}
 						}
 					}
 
+					granErrMsgs := func(grans []*GeoDrillGranule) string {
+						var dsPaths []string
+						for idg, dg := range grans {
+							if idg >= 20 {
+								dsPaths = append(dsPaths, " ...")
+								break
+							}
+							dsPaths = append(dsPaths, dg.Path)
+						}
+						return fmt.Sprintf("data namespaces(%v):%v, data grans(%v):%v", len(dataNSLookup), dataNSLookup, len(grans), strings.Join(dsPaths, ","))
+
+					}
+					if nDataGrans != len(dataNSLookup) {
+						msg := "Indexer returned error: duplicated data granules for spatial-temporal hash key"
+						msgLog := fmt.Sprintf("%s, %s", msg, granErrMsgs(dataGrans))
+						log.Printf(msgLog)
+						p.Error <- fmt.Errorf(msg)
+						return
+					}
+
+					if nMaskGrans != len(maskNSLookup) {
+						msg := "Indexer returned error: duplicated mask granules for spatial-temporal hash key"
+						msgLog := fmt.Sprintf("%s, %s", msg, granErrMsgs(maskGrans))
+						log.Printf(msgLog)
+						p.Error <- fmt.Errorf(msg)
+						return
+					}
+
 					for _, dg := range dataGrans {
-						if nDataGrans != len(dataNSLookup) {
-							msg := fmt.Sprintf("Indexer returned error: %v, data namespaces=%v, data grans=%v", dg.Path, len(dataNSLookup), nDataGrans)
-							log.Printf(msg)
-							p.Error <- fmt.Errorf(msg)
-							return
-						}
-						if nMaskGrans != len(maskNSLookup) {
-							msg := fmt.Sprintf("Indexer returned error: %v, mask namespaces=%v, mask grans=%v", dg.Path, len(maskNSLookup), nMaskGrans)
-							log.Printf(msg)
-							p.Error <- fmt.Errorf(msg)
-							return
-						}
 
 						type GranuleInfo struct {
 							Data  *GeoDrillGranule
