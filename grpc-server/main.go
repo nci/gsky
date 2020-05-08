@@ -6,6 +6,7 @@ import (
 	"log"
 	"path/filepath"
 	"runtime"
+	"strings"
 
 	pp "github.com/nci/gsky/worker/gdalprocess"
 	pb "github.com/nci/gsky/worker/gdalservice"
@@ -57,6 +58,7 @@ func main() {
 	poolSize := flag.Int("n", runtime.NumCPU(), "Maximum number of requests handled concurrently.")
 	executable := flag.String("exec", filepath.Dir(os.Args[0])+"/gsky-gdal-process", "Executable filepath")
 	maxTaskProcessed := flag.Int("max_tasks", 20000, "Maximum number of tasks processed before starting gsky-gdal-process.")
+	oomThreshold := flag.Int("oom_threshold", int(1.5*1024*1024), "MemAvailable lower than the threshold (KB) triggers an OOM of the worker process")
 	debug := flag.Bool("debug", false, "verbose logging")
 	flag.Parse()
 
@@ -79,6 +81,20 @@ func main() {
 				os.Exit(1)
 			}
 		}
+	}()
+
+	go func() {
+		parts := strings.Split(*executable, "/")
+		fileName := parts[len(parts)-1]
+		execMatch := fileName
+
+		// The maximum length of the name field under /proc/<pid>/status is 16 bytes
+		maxLen := 15
+		if len(fileName) > maxLen {
+			execMatch = fileName[:maxLen]
+		}
+		mon := pp.NewOOMMonitor(execMatch, *oomThreshold, true)
+		mon.StartMonitorLoop()
 	}()
 
 	s := grpc.NewServer()
