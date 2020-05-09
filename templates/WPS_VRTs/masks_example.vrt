@@ -1,4 +1,4 @@
-<VRTDataset>
+<VRTDataset rasterXSize="{{ .RasterXSize }}" rasterYSize="{{ .RasterYSize }}">
     <VRTRasterBand band="1" subClass="VRTDerivedRasterBand">
         <PixelFunctionType>apply_masks</PixelFunctionType>
         <PixelFunctionLanguage>python</PixelFunctionLanguage>

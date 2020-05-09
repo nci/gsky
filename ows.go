@@ -1397,6 +1397,8 @@ func serveWPS(ctx context.Context, params utils.WPSParams, conf *utils.Config, r
 				EndTime:          endDateTime,
 				ClipUpper:        clipUpper,
 				ClipLower:        clipLower,
+				RasterXSize:      dataSource.RasterXSize,
+				RasterYSize:      dataSource.RasterYSize,
 				MetricsCollector: metricsCollector,
 			}
 
