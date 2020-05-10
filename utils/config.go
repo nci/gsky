@@ -178,6 +178,8 @@ type Layer struct {
 	MasQueryHint                 string       `json:"mas_query_hint"`
 	SRSCf                        int          `json:"srs_cf"`
 	Visibility                   string       `json:"visibility"`
+	RasterXSize                  float64      `json:"raster_x_size"`
+	RasterYSize                  float64      `json:"raster_y_size"`
 }
 
 // Process contains all the details that a WPS needs

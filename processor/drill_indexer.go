@@ -243,11 +243,13 @@ func (p *DrillIndexer) Run(verbose bool) {
 					for _, dg := range dataGrans {
 
 						type GranuleInfo struct {
-							Data  *GeoDrillGranule
-							Masks []*GeoDrillGranule
+							RasterXSize float64
+							RasterYSize float64
+							Data        *GeoDrillGranule
+							Masks       []*GeoDrillGranule
 						}
 
-						granInfo := &GranuleInfo{Data: dg}
+						granInfo := &GranuleInfo{RasterXSize: geoReq.RasterXSize, RasterYSize: geoReq.RasterYSize, Data: dg}
 						for _, mg := range maskGrans {
 							granInfo.Masks = append(granInfo.Masks, mg)
 						}

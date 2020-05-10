@@ -21,6 +21,8 @@ type GeoDrillRequest struct {
 	EndTime          time.Time
 	ClipUpper        float32
 	ClipLower        float32
+	RasterXSize      float64
+	RasterYSize      float64
 	MetricsCollector *metrics.MetricsCollector
 }
 
