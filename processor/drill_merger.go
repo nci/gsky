@@ -28,6 +28,7 @@ func (dm *DrillMerger) Run(suffix string, namespaces []string, templateFileName 
 	defer close(dm.Out)
 	results := make(map[string]map[string][]*pb.TimeSeries)
 
+	var drillResult *DrillResult
 	for drillRes := range dm.In {
 		if _, ok := results[drillRes.NameSpace]; !ok {
 			results[drillRes.NameSpace] = make(map[string][]*pb.TimeSeries)
@@ -50,6 +51,10 @@ func (dm *DrillMerger) Run(suffix string, namespaces []string, templateFileName 
 			} else {
 				results[drillRes.NameSpace][isoDate] = append(results[drillRes.NameSpace][isoDate], drillRes.Data[i])
 			}
+		}
+
+		if drillResult == nil {
+			drillResult = drillRes
 		}
 	}
 	if len(results) == 0 {
@@ -136,7 +141,9 @@ func (dm *DrillMerger) Run(suffix string, namespaces []string, templateFileName 
 					return
 				}
 
-				fmt.Fprintf(csv, "%f", float64(val))
+				if drillResult != nil && float32(drillResult.NoData) != val {
+					fmt.Fprintf(csv, "%f", float64(val))
+				}
 			}
 		}
 

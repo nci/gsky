@@ -47,6 +47,7 @@ type DrillResult struct {
 	NameSpace string
 	Dates     []time.Time
 	Data      []*pb.TimeSeries
+	NoData    float64
 }
 
 type DrillFileDescriptor struct {

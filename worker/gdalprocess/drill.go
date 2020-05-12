@@ -221,7 +221,7 @@ func readData(ds C.GDALDatasetH, bands []int32, geom C.OGRGeometryH, bandStrides
 	metrics.SysTime = resUsage1.Stime.Nano() - resUsage0.Stime.Nano()
 
 	nRows := len(avgs) / nCols
-	return &pb.Result{TimeSeries: avgs, Shape: []int32{int32(nRows), int32(nCols)}, Error: "OK", Metrics: metrics}
+	return &pb.Result{TimeSeries: avgs, Raster: &pb.Raster{NoData: float64(nodata)}, Shape: []int32{int32(nRows), int32(nCols)}, Error: "OK", Metrics: metrics}
 }
 
 func computeDeciles(decileCount int, dataBuf []float32, bandSize int, bandOffset int, nodata float32, dsDscr *DrillFileDescriptor) []float32 {
