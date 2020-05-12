@@ -162,7 +162,7 @@ func (gi *GeoDrillGRPC) Run(bandStrides int, decileCount int, pixelCount int, ve
 						tsRow[ir] = r.TimeSeries[ir*nCols+i]
 					}
 
-					gi.Out <- &DrillResult{NameSpace: ns, Data: tsRow, Dates: g.TimeStamps}
+					gi.Out <- &DrillResult{NameSpace: ns, Data: tsRow, NoData: r.Raster.NoData, Dates: g.TimeStamps}
 				}
 			}(gran, cLimiter, i)
 		}
