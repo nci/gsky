@@ -92,7 +92,6 @@ func (gi *GeoDrillGRPC) Run(bandStrides int, decileCount int, pixelCount int, ve
 	}
 
 	const DefaultWpsRecvMsgSize = 100 * 1024 * 1024
-	const DefaultWpsConcLimit = 16
 
 	opts := []grpc.DialOption{
 		grpc.WithInsecure(),
@@ -125,7 +124,7 @@ func (gi *GeoDrillGRPC) Run(bandStrides int, decileCount int, pixelCount int, ve
 		}
 	}()
 
-	cLimiter := NewConcLimiter(DefaultWpsConcLimit * len(conns))
+	cLimiter := NewConcLimiter(geoReq.GrpcConcLimit * len(conns))
 	workerStart := rand.Intn(len(conns))
 	i := 0
 	for _, gran := range inputsRecompute {

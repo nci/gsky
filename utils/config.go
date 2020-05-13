@@ -43,6 +43,7 @@ const DefaultWcsTimeout = 30
 
 const DefaultGrpcWmsConcPerNode = 16
 const DefaultGrpcWcsConcPerNode = 16
+const DefaultGrpcWpsConcPerNode = 16
 
 const DefaultWmsPolygonShardConcLimit = 2
 const DefaultWcsPolygonShardConcLimit = 2
@@ -146,6 +147,7 @@ type Layer struct {
 	WcsTimeout                   int        `json:"wcs_timeout"`
 	GrpcWmsConcPerNode           int        `json:"grpc_wms_conc_per_node"`
 	GrpcWcsConcPerNode           int        `json:"grpc_wcs_conc_per_node"`
+	GrpcWpsConcPerNode           int        `json:"grpc_wps_conc_per_node"`
 	WmsPolygonShardConcLimit     int        `json:"wms_polygon_shard_conc_limit"`
 	WcsPolygonShardConcLimit     int        `json:"wcs_polygon_shard_conc_limit"`
 	BandStrides                  int        `json:"band_strides"`
@@ -1344,6 +1346,14 @@ func (config *Config) LoadConfigFile(configFile string, verbose bool) error {
 					return fmt.Errorf("Process %v, data source %v, IDExpression parsing error: %v", proc.Identifier, ids, err)
 				}
 				config.Processes[i].DataSources[ids].Mask.IDExpressions = bandExpr
+			}
+
+			if ds.GrpcWpsConcPerNode <= 0 {
+				conc := grpcPoolSize
+				if conc < DefaultGrpcWpsConcPerNode {
+					conc = DefaultGrpcWpsConcPerNode
+				}
+				config.Processes[i].DataSources[ids].GrpcWpsConcPerNode = conc
 			}
 		}
 
