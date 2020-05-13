@@ -1399,6 +1399,7 @@ func serveWPS(ctx context.Context, params utils.WPSParams, conf *utils.Config, r
 				ClipLower:        clipLower,
 				RasterXSize:      dataSource.RasterXSize,
 				RasterYSize:      dataSource.RasterYSize,
+				GrpcConcLimit:    dataSource.GrpcWpsConcPerNode,
 				MetricsCollector: metricsCollector,
 			}
 

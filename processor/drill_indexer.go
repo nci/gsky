@@ -144,11 +144,11 @@ func (p *DrillIndexer) Run(verbose bool) {
 
 		switch len(metadata.GDALDatasets) {
 		case 0:
-			p.Out <- &GeoDrillGranule{"NULL", utils.EmptyTileNS, "Byte", nil, geoReq.Geometry, geoReq.CRS, "", nil, nil, 0, false, 0, 0, geoReq.MetricsCollector}
+			p.Out <- &GeoDrillGranule{"NULL", utils.EmptyTileNS, "Byte", nil, geoReq.Geometry, geoReq.CRS, "", nil, nil, 0, false, 0, 0, 0, geoReq.MetricsCollector}
 		default:
 			var grans []*GeoDrillGranule
 			for _, ds := range metadata.GDALDatasets {
-				grans = append(grans, &GeoDrillGranule{ds.DSName, ds.NameSpace, ds.ArrayType, ds.TimeStamps, geoReq.Geometry, geoReq.CRS, "", ds.Means, ds.SampleCounts, ds.NoData, p.Approx, geoReq.ClipUpper, geoReq.ClipLower, geoReq.MetricsCollector})
+				grans = append(grans, &GeoDrillGranule{ds.DSName, ds.NameSpace, ds.ArrayType, ds.TimeStamps, geoReq.Geometry, geoReq.CRS, "", ds.Means, ds.SampleCounts, ds.NoData, p.Approx, geoReq.ClipUpper, geoReq.ClipLower, geoReq.GrpcConcLimit, geoReq.MetricsCollector})
 			}
 
 			if geoReq.Mask == nil {

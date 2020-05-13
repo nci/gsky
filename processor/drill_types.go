@@ -23,6 +23,7 @@ type GeoDrillRequest struct {
 	ClipLower        float32
 	RasterXSize      float64
 	RasterYSize      float64
+	GrpcConcLimit    int
 	MetricsCollector *metrics.MetricsCollector
 }
 
@@ -40,6 +41,7 @@ type GeoDrillGranule struct {
 	Approx           bool
 	ClipUpper        float32
 	ClipLower        float32
+	GrpcConcLimit    int
 	MetricsCollector *metrics.MetricsCollector
 }
 
