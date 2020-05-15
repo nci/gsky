@@ -1,12 +1,12 @@
 package processor
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"log"
 	"math"
 	"sort"
+	"strings"
 
 	"github.com/nci/gsky/utils"
 	pb "github.com/nci/gsky/worker/gdalservice"
@@ -75,7 +75,7 @@ func (dm *DrillMerger) Run(suffix string, namespaces []string, templateFileName 
 	}
 	sort.Strings(dates)
 
-	csv := bytes.NewBufferString("")
+	var csv strings.Builder
 	for _, key := range dates {
 		values := map[string]float64{}
 		for _, ns := range namespaces {
@@ -92,17 +92,17 @@ func (dm *DrillMerger) Run(suffix string, namespaces []string, templateFileName 
 			}
 		}
 
-		fmt.Fprintf(csv, "%s", key)
+		fmt.Fprintf(&csv, "%s", key)
 
 		if len(bandExpr.Expressions) == 0 {
 			for _, ns := range namespaces {
-				fmt.Fprint(csv, ",")
+				fmt.Fprint(&csv, ",")
 				if val, ok := values[ns]; ok {
-					fmt.Fprintf(csv, "%f", val)
+					fmt.Fprintf(&csv, "%f", val)
 				}
 			}
 
-			fmt.Fprint(csv, "\\n")
+			fmt.Fprint(&csv, "\\n")
 			continue
 		}
 
@@ -121,7 +121,7 @@ func (dm *DrillMerger) Run(suffix string, namespaces []string, templateFileName 
 					}
 				}
 
-				fmt.Fprint(csv, ",")
+				fmt.Fprint(&csv, ",")
 
 				if noData {
 					continue
@@ -149,17 +149,17 @@ func (dm *DrillMerger) Run(suffix string, namespaces []string, templateFileName 
 				}
 
 				if drillResult != nil && float32(drillResult.NoData) != val {
-					fmt.Fprintf(csv, "%f", float64(val))
+					fmt.Fprintf(&csv, "%f", float64(val))
 				}
 			}
 		}
 
-		fmt.Fprint(csv, "\\n")
+		fmt.Fprint(&csv, "\\n")
 
 	}
 
-	out := bytes.NewBufferString("")
-	err := utils.ExecuteWriteTemplateFile(out, csv, templateFileName)
+	var out strings.Builder
+	err := utils.ExecuteWriteTemplateFile(&out, csv.String(), templateFileName)
 	if err != nil {
 		dm.sendError(fmt.Errorf("WPS: output template error: %v", err))
 		return
