@@ -242,22 +242,13 @@ func WPSParamsChecker(params map[string][]string, compREMap map[string]*regexp.R
 	return wpsParamms, err
 }
 
-const WGS84WKT = `GEOGCS["WGS 84",DATUM["WGS_1984",SPHEROID["WGS 84",6378137,298.257223563,AUTHORITY["EPSG","7030"]],AUTHORITY["EPSG","6326"]],PRIMEM["Greenwich",0,AUTHORITY["EPSG","8901"]],UNIT["degree",0.01745329251994328,AUTHORITY["EPSG","9122"]],AUTHORITY["EPSG","4326"]]`
-
 func GetArea(wgs84Poly geo.Geometry) float64 {
 	geomJSON, _ := json.Marshal(wgs84Poly)
 	geomJSONC := C.CString(string(geomJSON))
 	hPt := C.OGR_G_CreateGeometryFromJson(geomJSONC)
 	C.free(unsafe.Pointer(geomJSONC))
-
-	wktC := C.CString(WGS84WKT)
-	selSRS := C.OSRNewSpatialReference(wktC)
-	C.free(unsafe.Pointer(wktC))
-	C.OGR_G_AssignSpatialReference(hPt, selSRS)
-
 	area := float64(C.OGR_G_Area(hPt))
 	C.OGR_G_DestroyGeometry(hPt)
-	C.OSRDestroySpatialReference(selSRS)
 	return area
 }
 
