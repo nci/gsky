@@ -2,7 +2,9 @@ package processor
 
 import (
 	"bytes"
+	"context"
 	"fmt"
+	"log"
 	"math"
 	"sort"
 
@@ -11,20 +13,25 @@ import (
 )
 
 type DrillMerger struct {
-	In    chan *DrillResult
-	Out   chan string
-	Error chan error
+	Context context.Context
+	In      chan *DrillResult
+	Out     chan string
+	Error   chan error
 }
 
-func NewDrillMerger(errChan chan error) *DrillMerger {
+func NewDrillMerger(ctx context.Context, errChan chan error) *DrillMerger {
 	return &DrillMerger{
-		In:    make(chan *DrillResult, 100),
-		Out:   make(chan string),
-		Error: errChan,
+		Context: ctx,
+		In:      make(chan *DrillResult, 100),
+		Out:     make(chan string),
+		Error:   errChan,
 	}
 }
 
-func (dm *DrillMerger) Run(suffix string, namespaces []string, templateFileName string, bandExpr *utils.BandExpressions, decileCount int) {
+func (dm *DrillMerger) Run(suffix string, namespaces []string, templateFileName string, bandExpr *utils.BandExpressions, decileCount int, verbose bool) {
+	if verbose {
+		defer log.Printf("Drill Merger done")
+	}
 	defer close(dm.Out)
 	results := make(map[string]map[string][]*pb.TimeSeries)
 
@@ -58,7 +65,7 @@ func (dm *DrillMerger) Run(suffix string, namespaces []string, templateFileName 
 		}
 	}
 	if len(results) == 0 {
-		dm.Error <- fmt.Errorf("WPS: Merger hasn't received any result")
+		dm.sendError(fmt.Errorf("Drill Merger: no result"))
 		return
 	}
 
@@ -131,13 +138,13 @@ func (dm *DrillMerger) Run(suffix string, namespaces []string, templateFileName 
 
 				result, err := expr.Evaluate(parameters)
 				if err != nil {
-					dm.Error <- fmt.Errorf("WPS: Eval '%v' error: %v", bandExpr.ExprText[ix], err)
+					dm.sendError(fmt.Errorf("WPS: Eval '%v' error: %v", bandExpr.ExprText[ix], err))
 					return
 				}
 
 				val, ok := result.(float32)
 				if !ok {
-					dm.Error <- fmt.Errorf("WPS: Failed to cast eval results '%v' to float32, %v", val, bandExpr.ExprText[ix])
+					dm.sendError(fmt.Errorf("WPS: Failed to cast eval results '%v' to float32, %v", val, bandExpr.ExprText[ix]))
 					return
 				}
 
@@ -154,8 +161,32 @@ func (dm *DrillMerger) Run(suffix string, namespaces []string, templateFileName 
 	out := bytes.NewBufferString("")
 	err := utils.ExecuteWriteTemplateFile(out, csv, templateFileName)
 	if err != nil {
-		dm.Error <- fmt.Errorf("WPS: output template error: %v", err)
+		dm.sendError(fmt.Errorf("WPS: output template error: %v", err))
+		return
+	}
+
+	if dm.checkCancellation() {
 		return
 	}
 	dm.Out <- fmt.Sprintf(out.String(), suffix)
+}
+
+func (dm *DrillMerger) sendError(err error) {
+	select {
+	case dm.Error <- err:
+	default:
+	}
+}
+
+func (dm *DrillMerger) checkCancellation() bool {
+	select {
+	case <-dm.Context.Done():
+		dm.sendError(fmt.Errorf("Drill Merger: context has been cancel: %v", dm.Context.Err()))
+		return true
+	case err := <-dm.Error:
+		dm.sendError(err)
+		return true
+	default:
+		return false
+	}
 }
