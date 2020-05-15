@@ -1303,7 +1303,7 @@ func serveWPS(ctx context.Context, params utils.WPSParams, conf *utils.Config, r
 			return
 		}
 
-		var result string
+		var result strings.Builder
 		ctx, ctxCancel := context.WithCancel(ctx)
 		defer ctxCancel()
 		errChan := make(chan error, 100)
@@ -1414,7 +1414,7 @@ func serveWPS(ctx context.Context, params utils.WPSParams, conf *utils.Config, r
 
 			select {
 			case res := <-proc:
-				result += res
+				result.WriteString(res)
 			case err := <-errChan:
 				Info.Printf("Error in the pipeline: %v\n", err)
 				metricsCollector.Info.HTTPStatus = 500
@@ -1428,7 +1428,7 @@ func serveWPS(ctx context.Context, params utils.WPSParams, conf *utils.Config, r
 			}
 		}
 
-		err = utils.ExecuteWriteTemplateFile(w, result, utils.DataDir+"/templates/WPS_Execute.tpl")
+		err = utils.ExecuteWriteTemplateFile(w, result.String(), utils.DataDir+"/templates/WPS_Execute.tpl")
 		if err != nil {
 			metricsCollector.Info.HTTPStatus = 500
 			http.Error(w, err.Error(), 500)
