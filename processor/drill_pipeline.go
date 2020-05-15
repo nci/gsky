@@ -61,7 +61,7 @@ func (dp *DrillPipeline) Process(geoReq GeoDrillRequest, suffix string, template
 		close(i.In)
 	}()
 
-	dm := NewDrillMerger(dp.Error)
+	dm := NewDrillMerger(dp.Context, dp.Error)
 
 	grpcDriller.In = i.Out
 	dm.In = grpcDriller.Out
@@ -80,7 +80,7 @@ func (dp *DrillPipeline) Process(geoReq GeoDrillRequest, suffix string, template
 			namespaces = append(namespaces, newNs)
 		}
 	}
-	go dm.Run(suffix, namespaces, templateFileName, geoReq.BandExpr, decileCount)
+	go dm.Run(suffix, namespaces, templateFileName, geoReq.BandExpr, decileCount, verbose)
 
 	return dm.Out
 }
