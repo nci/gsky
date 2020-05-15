@@ -30,69 +30,13 @@ func NewDrillGRPC(ctx context.Context, serverAddress []string, errChan chan erro
 }
 
 func (gi *GeoDrillGRPC) Run(bandStrides int, decileCount int, pixelCount int, verbose bool) {
+	if verbose {
+		defer log.Printf("Drill gRPC done")
+	}
 	defer close(gi.Out)
 	start := time.Now()
 
-	var inputs []*GeoDrillGranule
-	for gran := range gi.In {
-		if gran.Path == "NULL" {
-			continue
-		}
-		inputs = append(inputs, gran)
-	}
-
-	if len(inputs) == 0 {
-		return
-	}
-
-	geoReq := inputs[0]
-	if geoReq.MetricsCollector != nil {
-		defer func() { geoReq.MetricsCollector.Info.RPC.Duration += time.Since(start) }()
-		geoReq.MetricsCollector.Info.RPC.NumTiledGranules += len(inputs)
-	}
-
-	var inputsRecompute []*GeoDrillGranule
-	if geoReq.Approx {
-		for _, gran := range inputs {
-			if len(gran.Means) == 0 || len(gran.TimeStamps) != len(gran.Means) || len(gran.SampleCounts) != len(gran.Means) {
-				inputsRecompute = append(inputsRecompute, gran)
-				continue
-			}
-
-			hasStats := true
-			ts := make([]*pb.TimeSeries, len(gran.TimeStamps))
-			for it := range gran.TimeStamps {
-				if gran.SampleCounts[it] < 0 {
-					hasStats = false
-					break
-				}
-
-				ts[it] = &pb.TimeSeries{Value: 0.0, Count: 0}
-				if gran.Means[it] != gran.NoData {
-					ts[it].Value = gran.Means[it]
-					ts[it].Count = int32(gran.SampleCounts[it])
-				}
-			}
-
-			if hasStats {
-				gi.Out <- &DrillResult{NameSpace: gran.NameSpace, Data: ts, Dates: gran.TimeStamps}
-			} else {
-				inputsRecompute = append(inputsRecompute, gran)
-			}
-		}
-	} else {
-		inputsRecompute = inputs
-	}
-
-	if len(inputsRecompute) == 0 {
-		if verbose {
-			fmt.Println("gRPC Time", time.Since(start), "Processed:", len(inputs))
-		}
-		return
-	}
-
 	const DefaultWpsRecvMsgSize = 100 * 1024 * 1024
-
 	opts := []grpc.DialOption{
 		grpc.WithInsecure(),
 		grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(DefaultWpsRecvMsgSize)),
@@ -108,30 +52,75 @@ func (gi *GeoDrillGRPC) Run(bandStrides int, decileCount int, pixelCount int, ve
 		conns[i] = conn
 	}
 
-	metrics := make([]*pb.WorkerMetrics, len(inputsRecompute))
-	for i := 0; i < len(metrics); i++ {
-		metrics[i] = &pb.WorkerMetrics{}
-	}
-	defer func() {
-		if geoReq.MetricsCollector != nil {
-			for i := 0; i < len(metrics); i++ {
-				if metrics[i] != nil {
-					geoReq.MetricsCollector.Info.RPC.BytesRead += metrics[i].BytesRead
-					geoReq.MetricsCollector.Info.RPC.UserTime += metrics[i].UserTime
-					geoReq.MetricsCollector.Info.RPC.SysTime += metrics[i].SysTime
+	var metrics []*pb.WorkerMetrics
+	var geoReq *GeoDrillGranule
+	var cLimiter *ConcLimiter
+
+	workerStart := rand.Intn(len(conns))
+	i := 0
+	for gran := range gi.In {
+		if gran.Path == "NULL" {
+			continue
+		}
+
+		if geoReq == nil {
+			geoReq = gran
+		}
+
+		if geoReq.Approx {
+			needsRecompute := len(gran.Means) == 0 || len(gran.TimeStamps) != len(gran.Means) || len(gran.SampleCounts) != len(gran.Means)
+			if !needsRecompute {
+				hasStats := true
+				ts := make([]*pb.TimeSeries, len(gran.TimeStamps))
+				for it := range gran.TimeStamps {
+					if gran.SampleCounts[it] < 0 {
+						hasStats = false
+						break
+					}
+
+					ts[it] = &pb.TimeSeries{Value: 0.0, Count: 0}
+					if gran.Means[it] != gran.NoData {
+						ts[it].Value = gran.Means[it]
+						ts[it].Count = int32(gran.SampleCounts[it])
+					}
+				}
+
+				if hasStats {
+					gi.Out <- &DrillResult{NameSpace: gran.NameSpace, Data: ts, Dates: gran.TimeStamps}
+					continue
 				}
 			}
 		}
-	}()
 
-	cLimiter := NewConcLimiter(geoReq.GrpcConcLimit * len(conns))
-	workerStart := rand.Intn(len(conns))
-	i := 0
-	for _, gran := range inputsRecompute {
+		if geoReq.MetricsCollector != nil {
+			if i == 0 {
+				defer func(t0 time.Time) { geoReq.MetricsCollector.Info.RPC.Duration += time.Since(t0) }(start)
+				defer func() {
+					for i := 0; i < len(metrics); i++ {
+						if metrics[i] != nil {
+							geoReq.MetricsCollector.Info.RPC.BytesRead += metrics[i].BytesRead
+							geoReq.MetricsCollector.Info.RPC.UserTime += metrics[i].UserTime
+							geoReq.MetricsCollector.Info.RPC.SysTime += metrics[i].SysTime
+						}
+					}
+				}()
+
+			}
+			geoReq.MetricsCollector.Info.RPC.NumTiledGranules++
+			metrics = append(metrics, &pb.WorkerMetrics{})
+		}
+
+		if cLimiter == nil {
+			cLimiter = NewConcLimiter(geoReq.GrpcConcLimit * len(conns))
+		}
+
 		i++
 		select {
 		case <-gi.Context.Done():
-			gi.Error <- fmt.Errorf("Drill gRPC context has been cancel: %v", gi.Context.Err())
+			gi.sendError(fmt.Errorf("Drill gRPC: context has been cancel: %v", gi.Context.Err()))
+			return
+		case err := <-gi.Error:
+			gi.sendError(err)
 			return
 		default:
 			cLimiter.Increase()
@@ -143,11 +132,10 @@ func (gi *GeoDrillGRPC) Run(bandStrides int, decileCount int, pixelCount int, ve
 				granule := &pb.GeoRPCGranule{Operation: "drill", Path: g.Path, Geometry: g.Geometry, Bands: bands, BandStrides: int32(bandStrides), DrillDecileCount: int32(decileCount), ClipUpper: gran.ClipUpper, ClipLower: gran.ClipLower, PixelCount: int32(pixelCount), VRT: g.VRT}
 				r, err := c.Process(gi.Context, granule)
 				if err != nil {
-					gi.Error <- err
+					gi.sendError(fmt.Errorf("Drill gRPC: %v", err))
 					r = &pb.Result{}
 					return
 				}
-				metrics[iTile-1] = r.Metrics
 
 				nCols := int(r.Shape[1])
 				nRows := int(r.Shape[0])
@@ -163,12 +151,27 @@ func (gi *GeoDrillGRPC) Run(bandStrides int, decileCount int, pixelCount int, ve
 
 					gi.Out <- &DrillResult{NameSpace: ns, Data: tsRow, NoData: r.Raster.NoData, Dates: g.TimeStamps}
 				}
+
+				if geoReq.MetricsCollector != nil {
+					metrics[iTile-1] = r.Metrics
+				}
 			}(gran, cLimiter, i)
 		}
 	}
-	cLimiter.Wait()
+
+	if cLimiter != nil {
+		cLimiter.Wait()
+	}
+
 	if verbose {
-		fmt.Println("gRPC Time", time.Since(start), "Processed:", i)
+		log.Println("Drill gRPC Time", time.Since(start), "Processed:", i)
+	}
+}
+
+func (gi *GeoDrillGRPC) sendError(err error) {
+	select {
+	case gi.Error <- err:
+	default:
 	}
 }
 
