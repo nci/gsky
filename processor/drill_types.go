@@ -24,6 +24,8 @@ type GeoDrillRequest struct {
 	RasterXSize      float64
 	RasterYSize      float64
 	GrpcConcLimit    int
+	IndexTileXSize   float64
+	IndexTileYSize   float64
 	MetricsCollector *metrics.MetricsCollector
 }
 
