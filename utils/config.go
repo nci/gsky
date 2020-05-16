@@ -19,7 +19,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/CloudyKit/jet"
+	"github.com/edisonguo/jet"
 	goeval "github.com/edisonguo/govaluate"
 	pb "github.com/nci/gsky/worker/gdalservice"
 	"golang.org/x/net/context"
