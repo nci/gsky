@@ -488,7 +488,11 @@ func GetCanonicalBbox(srs string, bbox []float64) ([]float64, error) {
 	srs = strings.ToUpper(strings.TrimSpace(srs))
 	dst := "EPSG:3857"
 	if srs == dst {
-		return bbox, nil
+		box := make([]float64, len(bbox))
+		for i := 0; i < len(bbox); i++ {
+			box[i] = bbox[i]
+		}
+		return box, nil
 	}
 
 	var opts []*C.char
