@@ -275,7 +275,11 @@ func computeDeciles(decileCount int, dataBuf []float32, bandSize int, bandOffset
 
 func createMask(ds C.GDALDatasetH, g C.OGRGeometryH, offsetX, offsetY, countX, countY int32) (*image.Gray, error) {
 	canvas := make([]uint8, int(C.GDALGetRasterXSize(ds)*C.GDALGetRasterYSize(ds)))
-	hDstDS := C.GDALOpen(C.CString(fmt.Sprintf("MEM:::DATAPOINTER=%d,PIXELS=%d,LINES=%d,DATATYPE=Byte", unsafe.Pointer(&canvas[0]), C.GDALGetRasterXSize(ds), C.GDALGetRasterYSize(ds))), C.GA_Update)
+
+	memStr := fmt.Sprintf("MEM:::DATAPOINTER=%d,PIXELS=%d,LINES=%d,DATATYPE=Byte", unsafe.Pointer(&canvas[0]), C.GDALGetRasterXSize(ds), C.GDALGetRasterYSize(ds))
+	memStrC := C.CString(memStr)
+	defer C.free(unsafe.Pointer(memStrC))
+	hDstDS := C.GDALOpen(memStrC, C.GA_Update)
 	if hDstDS == nil {
 		return nil, fmt.Errorf("Couldn't create memory driver")
 	}
