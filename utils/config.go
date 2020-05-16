@@ -19,8 +19,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/edisonguo/jet"
 	goeval "github.com/edisonguo/govaluate"
+	"github.com/edisonguo/jet"
 	pb "github.com/nci/gsky/worker/gdalservice"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
