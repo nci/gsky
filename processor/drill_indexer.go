@@ -19,7 +19,7 @@ import (
 	"time"
 	"unsafe"
 
-	"github.com/CloudyKit/jet"
+	"github.com/edisonguo/jet"
 	geo "github.com/nci/geometry"
 	"github.com/nci/gsky/utils"
 )
