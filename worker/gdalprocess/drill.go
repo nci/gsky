@@ -93,7 +93,10 @@ func readData(ds C.GDALDatasetH, bands []int32, geom C.OGRGeometryH, bandStrides
 
 	avgs := []*pb.TimeSeries{}
 
-	dsDscr := getDrillFileDescriptor(ds, geom)
+	dsDscr, err := getDrillFileDescriptor(ds, geom)
+	if err != nil {
+		return &pb.Result{Error: err.Error()}
+	}
 
 	// it is safe to assume all data bands have same data type and nodata value
 	bandH := C.GDALGetRasterBand(ds, C.int(1))
@@ -176,7 +179,7 @@ func readData(ds C.GDALDatasetH, bands []int32, geom C.OGRGeometryH, bandStrides
 
 			if nCols > 1 {
 				if total > 0 {
-					deciles := computeDeciles(decileCount, dataBuf, bandSize, bandOffset, nodata, &dsDscr)
+					deciles := computeDeciles(decileCount, dataBuf, bandSize, bandOffset, nodata, dsDscr)
 					for ic := 0; ic < len(deciles); ic++ {
 						iRes++
 						boundAvgs[iRes] = &pb.TimeSeries{Value: float64(deciles[ic]), Count: 1}
@@ -304,10 +307,10 @@ func createMask(ds C.GDALDatasetH, g C.OGRGeometryH, offsetX, offsetY, countX, c
 	panBandList := []C.int{C.int(1)}
 	pahGeomList := []C.OGRGeometryH{ic}
 
-	opts := C.CString("ALL_TOUCHED=TRUE")
-	defer C.free(unsafe.Pointer(opts))
+	opts := []*C.char{C.CString("ALL_TOUCHED=TRUE"), nil}
+	defer C.free(unsafe.Pointer(opts[0]))
 
-	if gdalErr = C.GDALRasterizeGeometries(hDstDS, 1, &panBandList[0], 1, &pahGeomList[0], nil, nil, &geomBurnValue, &opts, nil, nil); gdalErr != 0 {
+	if gdalErr = C.GDALRasterizeGeometries(hDstDS, 1, &panBandList[0], 1, &pahGeomList[0], nil, nil, &geomBurnValue, &opts[0], nil, nil); gdalErr != 0 {
 		msg := fmt.Errorf("GDALRasterizeGeometry error %v", gdalErr)
 		log.Println(msg)
 		return nil, msg
@@ -327,7 +330,7 @@ func subImage(fullImage *image.Gray, offsetX, offsetY, countX, countY int32) *im
 	return subImage
 }
 
-func envelopePolygon(hDS C.GDALDatasetH) C.OGRGeometryH {
+func envelopePolygon(hDS C.GDALDatasetH) (C.OGRGeometryH, error) {
 	geoTrans := make([]float64, 6)
 	C.GDALGetGeoTransform(hDS, (*C.double)(&geoTrans[0]))
 
@@ -343,17 +346,25 @@ func envelopePolygon(hDS C.GDALDatasetH) C.OGRGeometryH {
 		ulX, ulY)
 
 	ppszData := C.CString(polyWKT)
-	defer C.free(unsafe.Pointer(ppszData))
+	ppszDataTmp := ppszData
 
 	var hGeom C.OGRGeometryH
 	hSRS := C.OSRNewSpatialReference(C.GDALGetProjectionRef(hDS))
-	defer C.OSRRelease(hSRS)
-	_ = C.OGR_G_CreateFromWkt(&ppszData, hSRS, &hGeom)
 
-	return hGeom
+	// OGR_G_CreateFromWkt intrnally updates &ppszData pointer value
+	errC := C.OGR_G_CreateFromWkt(&ppszData, hSRS, &hGeom)
+
+	C.OSRRelease(hSRS)
+	C.free(unsafe.Pointer(ppszDataTmp))
+
+	if errC != C.OGRERR_NONE {
+		return nil, fmt.Errorf("failed to compute envelope polygon: %v", polyWKT)
+	}
+
+	return hGeom, nil
 }
 
-func getDrillFileDescriptor(ds C.GDALDatasetH, g C.OGRGeometryH) DrillFileDescriptor {
+func getDrillFileDescriptor(ds C.GDALDatasetH, g C.OGRGeometryH) (*DrillFileDescriptor, error) {
 	gCopy := C.OGR_G_Buffer(g, C.double(0.0), C.int(30))
 	if C.OGR_G_IsEmpty(gCopy) == C.int(1) {
 		gCopy = C.OGR_G_Clone(g)
@@ -372,7 +383,10 @@ func getDrillFileDescriptor(ds C.GDALDatasetH, g C.OGRGeometryH) DrillFileDescri
 		C.OCTDestroyCoordinateTransformation(trans)
 	}
 
-	fileEnv := envelopePolygon(ds)
+	fileEnv, err := envelopePolygon(ds)
+	if err != nil {
+		return nil, err
+	}
 	defer C.OGR_G_DestroyGeometry(fileEnv)
 
 	inters := C.OGR_G_Intersection(gCopy, fileEnv)
@@ -408,7 +422,6 @@ func getDrillFileDescriptor(ds C.GDALDatasetH, g C.OGRGeometryH) DrillFileDescri
 		offsetY = 0
 	}
 
-	mask, _ := createMask(ds, gCopy, offsetX, offsetY, countX, countY)
-
-	return DrillFileDescriptor{offsetX, offsetY, countX, countY, mask}
+	mask, err := createMask(ds, gCopy, offsetX, offsetY, countX, countY)
+	return &DrillFileDescriptor{offsetX, offsetY, countX, countY, mask}, err
 }
