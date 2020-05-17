@@ -69,7 +69,7 @@ func (p *DrillIndexer) Run(verbose bool) {
 		defer log.Printf("Drill Indexer done")
 	}
 	defer close(p.Out)
-	t0 := time.Now()
+
 	isInit := true
 	for geoReq := range p.In {
 		var feat geo.Feature
@@ -92,7 +92,6 @@ func (p *DrillIndexer) Run(verbose bool) {
 
 		if isInit {
 			if geoReq.MetricsCollector != nil {
-				defer func(t time.Time) { geoReq.MetricsCollector.Info.Indexer.Duration += time.Since(t) }(t0)
 				if len(geoReq.MetricsCollector.Info.Indexer.URL.RawURL) == 0 {
 					geoReq.MetricsCollector.Info.Indexer.URL.RawURL = reqURL
 				}
@@ -152,6 +151,9 @@ func (p *DrillIndexer) Run(verbose bool) {
 				}
 
 				indexTime := time.Since(start)
+				if geoReq.MetricsCollector != nil {
+					geoReq.MetricsCollector.Info.Indexer.Duration += indexTime
+				}
 
 				var metadata MetadataResponse
 				err = json.Unmarshal(body, &metadata)
