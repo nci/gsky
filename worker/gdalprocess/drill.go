@@ -10,7 +10,6 @@ import "C"
 
 import (
 	"fmt"
-	"image"
 	"log"
 	"math"
 	"sort"
@@ -26,7 +25,7 @@ import (
 type DrillFileDescriptor struct {
 	OffX, OffY     int32
 	CountX, CountY int32
-	Mask           *image.Gray
+	Mask           []uint8
 }
 
 var cWGS84WKT = C.CString(`GEOGCS["WGS 84",DATUM["WGS_1984",SPHEROID["WGS 84",6378137,298.257223563,AUTHORITY["EPSG","7030"]],TOWGS84[0,0,0,0,0,0,0],AUTHORITY["EPSG","6326"]],PRIMEM["Greenwich",0,AUTHORITY["EPSG","8901"]],UNIT["degree",0.0174532925199433,AUTHORITY["EPSG","9108"]],AUTHORITY["EPSG","4326"]]","proj4":"+proj=longlat +ellps=WGS84 +towgs84=0,0,0,0,0,0,0 +no_defs `)
@@ -152,7 +151,7 @@ func readData(ds C.GDALDatasetH, bands []int32, geom C.OGRGeometryH, bandStrides
 			total := int32(0)
 
 			for i := 0; i < bandSize; i++ {
-				if dsDscr.Mask.Pix[i] == 255 && dataBuf[i+bandOffset] != nodata {
+				if dsDscr.Mask[i] == 255 && dataBuf[i+bandOffset] != nodata {
 					val := dataBuf[i+bandOffset]
 					if pixelCount != 0 {
 						total++
@@ -232,7 +231,7 @@ func computeDeciles(decileCount int, dataBuf []float32, bandSize int, bandOffset
 
 	var buf []float32
 	for i := 0; i < bandSize; i++ {
-		if dsDscr.Mask.Pix[i] == 255 && dataBuf[i+bandOffset] != nodata {
+		if dsDscr.Mask[i] == 255 && dataBuf[i+bandOffset] != nodata {
 			buf = append(buf, dataBuf[i+bandOffset])
 		}
 	}
@@ -273,10 +272,10 @@ func computeDeciles(decileCount int, dataBuf []float32, bandSize int, bandOffset
 	return deciles
 }
 
-func createMask(ds C.GDALDatasetH, g C.OGRGeometryH, offsetX, offsetY, countX, countY int32) (*image.Gray, error) {
-	canvas := make([]uint8, int(C.GDALGetRasterXSize(ds)*C.GDALGetRasterYSize(ds)))
+func createMask(ds C.GDALDatasetH, g C.OGRGeometryH, offsetX, offsetY, countX, countY int32) ([]uint8, error) {
+	canvas := make([]uint8, countX*countY)
 
-	memStr := fmt.Sprintf("MEM:::DATAPOINTER=%d,PIXELS=%d,LINES=%d,DATATYPE=Byte", unsafe.Pointer(&canvas[0]), C.GDALGetRasterXSize(ds), C.GDALGetRasterYSize(ds))
+	memStr := fmt.Sprintf("MEM:::DATAPOINTER=%d,PIXELS=%d,LINES=%d,DATATYPE=Byte", unsafe.Pointer(&canvas[0]), countX, countY)
 	memStrC := C.CString(memStr)
 	defer C.free(unsafe.Pointer(memStrC))
 	hDstDS := C.GDALOpen(memStrC, C.GA_Update)
@@ -298,6 +297,10 @@ func createMask(ds C.GDALDatasetH, g C.OGRGeometryH, offsetX, offsetY, countX, c
 		log.Println(msg)
 		return nil, msg
 	}
+
+	geoTrans[0] += geoTrans[1] * float64(offsetX)
+	geoTrans[3] += geoTrans[5] * float64(offsetY)
+
 	if gdalErr = C.GDALSetGeoTransform(hDstDS, (*C.double)(&geoTrans[0])); gdalErr != 0 {
 		msg := fmt.Errorf("Couldn't set the geotransform on the destination dataset %v", gdalErr)
 		log.Println(msg)
@@ -320,18 +323,7 @@ func createMask(ds C.GDALDatasetH, g C.OGRGeometryH, offsetX, offsetY, countX, c
 		return nil, msg
 	}
 
-	gray := &image.Gray{Pix: canvas, Stride: int(C.GDALGetRasterXSize(ds)), Rect: image.Rect(0, 0, int(C.GDALGetRasterXSize(ds)), int(C.GDALGetRasterYSize(ds)))}
-	return subImage(gray, offsetX, offsetY, countX, countY), nil
-}
-
-func subImage(fullImage *image.Gray, offsetX, offsetY, countX, countY int32) *image.Gray {
-	subImage := image.NewGray(image.Rect(0, 0, int(countX), int(countY)))
-	for x := 0; x < int(countX); x++ {
-		for y := 0; y < int(countY); y++ {
-			subImage.Set(x, y, fullImage.At(x+int(offsetX), y+int(offsetY)))
-		}
-	}
-	return subImage
+	return canvas, nil
 }
 
 func envelopePolygon(hDS C.GDALDatasetH) (C.OGRGeometryH, error) {
