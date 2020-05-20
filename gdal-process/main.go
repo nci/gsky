@@ -32,7 +32,7 @@ func sendOutput(out *pb.Result, conn net.Conn) error {
 	return nil
 }
 
-func dataHandler(conn net.Conn, debug bool, timeout int) {
+func dataHandler(conn net.Conn, timeout int) {
 	defer conn.Close()
 	out := &pb.Result{}
 
@@ -69,7 +69,7 @@ func dataHandler(conn net.Conn, debug bool, timeout int) {
 
 	switch in.Operation {
 	case "warp":
-		out = gp.WarpRaster(in, debug)
+		out = gp.WarpRaster(in)
 	case "drill":
 		out = gp.DrillDataset(in)
 	case "extent":
@@ -96,7 +96,7 @@ func init() {
 }
 
 func main() {
-	debug := flag.Bool("debug", false, "verbose logging")
+	verbose := flag.Bool("verbose", false, "verbose logging")
 	sock := flag.String("sock", "", "unix socket path")
 	timeout := flag.Int("timeout", 120, "timeout in seconds")
 	flag.Parse()
@@ -108,7 +108,9 @@ func main() {
 	}
 	defer os.Remove(*sock)
 
-	log.Println("Listening on", *sock)
+	if *verbose {
+		log.Println("Listening on", *sock)
+	}
 
 	for {
 		conn, err := l.Accept()
@@ -117,6 +119,6 @@ func main() {
 			return
 		}
 
-		dataHandler(conn, *debug, *timeout)
+		dataHandler(conn, *timeout)
 	}
 }

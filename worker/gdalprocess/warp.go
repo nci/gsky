@@ -486,7 +486,7 @@ func ComputeReprojectExtent(in *pb.GeoRPCGranule) *pb.Result {
 	return &pb.Result{Raster: &pb.Raster{Data: dBytesCopy, NoData: 0, RasterType: "Int"}, Error: "OK"}
 }
 
-func WarpRaster(in *pb.GeoRPCGranule, debug bool) *pb.Result {
+func WarpRaster(in *pb.GeoRPCGranule) *pb.Result {
 	filePathC := C.CString(in.Path)
 	defer C.free(unsafe.Pointer(filePathC))
 
@@ -563,10 +563,6 @@ func WarpRaster(in *pb.GeoRPCGranule, debug bool) *pb.Result {
 
 	if cErr != 0 {
 		return &pb.Result{Error: dump(fmt.Sprintf("warp_operation() fail: %v", int(cErr))), Metrics: metrics}
-	}
-
-	if debug {
-		dump("debug")
 	}
 
 	dstBbox := make([]int32, len(dstBboxC))

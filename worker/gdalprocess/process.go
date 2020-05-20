@@ -39,12 +39,13 @@ type Process struct {
 	CombinedOutput   io.ReadCloser
 	MaxTaskProcessed int
 	ErrorMsg         chan *ErrorMsg
+	Verbose          bool
 }
 
-func NewProcess(tQueue chan *Task, binary string, port int, errChan chan *ErrorMsg, maxTaskProcessed int, debug bool) *Process {
-	debugArg := ""
-	if debug {
-		debugArg = "-debug"
+func NewProcess(tQueue chan *Task, binary string, port int, errChan chan *ErrorMsg, maxTaskProcessed int, verbose bool) *Process {
+	verboseArg := ""
+	if verbose {
+		verboseArg = "-verbose"
 	}
 
 	// we need to keep the temp file existing to prevent race condition
@@ -57,7 +58,7 @@ func NewProcess(tQueue chan *Task, binary string, port int, errChan chan *ErrorM
 	tmpFileName := tmpFile.Name()
 	addr := tmpFileName + "_socket"
 
-	cmd := exec.Command(binary, "-sock", addr, debugArg)
+	cmd := exec.Command(binary, "-sock", addr, verboseArg)
 
 	cmd.SysProcAttr = &syscall.SysProcAttr{Pdeathsig: syscall.SIGKILL}
 	combinedOutput, err := cmd.StderrPipe()
@@ -68,7 +69,7 @@ func NewProcess(tQueue chan *Task, binary string, port int, errChan chan *ErrorM
 		cmd.Stdout = cmd.Stderr
 	}
 
-	return &Process{tQueue, addr, tmpFileName, cmd, combinedOutput, maxTaskProcessed, errChan}
+	return &Process{tQueue, addr, tmpFileName, cmd, combinedOutput, maxTaskProcessed, errChan, verbose}
 }
 
 func (p *Process) Start() error {
@@ -79,7 +80,9 @@ func (p *Process) Start() error {
 		return err
 	}
 
-	log.Printf("Process running with PID:%d, Unix socket:%s, Max tasks:%d", p.Cmd.Process.Pid, p.Address, p.MaxTaskProcessed)
+	if p.Verbose {
+		log.Printf("Process running with PID:%d, Unix socket:%s, Max tasks:%d", p.Cmd.Process.Pid, p.Address, p.MaxTaskProcessed)
+	}
 
 	go func() {
 		defer p.RemoveTempFiles()

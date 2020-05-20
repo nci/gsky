@@ -59,10 +59,10 @@ func main() {
 	executable := flag.String("exec", filepath.Dir(os.Args[0])+"/gsky-gdal-process", "Executable filepath")
 	maxTaskProcessed := flag.Int("max_tasks", 20000, "Maximum number of tasks processed before starting gsky-gdal-process.")
 	oomThreshold := flag.Int("oom_threshold", int(1.5*1024*1024), "MemAvailable lower than the threshold (KB) triggers an OOM of the worker process")
-	debug := flag.Bool("debug", false, "verbose logging")
+	verbose := flag.Bool("verbose", false, "verbose logging")
 	flag.Parse()
 
-	procPool, err := pp.CreateProcessPool(*poolSize, *executable, *port, *maxTaskProcessed, *debug)
+	procPool, err := pp.CreateProcessPool(*poolSize, *executable, *port, *maxTaskProcessed, *verbose)
 	if err != nil {
 		log.Printf("Failed to create process pool: %v", err)
 		os.Exit(2)
@@ -93,7 +93,7 @@ func main() {
 		if len(fileName) > maxLen {
 			execMatch = fileName[:maxLen]
 		}
-		mon := pp.NewOOMMonitor(execMatch, *oomThreshold, true)
+		mon := pp.NewOOMMonitor(execMatch, *oomThreshold, *verbose)
 		mon.StartMonitorLoop()
 	}()
 
@@ -105,6 +105,8 @@ func main() {
 		log.Fatalf("failed to listen: %v", err)
 	}
 	defer lis.Close()
+
+	log.Printf("GSKY gRPC is listening on :%d", *port)
 
 	if err := s.Serve(lis); err != nil {
 		log.Fatalf("failed to serve: %v", err)
