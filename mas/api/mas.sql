@@ -644,6 +644,7 @@ create or replace function mas_spatial_temporal_extents(
   declare
     result jsonb;
     shard text;
+    proj4txt text;
   begin
     if gpath is null then
       raise exception 'invalid search path';
@@ -670,6 +671,7 @@ create or replace function mas_spatial_temporal_extents(
       );
     end if;
 
+    proj4txt := (select proj4text from spatial_ref_sys where srid = 3857 limit 1);
     result := (select
       jsonb_build_object(
         'xmin',
@@ -689,7 +691,7 @@ create or replace function mas_spatial_temporal_extents(
       )
       from (
         select
-          public.ST_Envelope(public.ST_Collect(public.ST_Transform(po_polygon, 3857))) geom,
+          public.ST_Envelope(public.ST_Collect(public.ST_Transform(po_polygon, proj4txt))) geom,
           min(po_min_stamp)::timestamptz at time zone 'UTC' as min_stamp,
           max(po_max_stamp)::timestamptz at time zone 'UTC' as max_stamp
         from polygons
