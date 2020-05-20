@@ -551,7 +551,7 @@ func WarpRaster(in *pb.GeoRPCGranule) *pb.Result {
 	var bytesReadC C.int
 
 	var resUsage0, resUsage1 syscall.Rusage
-	syscall.Getrusage(syscall.RUSAGE_THREAD, &resUsage0)
+	syscall.Getrusage(syscall.RUSAGE_SELF, &resUsage0)
 	cErr := C.warp_operation_fast(filePathC, srcProjRefC, pSrcGeot, pGeoLoc, dstProjRefC, (*C.double)(&in.DstGeot[0]), C.int(in.Width), C.int(in.Height), C.int(in.Bands[0]), C.int(in.SRSCf), (*unsafe.Pointer)(&dstBufC), (*C.int)(&dstBufSize), (*C.int)(&dstBboxC[0]), (*C.double)(&noData), (*C.GDALDataType)(&dType), &bytesReadC)
 	syscall.Getrusage(syscall.RUSAGE_SELF, &resUsage1)
 
