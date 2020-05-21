@@ -305,7 +305,11 @@ func URLIndexGet(ctx context.Context, url string, geoReq *GeoTileRequest, errCha
 		return
 	}
 	defer resp.Body.Close()
+	t0 := time.Now()
 	body, err := ioutil.ReadAll(resp.Body)
+	if geoReq.MetricsCollector != nil {
+		geoReq.MetricsCollector.Info.Indexer.Duration += time.Since(t0)
+	}
 	if err != nil {
 		errChan <- fmt.Errorf("Error parsing response body from %s. Error: %v", url, err)
 		out <- &GeoTileGranule{ConfigPayLoad: ConfigPayLoad{NameSpaces: []string{utils.EmptyTileNS}, ScaleParams: geoReq.ScaleParams, Palette: geoReq.Palette}, Path: "NULL", NameSpace: utils.EmptyTileNS, RasterType: "Byte", TimeStamp: 0, BBox: geoReq.BBox, Height: geoReq.Height, Width: geoReq.Width, OffX: geoReq.OffX, OffY: geoReq.OffY, CRS: geoReq.CRS}

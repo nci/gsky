@@ -1454,7 +1454,7 @@ func generalHandler(conf *utils.Config, w http.ResponseWriter, r *http.Request) 
 
 	t0 := time.Now()
 	metricsCollector.Info.ReqTime = t0.Format(utils.ISOFormat)
-	defer func() { metricsCollector.Info.ReqDuration = time.Since(t0) }()
+	defer func(t time.Time) { metricsCollector.Info.ReqDuration = time.Since(t) }(t0)
 
 	reqUrl, e := url.QueryUnescape(r.URL.String())
 	if e == nil {

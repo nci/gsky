@@ -48,8 +48,6 @@ func (gi *GeoRasterGRPC) Run(varList []string, verbose bool) {
 	}
 	defer close(gi.Out)
 
-	t0 := time.Now()
-
 	var g0 *GeoTileGranule
 	var grans []*GeoTileGranule
 	var nullGrans []*GeoTileGranule
@@ -64,8 +62,9 @@ func (gi *GeoRasterGRPC) Run(varList []string, verbose bool) {
 	var outRasters []*FlexRaster
 	var outMetrics []*pb.WorkerMetrics
 
-	iGran := 0
+	t0 := time.Now()
 
+	iGran := 0
 	var wgRpc sync.WaitGroup
 	for inGran := range gi.In {
 		if inGran.Path == "NULL" {
@@ -88,10 +87,6 @@ func (gi *GeoRasterGRPC) Run(varList []string, verbose bool) {
 
 		if iGran == 0 {
 			g0 = grans[0]
-			if g0.MetricsCollector != nil {
-				defer func() { g0.MetricsCollector.Info.RPC.Duration += time.Since(t0) }()
-			}
-
 			defer func() {
 				if g0.MetricsCollector != nil {
 					g0.MetricsCollector.Info.RPC.BytesRead += accumMetrics.BytesRead
@@ -245,6 +240,10 @@ func (gi *GeoRasterGRPC) Run(varList []string, verbose bool) {
 	}
 	wgRpc.Wait()
 
+	if g0 != nil && g0.MetricsCollector != nil {
+		g0.MetricsCollector.Info.RPC.Duration += time.Since(t0)
+	}
+
 	if iGran == 0 {
 		if len(nullGrans) > 0 {
 			gran := nullGrans[0]
@@ -261,7 +260,7 @@ func (gi *GeoRasterGRPC) Run(varList []string, verbose bool) {
 		}
 	}
 
-	if g0.MetricsCollector != nil {
+	if g0 != nil && g0.MetricsCollector != nil {
 		g0.MetricsCollector.Info.RPC.NumTiledGranules += iGran
 	}
 
