@@ -27,14 +27,16 @@ GDALDatasetH open_gdal_dataset(const char *srcFilePath, int queryMetadata) {
 	GDALDatasetH hSrcDS = NULL;
 	const char *netCDFSig = "NETCDF:";
 
-	if(strncmp(srcFilePath, netCDFSig, strlen(netCDFSig)) && strncmp(srcFilePath+strlen(srcFilePath)-3, ".nc", strlen(".nc"))) {
-		hSrcDS = GDALOpenEx(srcFilePath, GA_ReadOnly|GDAL_OF_RASTER, NULL, NULL, NULL);
-	} else {
+	if(!strncmp(srcFilePath, netCDFSig, strlen(netCDFSig)) || !strncmp(srcFilePath+strlen(srcFilePath)-3, ".nc", strlen(".nc"))) {
 		const char *mdQuery = queryMetadata > 0 ? "md_query=yes" : "md_query=no";
 		const char *openOpts[] = {mdQuery, "band_query=1", NULL};
-		const char *drivers[] = {"GSKY_netCDF", "netCDF", NULL};
+		const char *drivers[] = {"GSKY_netCDF", NULL};
 
 		hSrcDS = GDALOpenEx(srcFilePath, GA_ReadOnly|GDAL_OF_RASTER, drivers, openOpts, NULL);
+	}
+
+	if(hSrcDS == NULL) {
+		hSrcDS = GDALOpenEx(srcFilePath, GA_ReadOnly|GDAL_OF_RASTER, NULL, NULL, NULL);
 	}
 	return hSrcDS;
 }
@@ -81,7 +83,7 @@ func ExtractGDALInfo(path string, concLimit int, approx bool, config *Config) (*
 	hDataset := C.open_gdal_dataset(cPath, C.int(0))
 	if hDataset == nil {
 		err := C.CPLGetLastErrorMsg()
-		return &GeoFile{}, fmt.Errorf("%v", C.GoString(err))
+		return &GeoFile{}, fmt.Errorf("open GDAL dataset error: %v, %v", path, C.GoString(err))
 	}
 	defer C.GDALClose(hDataset)
 
@@ -156,7 +158,7 @@ func ExtractGDALInfo(path string, concLimit int, approx bool, config *Config) (*
 				if err == nil {
 					ds[isub-1] = dsInfo
 				} else {
-					LogErr.Printf("%v", err)
+					LogErr.Printf("error: %v, %v, %v", path, C.GoString(pszSubdatasetName), err)
 				}
 			}(tmpDatasets, int(i))
 		}
