@@ -56,6 +56,7 @@ func (gi *GeoRasterGRPC) Run(varList []string, verbose bool) {
 	var connPool []*grpc.ClientConn
 	var projWKT string
 	var cLimiter *ConcLimiter
+	var geot []float64
 
 	accumMetrics := &pb.WorkerMetrics{}
 
@@ -135,6 +136,8 @@ func (gi *GeoRasterGRPC) Run(varList []string, verbose bool) {
 			C.OSRDestroySpatialReference(hSRS)
 
 			cLimiter = NewConcLimiter(g0.GrpcConcLimit * len(connPool))
+
+			geot = BBox2Geot(g0.Width, g0.Height, g0.BBox)
 		}
 
 		if g0.GrpcTileXSize > 0.0 || g0.GrpcTileYSize > 0.0 {
@@ -212,7 +215,7 @@ func (gi *GeoRasterGRPC) Run(varList []string, verbose bool) {
 				go func(g *GeoTileGranule, idx int) {
 					defer wgRpc.Done()
 					defer cLimiter.Decrease()
-					r, err := getRPCRaster(gi.Context, g, projWKT, connPool[idx%len(connPool)])
+					r, err := getRPCRaster(gi.Context, g, projWKT, geot, connPool[idx%len(connPool)])
 					if err != nil {
 						gi.sendError(err)
 						r = &pb.Result{Raster: &pb.Raster{Data: make([]uint8, g.Width*g.Height), RasterType: "Byte", NoData: -1.}}
@@ -314,9 +317,8 @@ func getDataSize(dataType string) (int, error) {
 	}
 }
 
-func getRPCRaster(ctx context.Context, g *GeoTileGranule, projWKT string, conn *grpc.ClientConn) (*pb.Result, error) {
+func getRPCRaster(ctx context.Context, g *GeoTileGranule, projWKT string, geot []float64, conn *grpc.ClientConn) (*pb.Result, error) {
 	c := pb.NewGDALClient(conn)
-	geot := BBox2Geot(g.Width, g.Height, g.BBox)
 	granule := &pb.GeoRPCGranule{Operation: "warp", Height: int32(g.Height), Width: int32(g.Width), Path: g.Path, DstSRS: projWKT, DstGeot: geot, Bands: []int32{int32(g.BandIdx)}}
 	if g.GeoLocation != nil {
 		granule.GeoLocOpts = []string{
