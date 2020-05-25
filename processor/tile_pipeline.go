@@ -63,7 +63,7 @@ func (dp *TilePipeline) Process(geoReq *GeoTileRequest, verbose bool) chan []uti
 	if dp.CurrentLayer != nil && len(dp.CurrentLayer.InputLayers) > 0 {
 		otherVars, hasFusedBand, supportTimeWeighted, err := dp.checkFusedBandNames(geoReq)
 		if err != nil {
-			dp.Error <- err
+			dp.sendError(err)
 			close(m.In)
 			return m.Out
 		}
@@ -112,7 +112,7 @@ func (dp *TilePipeline) Process(geoReq *GeoTileRequest, verbose bool) chan []uti
 				}
 				rasters, err := dp.processDeps(geoReq, verbose)
 				if err != nil {
-					dp.Error <- err
+					dp.sendError(err)
 					close(m.In)
 					return m.Out
 				}
@@ -652,4 +652,11 @@ func (dp *TilePipeline) checkFusedBandNames(geoReq *GeoTileRequest) ([]string, b
 		otherVars = append(otherVars, ns)
 	}
 	return otherVars, hasFusedBand, isTimeWeighted, nil
+}
+
+func (dp *TilePipeline) sendError(err error) {
+	select {
+	case dp.Error <- err:
+	default:
+	}
 }
