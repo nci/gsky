@@ -96,7 +96,10 @@ func (p *TileIndexer) Run(verbose bool) {
 	for geoReq := range p.In {
 		select {
 		case <-p.Context.Done():
-			p.Error <- fmt.Errorf("Tile indexer context has been cancel: %v", p.Context.Err())
+			p.sendError(fmt.Errorf("tile indexer: context has been cancel: %v", p.Context.Err()))
+			return
+		case err := <-p.Error:
+			p.sendError(err)
 			return
 		default:
 			if len(strings.TrimSpace(geoReq.Collection)) == 0 {
@@ -246,7 +249,7 @@ func (p *TileIndexer) Run(verbose bool) {
 							url = p.getIndexerURL(geoReq, nameSpaces, bboxWkt, "EPSG:3857")
 
 							wg.Add(1)
-							go URLIndexGet(p.Context, url, geoReq, p.Error, p.Out, &wg, isEmptyTile, verbose)
+							go p.URLIndexGet(p.Context, url, geoReq, p.Error, p.Out, &wg, isEmptyTile, verbose)
 						}
 					}
 				} else {
@@ -256,7 +259,7 @@ func (p *TileIndexer) Run(verbose bool) {
 
 			if !hasSubDivision {
 				wg.Add(1)
-				go URLIndexGet(p.Context, url, geoReq, p.Error, p.Out, &wg, isEmptyTile, verbose)
+				go p.URLIndexGet(p.Context, url, geoReq, p.Error, p.Out, &wg, isEmptyTile, verbose)
 			}
 
 			if geoReq.Mask != nil {
@@ -276,7 +279,7 @@ func (p *TileIndexer) Run(verbose bool) {
 					}
 
 					wg.Add(1)
-					go URLIndexGet(p.Context, url, geoReq, p.Error, p.Out, &wg, isEmptyTile, verbose)
+					go p.URLIndexGet(p.Context, url, geoReq, p.Error, p.Out, &wg, isEmptyTile, verbose)
 				}
 			}
 			wg.Wait()
@@ -295,12 +298,12 @@ func (p *TileIndexer) getIndexerURL(geoReq *GeoTileRequest, nameSpaces string, b
 	return url
 }
 
-func URLIndexGet(ctx context.Context, url string, geoReq *GeoTileRequest, errChan chan error, out chan *GeoTileGranule, wg *sync.WaitGroup, isEmptyTile bool, verbose bool) {
+func (p *TileIndexer) URLIndexGet(ctx context.Context, url string, geoReq *GeoTileRequest, errChan chan error, out chan *GeoTileGranule, wg *sync.WaitGroup, isEmptyTile bool, verbose bool) {
 	defer wg.Done()
 
 	resp, err := http.Get(url)
 	if err != nil {
-		errChan <- fmt.Errorf("GET request to %s failed. Error: %v", url, err)
+		p.sendError(fmt.Errorf("GET request to %s failed. Error: %v", url, err))
 		out <- &GeoTileGranule{ConfigPayLoad: ConfigPayLoad{NameSpaces: []string{utils.EmptyTileNS}, ScaleParams: geoReq.ScaleParams, Palette: geoReq.Palette}, Path: "NULL", NameSpace: utils.EmptyTileNS, RasterType: "Byte", TimeStamp: 0, BBox: geoReq.BBox, Height: geoReq.Height, Width: geoReq.Width, OffX: geoReq.OffX, OffY: geoReq.OffY, CRS: geoReq.CRS}
 		return
 	}
@@ -311,14 +314,14 @@ func URLIndexGet(ctx context.Context, url string, geoReq *GeoTileRequest, errCha
 		geoReq.MetricsCollector.Info.Indexer.Duration += time.Since(t0)
 	}
 	if err != nil {
-		errChan <- fmt.Errorf("Error parsing response body from %s. Error: %v", url, err)
+		p.sendError(fmt.Errorf("Error parsing response body from %s. Error: %v", url, err))
 		out <- &GeoTileGranule{ConfigPayLoad: ConfigPayLoad{NameSpaces: []string{utils.EmptyTileNS}, ScaleParams: geoReq.ScaleParams, Palette: geoReq.Palette}, Path: "NULL", NameSpace: utils.EmptyTileNS, RasterType: "Byte", TimeStamp: 0, BBox: geoReq.BBox, Height: geoReq.Height, Width: geoReq.Width, OffX: geoReq.OffX, OffY: geoReq.OffY, CRS: geoReq.CRS}
 		return
 	}
 	var metadata MetadataResponse
 	err = json.Unmarshal(body, &metadata)
 	if err != nil {
-		errChan <- fmt.Errorf("Problem parsing JSON response from %s. Error: %v", url, err)
+		p.sendError(fmt.Errorf("Problem parsing JSON response from %s. Error: %v", url, err))
 		out <- &GeoTileGranule{ConfigPayLoad: ConfigPayLoad{NameSpaces: []string{utils.EmptyTileNS}, ScaleParams: geoReq.ScaleParams, Palette: geoReq.Palette}, Path: "NULL", NameSpace: utils.EmptyTileNS, RasterType: "Byte", TimeStamp: 0, BBox: geoReq.BBox, Height: geoReq.Height, Width: geoReq.Width, OffX: geoReq.OffX, OffY: geoReq.OffY, CRS: geoReq.CRS}
 		return
 	}
@@ -369,7 +372,7 @@ func URLIndexGet(ctx context.Context, url string, geoReq *GeoTileRequest, errCha
 						} else {
 							for _, val := range axis.Params {
 								if _, found := axisParamsLookup[axis.Name][val]; !found {
-									errChan <- fmt.Errorf("index-based selection only supports homogeneous axis across files")
+									p.sendError(fmt.Errorf("index-based selection only supports homogeneous axis across files"))
 									return
 								}
 							}
@@ -380,7 +383,7 @@ func URLIndexGet(ctx context.Context, url string, geoReq *GeoTileRequest, errCha
 					}
 
 					if selErr != nil {
-						errChan <- selErr
+						p.sendError(selErr)
 						return
 					}
 					isOutRange = outRange
@@ -388,7 +391,7 @@ func URLIndexGet(ctx context.Context, url string, geoReq *GeoTileRequest, errCha
 					if geoReq.AxisMapping == 0 {
 						if axis.Grid == "enum" {
 							if len(axis.Params) == 0 {
-								errChan <- fmt.Errorf("Indexer error: empty params for 'enum' grid: %v", axis.Name)
+								p.sendError(fmt.Errorf("Indexer error: empty params for 'enum' grid: %v", axis.Name))
 								return
 							}
 							axis.IntersectionIdx = append(axis.IntersectionIdx, 0)
@@ -401,13 +404,13 @@ func URLIndexGet(ctx context.Context, url string, geoReq *GeoTileRequest, errCha
 							axis.Aggregate = 1
 							axis.IntersectionValues = append(axis.IntersectionValues, float64(ds.TimeStamps[0].Unix()))
 						} else {
-							errChan <- fmt.Errorf("Indexer error: unknown axis grid type: %v", axis.Grid)
+							p.sendError(fmt.Errorf("Indexer error: unknown axis grid type: %v", axis.Grid))
 							return
 						}
 					} else {
 						if axis.Grid == "enum" {
 							if len(axis.Params) == 0 {
-								errChan <- fmt.Errorf("Indexer error: empty params for 'enum' grid: %v", axis.Name)
+								p.sendError(fmt.Errorf("Indexer error: empty params for 'enum' grid: %v", axis.Name))
 								return
 							}
 							for iv, val := range axis.Params {
@@ -420,7 +423,7 @@ func URLIndexGet(ctx context.Context, url string, geoReq *GeoTileRequest, errCha
 								axis.IntersectionValues = append(axis.IntersectionValues, float64(t.Unix()))
 							}
 						} else {
-							errChan <- fmt.Errorf("Indexer error: unknown axis grid type: %v", axis.Grid)
+							p.sendError(fmt.Errorf("Indexer error: unknown axis grid type: %v", axis.Grid))
 							return
 						}
 
@@ -575,6 +578,9 @@ func URLIndexGet(ctx context.Context, url string, geoReq *GeoTileRequest, errCha
 		for _, gran := range granList {
 			if hasNewNs {
 				gran.ConfigPayLoad = newConfigPayLoad
+			}
+			if p.checkCancellation() {
+				return
 			}
 			out <- gran
 		}
@@ -804,4 +810,24 @@ func doSelectionByRange(axis *DatasetAxis, tileAxis *GeoTileAxis, geoReq *GeoTil
 	}
 
 	return false, nil
+}
+
+func (p *TileIndexer) sendError(err error) {
+	select {
+	case p.Error <- err:
+	default:
+	}
+}
+
+func (p *TileIndexer) checkCancellation() bool {
+	select {
+	case <-p.Context.Done():
+		p.sendError(fmt.Errorf("tile indexer: context has been cancel: %v", p.Context.Err()))
+		return true
+	case err := <-p.Error:
+		p.sendError(err)
+		return true
+	default:
+		return false
+	}
 }

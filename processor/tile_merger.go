@@ -454,6 +454,10 @@ func (enc *RasterMerger) Run(bandExpr *utils.BandExpressions, verbose bool) {
 	for inRasters := range enc.In {
 		select {
 		case <-enc.Context.Done():
+			enc.sendError(fmt.Errorf("tile merger: context has been cancel: %v", enc.Context.Err()))
+			return
+		case err := <-enc.Error:
+			enc.sendError(err)
 			return
 		default:
 		}
@@ -497,10 +501,8 @@ func (enc *RasterMerger) Run(bandExpr *utils.BandExpressions, verbose bool) {
 		}
 	}
 
-	select {
-	case <-enc.Context.Done():
+	if enc.checkCancellation() {
 		return
-	default:
 	}
 
 	var nameSpaces []string
@@ -728,6 +730,10 @@ func (enc *RasterMerger) Run(bandExpr *utils.BandExpressions, verbose bool) {
 		}
 	}
 
+	if enc.checkCancellation() {
+		return
+	}
+
 	enc.Out <- out
 }
 
@@ -735,5 +741,18 @@ func (enc *RasterMerger) sendError(err error) {
 	select {
 	case enc.Error <- err:
 	default:
+	}
+}
+
+func (enc *RasterMerger) checkCancellation() bool {
+	select {
+	case <-enc.Context.Done():
+		enc.sendError(fmt.Errorf("tile merger: context has been cancel: %v", enc.Context.Err()))
+		return true
+	case err := <-enc.Error:
+		enc.sendError(err)
+		return true
+	default:
+		return false
 	}
 }

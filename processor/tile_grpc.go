@@ -203,6 +203,10 @@ func (gi *GeoRasterGRPC) Run(varList []string, verbose bool) {
 			outMetrics = append(outMetrics, nil)
 			select {
 			case <-gi.Context.Done():
+				gi.sendError(fmt.Errorf("tile grpc: context has been cancel: %v", gi.Context.Err()))
+				return
+			case err := <-gi.Error:
+				gi.sendError(err)
 				return
 			default:
 				if gran.Path == "NULL" {
@@ -278,10 +282,8 @@ func (gi *GeoRasterGRPC) Run(varList []string, verbose bool) {
 		}
 	}
 
-	select {
-	case <-gi.Context.Done():
+	if gi.checkCancellation() {
 		return
-	default:
 	}
 
 	gi.Out <- outRasters
@@ -291,6 +293,19 @@ func (gi *GeoRasterGRPC) sendError(err error) {
 	select {
 	case gi.Error <- err:
 	default:
+	}
+}
+
+func (gi *GeoRasterGRPC) checkCancellation() bool {
+	select {
+	case <-gi.Context.Done():
+		gi.sendError(fmt.Errorf("tile grpc: context has been cancel: %v", gi.Context.Err()))
+		return true
+	case err := <-gi.Error:
+		gi.sendError(err)
+		return true
+	default:
+		return false
 	}
 }
 
