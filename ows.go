@@ -1609,6 +1609,7 @@ func main() {
 	http.HandleFunc("/ows", owsHandler)
 	http.HandleFunc("/ows/", owsHandler)
 
-	Info.Printf("GSKY is ready")
-	log.Fatal(http.ListenAndServe(fmt.Sprintf("0.0.0.0:%d", *port), nil))
+	listeningHost := fmt.Sprintf("0.0.0.0:%d", *port)
+	Info.Printf("GSKY is listening on %s", listeningHost)
+	log.Fatal(http.ListenAndServe(listeningHost, nil))
 }
