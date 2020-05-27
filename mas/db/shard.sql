@@ -56,17 +56,6 @@ create function ingest_line()
       md_json jsonb not null
     );
 
-    create temporary table if not exists mypolygons (
-      po_hash uuid,
-      po_stamps timestamptz[],
-      po_min_stamp timestamptz,
-      po_max_stamp timestamptz,
-      po_name text,
-      po_pixel_x numeric,
-      po_pixel_y numeric,
-      po_polygon public.geometry
-    );
-
     set client_min_messages to warning;
 
     insert into mymetadata (
@@ -138,6 +127,7 @@ create function ingested_lines()
     trans_srid integer;
 
   begin
+    perform set_config('work_mem', '64MB', true);
 
     update mypaths set pa_parents = (
       select
@@ -198,8 +188,20 @@ create function ingested_lines()
     proj4txt := (select proj4text from public.spatial_ref_sys where auth_srid = 4326 and trim(proj4text) <> '' limit 1);
     trans_srid := (select srid from public.spatial_ref_sys where auth_srid = 4326 and trim(proj4text) <> '' limit 1);
 
+    create temporary table if not exists mypolygons (
+      po_hash uuid,
+      po_stamps timestamptz[],
+      po_min_stamp timestamptz,
+      po_max_stamp timestamptz,
+      po_name text,
+      po_pixel_x numeric,
+      po_pixel_y numeric,
+      po_polygon public.geometry
+    );
+
     insert into mypolygons
       select
+        distinct on (hash, variable)
         hash
           as po_hash,
         array(select jsonb_array_elements_text(stamps))::timestamptz[]
