@@ -1,15 +1,17 @@
 #!/bin/bash
 
-here="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-shard=$1
+## This file is now only for compatibility of old ingestion pipeline code
 
-(cd "$here" && psql -v ON_ERROR_STOP=1 -A -t -q -d mas <<EOD
+#here="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+#shard=$1
 
-set role mas;
-set search_path to ${shard};
+#(cd "$here" && psql -v ON_ERROR_STOP=1 -A -t -q -d mas <<EOD
 
-select refresh_polygons();
-select refresh_caches();
+#set role mas;
+#set search_path to ${shard};
 
-EOD
-)
+#select refresh_polygons();
+#select refresh_caches();
+
+#EOD
+#)

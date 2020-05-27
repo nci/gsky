@@ -125,5 +125,3 @@ do
 		(cd "$here" && zcat "${abs_filepath}" | sed $filters | bash shard_ingest.sh "${shard}")
 	fi
 done
-
-(cd "$here" && bash shard_refresh.sh "${shard}")
