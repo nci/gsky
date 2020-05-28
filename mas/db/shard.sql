@@ -145,46 +145,6 @@ create function ingested_lines()
 
     drop table mypaths;
 
-    insert into public.nci_spatial_ref_sys (auth_name, srtext, proj4text)
-      select
-        'NCI',
-        b.srtext,
-        b.proj4text
-      from (
-        select
-          trim(geo#>>'{proj_wkt}')
-            as srtext,
-          trim(geo#>>'{proj4}')
-            as proj4text
-        from (
-          select
-            jsonb_array_elements(md_json->'geo_metadata')
-              as geo
-          from
-            mymetadata
-          where
-            md_type = 'gdal'
-            and jsonb_typeof(md_json->'geo_metadata') = 'array'
-        ) a
-        group by srtext, proj4text
-      ) b
-      left join public.spatial_ref_sys s1
-        on b.srtext = s1.srtext
-        and b.proj4text = s1.proj4text
-      left join public.nci_spatial_ref_sys s2
-        on b.srtext = s2.srtext
-        and b.proj4text = s2.proj4text
-      where
-        trim(b.srtext) <> ''
-        and trim(b.proj4text) <> ''
-        and s1.srtext is null
-        and s2.srtext is null
-    ;
-
-    insert into public.spatial_ref_sys (srid, auth_name, auth_srid, srtext, proj4text)
-      select srid, auth_name, srid, srtext, proj4text from public.nci_spatial_ref_sys
-    on conflict (srid) do nothing;
-
     proj4txt := (select proj4text from public.spatial_ref_sys where auth_srid = 4326 and trim(proj4text) <> '' limit 1);
     trans_srid := (select srid from public.spatial_ref_sys where auth_srid = 4326 and trim(proj4text) <> '' limit 1);
 
@@ -216,7 +176,7 @@ create function ingested_lines()
           as po_pixel_x,
         (geotransform->>5)::numeric
           as po_pixel_y,
-        public.st_setsrid(public.st_transform(public.st_geomfromtext(polygon, srid), proj4txt), trans_srid)
+        public.st_setsrid(public.st_transform(public.st_geomfromtext(polygon), b.proj4text, proj4txt), trans_srid)
           as po_polygon
       from (
         select
@@ -245,12 +205,9 @@ create function ingested_lines()
           and jsonb_typeof(md_json->'geo_metadata') = 'array'
         ) a
       ) b
-      join public.spatial_ref_sys s
-        on b.srtext = s.srtext
-        and b.proj4text = s.proj4text
-        and trim(b.srtext) <> ''
-        and trim(b.proj4text) <> ''
-        and trim(b.polygon) <> ''
+      where b.srtext <> ''
+        and b.proj4text <> ''
+        and b.polygon <> ''
     ;
 
     insert into polygons select * from mypolygons
@@ -644,8 +601,20 @@ create unlogged table timestamps_cache (
 create or replace function refresh_caches()
   returns boolean language plpgsql as $$
   begin
-    raise notice 'refresh caches';
     truncate timestamps_cache;
+    return true;
+  end
+$$;
+
+create or replace function analyze_shard()
+  returns boolean language plpgsql as $$
+  begin
+    raise notice 'analyzing metadata, paths and polygons';
+
+    analyze metadata;
+    analyze paths;
+    analyze polygons;
+
     return true;
   end
 $$;
