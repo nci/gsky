@@ -56,7 +56,6 @@ func (gi *GeoRasterGRPC) Run(varList []string, verbose bool) {
 	var connPool []*grpc.ClientConn
 	var projWKT string
 	var cLimiter *ConcLimiter
-	var geot []float64
 
 	accumMetrics := &pb.WorkerMetrics{}
 
@@ -135,9 +134,9 @@ func (gi *GeoRasterGRPC) Run(varList []string, verbose bool) {
 			C.free(unsafe.Pointer(crsC))
 			C.OSRDestroySpatialReference(hSRS)
 
-			cLimiter = NewConcLimiter(g0.GrpcConcLimit * len(connPool))
+			g0.DstGeoTransform = BBox2Geot(g0.Width, g0.Height, g0.BBox)
 
-			geot = BBox2Geot(g0.Width, g0.Height, g0.BBox)
+			cLimiter = NewConcLimiter(g0.GrpcConcLimit * len(connPool))
 		}
 
 		if g0.GrpcTileXSize > 0.0 || g0.GrpcTileYSize > 0.0 {
@@ -189,7 +188,9 @@ func (gi *GeoRasterGRPC) Run(varList []string, verbose bool) {
 						tileXSize := int(.5 + (xMax-xMin)/xRes)
 						tileYSize := int(.5 + (yMax-yMin)/yRes)
 
-						tileGran := &GeoTileGranule{ConfigPayLoad: g.ConfigPayLoad, RawPath: g.RawPath, Path: g.Path, NameSpace: g.NameSpace, VarNameSpace: g.VarNameSpace, RasterType: g.RasterType, TimeStamp: g.TimeStamp, BandIdx: g.BandIdx, Polygon: g.Polygon, BBox: []float64{xMin, yMin, xMax, yMax}, Height: tileYSize, Width: tileXSize, RawHeight: g.Height, RawWidth: g.Width, OffX: x, OffY: g.Height - y - tileYSize, CRS: g.CRS, SrcSRS: g.SrcSRS, SrcGeoTransform: g.SrcGeoTransform, GeoLocation: g.GeoLocation}
+						tileBBox := []float64{xMin, yMin, xMax, yMax}
+						tileGeot := BBox2Geot(tileXSize, tileYSize, tileBBox)
+						tileGran := &GeoTileGranule{ConfigPayLoad: g.ConfigPayLoad, RawPath: g.RawPath, Path: g.Path, NameSpace: g.NameSpace, VarNameSpace: g.VarNameSpace, RasterType: g.RasterType, TimeStamp: g.TimeStamp, BandIdx: g.BandIdx, Polygon: g.Polygon, BBox: tileBBox, Height: tileYSize, Width: tileXSize, RawHeight: g.Height, RawWidth: g.Width, OffX: x, OffY: g.Height - y - tileYSize, CRS: g.CRS, SrcSRS: g.SrcSRS, SrcGeoTransform: g.SrcGeoTransform, DstGeoTransform: tileGeot, GeoLocation: g.GeoLocation}
 						grans = append(grans, tileGran)
 					}
 				}
@@ -219,6 +220,12 @@ func (gi *GeoRasterGRPC) Run(varList []string, verbose bool) {
 				go func(g *GeoTileGranule, idx int) {
 					defer wgRpc.Done()
 					defer cLimiter.Decrease()
+					var geot []float64
+					if len(g.DstGeoTransform) > 0 {
+						geot = g.DstGeoTransform
+					} else {
+						geot = g0.DstGeoTransform
+					}
 					r, err := getRPCRaster(gi.Context, g, projWKT, geot, connPool[idx%len(connPool)])
 					if err != nil {
 						gi.sendError(err)
