@@ -60,6 +60,8 @@ create index srsi_auth_srid
 create index srsi_proj4text
   on spatial_ref_sys (proj4text);
 
+analyze spatial_ref_sys;
+
 -- Postgres has no built-in operators for indexing UUID using GIN
 create operator class _uuid_ops default
   for type _uuid using gin as
