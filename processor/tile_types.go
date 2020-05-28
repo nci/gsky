@@ -80,6 +80,7 @@ type GeoTileGranule struct {
 	SrcSRS              string
 	SrcGeoTransform     []float64
 	BBox                []float64
+	DstGeoTransform     []float64
 	Height, Width       int
 	RawHeight, RawWidth int
 	OffX, OffY          int
