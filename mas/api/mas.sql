@@ -557,14 +557,11 @@ create or replace function mas_timestamps(
     query_hash := md5(concat(gpath, coalesce(time_a::text, 'null'),
       coalesce(time_b::text, 'null'), array_to_string(namespace, ',', 'null')));
 
-    if token is not null then
-      select jsonb_build_object('timestamps', '[]'::jsonb, 'token', token) into result from timestamps_cache where query_id = query_hash and query_token = token;
-      if result is not null then
-        return result;
-      end if;
+    if token is not null and token = query_hash then
+      return jsonb_build_object('timestamps', '[]'::jsonb, 'token', query_hash);
     end if;
 
-    select timestamps || jsonb_build_object('token', query_token) into result from timestamps_cache where query_id = query_hash;
+    select timestamps || jsonb_build_object('token', query_hash) into result from timestamps_cache where query_id = query_hash;
     if result is not null then
       return result;
     end if;
@@ -574,7 +571,6 @@ create or replace function mas_timestamps(
       time_b := (select now());
     end if;
 
-    token := extract(epoch from now())::text;
     result := jsonb_build_object('timestamps', coalesce((
 
       -- We perform two-stage time range filtering here:
@@ -606,9 +602,9 @@ create or replace function mas_timestamps(
       where (time_a is null or po_stamps >= time_a)
       and po_stamps <= time_b
 
-     ), '[]'::jsonb), 'token', token);
+     ), '[]'::jsonb), 'token', query_hash);
 
-     insert into timestamps_cache (query_id, timestamps, query_token) values (query_hash, result, token)
+     insert into timestamps_cache (query_id, timestamps) values (query_hash, result)
      on conflict (query_id) do nothing;
 
      perform mas_reset();
