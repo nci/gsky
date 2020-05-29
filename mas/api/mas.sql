@@ -654,7 +654,7 @@ create or replace function mas_spatial_temporal_extents(
       );
     end if;
 
-    proj4txt := (select proj4text from spatial_ref_sys where srid = 3857 limit 1);
+    proj4txt := (select proj4text from spatial_ref_sys where auth_srid = 3857 limit 1);
     result := (select
       jsonb_build_object(
         'xmin',
