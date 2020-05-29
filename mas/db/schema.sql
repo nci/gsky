@@ -54,6 +54,14 @@ set client_min_messages to warning;
 create extension postgis;
 grant all on spatial_ref_sys to mas;
 
+create index srsi_auth_srid
+  on spatial_ref_sys (auth_srid);
+
+create index srsi_proj4text
+  on spatial_ref_sys (proj4text);
+
+analyze spatial_ref_sys;
+
 -- Postgres has no built-in operators for indexing UUID using GIN
 create operator class _uuid_ops default
   for type _uuid using gin as

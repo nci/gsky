@@ -8,8 +8,7 @@ shard=$1
 set role mas;
 set search_path to ${shard};
 
-select refresh_polygons();
-select refresh_caches();
+select analyze_shard();
 
 EOD
 )

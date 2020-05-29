@@ -120,23 +120,14 @@ create trigger ingest before insert on ingest
 drop function if exists ingested_lines();
 create function ingested_lines()
   returns trigger language plpgsql as $$
+  declare
+
+    rec record;
+    proj4txt text;
+    trans_srid integer;
 
   begin
-
-    -- Create parent directories records if necessary
-
-    insert into mypaths
-      select
-        md5(path)::uuid,
-        now(),
-        'directory',
-        path
-      from (
-        select distinct(public.parent_paths(pa_path)) as path from mypaths
-      ) t
-    on conflict (pa_hash)
-      do nothing
-    ;
+    perform set_config('work_mem', '64MB', true);
 
     update mypaths set pa_parents = (
       select
@@ -145,16 +136,94 @@ create function ingested_lines()
         public.parent_paths(pa_path) t
     );
 
-    -- Serialize the final session -> tables write to avoid deadlocks.
-    -- Doesn't appear to affect ingest batch concurrency much...
-    lock table paths in exclusive mode;
-
     insert into paths
       select * from mypaths
     on conflict (pa_hash)
       do update set
         pa_ingested = excluded.pa_ingested
     ;
+
+    drop table mypaths;
+
+    proj4txt := (select proj4text from public.spatial_ref_sys where auth_srid = 4326 and trim(proj4text) <> '' limit 1);
+    trans_srid := (select srid from public.spatial_ref_sys where auth_srid = 4326 and trim(proj4text) <> '' limit 1);
+
+    create temporary table if not exists mypolygons (
+      po_hash uuid,
+      po_stamps timestamptz[],
+      po_min_stamp timestamptz,
+      po_max_stamp timestamptz,
+      po_name text,
+      po_pixel_x numeric,
+      po_pixel_y numeric,
+      po_polygon public.geometry
+    );
+
+    insert into mypolygons
+      select
+        distinct on (hash, variable)
+        hash
+          as po_hash,
+        array(select jsonb_array_elements_text(stamps))::timestamptz[]
+          as po_stamps,
+        (select min(t) from unnest(array(select jsonb_array_elements_text(stamps))::timestamptz[]) t)
+          as po_min_stamp,
+        (select max(t) from unnest(array(select jsonb_array_elements_text(stamps))::timestamptz[]) t)
+          as po_max_stamp,
+        variable
+          as po_name,
+        (geotransform->>1)::numeric
+          as po_pixel_x,
+        (geotransform->>5)::numeric
+          as po_pixel_y,
+        public.st_setsrid(public.st_transform(public.st_geomfromtext(polygon), b.proj4text, proj4txt), trans_srid)
+          as po_polygon
+      from (
+        select
+          hash,
+          trim(geo#>>'{polygon}')
+            as polygon,
+          trim(geo#>>'{proj_wkt}')
+            as srtext,
+          trim(geo#>>'{proj4}')
+            as proj4text,
+          regexp_replace(trim(geo#>>'{namespace}'), '[^a-zA-Z0-9_]', '_', 'g')
+            as variable,
+          geo#>'{timestamps}'
+            as stamps,
+          geo#>'{geotransform}'
+            as geotransform
+        from (
+          select
+            md_hash
+              as hash,
+            jsonb_array_elements(md_json->'geo_metadata')
+              as geo
+          from mymetadata
+          where
+          md_type = 'gdal'
+          and jsonb_typeof(md_json->'geo_metadata') = 'array'
+        ) a
+      ) b
+      where b.srtext <> ''
+        and b.proj4text <> ''
+        and b.polygon <> ''
+    ;
+
+    insert into polygons select * from mypolygons
+      on conflict (po_hash, po_name)
+      do update set
+        po_hash = excluded.po_hash,
+        po_stamps = excluded.po_stamps,
+        po_min_stamp = excluded.po_min_stamp,
+        po_max_stamp = excluded.po_max_stamp,
+        po_name = excluded.po_name,
+        po_pixel_x = excluded.po_pixel_x,
+        po_pixel_y = excluded.po_pixel_y,
+        po_polygon = excluded.po_polygon
+    ;
+
+    drop table mypolygons;
 
     insert into metadata select * from mymetadata
       on conflict (md_hash, md_type)
@@ -163,8 +232,9 @@ create function ingested_lines()
         md_json = excluded.md_json
     ;
 
-    drop table mypaths;
     drop table mymetadata;
+
+    perform refresh_caches();
 
     return null;
   end
@@ -352,59 +422,20 @@ create unique index dii_hash
   on directories (di_hash);
 
 -- View of polygon metadata supplied by GDAL crawler, for GSKY
-drop materialized view if exists polygons cascade;
-create materialized view polygons as
-  select
-    hash
-      as po_hash,
-    array(select jsonb_array_elements_text(stamps))::timestamptz[]
-      as po_stamps,
-    (select min(t) from unnest(array(select jsonb_array_elements_text(stamps))::timestamptz[]) t)
-      as po_min_stamp,
-    (select max(t) from unnest(array(select jsonb_array_elements_text(stamps))::timestamptz[]) t)
-      as po_max_stamp,
-    variable
-      as po_name,
-    (geotransform->>1)::numeric
-      as po_pixel_x,
-    (geotransform->>5)::numeric
-      as po_pixel_y,
-    public.st_geomfromtext(polygon, srid)
-      as po_polygon
-  from (
-    select
-      hash,
-      trim(geo#>>'{polygon}')
-        as polygon,
-      trim(geo#>>'{proj_wkt}')
-        as srtext,
-      trim(geo#>>'{proj4}')
-        as proj4text,
-      regexp_replace(trim(geo#>>'{namespace}'), '[^a-zA-Z0-9_]', '_', 'g')
-        as variable,
-      geo#>'{timestamps}'
-        as stamps,
-      geo#>'{geotransform}'
-        as geotransform
-    from (
-      select
-        md_hash
-          as hash,
-        jsonb_array_elements(md_json->'geo_metadata')
-          as geo
-      from metadata
-      where
-      md_type = 'gdal'
-      and jsonb_typeof(md_json->'geo_metadata') = 'array'
-    ) a
-  ) b
-  join public.spatial_ref_sys s
-    on b.srtext = s.srtext
-    and b.proj4text = s.proj4text
-;
+drop table if exists polygons cascade;
+create table polygons (
+  po_hash uuid,
+  po_stamps timestamptz[],
+  po_min_stamp timestamptz,
+  po_max_stamp timestamptz,
+  po_name text,
+  po_pixel_x numeric,
+  po_pixel_y numeric,
+  po_polygon public.geometry
+);
 
-create index poi_hash
-  on polygons (po_hash);
+create unique index poi_pk
+  on polygons (po_hash, po_name);
 
 create index poi_stamp
   on polygons (po_min_stamp, po_max_stamp);
@@ -412,17 +443,8 @@ create index poi_stamp
 create index poi_stamps
   on polygons using gin (po_stamps);
 
-create index poi_name
-  on polygons (po_name);
-
--- A list of SRID values for the schema, used for faster intersections
-drop materialized view if exists polygon_srids cascade;
-create materialized view polygon_srids as
-  select
-    distinct(public.st_srid(po_polygon))
-      as ps_srid
-    from
-      polygons;
+create index poi_polygon
+  on polygons using gist (po_polygon);
 
 -- Extracted NetCDF headers
 drop view if exists netcdf cascade;
@@ -567,85 +589,6 @@ create function refresh_views()
   end
 $$;
 
-create or replace function refresh_polygons()
-  returns boolean language plpgsql as $$
-
-  declare
-
-    rec record;
-
-  begin
-
-    insert into public.nci_spatial_ref_sys (auth_name, srtext, proj4text)
-      select
-        'NCI',
-        b.srtext,
-        b.proj4text
-      from (
-        select
-          trim(geo#>>'{proj_wkt}')
-            as srtext,
-          trim(geo#>>'{proj4}')
-            as proj4text
-        from (
-          select
-            jsonb_array_elements(md_json->'geo_metadata')
-              as geo
-          from
-            metadata
-          where
-            md_type = 'gdal'
-            and jsonb_typeof(md_json->'geo_metadata') = 'array'
-        ) a
-        group by srtext, proj4text
-      ) b
-      left join public.spatial_ref_sys s1
-        on b.srtext = s1.srtext
-        and b.proj4text = s1.proj4text
-      left join public.nci_spatial_ref_sys s2
-        on b.srtext = s2.srtext
-        and b.proj4text = s2.proj4text
-      where
-        s1.srtext is null
-        and s2.srtext is null
-    ;
-
-    insert into public.spatial_ref_sys (srid, auth_name, auth_srid, srtext, proj4text)
-      select srid, auth_name, srid, srtext, proj4text from public.nci_spatial_ref_sys
-    on conflict (srid) do nothing;
-
-    for rec in select ci.relname from pg_index i, pg_class ci, pg_class ct where i.indexrelid = ci.oid and i.indrelid = ct.oid and ct.relname = 'polygons' and ci.relname like 'poi\_polygon\_%' loop
-
-      raise notice 'drop index %', rec.relname;
-
-      execute format($f$
-        drop index if exists %1$s
-          $f$, rec.relname
-      );
-
-    end loop;
-
-    raise notice 'refresh polygons';
-    refresh materialized view polygons;
-
-    raise notice 'refresh polygon_srids';
-    refresh materialized view polygon_srids;
-
-    for rec in select ps_srid as srid from polygon_srids loop
-
-      raise notice 'srid create index poi_polygon_%', rec.srid;
-
-      execute format($f$
-        create index if not exists poi_polygon_%1$s on polygons using gist (po_polygon) where public.st_srid(po_polygon) = %1$s
-          $f$, rec.srid
-      );
-
-    end loop;
-
-    return true;
-  end
-$$;
-
 drop table if exists timestamps_cache cascade;
 
 -- cache for timestamps
@@ -658,8 +601,20 @@ create unlogged table timestamps_cache (
 create or replace function refresh_caches()
   returns boolean language plpgsql as $$
   begin
-    raise notice 'refresh caches';
     truncate timestamps_cache;
+    return true;
+  end
+$$;
+
+create or replace function analyze_shard()
+  returns boolean language plpgsql as $$
+  begin
+    raise notice 'analyzing metadata, paths and polygons';
+
+    analyze metadata;
+    analyze paths;
+    analyze polygons;
+
     return true;
   end
 $$;
