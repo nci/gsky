@@ -558,7 +558,10 @@ create or replace function mas_timestamps(
       coalesce(time_b::text, 'null'), array_to_string(namespace, ',', 'null')));
 
     if token is not null and token = query_hash then
-      return jsonb_build_object('timestamps', '[]'::jsonb, 'token', query_hash);
+      select jsonb_build_object('timestamps', '[]'::jsonb, 'token', query_hash) into result from timestamps_cache where query_id = query_hash;
+      if result is not null then
+        return result;
+      end if;
     end if;
 
     select timestamps || jsonb_build_object('token', query_hash) into result from timestamps_cache where query_id = query_hash;
