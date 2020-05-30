@@ -128,6 +128,7 @@ create function ingested_lines()
 
   begin
     perform set_config('work_mem', '64MB', true);
+    perform set_config('synchronous_commit', 'off', true);
 
     update mypaths set pa_parents = (
       select
