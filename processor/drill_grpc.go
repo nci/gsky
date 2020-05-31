@@ -129,7 +129,7 @@ func (gi *GeoDrillGRPC) Run(bandStrides int, decileCount int, pixelCount int, ve
 				c := pb.NewGDALClient(conns[(iTile+workerStart)%len(conns)])
 				bands, err := getBands(g.TimeStamps)
 
-				granule := &pb.GeoRPCGranule{Operation: "drill", Path: g.Path, Geometry: g.Geometry, Bands: bands, BandStrides: int32(bandStrides), DrillDecileCount: int32(decileCount), ClipUpper: gran.ClipUpper, ClipLower: gran.ClipLower, PixelCount: int32(pixelCount), VRT: g.VRT}
+				granule := &pb.GeoRPCGranule{Operation: "drill", Path: g.Path, Geometry: g.Geometry, Bands: bands, Height: float32(gran.RasterYSize), Width: float32(gran.RasterXSize), BandStrides: int32(bandStrides), DrillDecileCount: int32(decileCount), ClipUpper: gran.ClipUpper, ClipLower: gran.ClipLower, PixelCount: int32(pixelCount), VRT: g.VRT}
 				r, err := c.Process(gi.Context, granule)
 				if err != nil {
 					gi.sendError(fmt.Errorf("Drill gRPC: %v", err))
