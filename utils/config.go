@@ -40,6 +40,7 @@ const DefaultWcsPolygonSegments = 10
 
 const DefaultWmsTimeout = 20
 const DefaultWcsTimeout = 30
+const DefaultWpsTimeout = 300
 
 const DefaultGrpcWmsConcPerNode = 16
 const DefaultGrpcWcsConcPerNode = 16
@@ -198,6 +199,7 @@ type Process struct {
 	DpTol          float64    `json:"dp_tol"`
 	Approx         *bool      `json:"approx,omitempty"`
 	DrillAlgorithm string     `json:"drill_algo,omitempty"`
+	WpsTimeout     int        `json:"wps_timeout"`
 }
 
 // LitData contains the description of a variable used to compute a
@@ -1330,6 +1332,10 @@ func (config *Config) LoadConfigFile(configFile string, verbose bool) error {
 		if proc.Approx == nil {
 			approx := true
 			config.Processes[i].Approx = &approx
+		}
+
+		if proc.WpsTimeout <= 0 {
+			config.Processes[i].WpsTimeout = DefaultWpsTimeout
 		}
 
 		for ids, ds := range proc.DataSources {

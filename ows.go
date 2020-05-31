@@ -1306,6 +1306,10 @@ func serveWPS(ctx context.Context, params utils.WPSParams, conf *utils.Config, r
 		var result strings.Builder
 		ctx, ctxCancel := context.WithCancel(ctx)
 		defer ctxCancel()
+
+		timeoutCtx, timeoutCancel := context.WithTimeout(context.Background(), time.Duration(process.WpsTimeout)*time.Second)
+		defer timeoutCancel()
+
 		errChan := make(chan error, 100)
 
 		var suffix string
@@ -1424,6 +1428,11 @@ func serveWPS(ctx context.Context, params utils.WPSParams, conf *utils.Config, r
 				Error.Printf("Context cancelled with message: %v\n", ctx.Err())
 				metricsCollector.Info.HTTPStatus = 500
 				http.Error(w, ctx.Err().Error(), 500)
+				return
+			case <-timeoutCtx.Done():
+				Error.Printf("WPS pipeline timed out, threshold:%v seconds", process.WpsTimeout)
+				metricsCollector.Info.HTTPStatus = 500
+				http.Error(w, "WPS request timed out", 500)
 				return
 			}
 		}
