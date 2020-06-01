@@ -383,8 +383,6 @@ func getDrillFileDescriptor(ds C.GDALDatasetH, g C.OGRGeometryH, rasterXSize flo
 	if gdalErr != 0 {
 		return nil, fmt.Errorf("Couldn't get the geotransform from the source dataset %v", err)
 	}
-	dstGeot := make([]float64, len(geot))
-	copy(dstGeot, geot)
 
 	srcBBox, err := getPixelLineBBox(geot, &env)
 	if err != nil {
@@ -405,10 +403,22 @@ func getDrillFileDescriptor(ds C.GDALDatasetH, g C.OGRGeometryH, rasterXSize flo
 		srcBBox[3] = int32(ySize) - srcBBox[1]
 	}
 
+	if srcBBox[2] <= 3 && srcBBox[3] <= 3 {
+		numPixels := int(srcBBox[2] * srcBBox[3])
+		mask := make([]uint8, numPixels)
+		for i := 0; i < numPixels; i++ {
+			mask[i] = 255
+		}
+		return &DrillFileDescriptor{srcBBox, srcBBox, mask}, nil
+	}
+
+	dstGeot := make([]float64, len(geot))
+	copy(dstGeot, geot)
+
 	dstGeot[0] += dstGeot[1] * float64(srcBBox[0])
 	dstGeot[3] += dstGeot[5] * float64(srcBBox[1])
 
-	if srcBBox[2] == 1 || srcBBox[3] == 1 {
+	if srcBBox[2] <= 3 || srcBBox[3] <= 3 {
 		rasterXSize = 0
 		rasterYSize = 0
 	}
@@ -431,8 +441,6 @@ func getDrillFileDescriptor(ds C.GDALDatasetH, g C.OGRGeometryH, rasterXSize flo
 		} else if rasterXSize > 0 && rasterYSize <= 0 {
 			dstYSize = float64(int(float64(dstXSize)*ySize/xSize + 0.5))
 		}
-
-		//log.Printf("xxxxxxxxxxx %v, %v     %v %v   %v,%v", xSize, ySize, rasterXSize, rasterYSize, dstXSize, dstYSize)
 
 		if dstXSize < 1 {
 			dstXSize = 1
@@ -494,13 +502,17 @@ func getDrillFileDescriptor(ds C.GDALDatasetH, g C.OGRGeometryH, rasterXSize flo
 			dstYSize = 1
 		}
 
-		if dstXSize < xSize && dstYSize < ySize {
-			dstGeot[1] = math.Copysign((envMaxX-envMinX)/dstXSize, geot[1])
-			dstGeot[5] = math.Copysign((envMaxY-envMinY)/dstYSize, geot[5])
+		xRes := (envMaxX - envMinX) / dstXSize
+		if xRes > math.Abs(geot[1]) {
+			dstGeot[1] = math.Copysign(xRes, geot[1])
 			hasNewGeot = true
 		}
 
-		//log.Printf("aaaa xxxxxxxxxxx %v, %v     %v %v   ", xSize, ySize, dstXSize, dstYSize)
+		yRes := (envMaxY - envMinY) / dstYSize
+		if yRes > math.Abs(geot[5]) {
+			dstGeot[5] = math.Copysign(yRes, geot[5])
+			hasNewGeot = true
+		}
 
 	} else if rasterXSize > 0 || rasterYSize > 0 {
 		return nil, fmt.Errorf("unsupported raster size: %v, %v", rasterXSize, rasterYSize)
@@ -516,7 +528,8 @@ func getDrillFileDescriptor(ds C.GDALDatasetH, g C.OGRGeometryH, rasterXSize flo
 		}
 	}
 
-	//log.Printf("vvvvvvvvv %v, %v    %v, %v", srcBBox, dstBBox, geot, dstGeot)
+	//log.Printf("xSize:%v, ySize:%v, srcBBox:%v, dstBBox:%v, srcGeot:%v, dstGeot:%v",
+	//  xSize, ySize, srcBBox, dstBBox, geot, dstGeot)
 	mask, err := createMask(ds, gCopy, dstGeot, dstBBox)
 	return &DrillFileDescriptor{srcBBox, dstBBox, mask}, err
 }
