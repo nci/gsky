@@ -9,8 +9,8 @@ message GeoRPCGranule {
     string path = 2;
     string geometry = 3;
     repeated int32 bands = 4;
-    int32 height = 5;
-    int32 width = 6;
+    float height = 5;
+    float width = 6;
     string srcSRS = 7;
     repeated double srcGeot = 8;
     string dstSRS = 9;

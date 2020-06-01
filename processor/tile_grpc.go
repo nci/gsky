@@ -341,7 +341,7 @@ func getDataSize(dataType string) (int, error) {
 
 func getRPCRaster(ctx context.Context, g *GeoTileGranule, projWKT string, geot []float64, conn *grpc.ClientConn) (*pb.Result, error) {
 	c := pb.NewGDALClient(conn)
-	granule := &pb.GeoRPCGranule{Operation: "warp", Height: int32(g.Height), Width: int32(g.Width), Path: g.Path, DstSRS: projWKT, DstGeot: geot, Bands: []int32{int32(g.BandIdx)}}
+	granule := &pb.GeoRPCGranule{Operation: "warp", Height: float32(g.Height), Width: float32(g.Width), Path: g.Path, DstSRS: projWKT, DstGeot: geot, Bands: []int32{int32(g.BandIdx)}}
 	if g.GeoLocation != nil {
 		granule.GeoLocOpts = []string{
 			fmt.Sprintf("X_DATASET=%s", g.GeoLocation.XDSName),

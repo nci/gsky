@@ -215,7 +215,7 @@ func (p *DrillIndexer) processDatasets(res *TiledResponse, geoReq *GeoDrillReque
 	metadata := res.Metadata
 	switch len(metadata.GDALDatasets) {
 	case 0:
-		p.Out <- &GeoDrillGranule{"NULL", utils.EmptyTileNS, "Byte", nil, geoReq.Geometry, geoReq.CRS, "", nil, nil, 0, false, 0, 0, 0, geoReq.MetricsCollector}
+		p.Out <- &GeoDrillGranule{"NULL", utils.EmptyTileNS, "Byte", nil, geoReq.Geometry, geoReq.CRS, "", nil, nil, 0, false, 0, 0, 0, 0, 0, geoReq.MetricsCollector}
 	default:
 		var grans []*GeoDrillGranule
 		var effectiveDatasets []*GDALDataset
@@ -225,7 +225,7 @@ func (p *DrillIndexer) processDatasets(res *TiledResponse, geoReq *GeoDrillReque
 			}
 			dedupGranules[ds.DSName+ds.NameSpace] = true
 
-			grans = append(grans, &GeoDrillGranule{ds.DSName, ds.NameSpace, ds.ArrayType, ds.TimeStamps, geoReq.Geometry, geoReq.CRS, "", ds.Means, ds.SampleCounts, ds.NoData, p.Approx, geoReq.ClipUpper, geoReq.ClipLower, geoReq.GrpcConcLimit, geoReq.MetricsCollector})
+			grans = append(grans, &GeoDrillGranule{ds.DSName, ds.NameSpace, ds.ArrayType, ds.TimeStamps, geoReq.Geometry, geoReq.CRS, "", ds.Means, ds.SampleCounts, ds.NoData, p.Approx, geoReq.ClipUpper, geoReq.ClipLower, geoReq.RasterXSize, geoReq.RasterYSize, geoReq.GrpcConcLimit, geoReq.MetricsCollector})
 			effectiveDatasets = append(effectiveDatasets, ds)
 		}
 		if len(grans) == 0 {
@@ -318,13 +318,11 @@ func (p *DrillIndexer) processDatasets(res *TiledResponse, geoReq *GeoDrillReque
 				for _, dg := range dataGrans {
 
 					type GranuleInfo struct {
-						RasterXSize float64
-						RasterYSize float64
-						Data        *GeoDrillGranule
-						Masks       []*GeoDrillGranule
+						Data  *GeoDrillGranule
+						Masks []*GeoDrillGranule
 					}
 
-					granInfo := &GranuleInfo{RasterXSize: geoReq.RasterXSize, RasterYSize: geoReq.RasterYSize, Data: dg}
+					granInfo := &GranuleInfo{Data: dg}
 					for _, mg := range maskGrans {
 						granInfo.Masks = append(granInfo.Masks, mg)
 					}

@@ -21,8 +21,8 @@ import (
 
 type VRTDataset struct {
 	XMLName        xml.Name         `xml:"VRTDataset"`
-	RasterXSize    float64          `xml:"rasterXSize,attr"`
-	RasterYSize    float64          `xml:"rasterYSize,attr"`
+	RasterXSize    int              `xml:"rasterXSize,attr"`
+	RasterYSize    int              `xml:"rasterYSize,attr"`
 	SRS            string           `xml:"SRS"`
 	GeoTransform   string           `xml:"GeoTransform"`
 	VRTRasterBands []*VRTRasterBand `xml:"VRTRasterBand"`
@@ -87,55 +87,16 @@ func NewVRTManager(vrt []byte) (*VRTManager, error) {
 					}
 				}
 
-				xSize := float64(C.GDALGetRasterXSize(ds))
-				ySize := float64(C.GDALGetRasterYSize(ds))
-
-				if vrtDS.RasterXSize <= 0 && vrtDS.RasterYSize <= 0 {
-					vrtDS.RasterXSize = xSize
-					vrtDS.RasterYSize = ySize
-				} else {
-					if vrtDS.RasterXSize > 0 && vrtDS.RasterXSize < 1 {
-						vrtDS.RasterXSize = float64(int(xSize*vrtDS.RasterXSize + 0.5))
-					}
-
-					if vrtDS.RasterYSize > 0 && vrtDS.RasterYSize < 1 {
-						vrtDS.RasterYSize = float64(int(ySize*vrtDS.RasterYSize + 0.5))
-					}
-
-					if vrtDS.RasterXSize <= 0 && vrtDS.RasterYSize > 0 {
-						vrtDS.RasterXSize = float64(int(float64(vrtDS.RasterYSize)*xSize/ySize + 0.5))
-					} else if vrtDS.RasterXSize > 0 && vrtDS.RasterYSize <= 0 {
-						vrtDS.RasterYSize = float64(int(float64(vrtDS.RasterXSize)*ySize/xSize + 0.5))
-					}
-				}
-
-				if vrtDS.RasterXSize < 1 {
-					vrtDS.RasterXSize = 1
-				} else if vrtDS.RasterXSize > xSize {
-					vrtDS.RasterXSize = xSize
-				}
-
-				if vrtDS.RasterYSize < 1 {
-					vrtDS.RasterYSize = 1
-				} else if vrtDS.RasterYSize > ySize {
-					vrtDS.RasterYSize = ySize
-				}
+				vrtDS.RasterXSize = int(C.GDALGetRasterXSize(ds))
+				vrtDS.RasterYSize = int(C.GDALGetRasterYSize(ds))
 
 				if len(strings.TrimSpace(vrtDS.GeoTransform)) == 0 {
 					var geot [6]float64
 					C.GDALGetGeoTransform(ds, (*C.double)(&geot[0]))
 
-					if vrtDS.RasterXSize < xSize {
-						geot[1] *= xSize / vrtDS.RasterXSize
-					}
-
-					if vrtDS.RasterYSize < ySize {
-						geot[5] *= ySize / vrtDS.RasterYSize
-					}
-
 					var geotStr []string
 					for _, v := range geot {
-						geotStr = append(geotStr, fmt.Sprintf("%.5f", v))
+						geotStr = append(geotStr, fmt.Sprintf("%.6f", v))
 					}
 					vrtDS.GeoTransform = strings.Join(geotStr, ",")
 				}
