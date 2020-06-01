@@ -338,6 +338,7 @@ func (p *DrillIndexer) processDatasets(res *TiledResponse, geoReq *GeoDrillReque
 					dg.VRT = resBuf.String()
 
 					if *isFirst && verbose {
+						log.Printf("Drill Indexer RasterXSize: %v, RasterYSize: %v", geoReq.RasterXSize, geoReq.RasterYSize)
 						log.Printf("Drill Indexer VRT: %v, %v", dg.Path, dg.VRT)
 						*isFirst = false
 					}
