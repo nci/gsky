@@ -333,41 +333,65 @@ func (dp *TilePipeline) getDepFileList(geoReq *GeoTileRequest, verbose bool) ([]
 	}
 	dp.prepareInputGeoRequests(geoReq, depLayers, false)
 
-	granCount := 0
+	type LayerGrans struct {
+		idx    int
+		reqCtx *GeoReqContext
+		grans  []*GeoTileGranule
+	}
+
+	granList := make(chan *LayerGrans, len(depLayers))
+	errList := make(chan error, len(depLayers))
+	cLimiter := NewConcLimiter(4)
 	for idx, reqCtx := range depLayers {
-		tp := InitTilePipeline(dp.Context, reqCtx.MASAddress, reqCtx.Service.WorkerNodes, reqCtx.Layer.MaxGrpcRecvMsgSize, reqCtx.Layer.WmsPolygonShardConcLimit, reqCtx.Service.MaxGrpcBufferSize, errChan)
-		tp.CurrentLayer = reqCtx.StyleLayer
-		tp.DataSources = dp.DataSources
+		cLimiter.Increase()
+		go func(idx int, reqCtx *GeoReqContext) {
+			defer cLimiter.Decrease()
+			tp := InitTilePipeline(dp.Context, reqCtx.MASAddress, reqCtx.Service.WorkerNodes, reqCtx.Layer.MaxGrpcRecvMsgSize, reqCtx.Layer.WmsPolygonShardConcLimit, reqCtx.Service.MaxGrpcBufferSize, errChan)
+			tp.CurrentLayer = reqCtx.StyleLayer
+			tp.DataSources = dp.DataSources
 
-		req := reqCtx.GeoReq
-		grans, err := tp.GetFileList(req, verbose)
-		if err != nil {
-			return nil, fmt.Errorf("fusion pipeline '%v' (%d of %d) tile indexer error: %v", reqCtx.Layer.Name, idx+1, len(depLayers), err)
-		}
-
-		for _, g := range grans {
-			totalGrans = append(totalGrans, g)
-			if geoReq.QueryLimit > 0 {
-				if g.NameSpace != utils.EmptyTileNS {
-					granCount++
+			req := reqCtx.GeoReq
+			grans, err := tp.GetFileList(req, verbose)
+			if err != nil {
+				select {
+				case errList <- fmt.Errorf("fusion pipeline '%v' (%d of %d) tile indexer error: %v", reqCtx.Layer.Name, idx+1, len(depLayers), err):
+				default:
 				}
+				return
+			}
+			granList <- &LayerGrans{idx: idx, reqCtx: reqCtx, grans: grans}
+			if verbose {
+				log.Printf("fusion pipeline '%v' (%d of %d) tile indexer done", reqCtx.Layer.Name, idx+1, len(depLayers))
+			}
+		}(idx, reqCtx)
+	}
 
-				if granCount >= geoReq.QueryLimit {
-					if verbose {
-						log.Printf("fusion pipeline '%v' (%d of %d) tile indexer early stopping, query limit reached", reqCtx.Layer.Name, idx+1, len(depLayers))
+	granCount := 0
+	for il := 0; il < len(depLayers); il++ {
+		select {
+		case ctx := <-granList:
+			for _, g := range ctx.grans {
+				totalGrans = append(totalGrans, g)
+				if geoReq.QueryLimit > 0 {
+					if g.NameSpace != utils.EmptyTileNS {
+						granCount++
 					}
-					return totalGrans, nil
+
+					if granCount >= geoReq.QueryLimit {
+						if verbose {
+							log.Printf("fusion pipeline '%v' (%d of %d) tile indexer early stopping, query limit reached", ctx.reqCtx.Layer.Name, ctx.idx+1, len(depLayers))
+						}
+						return totalGrans, nil
+					}
 				}
 			}
-		}
 
-		if verbose {
-			log.Printf("fusion pipeline '%v' (%d of %d) tile indexer done", reqCtx.Layer.Name, idx+1, len(depLayers))
+		case err := <-errList:
+			return nil, err
 		}
 	}
 
 	return totalGrans, nil
-
 }
 
 func (dp *TilePipeline) findDepLayers() ([]*GeoReqContext, error) {
