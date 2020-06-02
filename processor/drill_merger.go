@@ -65,7 +65,6 @@ func (dm *DrillMerger) Run(suffix string, namespaces []string, templateFileName 
 		}
 	}
 	if len(results) == 0 {
-		dm.sendError(fmt.Errorf("Drill Merger: no result"))
 		return
 	}
 
