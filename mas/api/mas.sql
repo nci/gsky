@@ -271,49 +271,62 @@ create or replace function mas_intersect_polygons(
 
     end if;
 
-    qstr := format($f$
-      (
-      select
-        po_hash
-      from
-        polygons
-      left join geometries
-          on true
-      inner join paths
-          on po_hash = pa_hash
-      where
+    for rec in select ps_srid as srid from polygon_srids loop
+
+      parts := array_append(parts, format($f$
         (
-          ST_Intersects(po_polygon, ge_geom)
-          -- Lossy transform gemoetry may have become a linestring if any points could not be transformed
-          or ST_Crosses(po_polygon, ge_geom)
-        )
+        select
+          po_hash
+        from
+          polygons
+        inner join
+          geometries
+            on ge_srid = %1$s
+        inner join paths
+            on po_hash = pa_hash
+        where
+          st_srid(po_polygon) = %1$s
 
-        and (
-          -- no times
-          %1$L::timestamptz is null
-
-          -- %1$L::timestamptz only
-          or (%1$L::timestamptz is not null and %2$L::timestamptz is null
-            and %1$L::timestamptz between po_min_stamp and po_max_stamp
-            and %1$L::timestamptz = any(po_stamps)
+          and (
+            ST_Intersects(po_polygon, ge_geom)
+            -- Lossy transform gemoetry may have become a linestring if any points could not be transformed
+            or ST_Crosses(po_polygon, ge_geom)
           )
 
-          -- %1$L::timestamptz and %2$L::timestamptz range overlaps stamps
-          or (%1$L::timestamptz is not null and %2$L::timestamptz is not null
-            and (%1$L::timestamptz - interval '1 second', %2$L::timestamptz + interval '1 second') overlaps (po_min_stamp, po_max_stamp)
+          and (
+            -- no times
+            %2$L::timestamptz is null
+
+            -- %2$L::timestamptz only
+            or (%2$L::timestamptz is not null and %3$L::timestamptz is null
+              and %2$L::timestamptz between po_min_stamp and po_max_stamp
+              and %2$L::timestamptz = any(po_stamps)
+            )
+
+            -- %2$L::timestamptz and %3$L::timestamptz range overlaps stamps
+            or (%2$L::timestamptz is not null and %3$L::timestamptz is not null
+              and (%2$L::timestamptz - interval '1 second', %3$L::timestamptz + interval '1 second') overlaps (po_min_stamp, po_max_stamp)
+            )
           )
-        )
-        and (%3$L is null
-          or po_name = any(%3$L)
-        )
-        and (%4$L is null
-          or po_pixel_x::bigint = %4$L::bigint
-        )
-        and path_hash(%5$L) = any(pa_parents)
-        %6$s )
+          and (%4$L is null
+            or po_name = any(%4$L)
+          )
+          and (%5$L is null
+            or po_pixel_x::bigint = %5$L::bigint
+          )
+          and path_hash(%6$L) = any(pa_parents)
+          %7$s )
 
-      $f$, time_a, time_b, namespaces, resolution, gpath, limit_str
+        $f$, rec.srid, time_a, time_b, namespaces, resolution, gpath, limit_str
 
+      ));
+
+    end loop;
+
+    -- for empty shards
+    qstr := coalesce(
+      nullif(array_to_string(parts, ' union '), ''),
+      'select null::uuid as po_hash limit 0'
     );
 
     str := format($f$
@@ -321,8 +334,12 @@ create or replace function mas_intersect_polygons(
       with
       geometries as (
         select
-          ST_ConvexHull(ST_LossyTransform(%2$L, 4326))
+          ps_srid
+            as ge_srid,
+          ST_ConvexHull(ST_LossyTransform(%2$L, ps_srid))
             as ge_geom
+        from
+          polygon_srids
       )
       select
         distinct(
