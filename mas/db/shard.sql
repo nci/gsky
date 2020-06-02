@@ -123,31 +123,12 @@ create function ingested_lines()
 
   begin
 
-    -- Create parent directories records if necessary
-
-    insert into mypaths
-      select
-        md5(path)::uuid,
-        now(),
-        'directory',
-        path
-      from (
-        select distinct(public.parent_paths(pa_path)) as path from mypaths
-      ) t
-    on conflict (pa_hash)
-      do nothing
-    ;
-
     update mypaths set pa_parents = (
       select
         array_agg(md5(t)::uuid order by octet_length(t))
       from
         public.parent_paths(pa_path) t
     );
-
-    -- Serialize the final session -> tables write to avoid deadlocks.
-    -- Doesn't appear to affect ingest batch concurrency much...
-    lock table paths in exclusive mode;
 
     insert into paths
       select * from mypaths
@@ -156,6 +137,8 @@ create function ingested_lines()
         pa_ingested = excluded.pa_ingested
     ;
 
+    drop table mypaths;
+
     insert into metadata select * from mymetadata
       on conflict (md_hash, md_type)
       do update set
@@ -163,7 +146,6 @@ create function ingested_lines()
         md_json = excluded.md_json
     ;
 
-    drop table mypaths;
     drop table mymetadata;
 
     return null;
@@ -641,6 +623,12 @@ create or replace function refresh_polygons()
       );
 
     end loop;
+
+    analyze polygons;
+    analyze polygon_srids;
+    analyze paths;
+    analyze metadata;
+    analyze public.spatial_ref_sys;
 
     return true;
   end
