@@ -32,10 +32,10 @@ then
 	set -u
 	
 	job_id="${find_dir//[\/]/_}"
-	file_list=$data_dir/${job_id}.filelist
+	file_list=$data_dir/${job_id}.filelist.gz
 
 	set -ex
-	find $find_dir -name "$file_pattern" $find_params > ${file_list}
+	find $find_dir -name "$file_pattern" $find_params | gzip > ${file_list}
 	set +x
 else
 	set -eu
@@ -58,4 +58,4 @@ export GDAL_PAM_ENABLED=NO
 export GDAL_NETCDF_VERIFY_DIMS=NO
 CRAWL_EXTRA_ARGS=${CRAWL_EXTRA_ARGS:-''}
 
-cat $file_list | concurrent -i -l $conc_limit -b $batch_size $gsky_crawler - -fmt tsv $CRAWL_EXTRA_ARGS | gzip > $crawl_file
+zcat $file_list | concurrent -i -l $conc_limit -b $batch_size $gsky_crawler - -fmt tsv $CRAWL_EXTRA_ARGS | gzip > $crawl_file
