@@ -148,7 +148,9 @@ func (gi *GeoDrillGRPC) Run(bandStrides int, decileCount int, pixelCount int, ve
 					for ir := 0; ir < nRows; ir++ {
 						tsRow[ir] = r.TimeSeries[ir*nCols+i]
 					}
-
+					if gi.checkCancellation() {
+						return
+					}
 					gi.Out <- &DrillResult{NameSpace: ns, Data: tsRow, NoData: r.Raster.NoData, Dates: g.TimeStamps}
 				}
 
@@ -172,6 +174,19 @@ func (gi *GeoDrillGRPC) sendError(err error) {
 	select {
 	case gi.Error <- err:
 	default:
+	}
+}
+
+func (gi *GeoDrillGRPC) checkCancellation() bool {
+	select {
+	case <-gi.Context.Done():
+		gi.sendError(fmt.Errorf("Drill gRPC: context has been cancel: %v", gi.Context.Err()))
+		return true
+	case err := <-gi.Error:
+		gi.sendError(err)
+		return true
+	default:
+		return false
 	}
 }
 
