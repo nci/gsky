@@ -51,8 +51,8 @@ func (gi *GeoRasterGRPC) Run(varList []string, verbose bool) {
 	var g0 *GeoTileGranule
 	var grans []*GeoTileGranule
 	var nullGrans []*GeoTileGranule
-	availNamespaces := make(map[string]bool)
-	dedupGrans := make(map[string]bool)
+	availNamespaces := make(map[string]struct{})
+	dedupGrans := make(map[string]struct{})
 	var connPool []*grpc.ClientConn
 	var projWKT string
 	var cLimiter *ConcLimiter
@@ -78,11 +78,11 @@ func (gi *GeoRasterGRPC) Run(varList []string, verbose bool) {
 		if _, hasGran := dedupGrans[granKey]; hasGran {
 			continue
 		}
-		dedupGrans[granKey] = true
+		dedupGrans[granKey] = struct{}{}
 		grans = append(grans, inGran)
 
 		if _, found := availNamespaces[inGran.VarNameSpace]; !found {
-			availNamespaces[inGran.VarNameSpace] = true
+			availNamespaces[inGran.VarNameSpace] = struct{}{}
 		}
 
 		if iGran == 0 {

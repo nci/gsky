@@ -340,7 +340,7 @@ func (p *TileIndexer) URLIndexGet(ctx context.Context, url string, geoReq *GeoTi
 		}
 		out <- &GeoTileGranule{ConfigPayLoad: ConfigPayLoad{NameSpaces: []string{utils.EmptyTileNS}, ScaleParams: geoReq.ScaleParams, Palette: geoReq.Palette}, Path: "NULL", NameSpace: utils.EmptyTileNS, RasterType: "Byte", TimeStamp: 0, BBox: geoReq.BBox, Height: geoReq.Height, Width: geoReq.Width, OffX: geoReq.OffX, OffY: geoReq.OffY, CRS: geoReq.CRS}
 	default:
-		axisParamsLookup := make(map[string]map[float64]bool)
+		axisParamsLookup := make(map[string]map[float64]struct{})
 		for _, ds := range metadata.GDALDatasets {
 			if len(ds.Axes) == 0 {
 				ds.Axes = append(ds.Axes, &DatasetAxis{Name: "time", Strides: []int{1}, Grid: "default"})
@@ -365,9 +365,9 @@ func (p *TileIndexer) URLIndexGet(ctx context.Context, url string, geoReq *GeoTi
 					var selErr error
 					if len(tileAxis.IdxSelectors) > 0 {
 						if _, found := axisParamsLookup[axis.Name]; !found {
-							axisParamsLookup[axis.Name] = make(map[float64]bool)
+							axisParamsLookup[axis.Name] = make(map[float64]struct{})
 							for _, val := range axis.Params {
-								axisParamsLookup[axis.Name][val] = true
+								axisParamsLookup[axis.Name][val] = struct{}{}
 							}
 						} else {
 							for _, val := range axis.Params {
@@ -592,7 +592,7 @@ func doSelectionByIndices(axis *DatasetAxis, tileAxis *GeoTileAxis) (bool, error
 		return false, fmt.Errorf("grid type must be 'enum' for index-based selections")
 	}
 
-	idxLookup := make(map[int]bool)
+	idxLookup := make(map[int]struct{})
 	for _, sel := range tileAxis.IdxSelectors {
 		if sel.IsAll {
 			axis.IntersectionIdx = make([]int, len(axis.Params))
@@ -618,7 +618,7 @@ func doSelectionByIndices(axis *DatasetAxis, tileAxis *GeoTileAxis) (bool, error
 				continue
 			}
 
-			idxLookup[idx] = true
+			idxLookup[idx] = struct{}{}
 			axis.IntersectionIdx = append(axis.IntersectionIdx, idx)
 			axis.IntersectionValues = append(axis.IntersectionValues, axis.Params[idx])
 			continue

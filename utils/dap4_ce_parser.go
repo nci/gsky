@@ -138,11 +138,11 @@ func ParseDap4ConstraintExpr(ceStr string) (*DapConstraints, error) {
 		return nil, err
 	}
 
-	varLookup := make(map[string]bool)
+	varLookup := make(map[string]struct{})
 	for _, vp := range ce.VarParams {
 		_, found := varLookup[vp.Name]
 		if !found {
-			varLookup[vp.Name] = true
+			varLookup[vp.Name] = struct{}{}
 		} else {
 			return nil, fmt.Errorf("duplicated constraint for variable: %v", vp.Name)
 		}

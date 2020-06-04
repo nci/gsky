@@ -351,7 +351,7 @@ func getRaster(ctx context.Context, params utils.WMSParams, conf *utils.Config, 
 	}
 
 	var pixelFiles []*GeoTileGranule
-	timestampLookup := make(map[time.Time]bool)
+	timestampLookup := make(map[time.Time]struct{})
 	for _, geo := range indexerOut {
 		if geo.NameSpace == utils.EmptyTileNS {
 			continue
@@ -363,7 +363,7 @@ func getRaster(ctx context.Context, params utils.WMSParams, conf *utils.Config, 
 			continue
 		}
 
-		timestampLookup[normalizedTm] = true
+		timestampLookup[normalizedTm] = struct{}{}
 		pixelFiles = append(pixelFiles, geo)
 	}
 
@@ -390,7 +390,7 @@ func getRaster(ctx context.Context, params utils.WMSParams, conf *utils.Config, 
 		return ftInfo, nil
 	}
 
-	fileDedup := make(map[string]bool)
+	fileDedup := make(map[string]struct{})
 	for i, ds := range pixelFiles {
 		dsFile := ds.RawPath
 		if len(dsFile) == 0 {
@@ -401,7 +401,7 @@ func getRaster(ctx context.Context, params utils.WMSParams, conf *utils.Config, 
 		if found {
 			continue
 		}
-		fileDedup[dsFile] = true
+		fileDedup[dsFile] = struct{}{}
 
 		if strings.Index(dsFile, styleLayer.DataSource) >= 0 {
 			offset := 0

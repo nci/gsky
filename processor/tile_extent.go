@@ -26,7 +26,7 @@ func ComputeReprojectionExtent(ctx context.Context, geoReq *GeoTileRequest, masA
 
 	go indexer.Run(verbose)
 
-	fileLookup := make(map[string]bool)
+	fileLookup := make(map[string]struct{})
 	var indexGrans []*GeoTileGranule
 	for gran := range indexer.Out {
 		select {
@@ -36,7 +36,7 @@ func ComputeReprojectionExtent(ctx context.Context, geoReq *GeoTileRequest, masA
 			return -1, -1, ctx.Err()
 		default:
 			if _, found := fileLookup[gran.RawPath]; !found {
-				fileLookup[gran.RawPath] = true
+				fileLookup[gran.RawPath] = struct{}{}
 				indexGrans = append(indexGrans, gran)
 			}
 		}
