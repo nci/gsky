@@ -61,7 +61,7 @@ type MetricsCollector struct {
 	logger Logger
 }
 
-var reservedQueryParams = map[string]bool{"bbox": true, "coverage": true, "crs": true, "dptol": true, "height": true, "identifier": true, "identitytol": true, "layer": true, "layers": true, "limit": true, "namespace": true, "nseg": true, "request": true, "service": true, "srs": true, "styles": true, "time": true, "until": true, "version": true, "width": true, "wkt": true}
+var reservedQueryParams = map[string]struct{}{"bbox": struct{}{}, "coverage": struct{}{}, "crs": struct{}{}, "dptol": struct{}{}, "height": struct{}{}, "identifier": struct{}{}, "identitytol": struct{}{}, "layer": struct{}{}, "layers": struct{}{}, "limit": struct{}{}, "namespace": struct{}{}, "nseg": struct{}{}, "request": struct{}{}, "service": struct{}{}, "srs": struct{}{}, "styles": struct{}{}, "time": struct{}{}, "until": struct{}{}, "version": struct{}{}, "width": struct{}{}, "wkt": struct{}{}}
 
 func NewMetricsCollector(logger Logger) *MetricsCollector {
 	return &MetricsCollector{

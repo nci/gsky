@@ -192,7 +192,7 @@ func (p *DrillIndexer) Run(verbose bool) {
 		}
 
 		isFirst := true
-		dedupGranules := make(map[string]bool)
+		dedupGranules := make(map[string]struct{})
 		for res := range tiledRes {
 			p.processDatasets(res, geoReq, template, dedupGranules, verbose, &isFirst)
 			if p.checkCancellation() {
@@ -211,7 +211,7 @@ func (p *DrillIndexer) Run(verbose bool) {
 	}
 }
 
-func (p *DrillIndexer) processDatasets(res *TiledResponse, geoReq *GeoDrillRequest, template *jet.Template, dedupGranules map[string]bool, verbose bool, isFirst *bool) {
+func (p *DrillIndexer) processDatasets(res *TiledResponse, geoReq *GeoDrillRequest, template *jet.Template, dedupGranules map[string]struct{}, verbose bool, isFirst *bool) {
 	metadata := res.Metadata
 	switch len(metadata.GDALDatasets) {
 	case 0:
@@ -223,7 +223,7 @@ func (p *DrillIndexer) processDatasets(res *TiledResponse, geoReq *GeoDrillReque
 			if _, found := dedupGranules[ds.DSName+ds.NameSpace]; found {
 				continue
 			}
-			dedupGranules[ds.DSName+ds.NameSpace] = true
+			dedupGranules[ds.DSName+ds.NameSpace] = struct{}{}
 
 			grans = append(grans, &GeoDrillGranule{ds.DSName, ds.NameSpace, ds.ArrayType, ds.TimeStamps, geoReq.Geometry, geoReq.CRS, "", ds.Means, ds.SampleCounts, ds.NoData, p.Approx, geoReq.ClipUpper, geoReq.ClipLower, geoReq.RasterXSize, geoReq.RasterYSize, geoReq.GrpcConcLimit, geoReq.MetricsCollector})
 			effectiveDatasets = append(effectiveDatasets, ds)
@@ -256,9 +256,9 @@ func (p *DrillIndexer) processDatasets(res *TiledResponse, geoReq *GeoDrillReque
 				granMaskGroups[key] = append(granMaskGroups[key], grans[ids])
 			}
 
-			dataNSLookup := make(map[string]bool)
+			dataNSLookup := make(map[string]struct{})
 			for _, ns := range geoReq.NameSpaces {
-				dataNSLookup[ns] = true
+				dataNSLookup[ns] = struct{}{}
 			}
 
 			maskNSLookup := make(map[string]int)

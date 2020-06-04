@@ -115,7 +115,7 @@ type Layer struct {
 	Overviews                    []Layer  `json:"overviews"`
 	InputLayers                  []Layer  `json:"input_layers"`
 	DisableServices              []string `json:"disable_services"`
-	DisableServicesMap           map[string]bool
+	DisableServicesMap           map[string]struct{}
 	DataSource                   string `json:"data_source"`
 	StartISODate                 string `json:"start_isodate"`
 	EndISODate                   string `json:"end_isodate"`
@@ -712,10 +712,10 @@ func (config *Config) processFusionTimestamps(i int, configMap map[string]*Confi
 	}
 	if len(inputLayers) > 0 {
 		var timestamps []string
-		tsLookup := make(map[string]bool)
+		tsLookup := make(map[string]struct{})
 		for _, dt := range config.Layers[i].Dates {
 			if _, found := tsLookup[dt]; !found {
-				tsLookup[dt] = true
+				tsLookup[dt] = struct{}{}
 				timestamps = append(timestamps, dt)
 			}
 		}
@@ -734,7 +734,7 @@ func (config *Config) processFusionTimestamps(i int, configMap map[string]*Confi
 			}
 			for _, dt := range layer.Dates {
 				if _, found := tsLookup[dt]; !found {
-					tsLookup[dt] = true
+					tsLookup[dt] = struct{}{}
 					timestamps = append(timestamps, dt)
 				}
 			}
@@ -998,7 +998,7 @@ func (config *Config) GetLayerDates(iLayer int, verbose bool) {
 
 func ParseBandExpressions(bands []string) (*BandExpressions, error) {
 	bandExpr := &BandExpressions{ExprText: bands}
-	varFound := make(map[string]bool)
+	varFound := make(map[string]struct{})
 	hasExprAll := false
 	for ib, bandRaw := range bands {
 		parts := strings.Split(bandRaw, "=")
@@ -1027,7 +1027,7 @@ func ParseBandExpressions(bands []string) (*BandExpressions, error) {
 		bandExpr.Expressions = append(bandExpr.Expressions, expr)
 
 		bandExpr.ExprVarRef = append(bandExpr.ExprVarRef, []string{})
-		bandVarFound := make(map[string]bool)
+		bandVarFound := make(map[string]struct{})
 		for _, token := range expr.Tokens() {
 			if token.Kind == goeval.VARIABLE {
 				varName, ok := token.Value.(string)
@@ -1036,12 +1036,12 @@ func ParseBandExpressions(bands []string) (*BandExpressions, error) {
 				}
 
 				if _, found := varFound[varName]; !found {
-					varFound[varName] = true
+					varFound[varName] = struct{}{}
 					bandExpr.VarList = append(bandExpr.VarList, varName)
 				}
 
 				if _, found := bandVarFound[varName]; !found {
-					bandVarFound[varName] = true
+					bandVarFound[varName] = struct{}{}
 					bandExpr.ExprVarRef[ib] = append(bandExpr.ExprVarRef[ib], varName)
 				}
 

@@ -227,10 +227,10 @@ func floatArrToBytes(arr []float64) []byte {
 }
 
 func getDimensions(dims []string) ([]string, []string, map[string][]float64, error) {
-	varLookup := make(map[string]bool)
+	varLookup := make(map[string]struct{})
 	varNames := make([]string, 0)
 
-	valsLookup := make(map[string]map[float64]bool)
+	valsLookup := make(map[string]map[float64]struct{})
 	axisVals := make(map[string][]float64)
 	axisNames := make([]string, 0)
 
@@ -245,7 +245,7 @@ func getDimensions(dims []string) ([]string, []string, map[string][]float64, err
 		varPart := parts[0]
 		if _, found := varLookup[varPart]; !found {
 			if varPart != EmptyTileNS {
-				varLookup[varPart] = true
+				varLookup[varPart] = struct{}{}
 				varName := varPart
 				if !varNameRegex.MatchString(varName) {
 					iVar++
@@ -269,7 +269,7 @@ func getDimensions(dims []string) ([]string, []string, map[string][]float64, err
 
 			axisName := kv[0]
 			if _, found := valsLookup[axisName]; !found {
-				valsLookup[axisName] = make(map[float64]bool)
+				valsLookup[axisName] = make(map[float64]struct{})
 				axisVals[axisName] = make([]float64, 0)
 				axisNames = append(axisNames, axisName)
 			}
@@ -285,7 +285,7 @@ func getDimensions(dims []string) ([]string, []string, map[string][]float64, err
 			}
 
 			if _, found := valsLookup[axisName][val]; !found {
-				valsLookup[axisName][val] = true
+				valsLookup[axisName][val] = struct{}{}
 				axisVals[axisName] = append(axisVals[axisName], val)
 			}
 

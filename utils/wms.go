@@ -469,10 +469,10 @@ func GetCurrentTimeStamp(timestamps []string) (*time.Time, error) {
 func CheckDisableServices(layer *Layer, service string) bool {
 	if len(layer.DisableServices) > 0 {
 		if layer.DisableServicesMap == nil {
-			layer.DisableServicesMap = make(map[string]bool)
+			layer.DisableServicesMap = make(map[string]struct{})
 			for _, srv := range layer.DisableServices {
 				srv = strings.ToLower(strings.TrimSpace(srv))
-				layer.DisableServicesMap[srv] = true
+				layer.DisableServicesMap[srv] = struct{}{}
 			}
 		}
 

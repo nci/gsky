@@ -137,7 +137,7 @@ func dapToWcs(ce *utils.DapConstraints, conf *utils.Config) (*utils.WCSParams, e
 	}
 
 	if len(varExpr) == 0 {
-		var specialVars = map[string]bool{"x": true, "y": true}
+		var specialVars = map[string]struct{}{"x": struct{}{}, "y": struct{}{}}
 		foundOthers := false
 		for _, axis := range wcsParams.Axes {
 			if _, found := specialVars[axis.Name]; !found {

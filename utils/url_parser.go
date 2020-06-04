@@ -71,10 +71,10 @@ func unescapeUrl(s string) (string, error) {
 }
 
 func ParseQuery(query string) (m url.Values, err error) {
-	specialKeyLookup := make(map[string]bool)
-	specialKeyLookup["rangesubset"] = true
-	specialKeyLookup["subset"] = true
-	specialKeyLookup["dap4.ce"] = true
+	specialKeyLookup := make(map[string]struct{})
+	specialKeyLookup["rangesubset"] = struct{}{}
+	specialKeyLookup["subset"] = struct{}{}
+	specialKeyLookup["dap4.ce"] = struct{}{}
 
 	m = make(url.Values)
 	for query != "" {
