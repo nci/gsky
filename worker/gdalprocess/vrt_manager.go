@@ -104,8 +104,10 @@ func NewVRTManager(vrt []byte) (*VRTManager, error) {
 				hBand := C.GDALGetRasterBand(ds, 1)
 				band.NoDataValue = float64(C.GDALGetRasterNoDataValue(hBand, nil))
 
-				dataTypeC := C.GDALGetDataTypeName(C.GDALGetRasterDataType(hBand))
-				band.DataType = C.GoString(dataTypeC)
+				if len(band.DataType) == 0 {
+					dataTypeC := C.GDALGetDataTypeName(C.GDALGetRasterDataType(hBand))
+					band.DataType = C.GoString(dataTypeC)
+				}
 				C.GDALClose(ds)
 
 				newVRT, err = xml.MarshalIndent(vrtDS, " ", "  ")
