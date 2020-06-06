@@ -55,16 +55,11 @@ type GeoFile struct {
 	DataSets []*GeoMetaData `json:"geo_metadata"`
 }
 
-type POSIXDescriptor struct {
-	GID   uint32 `json:"gid"`
-	Group string `json:"group"`
-	UID   uint32 `json:"uid"`
-	User  string `json:"user"`
-	Size  int64  `json:"size"`
-	Mode  string `json:"mode"`
-	Type  string `json:"type"`
-	INode uint64 `json:"inode"`
-	MTime int64  `json:"mtime"`
-	ATime int64  `json:"atime"`
-	CTime int64  `json:"ctime"`
+type PosixInfo struct {
+	FilePath string    `json:"file_path"`
+	INode    uint64    `json:"inode"`
+	Size     int64     `json:"size"`
+	MTime    time.Time `json:"mtime"`
+	CTime    time.Time `json:"ctime"`
+	ID       string    `json:"id"`
 }
