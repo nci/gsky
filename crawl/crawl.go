@@ -20,7 +20,8 @@ func ensure(err error) {
 	}
 }
 
-const DefaultConcLimit = 2
+const DefaultContentCrawlConcLimit = 2
+const DefaultPosixCrawlConcLimit = 4
 
 func main() {
 	if len(os.Args) < 2 {
@@ -29,17 +30,20 @@ func main() {
 
 	path := os.Args[1]
 
-	concLimit := DefaultConcLimit
+	var concLimit int
 	approx := true
 	sentinel2Yaml := false
 	landsatYaml := false
 	var configFile string
 	ncMetadata := false
 	var outputFormat string
+	posix := false
+	var regexPattern string
+	followSymlink := false
 
 	if len(os.Args) > 2 {
 		flagSet := flag.NewFlagSet("Usage", flag.ExitOnError)
-		flagSet.IntVar(&concLimit, "conc", DefaultConcLimit, "Concurrent limit on processing subdatasets")
+		flagSet.IntVar(&concLimit, "conc", 0, "Concurrent limit on processing subdatasets")
 		var exact bool
 		flagSet.BoolVar(&exact, "exact", false, "Compute exact statistics")
 		flagSet.BoolVar(&sentinel2Yaml, "sentinel2_yaml", false, "Extract sentinel2 metadata from its yaml files")
@@ -47,6 +51,9 @@ func main() {
 		flagSet.BoolVar(&ncMetadata, "nc_md", false, "Look for netCDF metadata")
 		flagSet.BoolVar(&landsatYaml, "landsat_yaml", false, "Extract landsat metadata from its yaml files")
 		flagSet.StringVar(&outputFormat, "fmt", "raw", "Output format. Valid values include raw and tsv")
+		flagSet.BoolVar(&posix, "posix", false, "Extract POSIX metadata from input directory")
+		flagSet.StringVar(&regexPattern, "regex", "", "regex pattern for POSIX crawl")
+		flagSet.BoolVar(&followSymlink, "followSymlink", false, "Extract POSIX metadata from input directory")
 		flagSet.Parse(os.Args[2:])
 
 		approx = !exact
@@ -81,6 +88,20 @@ func main() {
 
 	if len(pathList) == 0 {
 		ensure(fmt.Errorf("No files from STDIN"))
+	}
+
+	if posix {
+		if concLimit < 1 {
+			concLimit = DefaultPosixCrawlConcLimit
+		}
+		for _, path = range pathList {
+			extr.ExtractPosix(path, concLimit, regexPattern, followSymlink, outputFormat)
+		}
+		return
+	}
+
+	if concLimit < 1 {
+		concLimit = DefaultContentCrawlConcLimit
 	}
 
 	var cfg []byte
