@@ -216,6 +216,6 @@ func (pc *PosixCrawler) outputResult() {
 		if pc.outputFormat == "tsv" {
 			rec = fmt.Sprintf("%s\tposix\t%s", info.FilePath, rec)
 		}
-		fmt.Printf("%s\n", string(out))
+		fmt.Printf("%s\n", rec)
 	}
 }
