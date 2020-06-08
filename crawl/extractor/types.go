@@ -61,5 +61,5 @@ type PosixInfo struct {
 	Size     int64     `json:"size"`
 	MTime    time.Time `json:"mtime"`
 	CTime    time.Time `json:"ctime"`
-	ID       string    `json:"id"`
+	ID       string    `json:"file_id"`
 }
