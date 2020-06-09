@@ -47,7 +47,7 @@ fi
 
 crawl_file="$data_dir/${job_id}_gdal.tsv.gz"
 
-total_files=$(cat $file_list | wc -l)
+total_files=$(zcat $file_list | wc -l)
 batch_size=$(echo "batch=${total_files}/${conc_limit}; if(batch<1){batch=1;}; if(batch>10){batch=10;}; batch;"|bc)
 
 echo "INFO: file list to crawl: $file_list"
