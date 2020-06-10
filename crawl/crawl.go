@@ -38,7 +38,8 @@ func main() {
 	ncMetadata := false
 	var outputFormat string
 	posix := false
-	var regexPattern string
+	var filePattern string
+
 	followSymlink := false
 
 	if len(os.Args) > 2 {
@@ -52,7 +53,7 @@ func main() {
 		flagSet.BoolVar(&landsatYaml, "landsat_yaml", false, "Extract landsat metadata from its yaml files")
 		flagSet.StringVar(&outputFormat, "fmt", "raw", "Output format. Valid values include raw and tsv")
 		flagSet.BoolVar(&posix, "posix", false, "Extract POSIX metadata from input directory")
-		flagSet.StringVar(&regexPattern, "regex", "", "regex pattern for POSIX crawl")
+		flagSet.StringVar(&filePattern, "pattern", "", "pattern expression for POSIX crawl")
 		flagSet.BoolVar(&followSymlink, "followSymlink", false, "Extract POSIX metadata from input directory")
 		flagSet.Parse(os.Args[2:])
 
@@ -95,7 +96,8 @@ func main() {
 			concLimit = DefaultPosixCrawlConcLimit
 		}
 		for _, path = range pathList {
-			extr.ExtractPosix(path, concLimit, regexPattern, followSymlink, outputFormat)
+			err := extr.ExtractPosix(path, concLimit, filePattern, followSymlink, outputFormat)
+			ensure(err)
 		}
 		return
 	}

@@ -7,24 +7,56 @@ import (
 	"os"
 	"path"
 	"path/filepath"
-	"regexp"
 	"strings"
 	"sync"
 	"syscall"
 	"time"
+
+	goeval "github.com/edisonguo/govaluate"
 )
 
-func ExtractPosix(rootDir string, conc int, pattern string, followSymlink bool, outputFormat string) {
+func ExtractPosix(rootDir string, conc int, pattern string, followSymlink bool, outputFormat string) error {
 	absRootDir, err := filepath.Abs(rootDir)
 	if err != nil {
-		os.Stderr.Write([]byte(err.Error() + "\n"))
-		return
+		return err
 	}
-	crawler := NewPosixCrawler(conc, pattern, followSymlink, outputFormat)
+
+	expr, err := parsePatternExpression(pattern)
+	if err != nil {
+		return err
+	}
+
+	crawler := NewPosixCrawler(conc, expr, followSymlink, outputFormat)
 	err = crawler.Crawl(absRootDir)
 	if err != nil {
 		os.Stderr.Write([]byte(err.Error() + "\n"))
 	}
+	return nil
+}
+
+func parsePatternExpression(pattern string) (*goeval.EvaluableExpression, error) {
+	if len(strings.TrimSpace(pattern)) == 0 {
+		return nil, nil
+	}
+
+	expr, err := goeval.NewEvaluableExpression(pattern)
+	if err != nil {
+		return nil, err
+	}
+
+	validVariables := map[string]struct{}{"path": struct{}{}, "type": struct{}{}}
+	for _, token := range expr.Tokens() {
+		if token.Kind == goeval.VARIABLE {
+			varName, ok := token.Value.(string)
+			if !ok {
+				return nil, fmt.Errorf("variable token '%v' failed to cast string", token.Value)
+			}
+			if _, found := validVariables[varName]; !found {
+				return nil, fmt.Errorf("variable %v is not supported. Valid variables are %v", varName, validVariables)
+			}
+		}
+	}
+	return expr, nil
 }
 
 const DefaultMaxPosixErrors = 1000
@@ -34,27 +66,25 @@ type PosixCrawler struct {
 	Outputs       chan *PosixInfo
 	Error         chan error
 	wg            sync.WaitGroup
-	concLimit     chan bool
-	pattern       *regexp.Regexp
+	concLimit     chan struct{}
+	outputDone    chan struct{}
+	pattern       *goeval.EvaluableExpression
 	followSymlink bool
 	outputFormat  string
 }
 
-func NewPosixCrawler(conc int, pattern string, followSymlink bool, outputFormat string) *PosixCrawler {
+func NewPosixCrawler(conc int, pattern *goeval.EvaluableExpression, followSymlink bool, outputFormat string) *PosixCrawler {
 	crawler := &PosixCrawler{
 		SubDirs:       make(chan string, 4096),
 		Outputs:       make(chan *PosixInfo, 4096),
 		Error:         make(chan error, 100),
 		wg:            sync.WaitGroup{},
-		concLimit:     make(chan bool, conc),
+		concLimit:     make(chan struct{}, conc),
+		outputDone:    make(chan struct{}, 1),
+		pattern:       pattern,
 		followSymlink: followSymlink,
 		outputFormat:  outputFormat,
 	}
-
-	if len(strings.TrimSpace(pattern)) > 0 {
-		crawler.pattern = regexp.MustCompile(pattern)
-	}
-
 	return crawler
 }
 
@@ -62,12 +92,12 @@ func (pc *PosixCrawler) Crawl(currPath string) error {
 	go pc.outputResult()
 
 	pc.wg.Add(1)
-	pc.concLimit <- false
+	pc.concLimit <- struct{}{}
 	pc.crawlDir(currPath)
 	pc.wg.Wait()
 
 	close(pc.Outputs)
-	pc.outputResult()
+	<-pc.outputDone
 
 	close(pc.Error)
 	var errors []string
@@ -105,8 +135,8 @@ func (pc *PosixCrawler) crawlDir(currPath string) {
 		filePath := path.Join(currPath, fileName)
 		fileMode := fi.Mode()
 
-		if pc.followSymlink && (fileMode&os.ModeSymlink == os.ModeSymlink) {
-			newFi, newPath, err := pc.resolveSymlink(currPath, fileName)
+		if pc.followSymlink && fileMode&os.ModeSymlink == os.ModeSymlink {
+			newFi, err := pc.resolveSymlink(currPath, fileName)
 			if err != nil {
 				select {
 				case pc.Error <- err:
@@ -116,25 +146,35 @@ func (pc *PosixCrawler) crawlDir(currPath string) {
 			}
 
 			fi = newFi
-			fileName = fi.Name()
-			filePath = path.Join(newPath, fileName)
 			fileMode = fi.Mode()
+		}
+
+		validFileMode := fileMode.IsDir() || fileMode.IsRegular()
+		if !validFileMode {
+			continue
+		}
+
+		if pc.pattern != nil {
+			result, err := pc.evaluatePatternExpression(filePath, fileMode)
+			if err != nil {
+				select {
+				case pc.Error <- err:
+				default:
+				}
+				continue
+			}
+
+			if !result {
+				continue
+			}
 		}
 
 		if fileMode.IsDir() {
 			pc.wg.Add(1)
 			go func(p string) {
-				pc.concLimit <- false
+				pc.concLimit <- struct{}{}
 				pc.crawlDir(p)
 			}(filePath)
-			continue
-		}
-
-		if !fileMode.IsRegular() {
-			continue
-		}
-
-		if pc.pattern != nil && !pc.pattern.MatchString(filePath) {
 			continue
 		}
 
@@ -163,12 +203,33 @@ func readDir(path string) ([]os.FileInfo, error) {
 	return list, err
 }
 
-func (pc *PosixCrawler) resolveSymlink(currPath string, linkName string) (os.FileInfo, string, error) {
+func (pc *PosixCrawler) evaluatePatternExpression(filePath string, fileMode os.FileMode) (bool, error) {
+	var fileType string
+	if fileMode.IsDir() {
+		fileType = "d"
+	} else if fileMode.IsRegular() {
+		fileType = "f"
+	}
+
+	parameters := map[string]interface{}{"type": fileType, "path": filePath}
+	result, err := pc.pattern.Evaluate(parameters)
+	if err != nil {
+		return false, fmt.Errorf("pattern expression: %v", err)
+	}
+
+	val, ok := result.(bool)
+	if !ok {
+		return false, fmt.Errorf("pattern expression: result '%v' is not boolean", result)
+	}
+	return val, nil
+}
+
+func (pc *PosixCrawler) resolveSymlink(currPath string, linkName string) (os.FileInfo, error) {
 	filePath := currPath
 	linkName = path.Join(filePath, linkName)
 	fileName, err := os.Readlink(linkName)
 	if err != nil {
-		return nil, "", err
+		return nil, err
 	}
 	if !path.IsAbs(fileName) {
 		fileName = path.Join(filePath, fileName)
@@ -177,36 +238,34 @@ func (pc *PosixCrawler) resolveSymlink(currPath string, linkName string) (os.Fil
 	}
 
 	isSymlink := true
-	filesSeen := make(map[string]bool)
+	filesSeen := make(map[string]struct{})
 
 	for {
 		fi, err := os.Lstat(fileName)
 		if err != nil {
-			return nil, "", err
+			return nil, err
 		}
 
 		if _, found := filesSeen[fileName]; found {
-			return nil, "", fmt.Errorf("circular symlink: %v", linkName)
+			return nil, fmt.Errorf("circular symlink: %v", linkName)
 		}
-		filesSeen[fileName] = false
+		filesSeen[fileName] = struct{}{}
 
 		isSymlink = fi.Mode()&os.ModeSymlink == os.ModeSymlink
 		if isSymlink {
 			fileName, err = os.Readlink(fileName)
 			if err != nil {
-				return nil, "", err
+				return nil, err
 			}
 			if !path.IsAbs(fileName) {
 				fileName = path.Join(filePath, fileName)
 				fileName = filepath.Clean(fileName)
 				filePath = filepath.Dir(fileName)
 			}
-			continue
 		} else {
-			return fi, filePath, nil
+			return fi, nil
 		}
 	}
-
 }
 
 func (pc *PosixCrawler) outputResult() {
@@ -218,4 +277,5 @@ func (pc *PosixCrawler) outputResult() {
 		}
 		fmt.Printf("%s\n", rec)
 	}
+	pc.outputDone <- struct{}{}
 }
