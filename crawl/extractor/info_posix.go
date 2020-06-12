@@ -308,50 +308,6 @@ func (pc *PosixCrawler) evaluatePatternExpression(filePath string, fileMode uint
 	return val, nil
 }
 
-func (pc *PosixCrawler) resolveSymlink(currPath string, linkName string) (os.FileInfo, error) {
-	filePath := currPath
-	linkName = path.Join(filePath, linkName)
-	fileName, err := os.Readlink(linkName)
-	if err != nil {
-		return nil, err
-	}
-	if !path.IsAbs(fileName) {
-		fileName = path.Join(filePath, fileName)
-		fileName = filepath.Clean(fileName)
-		filePath = filepath.Dir(fileName)
-	}
-
-	isSymlink := true
-	filesSeen := make(map[string]struct{})
-
-	for {
-		fi, err := os.Lstat(fileName)
-		if err != nil {
-			return nil, err
-		}
-
-		if _, found := filesSeen[fileName]; found {
-			return nil, fmt.Errorf("circular symlink: %v", linkName)
-		}
-		filesSeen[fileName] = struct{}{}
-
-		isSymlink = fi.Mode()&os.ModeSymlink == os.ModeSymlink
-		if isSymlink {
-			fileName, err = os.Readlink(fileName)
-			if err != nil {
-				return nil, err
-			}
-			if !path.IsAbs(fileName) {
-				fileName = path.Join(filePath, fileName)
-				fileName = filepath.Clean(fileName)
-				filePath = filepath.Dir(fileName)
-			}
-		} else {
-			return fi, nil
-		}
-	}
-}
-
 func (pc *PosixCrawler) outputResult() {
 	for info := range pc.Outputs {
 		out, _ := json.Marshal(info)
