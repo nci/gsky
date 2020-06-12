@@ -11,6 +11,7 @@ import (
 	"sync"
 	"syscall"
 	"time"
+	"unsafe"
 
 	goeval "github.com/edisonguo/govaluate"
 )
@@ -73,6 +74,11 @@ type PosixCrawler struct {
 	outputFormat  string
 }
 
+type DirEntInfo struct {
+	Name string
+	Mode uint8
+}
+
 func NewPosixCrawler(conc int, pattern *goeval.EvaluableExpression, followSymlink bool, outputFormat string) *PosixCrawler {
 	crawler := &PosixCrawler{
 		SubDirs:       make(chan string, 4096),
@@ -131,12 +137,16 @@ func (pc *PosixCrawler) crawlDir(currPath string) {
 	}
 
 	for _, fi := range files {
-		fileName := fi.Name()
+		fileName := fi.Name
 		filePath := path.Join(currPath, fileName)
-		fileMode := fi.Mode()
+		fileMode := fi.Mode
 
-		if pc.followSymlink && fileMode&os.ModeSymlink == os.ModeSymlink {
-			newFi, err := pc.resolveSymlink(currPath, fileName)
+		var fStat os.FileInfo
+		if fileMode == syscall.DT_LNK {
+			if !pc.followSymlink {
+				continue
+			}
+			fStat, err = os.Stat(filePath)
 			if err != nil {
 				select {
 				case pc.Error <- err:
@@ -145,11 +155,15 @@ func (pc *PosixCrawler) crawlDir(currPath string) {
 				continue
 			}
 
-			fi = newFi
-			fileMode = fi.Mode()
+			fMode := fStat.Mode()
+			if fMode.IsDir() {
+				fileMode = syscall.DT_DIR
+			} else if fMode.IsRegular() {
+				fileMode = syscall.DT_REG
+			}
 		}
 
-		validFileMode := fileMode.IsDir() || fileMode.IsRegular()
+		validFileMode := fileMode == syscall.DT_DIR || fileMode == syscall.DT_REG
 		if !validFileMode {
 			continue
 		}
@@ -169,7 +183,7 @@ func (pc *PosixCrawler) crawlDir(currPath string) {
 			}
 		}
 
-		if fileMode.IsDir() {
+		if fileMode == syscall.DT_DIR {
 			pc.wg.Add(1)
 			go func(p string) {
 				pc.concLimit <- struct{}{}
@@ -178,7 +192,18 @@ func (pc *PosixCrawler) crawlDir(currPath string) {
 			continue
 		}
 
-		stat := fi.Sys().(*syscall.Stat_t)
+		if fStat == nil {
+			fStat, err = os.Lstat(filePath)
+			if err != nil {
+				select {
+				case pc.Error <- err:
+				default:
+				}
+				continue
+			}
+		}
+
+		stat := fStat.Sys().(*syscall.Stat_t)
 		fileSignature := fmt.Sprintf("%s%d%d%d%d", filePath, stat.Ino, stat.Size, stat.Mtim.Sec, stat.Mtim.Nsec)
 		info := &PosixInfo{
 			FilePath: filePath,
@@ -192,22 +217,80 @@ func (pc *PosixCrawler) crawlDir(currPath string) {
 	}
 }
 
-func readDir(path string) ([]os.FileInfo, error) {
-	f, err := os.Open(path)
+func readDir(currDir string) ([]DirEntInfo, error) {
+	parentDir := filepath.Dir(currDir)
+
+	dhParent, err := os.Open(parentDir)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("Could not open dir: %s", err.Error())
 	}
 
-	list, err := f.Readdir(-1)
-	f.Close()
-	return list, err
+	file := filepath.Base(currDir)
+	dirFd := int(dhParent.Fd())
+
+	dh, err := syscall.Openat(dirFd, file, syscall.O_RDONLY, 0777)
+	if err != nil {
+		return nil, fmt.Errorf("Could not open %s: %s", currDir, err.Error())
+	}
+
+	origBuf := make([]byte, 4096)
+	var entries []DirEntInfo
+	for {
+		n, errno := syscall.ReadDirent(dh, origBuf)
+		if errno != nil {
+			return nil, fmt.Errorf("Could not read dirent: %v", errno)
+		}
+		if n <= 0 {
+			break
+		}
+
+		buf := origBuf[0:n]
+		for len(buf) > 0 {
+			dirent := (*syscall.Dirent)(unsafe.Pointer(&buf[0]))
+			buf = buf[dirent.Reclen:]
+			if dirent.Ino == 0 {
+				continue
+			}
+			ii := 0
+			for ; ii < len(dirent.Name); ii++ {
+				if dirent.Name[ii] == 0 {
+					break
+				}
+			}
+			bytes := (*[256]byte)(unsafe.Pointer(&dirent.Name[0]))
+			name := string(bytes[:][:ii])
+			if name == "." || name == ".." {
+				continue
+			}
+
+			if dirent.Type == syscall.DT_UNKNOWN {
+				st, err := os.Lstat(path.Join(currDir, name))
+				if err != nil {
+					return nil, err
+				}
+				mode := st.Mode()
+				if mode.IsDir() {
+					dirent.Type = syscall.DT_DIR
+				} else if mode.IsRegular() {
+					dirent.Type = syscall.DT_REG
+				} else if mode&os.ModeSymlink == os.ModeSymlink {
+					dirent.Type = syscall.DT_LNK
+				}
+			}
+
+			info := DirEntInfo{Name: name, Mode: dirent.Type}
+			entries = append(entries, info)
+		}
+	}
+	syscall.Close(dh)
+	return entries, nil
 }
 
-func (pc *PosixCrawler) evaluatePatternExpression(filePath string, fileMode os.FileMode) (bool, error) {
+func (pc *PosixCrawler) evaluatePatternExpression(filePath string, fileMode uint8) (bool, error) {
 	var fileType string
-	if fileMode.IsDir() {
+	if fileMode == syscall.DT_DIR {
 		fileType = "d"
-	} else if fileMode.IsRegular() {
+	} else if fileMode == syscall.DT_REG {
 		fileType = "f"
 	}
 
