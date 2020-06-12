@@ -224,14 +224,16 @@ func readDir(currDir string) ([]DirEntInfo, error) {
 	if err != nil {
 		return nil, fmt.Errorf("Could not open dir: %s", err.Error())
 	}
+	defer dhParent.Close()
+	dirFd := int(dhParent.Fd())
 
 	file := filepath.Base(currDir)
-	dirFd := int(dhParent.Fd())
 
 	dh, err := syscall.Openat(dirFd, file, syscall.O_RDONLY, 0777)
 	if err != nil {
 		return nil, fmt.Errorf("Could not open %s: %s", currDir, err.Error())
 	}
+	defer syscall.Close(dh)
 
 	origBuf := make([]byte, 4096)
 	var entries []DirEntInfo
@@ -282,7 +284,6 @@ func readDir(currDir string) ([]DirEntInfo, error) {
 			entries = append(entries, info)
 		}
 	}
-	syscall.Close(dh)
 	return entries, nil
 }
 
