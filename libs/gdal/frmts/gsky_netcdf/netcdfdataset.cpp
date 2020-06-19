@@ -3482,7 +3482,7 @@ void netCDFDataset::SetProjectionFromVar( int nGroupId, int nVarId,
                       ((fabs(fabs(dfSpacingMiddle) - fabs(dfSpacingLast))) <= 100)) )
             {
                 bLatSpacingOK = true;
-                CPLError(CE_Warning, CPLE_AppDefined,
+                CPLDebug("GDAL_netCDF",
                          "Latitude grid not spaced evenly.  "
                          "Setting projection for grid spacing is "
                          "within 0.1 degrees threshold.");
