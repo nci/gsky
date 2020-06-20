@@ -631,7 +631,7 @@ void netCDFRasterBand::SetBlockSize()
                   chunkSizeBytes *= chunksize[i];
                 }
 
-                if(cacheSize < chunkSizeBytes) {
+                if(cacheSize < chunkSizeBytes * 5) {
                   const size_t MAX_CACHE_SIZE = (size_t)4 * 1024 * 1024 * 1024;
                   size_t maxChunks = MAX_CACHE_SIZE / chunkSizeBytes;
                   if(maxChunks < 1) {
