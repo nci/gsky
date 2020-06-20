@@ -612,6 +612,47 @@ void netCDFRasterBand::SetBlockSize()
                 nBlockYSize = (int)chunksize[nZDim - 2];
             else
                 nBlockYSize = 1;
+
+            if(nBand == 1) {
+              size_t cacheSize;
+              size_t nElems;
+              float  preemption;
+              nc_get_var_chunk_cache(cdfid, nZId, &cacheSize, &nElems, &preemption);
+
+              size_t newCacheSize = atol(CPLGetConfigOption("GDAL_NETCDF_CACHE_SIZE", "0"));
+              if(newCacheSize > cacheSize) {
+                  CPLDebug("GDAL_netCDF", "newCacheSize=%ld", newCacheSize);
+                  nc_set_var_chunk_cache(cdfid, nZId, newCacheSize, nElems, preemption);
+              } else {
+                int nd = 0;
+                nc_inq_varndims(cdfid, nZId, &nd);
+                size_t chunkSizeBytes = 1;
+                for(int i = 0; i < nd; i++) {
+                  chunkSizeBytes *= chunksize[i];
+                }
+
+                if(cacheSize < chunkSizeBytes) {
+                  const size_t MAX_CACHE_SIZE = (size_t)4 * 1024 * 1024 * 1024;
+                  size_t maxChunks = MAX_CACHE_SIZE / chunkSizeBytes;
+                  if(maxChunks < 1) {
+                    maxChunks = 1;
+                  }
+                  size_t desiredChunks = (size_t)(nRasterXSize / nBlockXSize);
+                  if(desiredChunks < 5) {
+                    desiredChunks = 5;
+                  }
+                  if(desiredChunks > maxChunks) {
+                    desiredChunks = maxChunks;
+                  }
+                  newCacheSize = desiredChunks * chunkSizeBytes;
+
+                  CPLDebug("GDAL_netCDF", "chunkSize=%ld, desiredChunks=%ld, newCacheSize=%ld, maxCacheSize=%ld",
+                    chunkSizeBytes, desiredChunks, newCacheSize, MAX_CACHE_SIZE);
+
+                  nc_set_var_chunk_cache(cdfid, nZId, newCacheSize, nElems, preemption);
+                }
+              }
+            }
         }
     }
 #endif
