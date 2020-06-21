@@ -1593,10 +1593,11 @@ void netCDFRasterBand::CheckData( void *pImage, void *pImageNC,
             size_t k = j * nBlockXSize;
             for( size_t i = 0; i < nTmpBlockXSize; i++, k++ )
             {
+                double val = (double) ptrImage[k];
                 // Check for nodata and nan.
-                if( CPLIsEqual((double) ptrImage[k], dfNoDataValue) )
+                if( CPLIsEqual(val, dfNoDataValue) )
                     continue;
-                if( bCheckIsNan && CPLIsNan((double) ptrImage[k]) )
+                if( bCheckIsNan && (__isnan(val) || __isinf(val)) )
                 {
                     ptrImage[k] = (T)dfNoDataValue;
                     continue;
