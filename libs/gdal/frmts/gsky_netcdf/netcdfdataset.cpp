@@ -1350,6 +1350,7 @@ CPLErr netCDFRasterBand::CreateBandMetadata( const int *paDimIds,
 
     int nd = 0;
     nc_inq_varndims(cdfid, nZId, &nd);
+    nd = nd == 1 ? 3 : nd;
     // Compute multidimention band position.
     //
     // BandPosition = (Total - sum(PastBandLevels) - 1)/sum(remainingLevels)
