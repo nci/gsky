@@ -7303,17 +7303,18 @@ GDALDataset *netCDFDataset::Open( GDALOpenInfo *poOpenInfo )
         return poDS;
     }
 
-    // We have more than one variable with 2 dimensions in the
-    // file, then treat this as a subdataset container dataset.
-    if( (nRasterVars > 1) && !bTreatAsSubdataset )
-    {
-        poDS->CreateSubDatasetList(cdfid);
-        poDS->SetMetadata(poDS->papszMetadata);
-        CPLReleaseMutex(hNCMutex);  // Release mutex otherwise we'll deadlock
-                                    // with GDALDataset own mutex.
-        poDS->TryLoadXML();
-        CPLAcquireMutex(hNCMutex, 1000.0);
-        return poDS;
+    if( !bTreatAsSubdataset ) {
+      const char *subDatasetQuery = CSLFetchNameValue(poOpenInfo->papszOpenOptions, "sd_query");
+      if( (subDatasetQuery != nullptr && CPLTestBool(subDatasetQuery)) || nRasterVars > 1 )
+      {
+          poDS->CreateSubDatasetList(cdfid);
+          poDS->SetMetadata(poDS->papszMetadata);
+          CPLReleaseMutex(hNCMutex);  // Release mutex otherwise we'll deadlock
+                                      // with GDALDataset own mutex.
+          poDS->TryLoadXML();
+          CPLAcquireMutex(hNCMutex, 1000.0);
+          return poDS;
+      }
     }
 
     // If we are not treating things as a subdataset, then capture
@@ -7324,17 +7325,6 @@ GDALDataset *netCDFDataset::Open( GDALOpenInfo *poOpenInfo )
         NCDF_ERR(NCDFGetVarFullName(nGroupID, nVarID, &pszVarName));
         osSubdatasetName = (pszVarName != nullptr ? pszVarName : "");
         CPLFree(pszVarName);
-    }
-
-    // We have ignored at least one variable, so we should report them
-    // as subdatasets for reference.
-    if( nIgnoredVars > 0 && !bTreatAsSubdataset )
-    {
-        CPLDebug("GDAL_netCDF",
-                 "As %d variables were ignored, creating subdataset list "
-                 "for reference. Variable #%d [%s] is the main variable",
-                 nIgnoredVars, nVarID, osSubdatasetName.c_str());
-        poDS->CreateSubDatasetList(cdfid);
     }
 
     // Open the NETCDF subdataset NETCDF:"filename":subdataset.
@@ -8884,6 +8874,9 @@ extern "C" void __attribute__((visibility("default"))) GDALRegister_GSKY_netCDF(
 "   <Option name='md_query' type='boolean' "
     "description='Whether to query metadata. "
     "Setting to NO to improve performance' default='YES'/>"
+"   <Option name='sd_query' type='boolean' "
+    "description='Whether to query subdatasets only. "
+    "Setting to YES to query subdatasets only' default='NO'/>"
 "   <Option name='srs_cf' type='boolean' "
     "description='Whether to prefer CF SRS. "
     "Setting to YES to prefer CF SRS over GDAL SRS' default='NO'/>"
