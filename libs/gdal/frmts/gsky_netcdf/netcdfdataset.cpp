@@ -1714,6 +1714,7 @@ CPLErr netCDFRasterBand::IReadBlock( int nBlockXOff, int nBlockYOff,
 
     int nd = 0;
     nc_inq_varndims(cdfid, nZId, &nd);
+    nd = nd == 1 ? 3 : nd;
 
 #ifdef NCDF_DEBUG
     if( (nBlockYOff == 0) || (nBlockYOff == nRasterYSize - 1) )
@@ -5230,7 +5231,23 @@ void netCDFDataset::CreateSubDatasetList( int nGroupId )
         int nDims;
         nc_inq_varndims(nGroupId, nVar, &nDims);
 
-        if( nDims >= 2 )
+        bool isSubdataset = false;
+        if( nDims == 1) {
+          char szTemp[NC_MAX_NAME + 1];
+          nc_inq_varname(nGroupId, nVar, szTemp);
+          if( !NCDFIsVarLongitude(nGroupId, -1, szTemp) &&
+              !NCDFIsVarLatitude(nGroupId, -1, szTemp) &&
+              !NCDFIsVarProjectionX(nGroupId, -1, szTemp) &&
+              !NCDFIsVarProjectionY(nGroupId, -1, szTemp) &&
+              !NCDFIsVarVerticalCoord(nGroupId, -1, szTemp) &&
+              !NCDFIsVarTimeCoord(nGroupId, -1, szTemp) ) {
+              isSubdataset = true;
+          }
+        } else if( nDims >= 2) {
+          isSubdataset = true;
+        }
+
+        if( isSubdataset )
         {
             ponDimIds = static_cast<int *>(CPLCalloc(nDims, sizeof(int)));
             nc_inq_vardimid(nGroupId, nVar, ponDimIds);
@@ -7327,11 +7344,15 @@ GDALDataset *netCDFDataset::Open( GDALOpenInfo *poOpenInfo )
     cdfid = nGroupID;
     int nd = 0;
     nc_inq_varndims(cdfid, var, &nd);
+    int effectiveNDims = nd == 1 ? 3 : nd;
 
-    int *paDimIds = static_cast<int *>(CPLCalloc(nd, sizeof(int)));
+    int *paDimIds = static_cast<int *>(CPLCalloc(effectiveNDims, sizeof(int)));
+    for(int d = 0; d < effectiveNDims; d++) {
+      paDimIds[d] = -d;
+    }
 
     // X, Y, Z position in array
-    int *panBandDimPos = static_cast<int *>(CPLCalloc(nd, sizeof(int)));
+    int *panBandDimPos = static_cast<int *>(CPLCalloc(effectiveNDims, sizeof(int)));
 
     nc_inq_vardimid(cdfid, var, paDimIds);
 
@@ -7445,7 +7466,9 @@ GDALDataset *netCDFDataset::Open( GDALOpenInfo *poOpenInfo )
     }
     else
     {
-        poDS->nYDimID = -1;
+        poDS->nXDimID = -1;
+        xdim = 1;
+        poDS->nYDimID = -2;
         ydim = 1;
     }
 
@@ -7468,7 +7491,7 @@ GDALDataset *netCDFDataset::Open( GDALOpenInfo *poOpenInfo )
     poDS->nRasterYSize = static_cast<int>(ydim);
 
     unsigned int k = 0;
-    for( int j = 0; j < nd; j++ )
+    for( int j = 0; j < effectiveNDims; j++ )
     {
         if( paDimIds[j] == poDS->nXDimID )
         {
@@ -7482,7 +7505,7 @@ GDALDataset *netCDFDataset::Open( GDALOpenInfo *poOpenInfo )
         }
     }
     // X and Y Dimension Ids were not found!
-    if( (nd >= 2 && k != 2) || (nd == 1 && k != 1) )
+    if( (effectiveNDims >= 2 && k != 2) || (effectiveNDims == 1 && k != 1) )
     {
         CPLFree(paDimIds);
         CPLFree(panBandDimPos);
@@ -7573,7 +7596,7 @@ GDALDataset *netCDFDataset::Open( GDALOpenInfo *poOpenInfo )
     // Save non-spatial dimension info.
 
     int *panBandZLev = nullptr;
-    int nDim = (nd >= 2) ? 2 : 1;
+    int nDim = (effectiveNDims >= 2) ? 2 : 1;
     size_t lev_count;
     size_t nTotLevCount = 1;
     nc_type nType = NC_NAT;
@@ -7588,16 +7611,16 @@ GDALDataset *netCDFDataset::Open( GDALOpenInfo *poOpenInfo )
 
     const char *coordQuery = CSLFetchNameValue(poOpenInfo->papszOpenOptions, "coord_query");
     bool hasCoordQuery = coordQuery == nullptr ? true : CPLTestBool(coordQuery);
-    if( nd > 2 )
+    if( effectiveNDims > 2 )
     {
         nDim = 2;
-        panBandZLev = static_cast<int *>(CPLCalloc(nd - 2, sizeof(int)));
+        panBandZLev = static_cast<int *>(CPLCalloc(effectiveNDims - 2, sizeof(int)));
 
         osExtraDimNames = "{";
 
         char szDimName[NC_MAX_NAME + 1] = {};
 
-        for( int j = 0; j < nd; j++ )
+        for( int j = 0; j < effectiveNDims; j++ )
         {
             if( (paDimIds[j] != poDS->nXDimID) &&
                 (paDimIds[j] != poDS->nYDimID) )
@@ -7611,7 +7634,7 @@ GDALDataset *netCDFDataset::Open( GDALOpenInfo *poOpenInfo )
                     == NC_NOERR )
                 {
                     osExtraDimNames += szDimName;
-                    if( j < nd-3 )
+                    if( j < effectiveNDims-3 )
                     {
                         osExtraDimNames += ",";
                     }
@@ -10918,6 +10941,8 @@ CPLErr netCDFDataset::FilterVars( int nCdfId, bool bKeepRasters,
         else if( nVarDims == 1 && NCDFIsVarVerticalCoord(nCdfId, -1, szTemp) )
         {
             nVarZId = v;
+        } else if( nVarDims == 1 && NCDFIsVarTimeCoord(nCdfId, -1, szTemp) ) {
+            continue;
         }
         else
         {
@@ -11009,6 +11034,14 @@ CPLErr netCDFDataset::FilterVars( int nCdfId, bool bKeepRasters,
                         else
                             NCDF_ERR(status);
                     }
+                } else {
+                  if( bKeepRasters )
+                  {
+                      *pnGroupId = nCdfId;
+                      *pnVarId = v;
+                      nRasterVars++;
+                  }
+                  continue;
                 }
                 if( v != nParentIndexVarID )
                 {
