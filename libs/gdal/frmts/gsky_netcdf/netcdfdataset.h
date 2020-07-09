@@ -783,6 +783,7 @@ class netCDFDataset final: public GDALPamDataset
     friend class netCDFLayer;
     bool         mdQuery;
     bool         srsCf;
+    char*        mainVariableId = nullptr;
 
     typedef enum
     {

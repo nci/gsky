@@ -5228,7 +5228,6 @@ void netCDFDataset::CreateSubDatasetList( int nGroupId )
 
     for( int nVar = 0; nVar < nVarCount; nVar++ )
     {
-
         int nDims;
         nc_inq_varndims(nGroupId, nVar, &nDims);
 
@@ -5236,7 +5235,9 @@ void netCDFDataset::CreateSubDatasetList( int nGroupId )
         if( nDims == 1) {
           char szTemp[NC_MAX_NAME + 1];
           nc_inq_varname(nGroupId, nVar, szTemp);
-          if( !NCDFIsVarLongitude(nGroupId, -1, szTemp) &&
+          if( mainVariableId != nullptr && !strcmp(szTemp, mainVariableId) ) {
+              isSubdataset = true;
+          } else if( !NCDFIsVarLongitude(nGroupId, -1, szTemp) &&
               !NCDFIsVarLatitude(nGroupId, -1, szTemp) &&
               !NCDFIsVarProjectionX(nGroupId, -1, szTemp) &&
               !NCDFIsVarProjectionY(nGroupId, -1, szTemp) &&
@@ -7261,6 +7262,11 @@ GDALDataset *netCDFDataset::Open( GDALOpenInfo *poOpenInfo )
     poDS->bDefineMode = false;
 
     poDS->ReadAttributes(cdfid, NC_GLOBAL);
+
+    const char *mainVarLookup = CSLFetchNameValue(poOpenInfo->papszOpenOptions, "var_id_query");
+    if(mainVarLookup != nullptr) {
+      poDS->mainVariableId = (char *)poDS->FetchAttr("NC_GLOBAL", mainVarLookup);
+    }
 
     // Identify coordinate and boundary variables that we should
     // ignore as Raster Bands.
@@ -10921,6 +10927,15 @@ CPLErr netCDFDataset::FilterVars( int nCdfId, bool bKeepRasters,
         char szTemp[NC_MAX_NAME + 1];
         szTemp[0] = '\0';
         NCDF_ERR_RET(nc_inq_varname(nCdfId, v, szTemp));
+        if(mainVariableId != nullptr && !strcmp(szTemp, mainVariableId)) {
+          if( bKeepRasters )
+          {
+            *pnGroupId = nCdfId;
+            *pnVarId = v;
+            nRasterVars++;
+          }
+          continue;
+        }
 
         if( nVarDims == 1 && (NCDFIsVarLongitude(nCdfId, -1, szTemp) ||
                               NCDFIsVarProjectionX(nCdfId, -1, szTemp)) )
