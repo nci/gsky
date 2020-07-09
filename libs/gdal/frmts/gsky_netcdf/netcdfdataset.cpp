@@ -1309,8 +1309,7 @@ static int Get1DVariableIndexedByDimension( int cdfid, int nDimId,
     {
         if( bVerboseError )
         {
-            CPLError(CE_Warning, CPLE_AppDefined,
-                 "Several 1D variables are indexed by dimension %s",
+            CPLDebug("Several 1D variables are indexed by dimension %s",
                  pszDimName);
         }
         *pnGroupID = -1;
@@ -1320,8 +1319,7 @@ static int Get1DVariableIndexedByDimension( int cdfid, int nDimId,
     {
         if( bVerboseError )
         {
-            CPLError(CE_Warning, CPLE_AppDefined,
-                 "No 1D variable is indexed by dimension %s",
+            CPLDebug("No 1D variable is indexed by dimension %s",
                  pszDimName);
         }
     }
