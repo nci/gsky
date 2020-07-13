@@ -1619,10 +1619,8 @@ void netCDFRasterBand::CheckData( void *pImage, void *pImageNC,
 
     // If minimum longitude is > 180, subtract 360 from all.
     // If not, disable checking for further calls (check just once).
-    // Only check first and last block elements since lon must be monotonic.
     const bool bIsSigned = std::numeric_limits<T>::is_signed;
-    if( bCheckLongitude && bIsSigned &&
-        std::min(((T *)pImage)[0], ((T *)pImage)[nTmpBlockXSize - 1]) > 180.0 )
+    if( bCheckLongitude && bIsSigned )
     {
         T *ptrImage = static_cast<T*>(pImage);
         for( size_t j = 0; j < nTmpBlockYSize; j++ )
@@ -1630,7 +1628,7 @@ void netCDFRasterBand::CheckData( void *pImage, void *pImageNC,
             size_t k = j * nBlockXSize;
             for( size_t i = 0; i < nTmpBlockXSize; i++, k++ )
             {
-                if( !CPLIsEqual((double)ptrImage[k], dfNoDataValue) )
+                if( !CPLIsEqual((double)ptrImage[k], dfNoDataValue) && (double)ptrImage[k] > 180.0 )
                     ptrImage[k] = static_cast<T>(ptrImage[k] - 360);
             }
         }
