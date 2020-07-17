@@ -2492,7 +2492,7 @@ void netCDFDataset::SetProjectionFromVar( int nGroupId, int nVarId,
 
     if( !bReadSRSOnly && (xdim == 1 || ydim == 1) )
     {
-        CPLError(CE_Warning, CPLE_AppDefined,
+        CPLDebug("GDAL_netCDF",
                  "1-pixel width/height files not supported, "
                  "xdim: %ld ydim: %ld",
                  static_cast<long>(xdim), static_cast<long>(ydim));
