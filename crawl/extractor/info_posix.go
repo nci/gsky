@@ -99,7 +99,7 @@ func (pc *PosixCrawler) Crawl(currPath string) error {
 
 	pc.wg.Add(1)
 	pc.concLimit <- struct{}{}
-	pc.crawlDir(currPath)
+	pc.crawlDir(currPath, false)
 	pc.wg.Wait()
 
 	close(pc.Outputs)
@@ -124,9 +124,11 @@ func (pc *PosixCrawler) Crawl(currPath string) error {
 	return nil
 }
 
-func (pc *PosixCrawler) crawlDir(currPath string) {
+func (pc *PosixCrawler) crawlDir(currPath string, serialised bool) {
 	defer pc.wg.Done()
-	defer func() { <-pc.concLimit }()
+	if !serialised {
+		defer func() { <-pc.concLimit }()
+	}
 	files, err := readDir(currPath)
 	if err != nil {
 		select {
@@ -185,10 +187,14 @@ func (pc *PosixCrawler) crawlDir(currPath string) {
 
 		if fileMode == syscall.DT_DIR {
 			pc.wg.Add(1)
-			go func(p string) {
-				pc.concLimit <- struct{}{}
-				pc.crawlDir(p)
-			}(filePath)
+			select {
+			case pc.concLimit <- struct{}{}:
+				go func(p string) {
+					pc.crawlDir(p, false)
+				}(filePath)
+			default:
+				pc.crawlDir(filePath, true)
+			}
 			continue
 		}
 
