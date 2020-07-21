@@ -1376,8 +1376,8 @@ func DumpConfig(configs map[string]*Config) (string, error) {
 	return string(configJson), nil
 }
 
-func WatchConfig(infoLog, errLog *log.Logger, configMap *map[string]*Config, verbose bool) {
-	// Catch SIGHUP to automatically reload cache
+func WatchConfig(infoLog, errLog *log.Logger, configMap *sync.Map, verbose bool) {
+	// Catch SIGHUP to automatically reload config
 	sighup := make(chan os.Signal, 1)
 	signal.Notify(sighup, syscall.SIGHUP)
 	go func() {
@@ -1388,16 +1388,9 @@ func WatchConfig(infoLog, errLog *log.Logger, configMap *map[string]*Config, ver
 				confMap, err := LoadAllConfigFiles(EtcDir, verbose)
 				if err != nil {
 					errLog.Printf("Error in loading config files: %v\n", err)
-					return
+					continue
 				}
-
-				for k := range *configMap {
-					delete(*configMap, k)
-				}
-
-				for k := range confMap {
-					(*configMap)[k] = confMap[k]
-				}
+				configMap.Store("config", confMap)
 			}
 		}
 	}()
