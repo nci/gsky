@@ -162,6 +162,7 @@ create or replace function mas_reset()
   returns void language plpgsql as $$
   begin
     set work_mem to '32MB';
+    set lock_timeout to '10s';
     perform set_config('search_path', 'public', false);
   end
 $$;
