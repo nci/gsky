@@ -8,6 +8,9 @@ shard=$1
 set role mas;
 drop schema if exists ${shard}_tmp cascade;
 create schema if not exists ${shard}_tmp;
+set search_path to ${shard}_tmp;
+
+\\i shard.sql
 
 EOD
 )
