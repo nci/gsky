@@ -31,6 +31,7 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/nci/gsky/metrics"
@@ -44,8 +45,7 @@ import (
 
 // Global variable to hold the values specified
 // on the config.json document.
-var configMap map[string]*utils.Config
-
+var configMap *sync.Map
 var (
 	port            = flag.Int("p", 8080, "Server listening port.")
 	serverDataDir   = flag.String("data_dir", utils.DataDir, "Server data directory.")
@@ -118,9 +118,10 @@ func init() {
 		os.Exit(0)
 	}
 
-	configMap = confMap
+	configMap = &sync.Map{}
+	configMap.Store("config", confMap)
 
-	utils.WatchConfig(Info, Error, &configMap, *verbose)
+	utils.WatchConfig(Info, Error, configMap, *verbose)
 
 	reWMSMap = utils.CompileWMSRegexMap()
 	reWCSMap = utils.CompileWCSRegexMap()
@@ -229,7 +230,7 @@ func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r
 			timeStr = fmt.Sprintf(`"time": "%s"`, (*params.Time).Format(utils.ISOFormat))
 		}
 
-		feat_info, err := proc.GetFeatureInfo(ctx, params, conf, configMap, *verbose, metricsCollector)
+		feat_info, err := proc.GetFeatureInfo(ctx, params, conf, getConfigMap(), *verbose, metricsCollector)
 		if err != nil {
 			feat_info = fmt.Sprintf(`"error": "%v"`, err)
 			Error.Printf("%v\n", err)
@@ -432,7 +433,7 @@ func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r
 
 		tp := proc.InitTilePipeline(ctx, masAddress, conf.ServiceConfig.WorkerNodes, conf.Layers[idx].MaxGrpcRecvMsgSize, conf.Layers[idx].WmsPolygonShardConcLimit, conf.ServiceConfig.MaxGrpcBufferSize, errChan)
 		tp.CurrentLayer = styleLayer
-		tp.DataSources = configMap
+		tp.DataSources = getConfigMap()
 
 		if !hasOverview && styleLayer.ZoomLimit != 0.0 && reqRes > styleLayer.ZoomLimit {
 			geoReq.Mask = nil
@@ -1449,6 +1450,11 @@ func serveWPS(ctx context.Context, params utils.WPSParams, conf *utils.Config, r
 	}
 }
 
+func getConfigMap() map[string]*utils.Config {
+	v, _ := configMap.Load("config")
+	return v.(map[string]*utils.Config)
+}
+
 // owsHandler handles every request received on /ows
 func generalHandler(conf *utils.Config, w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "*")
@@ -1585,7 +1591,7 @@ func owsHandler(w http.ResponseWriter, r *http.Request) {
 			namespace = namespace[:len(namespace)-len(dapExt)]
 		}
 	}
-	config, ok := configMap[namespace]
+	config, ok := getConfigMap()[namespace]
 	if !ok {
 		Info.Printf("Invalid dataset namespace: %v for url: %v\n", namespace, r.URL.Path)
 		http.Error(w, fmt.Sprintf("Invalid dataset namespace: %v\n", namespace), 404)
