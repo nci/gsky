@@ -1608,6 +1608,11 @@ func fileHandler(w http.ResponseWriter, r *http.Request) {
 		r.URL.Path = upath
 	}
 	upath = path.Clean(upath)
+	indexPages := map[string]struct{}{"/": struct{}{}, "/index.html": struct{}{}}
+	_, isIndex := indexPages[strings.ToLower(strings.TrimSpace(upath))]
+	if isIndex {
+		upath = "index.html"
+	}
 	upath = filepath.Join(utils.DataDir+"/static", upath)
 
 	if *verbose {
@@ -1616,7 +1621,20 @@ func fileHandler(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate, max-age=0")
-	http.ServeFile(w, r, upath)
+
+	if isIndex {
+		type Payload struct {
+			CurrentYear int
+		}
+		payload := &Payload{CurrentYear: time.Now().Year()}
+		err := utils.ExecuteWriteTemplateFile(w, payload, upath)
+		if err != nil {
+			http.Error(w, err.Error(), 500)
+			return
+		}
+	} else {
+		http.ServeFile(w, r, upath)
+	}
 }
 
 func main() {
