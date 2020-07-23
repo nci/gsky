@@ -487,120 +487,164 @@ func GenerateDates(name string, start, end time.Time, stepMins time.Duration) []
 	return dateGen[name](start, end, stepMins)
 }
 
-func LoadAllConfigFiles(rootDir string, verbose bool) (map[string]*Config, error) {
-	configMap := make(map[string]*Config)
-	err := filepath.Walk(rootDir, func(path string, info os.FileInfo, err error) error {
+func symWalk(rootDir string, symlink string, walkFunc filepath.WalkFunc) error {
+	return filepath.Walk(rootDir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
 
-		if !info.IsDir() && info.Name() == "config.json" {
-			absPath, _ := filepath.Abs(path)
-			relPath, _ := filepath.Rel(rootDir, filepath.Dir(path))
-			if verbose {
-				log.Printf("Loading config file: %s under namespace: %s\n", absPath, relPath)
+		fileName, err := filepath.Rel(rootDir, path)
+		if err != nil {
+			return err
+		}
+		path = filepath.Join(symlink, fileName)
+
+		if info.Mode()&os.ModeSymlink == os.ModeSymlink {
+			realPath, err := filepath.EvalSymlinks(path)
+			if err != nil {
+				return err
 			}
 
-			config := &Config{}
-			e := config.LoadConfigFile(absPath, verbose)
-			if e != nil {
-				return e
+			info, err := os.Lstat(realPath)
+			if err != nil {
+				return err
 			}
 
-			configMap[relPath] = config
-
-			for i := range config.Layers {
-				ns := relPath
-				if relPath == "." {
-					ns = ""
-				}
-
-				if len(config.Layers[i].MASAddress) == 0 {
-					config.Layers[i].MASAddress = config.ServiceConfig.MASAddress
-				}
-
-				if len(config.Layers[i].Overviews) > 0 {
-					for ii, ovr := range config.Layers[i].Overviews {
-						if len(ovr.DataSource) == 0 {
-							return fmt.Errorf("%s, %s: overview[%d] has no data_source", config.Layers[i].Name, ns, ii)
-						}
-
-						if ovr.ZoomLimit <= 0 {
-							return fmt.Errorf("%s, %s: overview[%d] has no zoom_limit", config.Layers[i].Name, ns, ii)
-						}
-
-						if len(config.Layers[i].Overviews[ii].MASAddress) == 0 {
-							config.Layers[i].Overviews[ii].MASAddress = config.Layers[i].MASAddress
-						}
-					}
-					sort.Slice(config.Layers[i].Overviews, func(m, n int) bool { return config.Layers[m].ZoomLimit < config.Layers[n].ZoomLimit })
-				}
-				config.Layers[i].NameSpace = ns
-				for j := range config.Layers[i].Styles {
-					config.Layers[i].Styles[j].OWSHostname = config.Layers[i].OWSHostname
-					config.Layers[i].Styles[j].NameSpace = config.Layers[i].NameSpace
-					if len(config.Layers[i].Styles[j].DataSource) == 0 {
-						config.Layers[i].Styles[j].DataSource = config.Layers[i].DataSource
-					}
-					if len(config.Layers[i].Styles[j].MASAddress) == 0 {
-						config.Layers[i].Styles[j].MASAddress = config.Layers[i].MASAddress
-					}
-					if config.Layers[i].Styles[j].LegendWidth <= 0 {
-						config.Layers[i].Styles[j].LegendWidth = DefaultLegendWidth
-					}
-					if config.Layers[i].Styles[j].LegendHeight <= 0 {
-						config.Layers[i].Styles[j].LegendHeight = DefaultLegendHeight
-					}
-
-					bandExpr, err := ParseBandExpressions(config.Layers[i].Styles[j].RGBProducts)
-					if err != nil {
-						return fmt.Errorf("Layer %v, style %v, RGBExpression parsing error: %v", config.Layers[i].Name, config.Layers[i].Styles[j].Name, err)
-					}
-					config.Layers[i].Styles[j].RGBExpressions = bandExpr
-
-					if len(config.Layers[i].Styles[j].FeatureInfoBands) > 0 {
-						featureInfoExpr, err := ParseBandExpressions(config.Layers[i].Styles[j].FeatureInfoBands)
-						if err != nil {
-							return fmt.Errorf("Layer %v, style %v, FeatureInfoExpression parsing error: %v", config.Layers[i].Name, config.Layers[i].Styles[j].Name, err)
-						}
-						config.Layers[i].Styles[j].FeatureInfoExpressions = featureInfoExpr
-					}
-
-					if len(config.Layers[i].Styles[j].InputLayers) == 0 && len(config.Layers[i].InputLayers) > 0 {
-						config.Layers[i].Styles[j].InputLayers = config.Layers[i].InputLayers
-					}
-
-					if len(config.Layers[i].Styles[j].InputLayers) > 0 {
-						for k := range config.Layers[i].Styles[j].InputLayers {
-							if len(config.Layers[i].Styles[j].InputLayers[k].Name) == 0 {
-								config.Layers[i].Styles[j].InputLayers[k].Name = config.Layers[i].Name
-							}
-						}
-					}
-
-					if len(config.Layers[i].Styles[j].DisableServices) == 0 && len(config.Layers[i].DisableServices) > 0 {
-						config.Layers[i].Styles[j].DisableServices = config.Layers[i].DisableServices
-					}
-
-					if len(config.Layers[i].Styles[j].Overviews) == 0 && len(config.Layers[i].Overviews) > 0 {
-						config.Layers[i].Styles[j].Overviews = config.Layers[i].Overviews
-					}
-
-					if config.Layers[i].Styles[j].ZoomLimit == 0.0 && config.Layers[i].ZoomLimit != 0.0 {
-						config.Layers[i].Styles[j].ZoomLimit = config.Layers[i].ZoomLimit
-					}
-
-					if !strings.HasPrefix(config.Layers[i].Styles[j].Name, "__") {
-						config.Layers[i].Styles[j].Visibility = "visible"
-					}
-				}
+			if info.IsDir() {
+				return symWalk(realPath, path, walkFunc)
 			}
 		}
-		return nil
+		return walkFunc(path, info, err)
 	})
+}
 
-	if err != nil {
-		return nil, err
+func LoadAllConfigFiles(searchPath string, verbose bool) (map[string]*Config, error) {
+	var err error
+	configMap := make(map[string]*Config)
+	searchPathList := strings.Split(searchPath, ":")
+	for _, rootDir := range searchPathList {
+		rootDir = strings.TrimSpace(rootDir)
+		if len(rootDir) == 0 {
+			continue
+		}
+		err = symWalk(rootDir, rootDir, func(path string, info os.FileInfo, err error) error {
+			if err != nil {
+				return err
+			}
+
+			if !info.IsDir() && info.Name() == "config.json" {
+				absPath, _ := filepath.Abs(path)
+				relPath, _ := filepath.Rel(rootDir, filepath.Dir(path))
+
+				if _, found := configMap[relPath]; found {
+					return nil
+				}
+
+				if verbose {
+					log.Printf("Loading config file: %s under namespace: %s\n", absPath, relPath)
+				}
+
+				config := &Config{}
+				e := config.LoadConfigFile(absPath, verbose)
+				if e != nil {
+					return e
+				}
+
+				configMap[relPath] = config
+
+				for i := range config.Layers {
+					ns := relPath
+					if relPath == "." {
+						ns = ""
+					}
+
+					if len(config.Layers[i].MASAddress) == 0 {
+						config.Layers[i].MASAddress = config.ServiceConfig.MASAddress
+					}
+
+					if len(config.Layers[i].Overviews) > 0 {
+						for ii, ovr := range config.Layers[i].Overviews {
+							if len(ovr.DataSource) == 0 {
+								return fmt.Errorf("%s, %s: overview[%d] has no data_source", config.Layers[i].Name, ns, ii)
+							}
+
+							if ovr.ZoomLimit <= 0 {
+								return fmt.Errorf("%s, %s: overview[%d] has no zoom_limit", config.Layers[i].Name, ns, ii)
+							}
+
+							if len(config.Layers[i].Overviews[ii].MASAddress) == 0 {
+								config.Layers[i].Overviews[ii].MASAddress = config.Layers[i].MASAddress
+							}
+						}
+						sort.Slice(config.Layers[i].Overviews, func(m, n int) bool { return config.Layers[m].ZoomLimit < config.Layers[n].ZoomLimit })
+					}
+					config.Layers[i].NameSpace = ns
+					for j := range config.Layers[i].Styles {
+						config.Layers[i].Styles[j].OWSHostname = config.Layers[i].OWSHostname
+						config.Layers[i].Styles[j].NameSpace = config.Layers[i].NameSpace
+						if len(config.Layers[i].Styles[j].DataSource) == 0 {
+							config.Layers[i].Styles[j].DataSource = config.Layers[i].DataSource
+						}
+						if len(config.Layers[i].Styles[j].MASAddress) == 0 {
+							config.Layers[i].Styles[j].MASAddress = config.Layers[i].MASAddress
+						}
+						if config.Layers[i].Styles[j].LegendWidth <= 0 {
+							config.Layers[i].Styles[j].LegendWidth = DefaultLegendWidth
+						}
+						if config.Layers[i].Styles[j].LegendHeight <= 0 {
+							config.Layers[i].Styles[j].LegendHeight = DefaultLegendHeight
+						}
+
+						bandExpr, err := ParseBandExpressions(config.Layers[i].Styles[j].RGBProducts)
+						if err != nil {
+							return fmt.Errorf("Layer %v, style %v, RGBExpression parsing error: %v", config.Layers[i].Name, config.Layers[i].Styles[j].Name, err)
+						}
+						config.Layers[i].Styles[j].RGBExpressions = bandExpr
+
+						if len(config.Layers[i].Styles[j].FeatureInfoBands) > 0 {
+							featureInfoExpr, err := ParseBandExpressions(config.Layers[i].Styles[j].FeatureInfoBands)
+							if err != nil {
+								return fmt.Errorf("Layer %v, style %v, FeatureInfoExpression parsing error: %v", config.Layers[i].Name, config.Layers[i].Styles[j].Name, err)
+							}
+							config.Layers[i].Styles[j].FeatureInfoExpressions = featureInfoExpr
+						}
+
+						if len(config.Layers[i].Styles[j].InputLayers) == 0 && len(config.Layers[i].InputLayers) > 0 {
+							config.Layers[i].Styles[j].InputLayers = config.Layers[i].InputLayers
+						}
+
+						if len(config.Layers[i].Styles[j].InputLayers) > 0 {
+							for k := range config.Layers[i].Styles[j].InputLayers {
+								if len(config.Layers[i].Styles[j].InputLayers[k].Name) == 0 {
+									config.Layers[i].Styles[j].InputLayers[k].Name = config.Layers[i].Name
+								}
+							}
+						}
+
+						if len(config.Layers[i].Styles[j].DisableServices) == 0 && len(config.Layers[i].DisableServices) > 0 {
+							config.Layers[i].Styles[j].DisableServices = config.Layers[i].DisableServices
+						}
+
+						if len(config.Layers[i].Styles[j].Overviews) == 0 && len(config.Layers[i].Overviews) > 0 {
+							config.Layers[i].Styles[j].Overviews = config.Layers[i].Overviews
+						}
+
+						if config.Layers[i].Styles[j].ZoomLimit == 0.0 && config.Layers[i].ZoomLimit != 0.0 {
+							config.Layers[i].Styles[j].ZoomLimit = config.Layers[i].ZoomLimit
+						}
+
+						if !strings.HasPrefix(config.Layers[i].Styles[j].Name, "__") {
+							config.Layers[i].Styles[j].Visibility = "visible"
+						}
+					}
+				}
+			}
+			return nil
+		})
+
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	if err == nil && len(configMap) == 0 {
