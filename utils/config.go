@@ -945,7 +945,7 @@ func (config *Config) GetLayerDates(iLayer int, verbose bool) {
 			config.Layers[iLayer].TimestampToken = token
 			return
 		} else {
-			log.Printf("Failed to get MAS timestamps")
+			log.Printf("Failed to get MAS timestamps, layer: %s", layer.Name)
 			return
 		}
 	} else {
@@ -972,7 +972,7 @@ func (config *Config) GetLayerDates(iLayer int, verbose bool) {
 
 			masTimestamps, token := GenerateDatesMas(startDate, endDate, config.ServiceConfig.MASAddress, layer.DataSource, layer.RGBExpressions.VarList, 0, layer.TimestampToken, verbose)
 			if len(token) == 0 {
-				log.Printf("Failed to get MAS timestamps")
+				log.Printf("Failed to get MAS timestamps, layer: %s", layer.Name)
 				return
 			} else if len(masTimestamps) == 0 && len(token) > 0 {
 				if verbose {
@@ -994,13 +994,13 @@ func (config *Config) GetLayerDates(iLayer int, verbose bool) {
 
 		start, errStart := time.Parse(ISOFormat, startDate)
 		if errStart != nil {
-			log.Printf("start date parsing error: %v", errStart)
+			log.Printf("start date parsing error: %v, layer: %s", errStart, layer.Name)
 			return
 		}
 
 		end, errEnd := time.Parse(ISOFormat, endDate)
 		if errEnd != nil {
-			log.Printf("end date parsing error: %v", errEnd)
+			log.Printf("end date parsing error: %v, layer: %s", errEnd, layer.Name)
 			return
 		}
 
