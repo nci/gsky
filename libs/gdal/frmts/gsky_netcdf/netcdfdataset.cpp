@@ -9785,6 +9785,19 @@ static CPLErr NCDFPutAttr( int nCdfId, int nVarId, const char *pszAttrName,
     return CE_None;
 }
 
+static inline size_t fastStrcat(char *src, size_t currSize, char **pszVarValue, size_t *nVarValueSize)
+{
+    size_t valSize = strlen(src);
+    if(*nVarValueSize < currSize + valSize + 1) {
+        *nVarValueSize *= 2;
+        *pszVarValue = static_cast<char *>(CPLRealloc(reinterpret_cast<void *>(*pszVarValue), *nVarValueSize));
+    }
+
+    char *curr = *pszVarValue + currSize;
+    while((*curr++ = *src++));
+    return currSize + valSize;
+}
+
 static CPLErr NCDFGet1DVar( int nCdfId, int nVarId, char **pszValue )
 {
     /* get var information */
@@ -9827,6 +9840,7 @@ static CPLErr NCDFGet1DVar( int nCdfId, int nVarId, char **pszValue )
     if( nVarLen > 1 && nVarType != NC_CHAR )
         NCDFSafeStrcat(&pszVarValue, "{", &nVarValueSize);
 
+    size_t currSize = strlen(pszVarValue);
     switch (nVarType)
     {
     case NC_CHAR:
@@ -9840,13 +9854,12 @@ static CPLErr NCDFGet1DVar( int nCdfId, int nVarId, char **pszValue )
         nc_get_vara_schar(nCdfId, nVarId, start, count, pscTemp);
         char szTemp[256];
         size_t m = 0;
-        for( ; m < nVarLen - 1; m++ )
+        for( ; m < nVarLen; m++ )
         {
             snprintf(szTemp, sizeof(szTemp), "%d,", pscTemp[m]);
-            NCDFSafeStrcat(&pszVarValue, szTemp, &nVarValueSize);
+            currSize = fastStrcat(szTemp, currSize, &pszVarValue, &nVarValueSize);
         }
-        snprintf(szTemp, sizeof(szTemp), "%d", pscTemp[m]);
-        NCDFSafeStrcat(&pszVarValue, szTemp, &nVarValueSize);
+        *(pszVarValue+currSize-1) = '\0';
         CPLFree(pscTemp);
         break;
     }
@@ -9856,13 +9869,12 @@ static CPLErr NCDFGet1DVar( int nCdfId, int nVarId, char **pszValue )
         nc_get_vara_short(nCdfId, nVarId, start, count, psTemp);
         char szTemp[256];
         size_t m = 0;
-        for( ; m < nVarLen - 1; m++ )
+        for( ; m < nVarLen; m++ )
         {
             snprintf(szTemp, sizeof(szTemp), "%d,", psTemp[m]);
-            NCDFSafeStrcat(&pszVarValue, szTemp, &nVarValueSize);
+            currSize = fastStrcat(szTemp, currSize, &pszVarValue, &nVarValueSize);
         }
-        snprintf(szTemp, sizeof(szTemp), "%d", psTemp[m]);
-        NCDFSafeStrcat(&pszVarValue, szTemp, &nVarValueSize);
+        *(pszVarValue+currSize-1) = '\0';
         CPLFree(psTemp);
         break;
     }
@@ -9872,13 +9884,12 @@ static CPLErr NCDFGet1DVar( int nCdfId, int nVarId, char **pszValue )
         nc_get_vara_int(nCdfId, nVarId, start, count, pnTemp);
         char szTemp[256];
         size_t m = 0;
-        for(; m < nVarLen - 1; m++)
+        for( ; m < nVarLen; m++ )
         {
             snprintf(szTemp, sizeof(szTemp), "%d,", pnTemp[m]);
-            NCDFSafeStrcat(&pszVarValue, szTemp, &nVarValueSize);
+            currSize = fastStrcat(szTemp, currSize, &pszVarValue, &nVarValueSize);
         }
-        snprintf(szTemp, sizeof(szTemp), "%d", pnTemp[m]);
-        NCDFSafeStrcat(&pszVarValue, szTemp, &nVarValueSize);
+        *(pszVarValue+currSize-1) = '\0';
         CPLFree(pnTemp);
         break;
     }
@@ -9888,13 +9899,12 @@ static CPLErr NCDFGet1DVar( int nCdfId, int nVarId, char **pszValue )
         nc_get_vara_float(nCdfId, nVarId, start, count, pfTemp);
         char szTemp[256];
         size_t m = 0;
-        for( ; m < nVarLen - 1; m++ )
+        for( ; m < nVarLen; m++ )
         {
             CPLsnprintf(szTemp, sizeof(szTemp), "%.8g,", pfTemp[m]);
-            NCDFSafeStrcat(&pszVarValue, szTemp, &nVarValueSize);
+            currSize = fastStrcat(szTemp, currSize, &pszVarValue, &nVarValueSize);
         }
-        CPLsnprintf(szTemp, sizeof(szTemp), "%.8g", pfTemp[m]);
-        NCDFSafeStrcat(&pszVarValue, szTemp, &nVarValueSize);
+        *(pszVarValue+currSize-1) = '\0';
         CPLFree(pfTemp);
         break;
     }
@@ -9905,15 +9915,14 @@ static CPLErr NCDFGet1DVar( int nCdfId, int nVarId, char **pszValue )
         nc_get_vara_double(nCdfId, nVarId, start, count, pdfTemp);
         char szTemp[256];
         size_t m = 0;
-        for( ; m < nVarLen - 1; m++ )
+        for( ; m < nVarLen; m++ )
         {
             CPLsnprintf(szTemp, sizeof(szTemp), "%.16g,", pdfTemp[m]);
-            NCDFSafeStrcat(&pszVarValue, szTemp, &nVarValueSize);
+            currSize = fastStrcat(szTemp, currSize, &pszVarValue, &nVarValueSize);
         }
-        CPLsnprintf(szTemp, sizeof(szTemp), "%.16g", pdfTemp[m]);
-        NCDFSafeStrcat(&pszVarValue, szTemp, &nVarValueSize);
+        *(pszVarValue+currSize-1) = '\0';
         CPLFree(pdfTemp);
-        break;
+	break;
     }
 #ifdef NETCDF_HAS_NC4
     case NC_STRING:
@@ -9922,15 +9931,15 @@ static CPLErr NCDFGet1DVar( int nCdfId, int nVarId, char **pszValue )
             static_cast<char **>(CPLCalloc(nVarLen, sizeof(char *)));
         nc_get_vara_string(nCdfId, nVarId, start, count, ppszTemp);
         size_t m = 0;
-        for( ; m < nVarLen - 1; m++ )
+        for( ; m < nVarLen; m++ )
         {
-            NCDFSafeStrcat(&pszVarValue, ppszTemp[m], &nVarValueSize);
-            NCDFSafeStrcat(&pszVarValue, ",", &nVarValueSize);
+            currSize = fastStrcat(ppszTemp[m], currSize, &pszVarValue, &nVarValueSize);
+            currSize = fastStrcat((char *)",", currSize, &pszVarValue, &nVarValueSize);
         }
-        NCDFSafeStrcat(&pszVarValue, ppszTemp[m], &nVarValueSize);
+        *(pszVarValue+currSize-1) = '\0';
         nc_free_string(nVarLen, ppszTemp);
         CPLFree(ppszTemp);
-        break;
+      	break;
     }
     case NC_UBYTE:
     {
@@ -9940,15 +9949,14 @@ static CPLErr NCDFGet1DVar( int nCdfId, int nVarId, char **pszValue )
         nc_get_vara_uchar(nCdfId, nVarId, start, count, pucTemp);
         char szTemp[256];
         size_t m = 0;
-        for( ; m < nVarLen - 1; m++ )
+        for( ; m < nVarLen; m++ )
         {
             CPLsnprintf(szTemp, sizeof(szTemp), "%u,", pucTemp[m]);
-            NCDFSafeStrcat(&pszVarValue, szTemp, &nVarValueSize);
+            currSize = fastStrcat(szTemp, currSize, &pszVarValue, &nVarValueSize);
         }
-        CPLsnprintf(szTemp, sizeof(szTemp), "%u", pucTemp[m]);
-        NCDFSafeStrcat(&pszVarValue, szTemp, &nVarValueSize);
+        *(pszVarValue+currSize-1) = '\0';
         CPLFree(pucTemp);
-        break;
+      	break;
     }
     case NC_USHORT:
     {
@@ -9958,15 +9966,14 @@ static CPLErr NCDFGet1DVar( int nCdfId, int nVarId, char **pszValue )
         nc_get_vara_ushort(nCdfId, nVarId, start, count, pusTemp);
         char szTemp[256];
         size_t m = 0;
-        for( ; m < nVarLen - 1; m++ )
+        for( ; m < nVarLen; m++ )
         {
             CPLsnprintf(szTemp, sizeof(szTemp), "%u,", pusTemp[m]);
-            NCDFSafeStrcat(&pszVarValue, szTemp, &nVarValueSize);
+            currSize = fastStrcat(szTemp, currSize, &pszVarValue, &nVarValueSize);
         }
-        CPLsnprintf(szTemp, sizeof(szTemp), "%u", pusTemp[m]);
-        NCDFSafeStrcat(&pszVarValue, szTemp, &nVarValueSize);
+        *(pszVarValue+currSize-1) = '\0';
         CPLFree(pusTemp);
-        break;
+      	break;
     }
     case NC_UINT:
     {
@@ -9976,15 +9983,14 @@ static CPLErr NCDFGet1DVar( int nCdfId, int nVarId, char **pszValue )
         nc_get_vara_uint(nCdfId, nVarId, start, count, punTemp);
         char szTemp[256];
         size_t m = 0;
-        for( ; m < nVarLen - 1; m++ )
+        for( ; m < nVarLen; m++ )
         {
             CPLsnprintf(szTemp, sizeof(szTemp), "%u,", punTemp[m]);
-            NCDFSafeStrcat(&pszVarValue, szTemp, &nVarValueSize);
+            currSize = fastStrcat(szTemp, currSize, &pszVarValue, &nVarValueSize);
         }
-        CPLsnprintf(szTemp, sizeof(szTemp), "%u", punTemp[m]);
-        NCDFSafeStrcat(&pszVarValue, szTemp, &nVarValueSize);
+        *(pszVarValue+currSize-1) = '\0';
         CPLFree(punTemp);
-        break;
+      	break;
     }
     case NC_INT64:
     {
@@ -9993,15 +9999,14 @@ static CPLErr NCDFGet1DVar( int nCdfId, int nVarId, char **pszValue )
         nc_get_vara_longlong(nCdfId, nVarId, start, count, pnTemp);
         char szTemp[256];
         size_t m = 0;
-        for(; m < nVarLen - 1; m++)
+        for( ; m < nVarLen; m++ )
         {
             snprintf(szTemp, sizeof(szTemp), CPL_FRMT_GIB ",", pnTemp[m]);
-            NCDFSafeStrcat(&pszVarValue, szTemp, &nVarValueSize);
+            currSize = fastStrcat(szTemp, currSize, &pszVarValue, &nVarValueSize);
         }
-        snprintf(szTemp, sizeof(szTemp), CPL_FRMT_GIB, pnTemp[m]);
-        NCDFSafeStrcat(&pszVarValue, szTemp, &nVarValueSize);
+        *(pszVarValue+currSize-1) = '\0';
         CPLFree(pnTemp);
-        break;
+      	break;
     }
     case NC_UINT64:
     {
@@ -10010,15 +10015,14 @@ static CPLErr NCDFGet1DVar( int nCdfId, int nVarId, char **pszValue )
         nc_get_vara_ulonglong(nCdfId, nVarId, start, count, pnTemp);
         char szTemp[256];
         size_t m = 0;
-        for(; m < nVarLen - 1; m++)
+        for( ; m < nVarLen; m++ )
         {
             snprintf(szTemp, sizeof(szTemp), CPL_FRMT_GUIB ",", pnTemp[m]);
-            NCDFSafeStrcat(&pszVarValue, szTemp, &nVarValueSize);
+            currSize = fastStrcat(szTemp, currSize, &pszVarValue, &nVarValueSize);
         }
-        snprintf(szTemp, sizeof(szTemp), CPL_FRMT_GUIB, pnTemp[m]);
-        NCDFSafeStrcat(&pszVarValue, szTemp, &nVarValueSize);
+        *(pszVarValue+currSize-1) = '\0';
         CPLFree(pnTemp);
-        break;
+      	break;
     }
 #endif
     default:
