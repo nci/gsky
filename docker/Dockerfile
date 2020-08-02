@@ -1,4 +1,4 @@
-FROM ubuntu:18.10 
+FROM ubuntu:18.04
 MAINTAINER GSKY Developers <help@nci.org.au>
 
 RUN apt-get update \
