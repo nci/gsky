@@ -225,6 +225,8 @@ func getRaster(ctx context.Context, params utils.WMSParams, conf *utils.Config, 
 	bbox, err := utils.GetCanonicalBbox(*params.CRS, params.BBox)
 	if err != nil {
 		bbox = params.BBox
+	} else {
+		*params.CRS = "EPSG:3857"
 	}
 	reqRes := utils.GetPixelResolution(bbox, *params.Width, *params.Height)
 
@@ -232,11 +234,11 @@ func getRaster(ctx context.Context, params utils.WMSParams, conf *utils.Config, 
 	// to approximate a pixel.
 	// We observed several order of magnitude of performance improvement as a
 	// result of such an approximation.
-	xmin := params.BBox[0] + float64(*params.X)*reqRes
-	ymin := params.BBox[3] - float64(*params.Y)*reqRes
+	xmin := bbox[0] + float64(*params.X)*reqRes
+	ymin := bbox[3] - float64(*params.Y)*reqRes
 
-	xmax := params.BBox[0] + float64(*params.X+1)*reqRes
-	ymax := params.BBox[3] - float64(*params.Y-1)*reqRes
+	xmax := bbox[0] + float64(*params.X+1)*reqRes
+	ymax := bbox[3] - float64(*params.Y-1)*reqRes
 
 	*params.Height = 2
 	*params.Width = 2
