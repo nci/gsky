@@ -51,12 +51,6 @@
 				</DCPType>
 			</GetMap>
 			<GetFeatureInfo>
-				<Format>text/plain</Format>
-				<Format>application/vnd.ogc.gml</Format>
-				<Format>text/xml</Format>
-				<Format>application/vnd.ogc.gml/3.1.1</Format>
-				<Format>text/xml; subtype=gml/3.1.1</Format>
-				<Format>text/html</Format>
 				<Format>application/json</Format>
 				<DCPType>
 				  <HTTP>
