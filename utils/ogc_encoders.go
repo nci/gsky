@@ -295,6 +295,7 @@ func EncodeGdalOpen(tempDir string, blockXSize int, blockYSize int, format strin
 		driverOptions = append(driverOptions, C.CString(fmt.Sprintf("BLOCKXSIZE=%d", blockXSize)))
 		driverOptions = append(driverOptions, C.CString(fmt.Sprintf("BLOCKYSIZE=%d", blockYSize)))
 	case "netcdf":
+		driverOptions = append(driverOptions, C.CString("FORMAT=NC4C"))
 		driverOptions = append(driverOptions, C.CString("COMPRESS=DEFLATE"))
 		driverOptions = append(driverOptions, C.CString("ZLEVEL=6"))
 	default:
