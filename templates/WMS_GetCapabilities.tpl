@@ -79,21 +79,19 @@
 				<southBoundLatitude>-90.0</southBoundLatitude>
 				<northBoundLatitude>90.0</northBoundLatitude>
 			</EX_GeographicBoundingBox>
-			<BoundingBox CRS="CRS:84" minx="-180.0" miny="-90.0" maxx="180.0" maxy="90.0"/>
+			<BoundingBox CRS="EPSG:4326" minx="-90.0" miny="-180.0" maxx="90.0" maxy="180.0"/>
 			{{ range $index, $layer := .Layers }}
 			<Layer queryable="1" opaque="0">
 				<Name>{{ .Name }}</Name>
 				<Title>{{ .Title }}</Title>
 				<Abstract>{{ .Abstract }}</Abstract>
 				<CRS>EPSG:4326</CRS>
-				<CRS>CRS:84</CRS>
 				<EX_GeographicBoundingBox>
 					<westBoundLongitude>-180.0</westBoundLongitude>
 					<eastBoundLongitude>180.0</eastBoundLongitude>
 					<southBoundLatitude>-90.0</southBoundLatitude>
 					<northBoundLatitude>90.0</northBoundLatitude>
 				</EX_GeographicBoundingBox>
-				<BoundingBox CRS="CRS:84" minx="-180.0" miny="-90.0" maxx="180.0" maxy="90.0"/>
 				<BoundingBox CRS="EPSG:4326" minx="-90.0" miny="-180.0" maxx="90.0" maxy="180.0"/>
 				<Dimension name="time" default="current" current="True" units="ISO8601">{{ range $index, $value := .Dates }}{{if $index}},{{end}}{{ $value }}{{ end }}</Dimension>
 
