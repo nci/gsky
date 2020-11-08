@@ -335,6 +335,10 @@ func WMSParamsChecker(params map[string][]string, compREMap map[string]*regexp.R
 		wmsParams.Axes = append(wmsParams.Axes, &AxisParam{Name: "time", Aggregate: 1})
 	}
 
+	if code, codeOK := params["code"]; codeOK {
+		params["rangesubset"] = code
+	}
+
 	if rangeSubsets, rangeSubsetsOK := params["rangesubset"]; rangeSubsetsOK {
 		sub := strings.Join(rangeSubsets, ";")
 		parts := strings.Split(sub, ";")
