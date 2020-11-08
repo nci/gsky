@@ -75,6 +75,7 @@ func ParseQuery(query string) (m url.Values, err error) {
 	specialKeyLookup["rangesubset"] = struct{}{}
 	specialKeyLookup["subset"] = struct{}{}
 	specialKeyLookup["dap4.ce"] = struct{}{}
+	specialKeyLookup["code"] = struct{}{}
 
 	m = make(url.Values)
 	for query != "" {
