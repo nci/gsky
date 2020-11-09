@@ -187,7 +187,10 @@ func getRaster(ctx context.Context, params utils.WMSParams, conf *utils.Config, 
 
 	var namespaces []string
 	var bandExpr *utils.BandExpressions
-	if len(styleLayer.FeatureInfoBands) > 0 {
+	if params.BandExpr != nil {
+		namespaces = params.BandExpr.VarList
+		bandExpr = params.BandExpr
+	} else if len(styleLayer.FeatureInfoBands) > 0 {
 		namespaces = styleLayer.FeatureInfoExpressions.VarList
 		bandExpr = styleLayer.FeatureInfoExpressions
 	} else if len(conf.Layers[idx].FeatureInfoBands) > 0 {
