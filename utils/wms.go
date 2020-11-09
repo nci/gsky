@@ -273,6 +273,10 @@ func WMSParamsChecker(params map[string][]string, compREMap map[string]*regexp.R
 		}
 	}
 
+	if colourScheme, colourSchemeOK := params["colorscheme"]; colourSchemeOK {
+		params["palette"] = colourScheme
+	}
+
 	if palette, paletteOK := params["palette"]; paletteOK {
 		jsonFields = append(jsonFields, fmt.Sprintf(`"palette": "%s"`, palette[0]))
 	}

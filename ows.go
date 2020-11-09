@@ -46,6 +46,7 @@ import (
 // Global variable to hold the values specified
 // on the config.json document.
 var configMap *sync.Map
+var builtinPalettes *utils.BuiltinPalettes
 var (
 	port            = flag.Int("p", 8080, "Server listening port.")
 	serverDataDir   = flag.String("data_dir", utils.DataDir, "Server data directory.")
@@ -122,6 +123,8 @@ func init() {
 	configMap.Store("config", confMap)
 
 	utils.WatchConfig(Info, Error, configMap, *verbose)
+
+	builtinPalettes = utils.NewBuiltinPalettes()
 
 	reWMSMap = utils.CompileWMSRegexMap()
 	reWCSMap = utils.CompileWCSRegexMap()
@@ -345,7 +348,11 @@ func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r
 
 		palette := styleLayer.Palette
 		if params.Palette != nil {
-			for _, p := range styleLayer.Palettes {
+			palettes := styleLayer.Palettes
+			if len(palettes) == 0 {
+				palettes = builtinPalettes.Palettes
+			}
+			for _, p := range palettes {
 				if strings.ToLower(p.Name) == strings.ToLower(*params.Palette) {
 					palette = p
 					break
