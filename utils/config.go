@@ -226,14 +226,28 @@ type CompData struct {
 	MinOccurs  int    `json:"min_occurs"`
 }
 
+type CapabilityExtensionProperty struct {
+	Name  string `json:"name"`
+	Value string `json:"value"`
+}
+
+type CapabilityExtension struct {
+	Name        string                        `json:"name"`
+	Version     string                        `json:"version"`
+	Layer       Layer                         `json:"layer"`
+	ResourceURL string                        `json:"resource_url"`
+	Properties  []CapabilityExtensionProperty `json:"properties"`
+}
+
 // Config is the struct representing the configuration
 // of a WMS server. It contains information about the
 // file index API as well as the list of WMS layers that
 // can be served.
 type Config struct {
-	ServiceConfig ServiceConfig `json:"service_config"`
-	Layers        []Layer       `json:"layers"`
-	Processes     []Process     `json:"processes"`
+	ServiceConfig ServiceConfig         `json:"service_config"`
+	Layers        []Layer               `json:"layers"`
+	Processes     []Process             `json:"processes"`
+	Extensions    []CapabilityExtension `json:"extensions"`
 }
 
 // ISOFormat is the string used to format Go ISO times
@@ -919,6 +933,11 @@ func (config *Config) Copy(r *http.Request) *Config {
 	newConf.Processes = make([]Process, len(config.Processes))
 	for i, proc := range config.Processes {
 		newConf.Processes[i] = proc
+	}
+
+	newConf.Extensions = make([]CapabilityExtension, len(config.Extensions))
+	for i, ext := range config.Extensions {
+		newConf.Extensions[i] = ext
 	}
 
 	return newConf
