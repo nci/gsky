@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"math"
@@ -200,11 +201,30 @@ func WCSParamsChecker(params map[string][]string, compREMap map[string]*regexp.R
 		wcsParams.Axes = append(wcsParams.Axes, &AxisParam{Name: "time", Aggregate: 1})
 	}
 
+	codeFormats, codeFormatOK := params["code_format"]
+	var codeFormat string
+	if codeFormatOK {
+		codeFormat = strings.ToLower(strings.TrimSpace(codeFormats[0]))
+		if codeFormat != "plain" && codeFormat != "base64" {
+			return wcsParams, fmt.Errorf("code_format must be either plain or base64")
+		}
+	}
+
 	if code, codeOK := params["code"]; codeOK {
 		params["rangesubset"] = code
 	}
 
 	if rangeSubsets, rangeSubsetsOK := params["rangesubset"]; rangeSubsetsOK {
+		if codeFormatOK && codeFormat == "base64" {
+			for ir, s := range rangeSubsets {
+				data, err := base64.StdEncoding.DecodeString(s)
+				if err != nil {
+					return wcsParams, err
+				}
+				rangeSubsets[ir] = string(data)
+			}
+		}
+
 		sub := strings.Join(rangeSubsets, ";")
 		parts := strings.Split(sub, ";")
 
