@@ -416,6 +416,22 @@ func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r
 		}
 
 		if params.BandExpr != nil {
+			if len(params.BandExpr.Expressions) != 1 && len(params.BandExpr.Expressions) != 3 {
+				err = fmt.Errorf("Number of band expressions must be either 1 or 3 for WMS")
+				Error.Printf("%s\n", err)
+				metricsCollector.Info.HTTPStatus = 400
+				http.Error(w, fmt.Sprintf("Malformed WMS GetMap request: %v", err), 400)
+				return
+			}
+
+			err := utils.CheckBandExpressionsComplexity(params.BandExpr, conf.Layers[idx].WmsBandExpressionCriteria)
+			if err != nil {
+				Error.Printf("%s\n", err)
+				metricsCollector.Info.HTTPStatus = 400
+				http.Error(w, fmt.Sprintf("Malformed WMS GetMap request: %v", err), 400)
+				return
+			}
+
 			geoReq.ConfigPayLoad.NameSpaces = params.BandExpr.VarList
 			geoReq.ConfigPayLoad.BandExpr = params.BandExpr
 		}
@@ -696,6 +712,16 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 			metricsCollector.Info.HTTPStatus = 400
 			http.Error(w, "WCS GetCoverage is disabled for this layer", 400)
 			return
+		}
+
+		if params.BandExpr != nil {
+			err := utils.CheckBandExpressionsComplexity(params.BandExpr, conf.Layers[idx].WcsBandExpressionCriteria)
+			if err != nil {
+				Error.Printf("%s\n", err)
+				metricsCollector.Info.HTTPStatus = 400
+				http.Error(w, fmt.Sprintf("Malformed WCS GetCoverage request: %v", err), 400)
+				return
+			}
 		}
 
 		maxXTileSize := conf.Layers[idx].WcsMaxTileWidth

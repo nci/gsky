@@ -61,6 +61,14 @@ const DefaultLegendHeight = 320
 
 const DefaultConcGrpcWorkerQuery = 64
 
+const DefaultWmsMaxBandVariables = 6
+const DefaultWmsMaxBandTokens = 75
+const DefaultWmsMaxBandExpressions = 3
+
+const DefaultWcsMaxBandVariables = 10
+const DefaultWcsMaxBandTokens = 300
+const DefaultWcsMaxBandExpressions = 10
+
 type ServiceConfig struct {
 	OWSHostname       string `json:"ows_hostname"`
 	NameSpace         string
@@ -84,6 +92,12 @@ type Palette struct {
 	Name        string       `json:"name"`
 	Interpolate bool         `json:"interpolate"`
 	Colours     []color.RGBA `json:"colours"`
+}
+
+type BandExpressionComplexityCriteria struct {
+	MaxVariables   int `json:"max_variables"`
+	MaxTokens      int `json:"max_tokens"`
+	MaxExpressions int `json:"max_expressions"`
 }
 
 type BandExpressions struct {
@@ -163,26 +177,28 @@ type Layer struct {
 	FeatureInfoDataLinkUrl       string     `json:"feature_info_data_link_url"`
 	FeatureInfoBands             []string   `json:"feature_info_bands"`
 	FeatureInfoExpressions       *BandExpressions
-	NoDataLegendPath             string       `json:"nodata_legend_path"`
-	AxesInfo                     []*LayerAxis `json:"axes"`
-	UserSrcSRS                   int          `json:"src_srs"`
-	UserSrcGeoTransform          int          `json:"src_geo_transform"`
-	DefaultGeoBbox               []float64    `json:"default_geo_bbox"`
-	DefaultGeoSize               []int        `json:"default_geo_size"`
-	WmsAxisMapping               int          `json:"wms_axis_mapping"`
-	GrpcTileXSize                float64      `json:"grpc_tile_x_size"`
-	GrpcTileYSize                float64      `json:"grpc_tile_y_size"`
-	IndexTileXSize               float64      `json:"index_tile_x_size"`
-	IndexTileYSize               float64      `json:"index_tile_y_size"`
-	SpatialExtent                []float64    `json:"spatial_extent"`
-	IndexResLimit                float64      `json:"index_res_limit"`
-	ColourScale                  int          `json:"colour_scale"`
-	TimestampsLoadStrategy       string       `json:"timestamps_load_strategy"`
-	MasQueryHint                 string       `json:"mas_query_hint"`
-	SRSCf                        int          `json:"srs_cf"`
-	Visibility                   string       `json:"visibility"`
-	RasterXSize                  float64      `json:"raster_x_size"`
-	RasterYSize                  float64      `json:"raster_y_size"`
+	NoDataLegendPath             string                            `json:"nodata_legend_path"`
+	AxesInfo                     []*LayerAxis                      `json:"axes"`
+	UserSrcSRS                   int                               `json:"src_srs"`
+	UserSrcGeoTransform          int                               `json:"src_geo_transform"`
+	DefaultGeoBbox               []float64                         `json:"default_geo_bbox"`
+	DefaultGeoSize               []int                             `json:"default_geo_size"`
+	WmsAxisMapping               int                               `json:"wms_axis_mapping"`
+	GrpcTileXSize                float64                           `json:"grpc_tile_x_size"`
+	GrpcTileYSize                float64                           `json:"grpc_tile_y_size"`
+	IndexTileXSize               float64                           `json:"index_tile_x_size"`
+	IndexTileYSize               float64                           `json:"index_tile_y_size"`
+	SpatialExtent                []float64                         `json:"spatial_extent"`
+	IndexResLimit                float64                           `json:"index_res_limit"`
+	ColourScale                  int                               `json:"colour_scale"`
+	TimestampsLoadStrategy       string                            `json:"timestamps_load_strategy"`
+	MasQueryHint                 string                            `json:"mas_query_hint"`
+	SRSCf                        int                               `json:"srs_cf"`
+	Visibility                   string                            `json:"visibility"`
+	RasterXSize                  float64                           `json:"raster_x_size"`
+	RasterYSize                  float64                           `json:"raster_y_size"`
+	WmsBandExpressionCriteria    *BandExpressionComplexityCriteria `json:"wms_band_expr_criteria"`
+	WcsBandExpressionCriteria    *BandExpressionComplexityCriteria `json:"wcs_band_expr_criteria"`
 }
 
 // Process contains all the details that a WPS needs
@@ -1040,6 +1056,26 @@ func (config *Config) GetLayerDates(iLayer int, verbose bool) {
 	}
 }
 
+func CheckBandExpressionsComplexity(bandExpr *BandExpressions, criteria *BandExpressionComplexityCriteria) error {
+	errPrefix := "BandExpression complexity"
+	if len(bandExpr.Expressions) > criteria.MaxExpressions {
+		return fmt.Errorf("%s: Too many expressions: %d", errPrefix, len(bandExpr.Expressions))
+	}
+
+	if len(bandExpr.VarList) > criteria.MaxVariables {
+		return fmt.Errorf("%s: Too many variables: %d", errPrefix, len(bandExpr.VarList))
+	}
+
+	tokenCount := 0
+	for _, expr := range bandExpr.Expressions {
+		tokenCount += len(expr.Tokens())
+	}
+	if tokenCount > criteria.MaxTokens {
+		return fmt.Errorf("%s: Too many tokens: %d", errPrefix, tokenCount)
+	}
+	return nil
+}
+
 func ParseBandExpressions(bands []string) (*BandExpressions, error) {
 	bandExpr := &BandExpressions{ExprText: bands}
 	varFound := make(map[string]struct{})
@@ -1361,6 +1397,22 @@ func (config *Config) LoadConfigFile(configFile string, verbose bool) error {
 
 		if config.Layers[i].WcsMaxTileHeight <= 0 {
 			config.Layers[i].WcsMaxTileHeight = DefaultWcsMaxTileHeight
+		}
+
+		if config.Layers[i].WmsBandExpressionCriteria == nil {
+			config.Layers[i].WmsBandExpressionCriteria = &BandExpressionComplexityCriteria{
+				MaxVariables:   DefaultWmsMaxBandVariables,
+				MaxTokens:      DefaultWmsMaxBandTokens,
+				MaxExpressions: DefaultWmsMaxBandExpressions,
+			}
+		}
+
+		if config.Layers[i].WcsBandExpressionCriteria == nil {
+			config.Layers[i].WcsBandExpressionCriteria = &BandExpressionComplexityCriteria{
+				MaxVariables:   DefaultWcsMaxBandVariables,
+				MaxTokens:      DefaultWcsMaxBandTokens,
+				MaxExpressions: DefaultWcsMaxBandExpressions,
+			}
 		}
 	}
 
