@@ -551,6 +551,9 @@ func LoadAllConfigFiles(searchPath string, verbose bool) (map[string]*Config, er
 			if !info.IsDir() && info.Name() == "config.json" {
 				absPath, _ := filepath.Abs(path)
 				relPath, _ := filepath.Rel(rootDir, filepath.Dir(path))
+				if strings.HasSuffix(rootDir, "config.json") && relPath == ".." {
+					relPath = "."
+				}
 
 				if _, found := configMap[relPath]; found {
 					return nil
