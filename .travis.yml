@@ -1,6 +1,6 @@
 dist: bionic
 language: go
-go: 1.11.x
+go: 1.12.x
 env:
   - PREFIX=$HOME/local PROJVER=6.1.1 GDALVER=3.0.1 OPENJPVER=2.3.1 NJOBS=2
 services:
@@ -56,7 +56,6 @@ install:
 script:
   - cd $TRAVIS_BUILD_DIR/mas/db && psql -f schema.sql
   - cd $TRAVIS_BUILD_DIR/mas/api && psql -f mas.sql
-  - go tool vet $TRAVIS_BUILD_DIR
   - gofmt -d $TRAVIS_BUILD_DIR
   # Ensure that gofmt -d produces zero diff output
   - test -z "$(gofmt -d $TRAVIS_BUILD_DIR)"
