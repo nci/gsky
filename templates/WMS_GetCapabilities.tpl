@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="UTF-8"?><WMS_Capabilities version="1.3.0" updateSequence="312" xmlns="http://www.opengis.net/wms" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.opengis.net/wms http://schemas.opengis.net/wms/1.3.0/capabilities_1_3_0.xsd">
+<?xml version="1.0" encoding="UTF-8"?><WMS_Capabilities version="1.3.0" updateSequence="312" xmlns="http://www.opengis.net/wms" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:dea="http://dea.ga.gov.au/namespaces/wms_extensions" xsi:schemaLocation="http://www.opengis.net/wms http://schemas.opengis.net/wms/1.3.0/capabilities_1_3_0.xsd">
 	<Service>
 		<Name>WMS</Name>
 		<Title>GSKY Web Map Service</Title>
@@ -67,6 +67,18 @@
 			<Format>BLANK</Format>
 			<Format>JSON</Format>
 		</Exception>
+		{{ range $index, $extension := .Extensions }}
+		<dea:SupportedExtension>
+			<dea:Extension version="{{ .Version }}">{{ .Name }}</dea:Extension>
+			<OnlineResource xlink:type="simple" xlink:href="{{ .ResourceURL }}"/>
+			<dea:Layer>{{ .Layer.Name }}</dea:Layer>
+			{{ range $prop_idx, $property := .Properties }}
+				<dea:ExtensionProperty name="{{ .Name }}">
+					{{ .Value }}
+				</dea:ExtensionProperty>
+			{{ end }}
+		</dea:SupportedExtension>
+		{{ end }}
 		<Layer>
 			<Title>GSKY Web Map Service</Title>
 			<Abstract>A compliant implementation of WMS</Abstract>
