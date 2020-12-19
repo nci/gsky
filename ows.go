@@ -416,7 +416,7 @@ func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r
 		}
 
 		if params.BandExpr != nil {
-			if len(params.BandExpr.Expressions) != 1 && len(params.BandExpr.Expressions) != 3 {
+			if len(params.BandExpr.Expressions) > 0 && len(params.BandExpr.Expressions) != 1 && len(params.BandExpr.Expressions) != 3 {
 				err = fmt.Errorf("Number of band expressions must be either 1 or 3 for WMS")
 				Error.Printf("%s\n", err)
 				metricsCollector.Info.HTTPStatus = 400
