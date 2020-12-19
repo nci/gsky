@@ -296,10 +296,18 @@ func WMSParamsChecker(params map[string][]string, compREMap map[string]*regexp.R
 			if err != nil {
 				return wmsParams, fmt.Errorf("parsing error in the upper endpoint of colorscalerange: %v", err)
 			}
+			if lower > upper {
+				return wmsParams, fmt.Errorf("lower > upper, colorscalerange must be [min,max]: %v", scaleRange[0])
+			}
 			clip := upper - lower
 			jsonFields = append(jsonFields, fmt.Sprintf(`"clip": %f`, clip))
 		} else {
 			return wmsParams, fmt.Errorf("colorscalerange must be in the format of 'min,max': %v", scaleRange[0])
+		}
+	} else {
+		if _, codeOK := params["code"]; codeOK {
+			jsonFields = append(jsonFields, fmt.Sprintf(`"offset": %f`, 0.0))
+			jsonFields = append(jsonFields, fmt.Sprintf(`"clip": %f`, 1.0))
 		}
 	}
 
