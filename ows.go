@@ -352,11 +352,20 @@ func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r
 			if len(palettes) == 0 {
 				palettes = builtinPalettes.Palettes
 			}
+			foundPalette := false
 			for _, p := range palettes {
 				if strings.ToLower(p.Name) == strings.ToLower(*params.Palette) {
 					palette = p
+					foundPalette = true
 					break
 				}
+			}
+			if !foundPalette {
+				msg := fmt.Sprintf("Requested palette not found: %s", *params.Palette)
+				Error.Printf(msg)
+				metricsCollector.Info.HTTPStatus = 400
+				http.Error(w, msg, 400)
+				return
 			}
 		}
 
