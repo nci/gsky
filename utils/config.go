@@ -548,6 +548,42 @@ func symWalk(rootDir string, symlink string, walkFunc filepath.WalkFunc) error {
 	})
 }
 
+func LoadConfigOnDemand(searchPath string, namespace string, verbose bool) (map[string]*Config, error) {
+	searchPathList := strings.Split(searchPath, ":")
+	for _, rootDir := range searchPathList {
+		rootDir = strings.TrimSpace(rootDir)
+		if len(rootDir) == 0 {
+			continue
+		}
+		configFile := filepath.Join(rootDir, namespace, "config.json")
+		absPath, err := filepath.Abs(configFile)
+		if verbose {
+			log.Printf("Loading config on-demand, namespace: %s, configFile: %s, AbsPath: %s", namespace, configFile, absPath)
+		}
+		if err != nil {
+			return nil, err
+		}
+		if !strings.HasPrefix(absPath, rootDir) {
+			return nil, fmt.Errorf("Invalid namespace: %s", namespace)
+		}
+
+		if _, err := os.Stat(absPath); err == nil {
+			conf, err := LoadAllConfigFiles(absPath, verbose)
+			if err != nil {
+				return nil, err
+			}
+			if _, ok := conf["."]; !ok {
+				return nil, fmt.Errorf("Error in loading namespace: %s", namespace)
+			}
+
+			configMap := make(map[string]*Config)
+			configMap[namespace] = conf["."]
+			return configMap, nil
+		}
+	}
+	return nil, fmt.Errorf("namespace not found: %s", namespace)
+}
+
 func LoadAllConfigFiles(searchPath string, verbose bool) (map[string]*Config, error) {
 	var err error
 	configMap := make(map[string]*Config)
@@ -562,9 +598,21 @@ func LoadAllConfigFiles(searchPath string, verbose bool) (map[string]*Config, er
 				return err
 			}
 
+			absPath, _ := filepath.Abs(path)
+			relPath, _ := filepath.Rel(rootDir, filepath.Dir(path))
+
+			if info.IsDir() {
+				configOnDemand := filepath.Join(path, "config.on_demand")
+				if _, e := os.Stat(configOnDemand); e == nil {
+					if relPath == ".." {
+						relPath = "."
+					}
+					configMap[relPath] = nil
+					return filepath.SkipDir
+				}
+			}
+
 			if !info.IsDir() && info.Name() == "config.json" {
-				absPath, _ := filepath.Abs(path)
-				relPath, _ := filepath.Rel(rootDir, filepath.Dir(path))
 				if strings.HasSuffix(rootDir, "config.json") && relPath == ".." {
 					relPath = "."
 				}
@@ -686,6 +734,9 @@ func LoadAllConfigFiles(searchPath string, verbose bool) (map[string]*Config, er
 	}
 
 	for _, config := range configMap {
+		if config == nil {
+			continue
+		}
 		for i := range config.Layers {
 			err = config.processFusionTimestamps(i, configMap)
 			if err != nil {
