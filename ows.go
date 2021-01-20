@@ -1633,11 +1633,20 @@ func owsHandler(w http.ResponseWriter, r *http.Request) {
 			namespace = namespace[:len(namespace)-len(dapExt)]
 		}
 	}
-	config, ok := getConfigMap()[namespace]
-	if !ok {
-		Info.Printf("Invalid dataset namespace: %v for url: %v\n", namespace, r.URL.Path)
-		http.Error(w, fmt.Sprintf("Invalid dataset namespace: %v\n", namespace), 404)
-		return
+	confMap := getConfigMap()
+	config, ok := confMap[namespace]
+	if !ok || config == nil {
+		conf, err := utils.LoadConfigOnDemand(utils.EtcDir, namespace, *verbose)
+		if err != nil {
+			Info.Printf("Invalid dataset namespace: %v for url: %v, err: %v\n", namespace, r.URL.Path, err)
+			http.Error(w, fmt.Sprintf("Invalid dataset namespace: %v\n", namespace), 404)
+			return
+		}
+		for k, v := range conf {
+			confMap[k] = v
+		}
+		configMap.Store("config", confMap)
+		config, _ = conf[namespace]
 	}
 	config.ServiceConfig.NameSpace = namespace
 	generalHandler(config, w, r)
