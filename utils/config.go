@@ -95,9 +95,10 @@ type Palette struct {
 }
 
 type BandExpressionComplexityCriteria struct {
-	MaxVariables   int `json:"max_variables"`
-	MaxTokens      int `json:"max_tokens"`
-	MaxExpressions int `json:"max_expressions"`
+	MaxVariables   int                    `json:"max_variables"`
+	MaxTokens      int                    `json:"max_tokens"`
+	MaxExpressions int                    `json:"max_expressions"`
+	TokenACL       map[string]interface{} `json:"token_acl"`
 }
 
 type BandExpressions struct {
@@ -1146,6 +1147,50 @@ func CheckBandExpressionsComplexity(bandExpr *BandExpressions, criteria *BandExp
 	if tokenCount > criteria.MaxTokens {
 		return fmt.Errorf("%s: Too many tokens: %d", errPrefix, tokenCount)
 	}
+
+	if len(criteria.TokenACL) > 0 {
+		aclLookup := make(map[string]map[string]struct{})
+		for _, expr := range bandExpr.Expressions {
+			for _, token := range expr.Tokens() {
+				tokenKind := token.Kind.String()
+				acl, found := criteria.TokenACL[tokenKind]
+				if !found {
+					continue
+				}
+
+				isTokenAllowed := true
+				switch t := acl.(type) {
+				case nil:
+					isTokenAllowed = false
+				case []interface{}:
+					if _, found := aclLookup[tokenKind]; !found {
+						aclLookup[tokenKind] = make(map[string]struct{})
+						for _, v := range t {
+							vs, ok := v.(string)
+							if !ok {
+								log.Printf("TokenACL Error: ACL value is not string: %#s", acl)
+							}
+							aclLookup[tokenKind][vs] = struct{}{}
+						}
+					}
+					val, ok := token.Value.(string)
+					if !ok {
+						log.Printf("TokenACL Error: token value is not string: %#s", token.Value)
+						continue
+					}
+					if _, found := aclLookup[tokenKind][val]; found {
+						isTokenAllowed = false
+					}
+				default:
+					log.Printf("TokenACL Error: unknown ACL: %#s", acl)
+				}
+
+				if !isTokenAllowed {
+					return fmt.Errorf("operation not supported: %v", token.Value)
+				}
+			}
+		}
+	}
 	return nil
 }
 
@@ -1473,19 +1518,29 @@ func (config *Config) LoadConfigFile(configFile string, verbose bool) error {
 		}
 
 		if config.Layers[i].WmsBandExpressionCriteria == nil {
-			config.Layers[i].WmsBandExpressionCriteria = &BandExpressionComplexityCriteria{
-				MaxVariables:   DefaultWmsMaxBandVariables,
-				MaxTokens:      DefaultWmsMaxBandTokens,
-				MaxExpressions: DefaultWmsMaxBandExpressions,
-			}
+			config.Layers[i].WmsBandExpressionCriteria = &BandExpressionComplexityCriteria{}
+		}
+		if config.Layers[i].WmsBandExpressionCriteria.MaxVariables <= 0 {
+			config.Layers[i].WmsBandExpressionCriteria.MaxVariables = DefaultWmsMaxBandVariables
+		}
+		if config.Layers[i].WmsBandExpressionCriteria.MaxTokens <= 0 {
+			config.Layers[i].WmsBandExpressionCriteria.MaxTokens = DefaultWmsMaxBandTokens
+		}
+		if config.Layers[i].WmsBandExpressionCriteria.MaxExpressions <= 0 {
+			config.Layers[i].WmsBandExpressionCriteria.MaxExpressions = DefaultWmsMaxBandExpressions
 		}
 
 		if config.Layers[i].WcsBandExpressionCriteria == nil {
-			config.Layers[i].WcsBandExpressionCriteria = &BandExpressionComplexityCriteria{
-				MaxVariables:   DefaultWcsMaxBandVariables,
-				MaxTokens:      DefaultWcsMaxBandTokens,
-				MaxExpressions: DefaultWcsMaxBandExpressions,
-			}
+			config.Layers[i].WcsBandExpressionCriteria = &BandExpressionComplexityCriteria{}
+		}
+		if config.Layers[i].WcsBandExpressionCriteria.MaxVariables <= 0 {
+			config.Layers[i].WcsBandExpressionCriteria.MaxVariables = DefaultWcsMaxBandVariables
+		}
+		if config.Layers[i].WcsBandExpressionCriteria.MaxTokens <= 0 {
+			config.Layers[i].WcsBandExpressionCriteria.MaxTokens = DefaultWcsMaxBandTokens
+		}
+		if config.Layers[i].WcsBandExpressionCriteria.MaxExpressions <= 0 {
+			config.Layers[i].WcsBandExpressionCriteria.MaxExpressions = DefaultWcsMaxBandExpressions
 		}
 	}
 
