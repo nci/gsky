@@ -99,6 +99,7 @@ type BandExpressionComplexityCriteria struct {
 	MaxTokens      int                    `json:"max_tokens"`
 	MaxExpressions int                    `json:"max_expressions"`
 	TokenACL       map[string]interface{} `json:"token_acl"`
+	VariableLookup map[string]struct{}
 }
 
 type BandExpressions struct {
@@ -1131,7 +1132,11 @@ func (config *Config) GetLayerDates(iLayer int, verbose bool) {
 }
 
 func CheckBandExpressionsComplexity(bandExpr *BandExpressions, criteria *BandExpressionComplexityCriteria) error {
-	errPrefix := "BandExpression complexity"
+	errPrefix := "band math error"
+	if len(criteria.VariableLookup) == 0 {
+		return fmt.Errorf("%s: user-defined band math is not enabled for this layer", errPrefix)
+	}
+
 	if len(bandExpr.Expressions) > criteria.MaxExpressions {
 		return fmt.Errorf("%s: Too many expressions: %d", errPrefix, len(bandExpr.Expressions))
 	}
@@ -1146,6 +1151,25 @@ func CheckBandExpressionsComplexity(bandExpr *BandExpressions, criteria *BandExp
 	}
 	if tokenCount > criteria.MaxTokens {
 		return fmt.Errorf("%s: Too many tokens: %d", errPrefix, tokenCount)
+	}
+
+	for _, expr := range bandExpr.Expressions {
+		for _, token := range expr.Tokens() {
+			if token.Kind == goeval.VARIABLE {
+				varName, ok := token.Value.(string)
+				if !ok {
+					return fmt.Errorf("%s: variable token '%v' failed to cast string", errPrefix, token.Value)
+				}
+
+				if _, found := criteria.VariableLookup[varName]; !found {
+					var varNames []string
+					for v, _ := range criteria.VariableLookup {
+						varNames = append(varNames, v)
+					}
+					return fmt.Errorf("%s: variable not supported: %s, supported variables are: %s", errPrefix, varName, strings.Join(varNames, ", "))
+				}
+			}
+		}
 	}
 
 	if len(criteria.TokenACL) > 0 {
@@ -1168,25 +1192,25 @@ func CheckBandExpressionsComplexity(bandExpr *BandExpressions, criteria *BandExp
 						for _, v := range t {
 							vs, ok := v.(string)
 							if !ok {
-								log.Printf("TokenACL Error: ACL value is not string: %#s", acl)
+								log.Printf("%s: ACL value is not string: %#s", errPrefix, acl)
 							}
 							aclLookup[tokenKind][vs] = struct{}{}
 						}
 					}
 					val, ok := token.Value.(string)
 					if !ok {
-						log.Printf("TokenACL Error: token value is not string: %#s", token.Value)
+						log.Printf("%s: token value is not string: %#s", errPrefix, token.Value)
 						continue
 					}
 					if _, found := aclLookup[tokenKind][val]; found {
 						isTokenAllowed = false
 					}
 				default:
-					log.Printf("TokenACL Error: unknown ACL: %#s", acl)
+					log.Printf("%s: unknown ACL: %#s", errPrefix, acl)
 				}
 
 				if !isTokenAllowed {
-					return fmt.Errorf("operation not supported: %v", token.Value)
+					return fmt.Errorf("%s: Operation not supported: %v", errPrefix, token.Value)
 				}
 			}
 		}
@@ -1386,6 +1410,41 @@ func getGrpcPoolSize(config *Config, verbose bool) int {
 	return int(avgPoolSize + 0.5)
 }
 
+func addBandMathVariableConstraints(config *Config, layer *Layer, criteria *BandExpressionComplexityCriteria) {
+	criteria.VariableLookup = make(map[string]struct{})
+
+	varToken := "VARIABLE"
+	if _, found := criteria.TokenACL[varToken]; found {
+		acl, ok := criteria.TokenACL[varToken].([]interface{})
+		if ok {
+			for _, _v := range acl {
+				v, ok := _v.(string)
+				if !ok {
+					continue
+				}
+				criteria.VariableLookup[v] = struct{}{}
+			}
+		}
+	}
+
+	for _, ext := range config.Extensions {
+		if ext.Name != "user_band_math" {
+			continue
+		}
+		if ext.Layer.Name != layer.Name {
+			continue
+		}
+
+		for _, prop := range ext.Properties {
+			if prop.Name != "available_bands" {
+				continue
+			}
+			criteria.VariableLookup[prop.Value] = struct{}{}
+		}
+
+	}
+}
+
 // LoadConfigFile marshalls the config.json document returning an
 // instance of a Config variable containing all the values
 func (config *Config) LoadConfigFile(configFile string, verbose bool) error {
@@ -1529,6 +1588,7 @@ func (config *Config) LoadConfigFile(configFile string, verbose bool) error {
 		if config.Layers[i].WmsBandExpressionCriteria.MaxExpressions <= 0 {
 			config.Layers[i].WmsBandExpressionCriteria.MaxExpressions = DefaultWmsMaxBandExpressions
 		}
+		addBandMathVariableConstraints(config, &config.Layers[i], config.Layers[i].WmsBandExpressionCriteria)
 
 		if config.Layers[i].WcsBandExpressionCriteria == nil {
 			config.Layers[i].WcsBandExpressionCriteria = &BandExpressionComplexityCriteria{}
@@ -1542,6 +1602,7 @@ func (config *Config) LoadConfigFile(configFile string, verbose bool) error {
 		if config.Layers[i].WcsBandExpressionCriteria.MaxExpressions <= 0 {
 			config.Layers[i].WcsBandExpressionCriteria.MaxExpressions = DefaultWcsMaxBandExpressions
 		}
+		addBandMathVariableConstraints(config, &config.Layers[i], config.Layers[i].WcsBandExpressionCriteria)
 	}
 
 	for i, proc := range config.Processes {
