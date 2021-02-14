@@ -143,3 +143,16 @@ func ParseRemoteAddr(r *http.Request) string {
 
 	return r.RemoteAddr
 }
+
+func ParseRequestProtocol(r *http.Request) string {
+	protocol := r.Header.Get("X-Forwarded-Proto")
+	protocol = strings.TrimSpace(protocol)
+	if len(protocol) == 0 {
+		if r.TLS == nil {
+			protocol = "http"
+		} else {
+			protocol = "https"
+		}
+	}
+	return protocol
+}

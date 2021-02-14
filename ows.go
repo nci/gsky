@@ -243,6 +243,7 @@ func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r
 		w.Write([]byte(resp))
 
 	case "DescribeLayer":
+		conf = conf.Copy(r)
 		idx, err := utils.GetLayerIndex(params, conf)
 		if err != nil {
 			Error.Printf("%s\n", err)
