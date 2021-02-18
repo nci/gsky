@@ -71,6 +71,7 @@ const DefaultWcsMaxBandExpressions = 10
 
 type ServiceConfig struct {
 	OWSHostname       string `json:"ows_hostname"`
+	OWSProtocol       string `json:"ows_protocol"`
 	NameSpace         string
 	MASAddress        string   `json:"mas_address"`
 	WorkerNodes       []string `json:"worker_nodes"`
@@ -120,6 +121,7 @@ type LayerAxis struct {
 // to be published and rendered
 type Layer struct {
 	OWSHostname                  string   `json:"ows_hostname"`
+	OWSProtocol                  string   `json:"ows_protocol"`
 	MASAddress                   string   `json:"mas_address"`
 	NameSpace                    string   `json:"namespace"`
 	Name                         string   `json:"name"`
@@ -962,6 +964,7 @@ func (config *Config) Copy(r *http.Request) *Config {
 	newConf := &Config{}
 	newConf.ServiceConfig = ServiceConfig{
 		OWSHostname: config.ServiceConfig.OWSHostname,
+		OWSProtocol: config.ServiceConfig.OWSProtocol,
 		NameSpace:   config.ServiceConfig.NameSpace,
 		MASAddress:  config.ServiceConfig.MASAddress,
 	}
@@ -969,6 +972,11 @@ func (config *Config) Copy(r *http.Request) *Config {
 	hasOWSHostname := len(strings.TrimSpace(config.ServiceConfig.OWSHostname)) > 0
 	if !hasOWSHostname {
 		newConf.ServiceConfig.OWSHostname = r.Host
+	}
+
+	hasOWSProtocol := len(strings.TrimSpace(config.ServiceConfig.OWSProtocol)) > 0
+	if !hasOWSProtocol {
+		newConf.ServiceConfig.OWSProtocol = ParseRequestProtocol(r)
 	}
 
 	newConf.Layers = make([]Layer, len(config.Layers))
@@ -983,6 +991,7 @@ func (config *Config) Copy(r *http.Request) *Config {
 			Abstract:       layer.Abstract,
 			NameSpace:      layer.NameSpace,
 			OWSHostname:    layer.OWSHostname,
+			OWSProtocol:    newConf.ServiceConfig.OWSProtocol,
 			Styles:         layer.Styles,
 			AxesInfo:       layer.AxesInfo,
 			StepDays:       layer.StepDays,

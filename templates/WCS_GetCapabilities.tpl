@@ -11,7 +11,7 @@
         <DCPType>
           <HTTP>
             <Get>
-              <OnlineResource xlink:href="http://{{ .ServiceConfig.OWSHostname }}/ows/{{ .ServiceConfig.NameSpace }}" />
+              <OnlineResource xlink:href="{{ .ServiceConfig.OWSProtocol }}://{{ .ServiceConfig.OWSHostname }}/ows/{{ .ServiceConfig.NameSpace }}" />
             </Get>
           </HTTP>
         </DCPType>
@@ -20,7 +20,7 @@
         <DCPType>
           <HTTP>
             <Get>
-              <OnlineResource xlink:href="http://{{ .ServiceConfig.OWSHostname }}/ows/{{ .ServiceConfig.NameSpace }}" />
+              <OnlineResource xlink:href="{{ .ServiceConfig.OWSProtocol }}://{{ .ServiceConfig.OWSHostname }}/ows/{{ .ServiceConfig.NameSpace }}" />
             </Get>
           </HTTP>
         </DCPType>
@@ -29,7 +29,7 @@
         <DCPType>
           <HTTP>
             <Get>
-              <OnlineResource xlink:href="http://{{ .ServiceConfig.OWSHostname }}/ows/{{ .ServiceConfig.NameSpace }}" />
+              <OnlineResource xlink:href="{{ .ServiceConfig.OWSProtocol }}://{{ .ServiceConfig.OWSHostname }}/ows/{{ .ServiceConfig.NameSpace }}" />
             </Get>
           </HTTP>
         </DCPType>
