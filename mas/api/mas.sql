@@ -707,3 +707,160 @@ create or replace function mas_spatial_temporal_extents(
 
     end
 $$;
+
+create or replace function public.mas_generate_layers (
+  gpath text
+)
+  returns jsonb language plpgsql as $$
+  declare
+    result jsonb;
+    shard text;
+    namespaces jsonb;
+  begin
+    if gpath is null then
+      raise exception 'invalid search path';
+    end if;
+
+    perform mas_reset();
+    shard := mas_view(gpath);
+    if shard = '' then
+      return '{}'::jsonb;
+    end if;
+
+    namespaces := mas_list_namespaces(gpath);
+
+    result := jsonb_build_object(
+      'layers',
+      coalesce((select array_agg(layer)
+      from
+        (select jsonb_build_object(
+          'title',
+          t1.ns,
+          'name',
+          t1.ns,
+          'namespace',
+          gpath,
+          'time_generator',
+          'mas',
+          'data_source',
+          gpath,
+          'rgb_products',
+          string_to_array(t1.ns::text, ',')
+          ) as layer
+          from (
+            select jsonb_array_elements(namespaces->'namespaces') as ns
+          ) t1
+        ) t2
+      ), '{}'::jsonb[])
+    );
+
+    perform mas_reset();
+    return result;
+
+  end
+$$;
+
+create or replace function public.mas_list_namespaces (
+  gpath text
+)
+  returns jsonb language plpgsql as $$
+  declare
+    result jsonb;
+    shard text;
+    gpath_hash uuid;
+  begin
+    if gpath is null then
+      raise exception 'invalid search path';
+    end if;
+
+    perform mas_reset();
+    shard := mas_view(gpath);
+    if shard = '' then
+      return '{}'::jsonb;
+    end if;
+
+    gpath := '/' || trim(gpath, '/');
+    gpath_hash := public.path_hash(gpath);
+
+    result := jsonb_build_object(
+      'namespaces',
+      coalesce((select jsonb_agg(po_name)
+      from (
+        select distinct po_name
+        from polygons po
+         inner join (
+           select pa_hash
+           from paths pa
+           where gpath_hash = pa.pa_parents[array_length(pa_parents, 1)]
+         ) t1 on t1.pa_hash = po.po_hash
+         order by po_name
+      ) t2
+      ), '[]'::jsonb)
+    );
+
+    perform mas_reset();
+    return result;
+  end
+$$;
+
+create or replace function mas_list_sub_gpath (
+  gpath text
+)
+  returns jsonb language plpgsql as $$
+  declare
+    shard text;
+    sub_path_result jsonb;
+    namespace_result jsonb;
+    gpath_depth int;
+    gpath_hash uuid;
+  begin
+    perform mas_reset();
+    shard := mas_view(gpath);
+    if shard = '' then
+      return '{}'::jsonb;
+    end if;
+
+    gpath := '/' || trim(gpath, '/');
+    gpath_depth := length(gpath) - length(replace(gpath, '/', ''));
+    gpath_hash := public.path_hash(gpath);
+
+    sub_path_result := jsonb_build_object(
+      'sub_paths',
+      coalesce((select jsonb_agg(t.sub_path)
+        from (
+          select t2.sub_path from (
+            select distinct on (pa_parents[gpath_depth+1]) pa_parents[gpath_depth+1] as path_hash, pa_path
+            from paths where gpath_hash = pa_parents[gpath_depth]
+          ) t1
+          inner join lateral (
+            select sub_path, sub_path_hash
+            from (
+              select path as sub_path, (md5(path)::uuid) as sub_path_hash
+              from public.parent_paths(t1.pa_path) path
+            ) t
+            where sub_path_hash = t1.path_hash
+            limit 1
+          )  t2 on true
+          order by t2.sub_path
+        ) t
+      ), '[]'::jsonb)
+    );
+
+    namespace_result := jsonb_build_object(
+      'has_namespaces',
+      coalesce((select true
+      from polygons po
+        inner join (
+          select pa_hash
+          from paths pa
+          where gpath_hash = pa.pa_parents[array_length(pa_parents, 1)]
+        ) t1 on t1.pa_hash = po.po_hash
+        limit 1
+      ), false)
+    );
+
+    perform mas_reset();
+    return sub_path_result || namespace_result;
+
+  end
+$$;
