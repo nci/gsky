@@ -803,6 +803,26 @@ create or replace function public.mas_list_namespaces (
   end
 $$;
 
+create or replace function mas_list_root_gpath ()
+  returns jsonb language plpgsql as $$
+  declare
+    result jsonb;
+  begin
+    result := jsonb_build_object(
+      'sub_paths',
+      coalesce((select jsonb_agg(sh_path)
+        from (select sh_path
+            from shards
+            order by sh_path
+          ) t
+        ), '[]'::jsonb)
+      );
+
+    return result;
+
+  end
+$$;
+
 create or replace function mas_list_sub_gpath (
   gpath text
 )
@@ -811,6 +831,8 @@ create or replace function mas_list_sub_gpath (
     shard text;
     sub_path_result jsonb;
     namespace_result jsonb;
+    gpath_root_result jsonb;
+    gpath_root text;
     gpath_depth int;
     gpath_hash uuid;
   begin
@@ -826,7 +848,7 @@ create or replace function mas_list_sub_gpath (
 
     sub_path_result := jsonb_build_object(
       'sub_paths',
-      coalesce((select jsonb_agg(t.sub_path)
+      coalesce((select jsonb_agg(substr(t.sub_path, length(gpath)+1))
         from (
           select t2.sub_path from (
             select distinct on (pa_parents[gpath_depth+1]) pa_parents[gpath_depth+1] as path_hash, pa_path
@@ -859,8 +881,14 @@ create or replace function mas_list_sub_gpath (
       ), false)
     );
 
+    gpath_root := (select sh_path from public.shards where gpath like concat(sh_path,'%') limit 1);
+    gpath_root_result := jsonb_build_object(
+      'gpath_root',
+      gpath_root
+    );
+
     perform mas_reset();
-    return sub_path_result || namespace_result;
+    return sub_path_result || namespace_result || gpath_root_result;
 
   end
 $$;

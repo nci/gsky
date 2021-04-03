@@ -118,6 +118,27 @@ func handler(response http.ResponseWriter, request *http.Request) {
 			request.FormValue("namespace"),
 		).Scan(&payload)
 
+	} else if _, ok := query["list_root_gpath"]; ok {
+		err = db.QueryRow(
+			`select mas_list_root_gpath() as json`,
+		).Scan(&payload)
+
+	} else if _, ok := query["list_sub_gpath"]; ok {
+		err = db.QueryRow(
+			`select mas_list_sub_gpath(
+				nullif($1,'')::text
+			) as json`,
+			request.URL.Path,
+		).Scan(&payload)
+
+	} else if _, ok := query["generate_layers"]; ok {
+		err = db.QueryRow(
+			`select mas_generate_layers(
+				nullif($1,'')::text
+			) as json`,
+			request.URL.Path,
+		).Scan(&payload)
+
 	} else {
 		httpJSONError(response, errors.New("unknown operation; currently supported: ?intersects, ?timestamps, ?extents"), 400)
 		return

@@ -1696,14 +1696,14 @@ func cataloguesHandler(w http.ResponseWriter, r *http.Request) {
 		r.URL.Path = upath
 	}
 	upath = strings.TrimSpace(path.Clean(upath))
-	
 
 	var cataloguePath string
 	if len(upath) > len("/catalogues/") {
 		cataloguePath = upath[len("/catalogues/"):]
 	}
 
-	catalogueHandler := utils.NewCatalogueHandler(cataloguePath, "catalogues", utils.DataDir+"/static/catalogues", "127.0.0.1:8888", utils.DataDir + "/templates", w)
+	host := fmt.Sprintf("%s://%s", utils.ParseRequestProtocol(r), r.Host)
+	catalogueHandler := utils.NewCatalogueHandler(cataloguePath, host, "catalogues", utils.DataDir+"/static/catalogues", "127.0.0.1:9512", utils.DataDir+"/templates", w)
 	catalogueHandler.Process()
 
 	w.Header().Set("Access-Control-Allow-Origin", "*")
