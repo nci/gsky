@@ -653,7 +653,7 @@ create or replace function mas_spatial_temporal_extents(
     perform mas_reset();
     shard := mas_view(gpath);
     if shard = '' then
-      return json_build_object(null);
+      return '{}'::jsonb;
     end if;
 
     if namespace is null then
