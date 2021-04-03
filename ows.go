@@ -1689,10 +1689,34 @@ func fileHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func cataloguesHandler(w http.ResponseWriter, r *http.Request) {
+	upath := r.URL.Path
+	if !strings.HasPrefix(upath, "/") {
+		upath = "/" + upath
+		r.URL.Path = upath
+	}
+	upath = strings.TrimSpace(path.Clean(upath))
+	
+
+	var cataloguePath string
+	if len(upath) > len("/catalogues/") {
+		cataloguePath = upath[len("/catalogues/"):]
+	}
+
+	catalogueHandler := utils.NewCatalogueHandler(cataloguePath, "catalogues", utils.DataDir+"/static/catalogues", "127.0.0.1:8888", utils.DataDir + "/templates", w)
+	catalogueHandler.Process()
+
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate, max-age=0")
+
+}
+
 func main() {
 	http.HandleFunc("/", fileHandler)
 	http.HandleFunc("/ows", owsHandler)
 	http.HandleFunc("/ows/", owsHandler)
+	http.HandleFunc("/catalogues", cataloguesHandler)
+	http.HandleFunc("/catalogues/", cataloguesHandler)
 
 	listeningHost := fmt.Sprintf("0.0.0.0:%d", *port)
 	Info.Printf("GSKY is listening on %s", listeningHost)
