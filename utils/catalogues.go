@@ -11,6 +11,7 @@ import (
 	"strings"
 )
 
+const CatalogueDirName = "catalogues"
 const catalogueHomeTitle = "Home"
 
 type CatalogueHandler struct {
@@ -207,5 +208,9 @@ func (h *CatalogueHandler) getGPathMetadata(indexPath string, queryOp string) (*
 	if err != nil {
 		return nil, fmt.Errorf("MAS (%s) json response error: %v", queryOp, err)
 	}
+	if len(gpathInfo.Error) > 0 {
+		return nil, fmt.Errorf("MAS (%s) json response error: %v", queryOp, gpathInfo.Error)
+	}
+
 	return &gpathInfo, nil
 }

@@ -1498,6 +1498,32 @@ func getConfigMap() map[string]*utils.Config {
 	return v.(map[string]*utils.Config)
 }
 
+func getMASAddress() (string, error) {
+	var masAddress string
+	confMap := getConfigMap()
+	if conf, found := confMap["."]; found {
+		if conf != nil {
+			masAddress = strings.TrimSpace(conf.ServiceConfig.MASAddress)
+		}
+	}
+
+	if len(masAddress) == 0 {
+		rootConfig, err := utils.GetRootConfig(utils.EtcDir, *verbose)
+		if err != nil {
+			return "", err
+		}
+		masAddress = rootConfig.ServiceConfig.MASAddress
+		confMap["."] = rootConfig
+		configMap.Store("config", confMap)
+	}
+
+	masAddress = strings.TrimSpace(masAddress)
+	if len(masAddress) == 0 {
+		return "", fmt.Errorf("Blank MASAddress in root config")
+	}
+	return masAddress, nil
+}
+
 // owsHandler handles every request received on /ows
 func generalHandler(conf *utils.Config, w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "*")
@@ -1637,11 +1663,30 @@ func owsHandler(w http.ResponseWriter, r *http.Request) {
 	confMap := getConfigMap()
 	config, ok := confMap[namespace]
 	if !ok || config == nil {
-		conf, err := utils.LoadConfigOnDemand(utils.EtcDir, namespace, *verbose)
-		if err != nil {
+		namespaceErr := func(err error) {
 			Info.Printf("Invalid dataset namespace: %v for url: %v, err: %v\n", namespace, r.URL.Path, err)
 			http.Error(w, fmt.Sprintf("Invalid dataset namespace: %v\n", namespace), 404)
-			return
+		}
+		conf, err := utils.LoadConfigOnDemand(utils.EtcDir, namespace, *verbose)
+		if err != nil {
+			masAddress, masErr := getMASAddress()
+			if masErr != nil {
+				namespaceErr(masErr)
+				return
+			}
+
+			confMap = getConfigMap()
+			rootConfig, found := confMap["."]
+			if !found {
+				log.Printf("root config not found in owsHandler")
+				http.Error(w, fmt.Sprintf("Invalid dataset namespace: %v\n", namespace), 404)
+				return
+			}
+			conf, err = utils.LoadConfigFromMAS(masAddress, namespace, rootConfig, *verbose)
+			if err != nil {
+				namespaceErr(err)
+				return
+			}
 		}
 		for k, v := range conf {
 			confMap[k] = v
@@ -1649,6 +1694,7 @@ func owsHandler(w http.ResponseWriter, r *http.Request) {
 		configMap.Store("config", confMap)
 		config, _ = conf[namespace]
 	}
+	log.Printf("eeeee %v, %#v", namespace, config)
 	config.ServiceConfig.NameSpace = namespace
 	generalHandler(config, w, r)
 }
@@ -1690,6 +1736,9 @@ func fileHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func cataloguesHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate, max-age=0")
+
 	upath := r.URL.Path
 	if !strings.HasPrefix(upath, "/") {
 		upath = "/" + upath
@@ -1698,25 +1747,34 @@ func cataloguesHandler(w http.ResponseWriter, r *http.Request) {
 	upath = strings.TrimSpace(path.Clean(upath))
 
 	var cataloguePath string
-	if len(upath) > len("/catalogues/") {
-		cataloguePath = upath[len("/catalogues/"):]
+	cataRoot := fmt.Sprintf("/%s/", utils.CatalogueDirName)
+	if len(upath) > len(cataRoot) {
+		cataloguePath = upath[len(cataRoot):]
+	}
+
+	masAddress, err := getMASAddress()
+	if err != nil {
+		e := fmt.Errorf("MAS not found")
+		log.Printf("%v: %v", e, err)
+		http.Error(w, e.Error(), 500)
 	}
 
 	host := fmt.Sprintf("%s://%s", utils.ParseRequestProtocol(r), r.Host)
-	catalogueHandler := utils.NewCatalogueHandler(cataloguePath, host, "catalogues", utils.DataDir+"/static/catalogues", "127.0.0.1:9512", utils.DataDir+"/templates", w)
+
+	urlPathRoot := utils.CatalogueDirName
+	staticRoot := filepath.Join(utils.DataDir, "static", utils.CatalogueDirName)
+	templateRoot := filepath.Join(utils.DataDir, "templates")
+
+	catalogueHandler := utils.NewCatalogueHandler(cataloguePath, host, urlPathRoot, staticRoot, masAddress, templateRoot, w)
 	catalogueHandler.Process()
-
-	w.Header().Set("Access-Control-Allow-Origin", "*")
-	w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate, max-age=0")
-
 }
 
 func main() {
 	http.HandleFunc("/", fileHandler)
 	http.HandleFunc("/ows", owsHandler)
 	http.HandleFunc("/ows/", owsHandler)
-	http.HandleFunc("/catalogues", cataloguesHandler)
-	http.HandleFunc("/catalogues/", cataloguesHandler)
+	http.HandleFunc(fmt.Sprintf("/%s", utils.CatalogueDirName), cataloguesHandler)
+	http.HandleFunc(fmt.Sprintf("/%s/", utils.CatalogueDirName), cataloguesHandler)
 
 	listeningHost := fmt.Sprintf("0.0.0.0:%d", *port)
 	Info.Printf("GSKY is listening on %s", listeningHost)
