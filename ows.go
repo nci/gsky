@@ -1694,7 +1694,6 @@ func owsHandler(w http.ResponseWriter, r *http.Request) {
 		configMap.Store("config", confMap)
 		config, _ = conf[namespace]
 	}
-	log.Printf("eeeee %v, %#v", namespace, config)
 	config.ServiceConfig.NameSpace = namespace
 	generalHandler(config, w, r)
 }

@@ -629,6 +629,11 @@ func LoadConfigFromMAS(masAddress, namespace string, rootConfig *Config, verbose
 	config.Layers = make([]Layer, len(masLayers.Layers))
 	for il, layer := range masLayers.Layers {
 		layer.TimestampsLoadStrategy = "on_demand"
+		for ia := range layer.AxesInfo {
+			if len(layer.AxesInfo[ia].Values) > 0 {
+				layer.AxesInfo[ia].Default = layer.AxesInfo[ia].Values[0]
+			}
+		}
 		config.Layers[il] = layer
 	}
 
@@ -637,6 +642,7 @@ func LoadConfigFromMAS(masAddress, namespace string, rootConfig *Config, verbose
 		return nil, fmt.Errorf("MAS config error: %v", cfgErr)
 	}
 
+	config = &Config{}
 	err = config.LoadConfigString(configStr, verbose)
 	if err != nil {
 		return nil, fmt.Errorf("MAS config error: %v", err)
@@ -649,6 +655,22 @@ func LoadConfigFromMAS(masAddress, namespace string, rootConfig *Config, verbose
 
 	configMap := make(map[string]*Config)
 	configMap[namespace] = config
+
+	for _, conf := range configMap {
+		if conf == nil {
+			continue
+		}
+		for i := range conf.Layers {
+			err = conf.processFusionTimestamps(i, configMap)
+			if err != nil {
+				return nil, err
+			}
+			err = conf.processFusionColourPalette(i, configMap)
+			if err != nil {
+				return nil, err
+			}
+		}
+	}
 	return configMap, nil
 }
 
