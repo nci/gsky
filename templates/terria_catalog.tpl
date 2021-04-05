@@ -19,6 +19,9 @@
               "opacity": 1.0,
               "colorScaleMinimum": 0.0,
               "colorScaleMaximum": 1.0,
+              "parameters": {
+                "colorscheme": "rainbow",
+              },
           },{{ end }}
         ]
       }

@@ -594,7 +594,7 @@ type MASLayers struct {
 	Layers []Layer `json:"layers"`
 }
 
-func LoadLayersFromMAS(masAddress, namespace string, verbose bool) (*MASLayers, []byte, error) {
+func LoadLayersFromMAS(masAddress, namespace string, verbose bool) (*MASLayers, error) {
 	queryOp := "generate_layers"
 	url := strings.Replace(fmt.Sprintf("http://%s/%s?%s", masAddress, namespace, queryOp), " ", "%20", -1)
 	if verbose {
@@ -602,29 +602,37 @@ func LoadLayersFromMAS(masAddress, namespace string, verbose bool) (*MASLayers, 
 	}
 	resp, err := http.Get(url)
 	if err != nil {
-		return nil, nil, fmt.Errorf("MAS (%s) error: %v,%v", queryOp, url, err)
+		return nil, fmt.Errorf("MAS (%s) error: %v,%v", queryOp, url, err)
 	}
 	defer resp.Body.Close()
 
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return nil, nil, fmt.Errorf("MAS (%s) error: %v,%v", queryOp, url, err)
+		return nil, fmt.Errorf("MAS (%s) error: %v,%v", queryOp, url, err)
 	}
 
 	masLayers := &MASLayers{}
 	err = json.Unmarshal(body, masLayers)
 	if err != nil {
-		return nil, nil, fmt.Errorf("MAS (%s) json response error: %v", queryOp, err)
+		return nil, fmt.Errorf("MAS (%s) json response error: %v", queryOp, err)
 	}
 
 	if len(masLayers.Error) > 0 {
-		return nil, nil, fmt.Errorf("MAS (%s) json response error: %v", queryOp, masLayers.Error)
+		return nil, fmt.Errorf("MAS (%s) json response error: %v", queryOp, masLayers.Error)
 	}
-	return masLayers, body, nil
+
+	for _, layer := range masLayers.Layers {
+		for ia := range layer.AxesInfo {
+			if len(layer.AxesInfo[ia].Values) > 0 {
+				layer.AxesInfo[ia].Default = layer.AxesInfo[ia].Values[0]
+			}
+		}
+	}
+	return masLayers, nil
 }
 
 func LoadConfigFromMAS(masAddress, namespace string, rootConfig *Config, verbose bool) (map[string]*Config, error) {
-	masLayers, _, err := LoadLayersFromMAS(masAddress, namespace, verbose)
+	masLayers, err := LoadLayersFromMAS(masAddress, namespace, verbose)
 	if err != nil {
 		return nil, err
 	}
@@ -638,12 +646,6 @@ func LoadConfigFromMAS(masAddress, namespace string, rootConfig *Config, verbose
 
 	config.Layers = make([]Layer, len(masLayers.Layers))
 	for il, layer := range masLayers.Layers {
-		layer.TimestampsLoadStrategy = "on_demand"
-		for ia := range layer.AxesInfo {
-			if len(layer.AxesInfo[ia].Values) > 0 {
-				layer.AxesInfo[ia].Default = layer.AxesInfo[ia].Values[0]
-			}
-		}
 		config.Layers[il] = layer
 	}
 
@@ -1612,6 +1614,10 @@ func (config *Config) LoadConfigString(cfg []byte, verbose bool) error {
 			return fmt.Errorf("Layer %v FeatureInfoExpression parsing error: %v", layer.Name, err)
 		}
 		config.Layers[i].FeatureInfoExpressions = featureInfoExpr
+
+		if len(strings.TrimSpace(config.Layers[i].TimestampsLoadStrategy)) == 0 {
+			config.Layers[i].TimestampsLoadStrategy = "on_demand"
+		}
 
 		if config.Layers[i].TimestampsLoadStrategy != "on_demand" {
 			config.GetLayerDates(i, verbose)

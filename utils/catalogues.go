@@ -124,17 +124,22 @@ type renderData struct {
 
 func (h *CatalogueHandler) renderGSKYLayerFile(indexPath string) {
 	namespace := filepath.Dir(indexPath)
-	_, layers, err := LoadLayersFromMAS(h.MasAddress, namespace, h.Verbose)
+	masLayers, err := LoadLayersFromMAS(h.MasAddress, namespace, h.Verbose)
 	if err != nil {
 		log.Printf("renderGSKYLayerFile: %v", err)
 		return
 	}
-	h.Output.Write(layers)
+
+	err = ExecuteWriteTemplateFile(h.Output, masLayers, filepath.Join(h.IndexTemplateRoot, "gsky_layers.tpl"))
+	if err != nil {
+		log.Printf("%v", err)
+		return
+	}
 }
 
 func (h *CatalogueHandler) renderTerriaCatalogFile(indexPath string) {
 	namespace := filepath.Dir(indexPath)
-	masLayers, _, err := LoadLayersFromMAS(h.MasAddress, namespace, h.Verbose)
+	masLayers, err := LoadLayersFromMAS(h.MasAddress, namespace, h.Verbose)
 	if err != nil {
 		log.Printf("renderTerriaCatalogFile: %v", err)
 		return
@@ -223,11 +228,25 @@ func (h *CatalogueHandler) renderCataloguePage(indexPath string) {
 
 	if gpathInfo.HasNamespaces {
 		urlPath := filepath.Join("ows", indexPath)
-		a := &anchor{
+		wms := &anchor{
 			URL:   fmt.Sprintf("%s/%s?service=WMS&request=GetCapabilities&version=1.3.0", h.URLHost, urlPath),
 			Title: "WMS GetCapabilities",
 		}
-		rd.Endpoints = append(rd.Endpoints, a)
+		rd.Endpoints = append(rd.Endpoints, wms)
+
+		urlPath = filepath.Join(CatalogueDirName, indexPath, catalogueTerriaCatalogFile)
+		terriaCatalog := &anchor{
+			URL:   fmt.Sprintf("%s/%s", h.URLHost, urlPath),
+			Title: "Terria Catalog",
+		}
+		rd.Endpoints = append(rd.Endpoints, terriaCatalog)
+
+		urlPath = filepath.Join(CatalogueDirName, indexPath, catalogueGSKYLayerFile)
+		gskyLayer := &anchor{
+			URL:   fmt.Sprintf("%s/%s", h.URLHost, urlPath),
+			Title: "GSKY Layers",
+		}
+		rd.Endpoints = append(rd.Endpoints, gskyLayer)
 	}
 
 	for _, path := range gpathInfo.Paths {
