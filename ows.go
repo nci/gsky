@@ -1791,12 +1791,15 @@ func cataloguesHandler(w http.ResponseWriter, r *http.Request) {
 	staticRoot := filepath.Join(utils.DataDir, "static", utils.CatalogueDirName)
 	templateRoot := filepath.Join(utils.DataDir, "templates")
 
-	catalogueHandler := utils.NewCatalogueHandler(cataloguePath, host, urlPathRoot, staticRoot, masAddress, templateRoot, w)
+	catalogueHandler := utils.NewCatalogueHandler(cataloguePath, host, urlPathRoot, staticRoot, masAddress, templateRoot, *verbose, w)
 
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate, max-age=0")
 
-	catalogueHandler.Process()
+	status := catalogueHandler.Process()
+	if status == 1 {
+		fileHandler(w, r)
+	}
 }
 
 func main() {

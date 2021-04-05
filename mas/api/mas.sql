@@ -738,17 +738,15 @@ create or replace function public.mas_generate_layers (
           t1.ns,
           'name',
           t1.ns,
-          'namespace',
-          gpath,
           'time_generator',
           'mas',
           'data_source',
           gpath,
           'rgb_products',
-          array_fill(t1.ns, ARRAY[1]),
-          'axes',
-          t2.axis
-          ) as layer
+          array_fill(t1.ns, ARRAY[1])
+          ) || case when t2.axis is not null then
+                jsonb_build_object('axes', t2.axis)
+              else '{}'::jsonb end as layer
           from (
             select jsonb_array_elements(namespaces->'namespaces') as ns
           ) t1

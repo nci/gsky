@@ -589,7 +589,12 @@ func LoadConfigOnDemand(searchPath string, namespace string, verbose bool) (map[
 	return nil, fmt.Errorf("namespace not found: %s", namespace)
 }
 
-func LoadConfigFromMAS(masAddress, namespace string, rootConfig *Config, verbose bool) (map[string]*Config, error) {
+type MASLayers struct {
+	Error  string  `json:"error"`
+	Layers []Layer `json:"layers"`
+}
+
+func LoadLayersFromMAS(masAddress, namespace string, verbose bool) (*MASLayers, []byte, error) {
 	queryOp := "generate_layers"
 	url := strings.Replace(fmt.Sprintf("http://%s/%s?%s", masAddress, namespace, queryOp), " ", "%20", -1)
 	if verbose {
@@ -597,27 +602,31 @@ func LoadConfigFromMAS(masAddress, namespace string, rootConfig *Config, verbose
 	}
 	resp, err := http.Get(url)
 	if err != nil {
-		return nil, fmt.Errorf("MAS (%s) error: %v,%v", queryOp, url, err)
+		return nil, nil, fmt.Errorf("MAS (%s) error: %v,%v", queryOp, url, err)
 	}
 	defer resp.Body.Close()
 
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return nil, fmt.Errorf("MAS (%s) error: %v,%v", queryOp, url, err)
+		return nil, nil, fmt.Errorf("MAS (%s) error: %v,%v", queryOp, url, err)
 	}
 
-	type MasLayers struct {
-		Error  string  `json:"error"`
-		Layers []Layer `json:"layers"`
-	}
-	var masLayers MasLayers
-	err = json.Unmarshal(body, &masLayers)
+	masLayers := &MASLayers{}
+	err = json.Unmarshal(body, masLayers)
 	if err != nil {
-		return nil, fmt.Errorf("MAS (%s) json response error: %v", queryOp, err)
+		return nil, nil, fmt.Errorf("MAS (%s) json response error: %v", queryOp, err)
 	}
 
 	if len(masLayers.Error) > 0 {
-		return nil, fmt.Errorf("MAS (%s) json response error: %v", queryOp, masLayers.Error)
+		return nil, nil, fmt.Errorf("MAS (%s) json response error: %v", queryOp, masLayers.Error)
+	}
+	return masLayers, body, nil
+}
+
+func LoadConfigFromMAS(masAddress, namespace string, rootConfig *Config, verbose bool) (map[string]*Config, error) {
+	masLayers, _, err := LoadLayersFromMAS(masAddress, namespace, verbose)
+	if err != nil {
+		return nil, err
 	}
 
 	config := &Config{

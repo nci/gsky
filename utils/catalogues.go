@@ -21,10 +21,11 @@ type CatalogueHandler struct {
 	StaticRoot        string
 	MasAddress        string
 	IndexTemplateRoot string
+	Verbose           bool
 	Output            http.ResponseWriter
 }
 
-func NewCatalogueHandler(path, urlHost, urlPathRoot, staticRoot, masAddress, indexTemplateRoot string, output http.ResponseWriter) *CatalogueHandler {
+func NewCatalogueHandler(path, urlHost, urlPathRoot, staticRoot, masAddress, indexTemplateRoot string, verbose bool, output http.ResponseWriter) *CatalogueHandler {
 	return &CatalogueHandler{
 		Path:              path,
 		URLHost:           urlHost,
@@ -32,18 +33,30 @@ func NewCatalogueHandler(path, urlHost, urlPathRoot, staticRoot, masAddress, ind
 		StaticRoot:        staticRoot,
 		MasAddress:        masAddress,
 		IndexTemplateRoot: indexTemplateRoot,
+		Verbose:           verbose,
 		Output:            output,
 	}
 }
 
-func (h *CatalogueHandler) Process() {
+const catalogueIndexFile = "index.html"
+const catalogueGSKYLayerFile = "gsky_layers.json"
+const catalogueTerriaCatalogFile = "terria_catalog.json"
+
+func (h *CatalogueHandler) Process() int {
 	h.Path = "/" + strings.Trim(h.Path, "/")
 	ext := filepath.Ext(h.Path)
 
 	indexFile := h.Path
 	if len(ext) > 0 {
-		if !strings.HasSuffix(h.Path, "index.html") {
-			return
+		isIndex := false
+		for _, f := range []string{catalogueIndexFile, catalogueGSKYLayerFile, catalogueTerriaCatalogFile} {
+			if strings.HasSuffix(h.Path, f) {
+				isIndex = true
+				break
+			}
+		}
+		if !isIndex {
+			return 1
 		} else {
 			indexFile = filepath.Join(h.StaticRoot, indexFile)
 		}
@@ -53,28 +66,34 @@ func (h *CatalogueHandler) Process() {
 
 	absPath, err := filepath.Abs(indexFile)
 	if err != nil {
-		return
+		if h.Verbose {
+			log.Printf("catalogueHandler: %v", err)
+		}
+		return 0
 	}
 
 	if !strings.HasPrefix(absPath, h.StaticRoot) {
-		return
+		if h.Verbose {
+			log.Printf("catalogueHandler absPath err: %v -> %v", h.Path, absPath)
+		}
+		return 0
 	}
 
 	if _, err := os.Stat(absPath); err == nil {
-		type Payload struct {
-			Host string
-		}
-		payload := &Payload{Host: h.URLHost}
-		err := ExecuteWriteTemplateFile(h.Output, payload, absPath)
-		if err != nil {
-			http.Error(h.Output, err.Error(), 500)
-			return
-		}
+		return 1
 
 	} else {
 		indexPath := h.Path
 		if len(ext) > 0 {
-			indexPath = filepath.Dir(indexPath)
+			if strings.HasSuffix(indexPath, catalogueGSKYLayerFile) {
+				h.renderGSKYLayerFile(indexPath)
+				return 0
+			} else if strings.HasSuffix(indexPath, catalogueTerriaCatalogFile) {
+				h.renderTerriaCatalogFile(indexPath)
+				return 0
+			} else {
+				indexPath = filepath.Dir(indexPath)
+			}
 		}
 		if indexPath == "/" || len(indexPath) == 0 {
 			h.renderRootCataloguePage()
@@ -82,6 +101,7 @@ func (h *CatalogueHandler) Process() {
 			h.renderCataloguePage(indexPath)
 		}
 	}
+	return 0
 }
 
 type gpathMetadata struct {
@@ -100,6 +120,43 @@ type renderData struct {
 	Navigations []*anchor
 	Endpoints   []*anchor
 	Title       string
+}
+
+func (h *CatalogueHandler) renderGSKYLayerFile(indexPath string) {
+	namespace := filepath.Dir(indexPath)
+	_, layers, err := LoadLayersFromMAS(h.MasAddress, namespace, h.Verbose)
+	if err != nil {
+		log.Printf("renderGSKYLayerFile: %v", err)
+		return
+	}
+	h.Output.Write(layers)
+}
+
+func (h *CatalogueHandler) renderTerriaCatalogFile(indexPath string) {
+	namespace := filepath.Dir(indexPath)
+	masLayers, _, err := LoadLayersFromMAS(h.MasAddress, namespace, h.Verbose)
+	if err != nil {
+		log.Printf("renderTerriaCatalogFile: %v", err)
+		return
+	}
+
+	type RenderTerriaCatalog struct {
+		Namespace string
+		Layers    []Layer
+	}
+
+	terriaCatalog := &RenderTerriaCatalog{Namespace: namespace}
+	terriaCatalog.Layers = make([]Layer, len(masLayers.Layers))
+	for i := range masLayers.Layers {
+		terriaCatalog.Layers[i] = masLayers.Layers[i]
+		terriaCatalog.Layers[i].DataURL = fmt.Sprintf("%s/%s", h.URLHost, filepath.Join("ows", namespace))
+	}
+
+	err = ExecuteWriteTemplateFile(h.Output, terriaCatalog, filepath.Join(h.IndexTemplateRoot, "terria_catalog.tpl"))
+	if err != nil {
+		log.Printf("%v", err)
+		return
+	}
 }
 
 func (h *CatalogueHandler) renderRootCataloguePage() {
@@ -192,6 +249,9 @@ func (h *CatalogueHandler) renderCataloguePage(indexPath string) {
 
 func (h *CatalogueHandler) getGPathMetadata(indexPath string, queryOp string) (*gpathMetadata, error) {
 	url := strings.Replace(fmt.Sprintf("http://%s%s?%s", h.MasAddress, indexPath, queryOp), " ", "%20", -1)
+	if h.Verbose {
+		log.Printf("catalogueHandler: %v", url)
+	}
 	resp, err := http.Get(url)
 	if err != nil {
 		return nil, fmt.Errorf("MAS (%s) error: %v,%v", queryOp, url, err)
