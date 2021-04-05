@@ -1678,10 +1678,20 @@ func owsHandler(w http.ResponseWriter, r *http.Request) {
 			confMap = getConfigMap()
 			rootConfig, found := confMap["."]
 			if !found {
-				log.Printf("root config not found in owsHandler")
+				if *verbose {
+					log.Printf("Invalid dataset namespace: root config not found in owsHandler")
+				}
 				http.Error(w, fmt.Sprintf("Invalid dataset namespace: %v\n", namespace), 404)
 				return
 			}
+			if !rootConfig.ServiceConfig.EnableAutoLayers {
+				if *verbose {
+					log.Printf("owsHandler: rootConfig.EnableAutoLayers is false, therefore invalid dataset namespace")
+				}
+				http.Error(w, fmt.Sprintf("Invalid dataset namespace: %v\n", namespace), 404)
+				return
+			}
+
 			conf, err = utils.LoadConfigFromMAS(masAddress, namespace, rootConfig, *verbose)
 			if err != nil {
 				namespaceErr(err)
@@ -1735,8 +1745,32 @@ func fileHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func cataloguesHandler(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Access-Control-Allow-Origin", "*")
-	w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate, max-age=0")
+	masAddress, err := getMASAddress()
+	if err != nil {
+		if *verbose {
+			log.Printf("cataloguesHandler: MAS not found: %v, defaulting to fileHandler", err)
+		}
+		fileHandler(w, r)
+		return
+	}
+
+	confMap := getConfigMap()
+	rootConfig, found := confMap["."]
+	if !found {
+		if *verbose {
+			log.Printf("cataloguesHandler: root config not found, defaulting to fileHandler")
+		}
+		fileHandler(w, r)
+		return
+	}
+
+	if !rootConfig.ServiceConfig.EnableAutoLayers {
+		if *verbose {
+			log.Printf("cataloguesHandler: rootConfig.EnableAutoLayers is false, defaulting to fileHandler")
+		}
+		fileHandler(w, r)
+		return
+	}
 
 	upath := r.URL.Path
 	if !strings.HasPrefix(upath, "/") {
@@ -1751,13 +1785,6 @@ func cataloguesHandler(w http.ResponseWriter, r *http.Request) {
 		cataloguePath = upath[len(cataRoot):]
 	}
 
-	masAddress, err := getMASAddress()
-	if err != nil {
-		e := fmt.Errorf("MAS not found")
-		log.Printf("%v: %v", e, err)
-		http.Error(w, e.Error(), 500)
-	}
-
 	host := fmt.Sprintf("%s://%s", utils.ParseRequestProtocol(r), r.Host)
 
 	urlPathRoot := utils.CatalogueDirName
@@ -1765,6 +1792,10 @@ func cataloguesHandler(w http.ResponseWriter, r *http.Request) {
 	templateRoot := filepath.Join(utils.DataDir, "templates")
 
 	catalogueHandler := utils.NewCatalogueHandler(cataloguePath, host, urlPathRoot, staticRoot, masAddress, templateRoot, w)
+
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate, max-age=0")
+
 	catalogueHandler.Process()
 }
 

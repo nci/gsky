@@ -78,6 +78,7 @@ type ServiceConfig struct {
 	OWSClusterNodes   []string `json:"ows_cluster_nodes"`
 	TempDir           string   `json:"temp_dir"`
 	MaxGrpcBufferSize int      `json:"max_grpc_buffer_size"`
+	EnableAutoLayers  bool     `json:"enable_auto_layers"`
 }
 
 type Mask struct {
