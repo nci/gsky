@@ -130,6 +130,10 @@ func (h *CatalogueHandler) renderGSKYLayerFile(indexPath string) {
 		return
 	}
 
+	for i := range masLayers.Layers {
+		jsonEscapeLayer(&masLayers.Layers[i])
+	}
+
 	err = ExecuteWriteTemplateFile(h.Output, masLayers, filepath.Join(h.IndexTemplateRoot, "gsky_layers.tpl"))
 	if err != nil {
 		log.Printf("%v", err)
@@ -150,11 +154,12 @@ func (h *CatalogueHandler) renderTerriaCatalogFile(indexPath string) {
 		Layers    []Layer
 	}
 
-	terriaCatalog := &RenderTerriaCatalog{Namespace: namespace}
+	terriaCatalog := &RenderTerriaCatalog{Namespace: jsonEscape(namespace)}
 	terriaCatalog.Layers = make([]Layer, len(masLayers.Layers))
 	for i := range masLayers.Layers {
 		terriaCatalog.Layers[i] = masLayers.Layers[i]
-		terriaCatalog.Layers[i].DataURL = fmt.Sprintf("%s/%s", h.URLHost, filepath.Join("ows", namespace))
+		terriaCatalog.Layers[i].DataURL = jsonEscape(fmt.Sprintf("%s/%s", h.URLHost, filepath.Join("ows", namespace)))
+		jsonEscapeLayer(&terriaCatalog.Layers[i])
 	}
 
 	err = ExecuteWriteTemplateFile(h.Output, terriaCatalog, filepath.Join(h.IndexTemplateRoot, "terria_catalog.tpl"))
@@ -292,4 +297,33 @@ func (h *CatalogueHandler) getGPathMetadata(indexPath string, queryOp string) (*
 	}
 
 	return &gpathInfo, nil
+}
+
+func jsonEscapeLayer(layer *Layer) {
+	layer.Title = jsonEscape(layer.Title)
+	layer.Name = jsonEscape(layer.Name)
+	layer.DataSource = jsonEscape(layer.DataSource)
+	layer.DataURL = jsonEscape(layer.DataURL)
+
+	for i := range layer.RGBProducts {
+		layer.RGBProducts[i] = jsonEscape(layer.RGBProducts[i])
+	}
+
+	for i := range layer.AxesInfo {
+		layer.AxesInfo[i].Name = jsonEscape(layer.AxesInfo[i].Name)
+		layer.AxesInfo[i].Default = jsonEscape(layer.AxesInfo[i].Default)
+		for j := range layer.AxesInfo[i].Values {
+			layer.AxesInfo[i].Values[j] = jsonEscape(layer.AxesInfo[i].Values[j])
+		}
+	}
+}
+
+func jsonEscape(i string) string {
+	b, err := json.Marshal(i)
+	if err != nil {
+		log.Printf("Failed to JSON escape: %v", err)
+		return i
+	}
+	s := string(b)
+	return s[1 : len(s)-1]
 }
