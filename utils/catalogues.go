@@ -43,65 +43,78 @@ const catalogueGSKYLayerFile = "gsky_layers.json"
 const catalogueTerriaCatalogFile = "terria_catalog.json"
 
 func (h *CatalogueHandler) Process() int {
-	h.Path = "/" + strings.Trim(h.Path, "/")
-	ext := filepath.Ext(h.Path)
+	if len(CheckIndexFile(h.StaticRoot, h.Path, h.Verbose)) > 0 {
+		return 1
+	}
 
-	indexFile := h.Path
+	h.Output.Header().Set("Access-Control-Allow-Origin", "*")
+	h.Output.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate, max-age=0")
+
+	indexPath := h.Path
+	ext := filepath.Ext(indexPath)
+	if len(ext) > 0 {
+		if strings.HasSuffix(indexPath, catalogueGSKYLayerFile) {
+			h.renderGSKYLayerFile(indexPath)
+			return 0
+		} else if strings.HasSuffix(indexPath, catalogueTerriaCatalogFile) {
+			h.renderTerriaCatalogFile(indexPath)
+			return 0
+		} else {
+			indexPath = filepath.Dir(indexPath)
+		}
+	}
+
+	if indexPath == "/" || len(indexPath) == 0 {
+		h.renderRootCataloguePage()
+	} else {
+		h.renderCataloguePage(indexPath)
+	}
+
+	return 0
+}
+
+func CheckIndexFile(staticRoot string, path string, verbose bool) string {
+	path = "/" + strings.Trim(path, "/")
+	ext := filepath.Ext(path)
+
+	indexFile := path
 	if len(ext) > 0 {
 		isIndex := false
 		for _, f := range []string{catalogueIndexFile, catalogueGSKYLayerFile, catalogueTerriaCatalogFile} {
-			if strings.HasSuffix(h.Path, f) {
+			if strings.HasSuffix(path, f) {
 				isIndex = true
 				break
 			}
 		}
 		if !isIndex {
-			return 1
+			return ""
 		} else {
-			indexFile = filepath.Join(h.StaticRoot, indexFile)
+			indexFile = filepath.Join(staticRoot, indexFile)
 		}
+
 	} else {
-		indexFile = filepath.Join(h.StaticRoot, indexFile, "index.html")
+		indexFile = filepath.Join(staticRoot, indexFile, "index.html")
 	}
 
 	absPath, err := filepath.Abs(indexFile)
 	if err != nil {
-		if h.Verbose {
-			log.Printf("catalogueHandler: %v", err)
+		if verbose {
+			log.Printf("IsIndexFile: %v", err)
 		}
-		return 0
+		return ""
 	}
 
-	if !strings.HasPrefix(absPath, h.StaticRoot) {
-		if h.Verbose {
-			log.Printf("catalogueHandler absPath err: %v -> %v", h.Path, absPath)
+	if !strings.HasPrefix(absPath, staticRoot) {
+		if verbose {
+			log.Printf("IsIndexFile absPath prefix: %v -> %v", path, absPath)
 		}
-		return 0
+		return ""
 	}
 
 	if _, err := os.Stat(absPath); err == nil {
-		return 1
-
-	} else {
-		indexPath := h.Path
-		if len(ext) > 0 {
-			if strings.HasSuffix(indexPath, catalogueGSKYLayerFile) {
-				h.renderGSKYLayerFile(indexPath)
-				return 0
-			} else if strings.HasSuffix(indexPath, catalogueTerriaCatalogFile) {
-				h.renderTerriaCatalogFile(indexPath)
-				return 0
-			} else {
-				indexPath = filepath.Dir(indexPath)
-			}
-		}
-		if indexPath == "/" || len(indexPath) == 0 {
-			h.renderRootCataloguePage()
-		} else {
-			h.renderCataloguePage(indexPath)
-		}
+		return absPath
 	}
-	return 0
+	return ""
 }
 
 type gpathMetadata struct {

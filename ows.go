@@ -1709,18 +1709,19 @@ func owsHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func fileHandler(w http.ResponseWriter, r *http.Request) {
-	upath := r.URL.Path
-	if !strings.HasPrefix(upath, "/") {
-		upath = "/" + upath
-		r.URL.Path = upath
+	urlPath := r.URL.Path
+	if !strings.HasPrefix(urlPath, "/") {
+		urlPath = "/" + urlPath
+		r.URL.Path = urlPath
 	}
-	upath = path.Clean(upath)
+	urlPath = path.Clean(urlPath)
 	indexPages := map[string]struct{}{"/": struct{}{}, "/index.html": struct{}{}}
-	_, isIndex := indexPages[strings.ToLower(strings.TrimSpace(upath))]
+	_, isIndex := indexPages[strings.ToLower(strings.TrimSpace(urlPath))]
 	if isIndex {
-		upath = "index.html"
+		urlPath = "index.html"
 	}
-	upath = filepath.Join(utils.DataDir+"/static", upath)
+	staticRoot := filepath.Join(utils.DataDir, "static")
+	upath := filepath.Join(staticRoot, urlPath)
 
 	if *verbose {
 		Info.Printf("%s -> %s\n", r.URL.String(), upath)
@@ -1739,8 +1740,29 @@ func fileHandler(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, err.Error(), 500)
 			return
 		}
+
 	} else {
-		http.ServeFile(w, r, upath)
+		indexFile := utils.CheckIndexFile(staticRoot, urlPath, *verbose)
+		if len(indexFile) > 0 {
+			if !strings.HasSuffix(r.URL.Path, "/") {
+				w.Header().Set("Location", r.URL.Path+"/")
+				w.WriteHeader(http.StatusMovedPermanently)
+				return
+			}
+
+			type Payload struct {
+				Host string
+			}
+			payload := &Payload{Host: utils.GetHostURL(r)}
+			err := utils.ExecuteWriteTemplateFile(w, payload, indexFile)
+			if err != nil {
+				http.Error(w, err.Error(), 500)
+				return
+			}
+
+		} else {
+			http.ServeFile(w, r, upath)
+		}
 	}
 }
 
@@ -1785,17 +1807,14 @@ func cataloguesHandler(w http.ResponseWriter, r *http.Request) {
 		cataloguePath = upath[len(cataRoot):]
 	}
 
-	host := fmt.Sprintf("%s://%s", utils.ParseRequestProtocol(r), r.Host)
+	cataloguePath = "/" + strings.Trim(cataloguePath, "/")
 
+	host := utils.GetHostURL(r)
 	urlPathRoot := utils.CatalogueDirName
 	staticRoot := filepath.Join(utils.DataDir, "static", utils.CatalogueDirName)
 	templateRoot := filepath.Join(utils.DataDir, "templates")
 
 	catalogueHandler := utils.NewCatalogueHandler(cataloguePath, host, urlPathRoot, staticRoot, masAddress, templateRoot, *verbose, w)
-
-	w.Header().Set("Access-Control-Allow-Origin", "*")
-	w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate, max-age=0")
-
 	status := catalogueHandler.Process()
 	if status == 1 {
 		fileHandler(w, r)
