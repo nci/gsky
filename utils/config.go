@@ -78,6 +78,7 @@ type ServiceConfig struct {
 	OWSClusterNodes   []string `json:"ows_cluster_nodes"`
 	TempDir           string   `json:"temp_dir"`
 	MaxGrpcBufferSize int      `json:"max_grpc_buffer_size"`
+	EnableAutoLayers  bool     `json:"enable_auto_layers"`
 }
 
 type Mask struct {
@@ -588,6 +589,103 @@ func LoadConfigOnDemand(searchPath string, namespace string, verbose bool) (map[
 	return nil, fmt.Errorf("namespace not found: %s", namespace)
 }
 
+type MASLayers struct {
+	Error  string  `json:"error"`
+	Layers []Layer `json:"layers"`
+}
+
+func LoadLayersFromMAS(masAddress, namespace string, verbose bool) (*MASLayers, error) {
+	queryOp := "generate_layers"
+	url := strings.Replace(fmt.Sprintf("http://%s/%s?%s", masAddress, namespace, queryOp), " ", "%20", -1)
+	if verbose {
+		log.Printf("%s: %s", queryOp, url)
+	}
+	resp, err := http.Get(url)
+	if err != nil {
+		return nil, fmt.Errorf("MAS (%s) error: %v,%v", queryOp, url, err)
+	}
+	defer resp.Body.Close()
+
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("MAS (%s) error: %v,%v", queryOp, url, err)
+	}
+
+	masLayers := &MASLayers{}
+	err = json.Unmarshal(body, masLayers)
+	if err != nil {
+		return nil, fmt.Errorf("MAS (%s) json response error: %v", queryOp, err)
+	}
+
+	if len(masLayers.Error) > 0 {
+		return nil, fmt.Errorf("MAS (%s) json response error: %v", queryOp, masLayers.Error)
+	}
+
+	for _, layer := range masLayers.Layers {
+		for ia := range layer.AxesInfo {
+			if len(layer.AxesInfo[ia].Values) > 0 {
+				layer.AxesInfo[ia].Default = layer.AxesInfo[ia].Values[0]
+			}
+		}
+	}
+	return masLayers, nil
+}
+
+func LoadConfigFromMAS(masAddress, namespace string, rootConfig *Config, verbose bool) (map[string]*Config, error) {
+	masLayers, err := LoadLayersFromMAS(masAddress, namespace, verbose)
+	if err != nil {
+		return nil, err
+	}
+
+	config := &Config{
+		ServiceConfig: ServiceConfig{
+			MASAddress:  rootConfig.ServiceConfig.MASAddress,
+			WorkerNodes: rootConfig.ServiceConfig.WorkerNodes,
+		},
+	}
+
+	config.Layers = make([]Layer, len(masLayers.Layers))
+	for il, layer := range masLayers.Layers {
+		config.Layers[il] = layer
+	}
+
+	configStr, cfgErr := json.Marshal(config)
+	if cfgErr != nil {
+		return nil, fmt.Errorf("MAS config error: %v", cfgErr)
+	}
+
+	config = &Config{}
+	err = config.LoadConfigString(configStr, verbose)
+	if err != nil {
+		return nil, fmt.Errorf("MAS config error: %v", err)
+	}
+
+	err = config.postprocessConfig(namespace)
+	if err != nil {
+		return nil, fmt.Errorf("MAS config error: %v", err)
+	}
+
+	configMap := make(map[string]*Config)
+	configMap[namespace] = config
+
+	for _, conf := range configMap {
+		if conf == nil {
+			continue
+		}
+		for i := range conf.Layers {
+			err = conf.processFusionTimestamps(i, configMap)
+			if err != nil {
+				return nil, err
+			}
+			err = conf.processFusionColourPalette(i, configMap)
+			if err != nil {
+				return nil, err
+			}
+		}
+	}
+	return configMap, nil
+}
+
 func LoadAllConfigFiles(searchPath string, verbose bool) (map[string]*Config, error) {
 	var err error
 	configMap := make(map[string]*Config)
@@ -636,92 +734,9 @@ func LoadAllConfigFiles(searchPath string, verbose bool) (map[string]*Config, er
 				}
 
 				configMap[relPath] = config
-
-				for i := range config.Layers {
-					ns := relPath
-					if relPath == "." {
-						ns = ""
-					}
-
-					if len(config.Layers[i].MASAddress) == 0 {
-						config.Layers[i].MASAddress = config.ServiceConfig.MASAddress
-					}
-
-					if len(config.Layers[i].Overviews) > 0 {
-						for ii, ovr := range config.Layers[i].Overviews {
-							if len(ovr.DataSource) == 0 {
-								return fmt.Errorf("%s, %s: overview[%d] has no data_source", config.Layers[i].Name, ns, ii)
-							}
-
-							if ovr.ZoomLimit <= 0 {
-								return fmt.Errorf("%s, %s: overview[%d] has no zoom_limit", config.Layers[i].Name, ns, ii)
-							}
-
-							if len(config.Layers[i].Overviews[ii].MASAddress) == 0 {
-								config.Layers[i].Overviews[ii].MASAddress = config.Layers[i].MASAddress
-							}
-						}
-						sort.Slice(config.Layers[i].Overviews, func(m, n int) bool { return config.Layers[m].ZoomLimit < config.Layers[n].ZoomLimit })
-					}
-					config.Layers[i].NameSpace = ns
-					for j := range config.Layers[i].Styles {
-						config.Layers[i].Styles[j].OWSHostname = config.Layers[i].OWSHostname
-						config.Layers[i].Styles[j].NameSpace = config.Layers[i].NameSpace
-						if len(config.Layers[i].Styles[j].DataSource) == 0 {
-							config.Layers[i].Styles[j].DataSource = config.Layers[i].DataSource
-						}
-						if len(config.Layers[i].Styles[j].MASAddress) == 0 {
-							config.Layers[i].Styles[j].MASAddress = config.Layers[i].MASAddress
-						}
-						if config.Layers[i].Styles[j].LegendWidth <= 0 {
-							config.Layers[i].Styles[j].LegendWidth = DefaultLegendWidth
-						}
-						if config.Layers[i].Styles[j].LegendHeight <= 0 {
-							config.Layers[i].Styles[j].LegendHeight = DefaultLegendHeight
-						}
-
-						bandExpr, err := ParseBandExpressions(config.Layers[i].Styles[j].RGBProducts)
-						if err != nil {
-							return fmt.Errorf("Layer %v, style %v, RGBExpression parsing error: %v", config.Layers[i].Name, config.Layers[i].Styles[j].Name, err)
-						}
-						config.Layers[i].Styles[j].RGBExpressions = bandExpr
-
-						if len(config.Layers[i].Styles[j].FeatureInfoBands) > 0 {
-							featureInfoExpr, err := ParseBandExpressions(config.Layers[i].Styles[j].FeatureInfoBands)
-							if err != nil {
-								return fmt.Errorf("Layer %v, style %v, FeatureInfoExpression parsing error: %v", config.Layers[i].Name, config.Layers[i].Styles[j].Name, err)
-							}
-							config.Layers[i].Styles[j].FeatureInfoExpressions = featureInfoExpr
-						}
-
-						if len(config.Layers[i].Styles[j].InputLayers) == 0 && len(config.Layers[i].InputLayers) > 0 {
-							config.Layers[i].Styles[j].InputLayers = config.Layers[i].InputLayers
-						}
-
-						if len(config.Layers[i].Styles[j].InputLayers) > 0 {
-							for k := range config.Layers[i].Styles[j].InputLayers {
-								if len(config.Layers[i].Styles[j].InputLayers[k].Name) == 0 {
-									config.Layers[i].Styles[j].InputLayers[k].Name = config.Layers[i].Name
-								}
-							}
-						}
-
-						if len(config.Layers[i].Styles[j].DisableServices) == 0 && len(config.Layers[i].DisableServices) > 0 {
-							config.Layers[i].Styles[j].DisableServices = config.Layers[i].DisableServices
-						}
-
-						if len(config.Layers[i].Styles[j].Overviews) == 0 && len(config.Layers[i].Overviews) > 0 {
-							config.Layers[i].Styles[j].Overviews = config.Layers[i].Overviews
-						}
-
-						if config.Layers[i].Styles[j].ZoomLimit == 0.0 && config.Layers[i].ZoomLimit != 0.0 {
-							config.Layers[i].Styles[j].ZoomLimit = config.Layers[i].ZoomLimit
-						}
-
-						if !strings.HasPrefix(config.Layers[i].Styles[j].Name, "__") {
-							config.Layers[i].Styles[j].Visibility = "visible"
-						}
-					}
+				e = config.postprocessConfig(relPath)
+				if e != nil {
+					return e
 				}
 			}
 			return nil
@@ -785,6 +800,96 @@ func Unmarshal(data []byte, i interface{}) error {
 		err = fmt.Errorf("Error in line %d, char %d: %s\n%s",
 			line, pos, syntaxErr, data[start:end])
 		return err
+	}
+
+	return nil
+}
+
+func (config *Config) postprocessConfig(ns string) error {
+	for i := range config.Layers {
+		if ns == "." {
+			ns = ""
+		}
+
+		if len(config.Layers[i].MASAddress) == 0 {
+			config.Layers[i].MASAddress = config.ServiceConfig.MASAddress
+		}
+
+		if len(config.Layers[i].Overviews) > 0 {
+			for ii, ovr := range config.Layers[i].Overviews {
+				if len(ovr.DataSource) == 0 {
+					return fmt.Errorf("%s, %s: overview[%d] has no data_source", config.Layers[i].Name, ns, ii)
+				}
+
+				if ovr.ZoomLimit <= 0 {
+					return fmt.Errorf("%s, %s: overview[%d] has no zoom_limit", config.Layers[i].Name, ns, ii)
+				}
+
+				if len(config.Layers[i].Overviews[ii].MASAddress) == 0 {
+					config.Layers[i].Overviews[ii].MASAddress = config.Layers[i].MASAddress
+				}
+			}
+			sort.Slice(config.Layers[i].Overviews, func(m, n int) bool { return config.Layers[m].ZoomLimit < config.Layers[n].ZoomLimit })
+		}
+		config.Layers[i].NameSpace = ns
+		for j := range config.Layers[i].Styles {
+			config.Layers[i].Styles[j].OWSHostname = config.Layers[i].OWSHostname
+			config.Layers[i].Styles[j].NameSpace = config.Layers[i].NameSpace
+			if len(config.Layers[i].Styles[j].DataSource) == 0 {
+				config.Layers[i].Styles[j].DataSource = config.Layers[i].DataSource
+			}
+			if len(config.Layers[i].Styles[j].MASAddress) == 0 {
+				config.Layers[i].Styles[j].MASAddress = config.Layers[i].MASAddress
+			}
+			if config.Layers[i].Styles[j].LegendWidth <= 0 {
+				config.Layers[i].Styles[j].LegendWidth = DefaultLegendWidth
+			}
+			if config.Layers[i].Styles[j].LegendHeight <= 0 {
+				config.Layers[i].Styles[j].LegendHeight = DefaultLegendHeight
+			}
+
+			bandExpr, err := ParseBandExpressions(config.Layers[i].Styles[j].RGBProducts)
+			if err != nil {
+				return fmt.Errorf("Layer %v, style %v, RGBExpression parsing error: %v", config.Layers[i].Name, config.Layers[i].Styles[j].Name, err)
+			}
+			config.Layers[i].Styles[j].RGBExpressions = bandExpr
+
+			if len(config.Layers[i].Styles[j].FeatureInfoBands) > 0 {
+				featureInfoExpr, err := ParseBandExpressions(config.Layers[i].Styles[j].FeatureInfoBands)
+				if err != nil {
+					return fmt.Errorf("Layer %v, style %v, FeatureInfoExpression parsing error: %v", config.Layers[i].Name, config.Layers[i].Styles[j].Name, err)
+				}
+				config.Layers[i].Styles[j].FeatureInfoExpressions = featureInfoExpr
+			}
+
+			if len(config.Layers[i].Styles[j].InputLayers) == 0 && len(config.Layers[i].InputLayers) > 0 {
+				config.Layers[i].Styles[j].InputLayers = config.Layers[i].InputLayers
+			}
+
+			if len(config.Layers[i].Styles[j].InputLayers) > 0 {
+				for k := range config.Layers[i].Styles[j].InputLayers {
+					if len(config.Layers[i].Styles[j].InputLayers[k].Name) == 0 {
+						config.Layers[i].Styles[j].InputLayers[k].Name = config.Layers[i].Name
+					}
+				}
+			}
+
+			if len(config.Layers[i].Styles[j].DisableServices) == 0 && len(config.Layers[i].DisableServices) > 0 {
+				config.Layers[i].Styles[j].DisableServices = config.Layers[i].DisableServices
+			}
+
+			if len(config.Layers[i].Styles[j].Overviews) == 0 && len(config.Layers[i].Overviews) > 0 {
+				config.Layers[i].Styles[j].Overviews = config.Layers[i].Overviews
+			}
+
+			if config.Layers[i].Styles[j].ZoomLimit == 0.0 && config.Layers[i].ZoomLimit != 0.0 {
+				config.Layers[i].Styles[j].ZoomLimit = config.Layers[i].ZoomLimit
+			}
+
+			if !strings.HasPrefix(config.Layers[i].Styles[j].Name, "__") {
+				config.Layers[i].Styles[j].Visibility = "visible"
+			}
+		}
 	}
 
 	return nil
@@ -1457,7 +1562,6 @@ func addBandMathVariableConstraints(config *Config, layer *Layer, criteria *Band
 // LoadConfigFile marshalls the config.json document returning an
 // instance of a Config variable containing all the values
 func (config *Config) LoadConfigFile(configFile string, verbose bool) error {
-	*config = Config{}
 	cfg, err := LoadConfigFileTemplate(configFile)
 	if verbose {
 		log.Printf("%v: %v", configFile, string(cfg))
@@ -1467,7 +1571,11 @@ func (config *Config) LoadConfigFile(configFile string, verbose bool) error {
 		return fmt.Errorf("Error while reading config file: %s. Error: %v", configFile, err)
 	}
 
-	err = Unmarshal(cfg, config)
+	return config.LoadConfigString(cfg, verbose)
+}
+
+func (config *Config) LoadConfigString(cfg []byte, verbose bool) error {
+	err := Unmarshal(cfg, config)
 	if err != nil {
 		return fmt.Errorf("Error at JSON parsing config document: %v", err)
 	}
@@ -1484,7 +1592,7 @@ func (config *Config) LoadConfigFile(configFile string, verbose bool) error {
 
 	if config.ServiceConfig.MaxGrpcBufferSize > 0 && config.ServiceConfig.MaxGrpcBufferSize < 10 {
 		config.ServiceConfig.MaxGrpcBufferSize = 0
-		log.Printf("%v: MaxGrpcBufferSize is set to less than 10MB, reset to unlimited", configFile)
+		log.Printf("MaxGrpcBufferSize is set to less than 10MB, reset to unlimited")
 	}
 
 	config.ServiceConfig.MaxGrpcBufferSize = config.ServiceConfig.MaxGrpcBufferSize * 1024 * 1024
@@ -1506,6 +1614,10 @@ func (config *Config) LoadConfigFile(configFile string, verbose bool) error {
 			return fmt.Errorf("Layer %v FeatureInfoExpression parsing error: %v", layer.Name, err)
 		}
 		config.Layers[i].FeatureInfoExpressions = featureInfoExpr
+
+		if len(strings.TrimSpace(config.Layers[i].TimestampsLoadStrategy)) == 0 {
+			config.Layers[i].TimestampsLoadStrategy = "on_demand"
+		}
 
 		if config.Layers[i].TimestampsLoadStrategy != "on_demand" {
 			config.GetLayerDates(i, verbose)
@@ -1668,6 +1780,36 @@ func DumpConfig(configs map[string]*Config) (string, error) {
 	}
 
 	return string(configJson), nil
+}
+
+func GetRootConfig(searchPath string, verbose bool) (*Config, error) {
+	var config *Config
+
+	searchPathList := strings.Split(searchPath, ":")
+	for _, rootDir := range searchPathList {
+		rootDir = strings.TrimSpace(rootDir)
+		if len(rootDir) == 0 {
+			continue
+		}
+		configFile := filepath.Join(rootDir, "config.json")
+		if _, e := os.Stat(configFile); e != nil {
+			continue
+		}
+
+		config = &Config{}
+		err := config.LoadConfigFile(configFile, verbose)
+		if err != nil {
+			config = nil
+			log.Printf("Loading root config error: %v", err)
+			continue
+		}
+		break
+	}
+
+	if config == nil {
+		return nil, fmt.Errorf("Root configs not found: %v", searchPath)
+	}
+	return config, nil
 }
 
 func WatchConfig(infoLog, errLog *log.Logger, configMap *sync.Map, verbose bool) {

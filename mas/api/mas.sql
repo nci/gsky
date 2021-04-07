@@ -738,19 +738,24 @@ create or replace function public.mas_generate_layers (
           t1.ns,
           'name',
           t1.ns,
-          'namespace',
-          gpath,
           'time_generator',
           'mas',
           'data_source',
           gpath,
           'rgb_products',
-          string_to_array(t1.ns::text, ',')
-          ) as layer
+          array_fill(t1.ns, ARRAY[1])
+          ) || case when t2.axis is not null then
+                jsonb_build_object('axes', t2.axis)
+              else '{}'::jsonb end as layer
           from (
             select jsonb_array_elements(namespaces->'namespaces') as ns
           ) t1
-        ) t2
+          left join lateral (
+            select axis
+            from mas_list_namespace_axes(gpath, namespaces) ax(ns jsonb, axis jsonb[])
+            where ax.ns = t1.ns
+          ) t2 on true
+        ) t3
       ), '{}'::jsonb[])
     );
 
@@ -773,12 +778,6 @@ create or replace function public.mas_list_namespaces (
       raise exception 'invalid search path';
     end if;
 
-    perform mas_reset();
-    shard := mas_view(gpath);
-    if shard = '' then
-      return '{}'::jsonb;
-    end if;
-
     gpath := '/' || trim(gpath, '/');
     gpath_hash := public.path_hash(gpath);
 
@@ -798,8 +797,68 @@ create or replace function public.mas_list_namespaces (
       ), '[]'::jsonb)
     );
 
-    perform mas_reset();
     return result;
+  end
+$$;
+
+create or replace function mas_list_namespace_axes (
+  gpath text,
+  namespaces jsonb
+)
+  returns setof record language plpgsql as $$
+  begin
+      return query
+      select t1.ns, array_agg(axis) over (partition by t1.ns) axis
+      from (
+        select jsonb_array_elements(namespaces->'namespaces') as ns
+      ) t1
+      inner join lateral
+      (
+        select jsonb_build_object (
+          'name',
+          name,
+          'values',
+          (select array_agg(value) from jsonb_array_elements_text(params))
+        ) axis
+        from (
+          select distinct t3.axes->'name' as name,
+            first_value(t3.axes->'params') over (partition by t3.axes->>'name' order by jsonb_array_length(t3.axes->'params') desc) as params
+          from (
+            select jsonb_array_elements(geo->'axes') as axes
+            from (
+              select jsonb_array_elements(md.md_json->'geo_metadata') geo
+              from paths pa
+              inner join metadata md
+                on md.md_hash = pa.pa_hash
+              where public.path_hash(gpath) = any(pa.pa_parents)
+            ) t2
+            where geo->'namespace' = t1.ns
+          ) t3
+          where t3.axes->>'params' is not null
+          and jsonb_array_length(t3.axes->'params') > 0
+        ) t4
+      ) t5 on true;
+
+  end
+$$;
+
+create or replace function mas_list_root_gpath ()
+  returns jsonb language plpgsql as $$
+  declare
+    result jsonb;
+  begin
+    result := jsonb_build_object(
+      'sub_paths',
+      coalesce((select jsonb_agg(sh_path)
+        from (select sh_path
+            from shards
+            order by sh_path
+          ) t
+        ), '[]'::jsonb)
+      );
+
+    return result;
+
   end
 $$;
 
@@ -811,6 +870,8 @@ create or replace function mas_list_sub_gpath (
     shard text;
     sub_path_result jsonb;
     namespace_result jsonb;
+    gpath_root_result jsonb;
+    gpath_root text;
     gpath_depth int;
     gpath_hash uuid;
   begin
@@ -826,7 +887,7 @@ create or replace function mas_list_sub_gpath (
 
     sub_path_result := jsonb_build_object(
       'sub_paths',
-      coalesce((select jsonb_agg(t.sub_path)
+      coalesce((select jsonb_agg(substr(t.sub_path, length(gpath)+1))
         from (
           select t2.sub_path from (
             select distinct on (pa_parents[gpath_depth+1]) pa_parents[gpath_depth+1] as path_hash, pa_path
@@ -859,8 +920,14 @@ create or replace function mas_list_sub_gpath (
       ), false)
     );
 
+    gpath_root := (select sh_path from public.shards where gpath like concat(sh_path,'%') limit 1);
+    gpath_root_result := jsonb_build_object(
+      'gpath_root',
+      gpath_root
+    );
+
     perform mas_reset();
-    return sub_path_result || namespace_result;
+    return sub_path_result || namespace_result || gpath_root_result;
 
   end
 $$;
