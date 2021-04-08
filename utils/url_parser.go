@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"fmt"
 	"net/http"
 	"net/url"
 	"strings"
@@ -155,4 +156,8 @@ func ParseRequestProtocol(r *http.Request) string {
 		}
 	}
 	return protocol
+}
+
+func GetHostURL(r *http.Request) string {
+	return fmt.Sprintf("%s://%s", ParseRequestProtocol(r), r.Host)
 }
