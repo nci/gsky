@@ -28,6 +28,7 @@ import (
 
 var EtcDir = "."
 var DataDir = "."
+var GSKYVersion = "."
 
 const ReservedMemorySize = 1.5 * 1024 * 1024 * 1024
 const ColourLinearScale = 0

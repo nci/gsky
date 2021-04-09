@@ -55,6 +55,7 @@ var (
 	validateConfig  = flag.Bool("check_conf", false, "Validate server config files.")
 	dumpConfig      = flag.Bool("dump_conf", false, "Dump server config files.")
 	verbose         = flag.Bool("v", false, "Verbose mode for more server outputs.")
+	version         = flag.Bool("version", false, "Get GSKY version")
 )
 
 var reWMSMap map[string]*regexp.Regexp
@@ -78,6 +79,11 @@ func init() {
 	Info = log.New(os.Stdout, "OWS: ", log.Ldate|log.Ltime|log.Lshortfile)
 
 	flag.Parse()
+
+	if *version {
+		fmt.Printf("%s\n", utils.GSKYVersion)
+		os.Exit(0)
+	}
 
 	utils.DataDir = *serverDataDir
 	utils.EtcDir = *serverConfigDir

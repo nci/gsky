@@ -9,8 +9,10 @@ srcdir = @srcdir@
 VPATH = @srcdir@
 
 BASEPATH=github.com/nci/gsky
+VERSION=$(shell git rev-parse HEAD)
 LDFLAGS="-X=$(BASEPATH)/utils.LibexecDir=${libexecdir} -X=$(BASEPATH)/worker/gdalservice.LibexecDir=${libexecdir} \
-	-X=$(BASEPATH)/utils.EtcDir=$(sysconfdir) -X=$(BASEPATH)/utils.DataDir=${datarootdir}/gsky"
+	-X=$(BASEPATH)/utils.EtcDir=$(sysconfdir) -X=$(BASEPATH)/utils.DataDir=${datarootdir}/gsky \
+	-X=$(BASEPATH)/utils.GSKYVersion=${VERSION}"
 GOBIN=$(shell go env GOBIN)
 ifeq ($(strip $(GOBIN)),)
   GOBIN=$(shell go env GOPATH)/bin
