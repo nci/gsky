@@ -333,79 +333,6 @@ create materialized view directories as
 create unique index dii_hash
   on directories (di_hash);
 
--- View of polygon metadata supplied by GDAL crawler, for GSKY
-drop materialized view if exists polygons cascade;
-create materialized view polygons as
-  select
-    hash
-      as po_hash,
-    array(select jsonb_array_elements_text(stamps))::timestamptz[]
-      as po_stamps,
-    (select min(t) from unnest(array(select jsonb_array_elements_text(stamps))::timestamptz[]) t)
-      as po_min_stamp,
-    (select max(t) from unnest(array(select jsonb_array_elements_text(stamps))::timestamptz[]) t)
-      as po_max_stamp,
-    variable
-      as po_name,
-    (geotransform->>1)::numeric
-      as po_pixel_x,
-    (geotransform->>5)::numeric
-      as po_pixel_y,
-    public.st_geomfromtext(polygon, srid)
-      as po_polygon
-  from (
-    select
-      hash,
-      trim(geo#>>'{polygon}')
-        as polygon,
-      trim(geo#>>'{proj_wkt}')
-        as srtext,
-      trim(geo#>>'{proj4}')
-        as proj4text,
-      regexp_replace(trim(geo#>>'{namespace}'), '[^a-zA-Z0-9_]', '_', 'g')
-        as variable,
-      geo#>'{timestamps}'
-        as stamps,
-      geo#>'{geotransform}'
-        as geotransform
-    from (
-      select
-        md_hash
-          as hash,
-        jsonb_array_elements(md_json->'geo_metadata')
-          as geo
-      from metadata
-      where
-      md_type = 'gdal'
-      and jsonb_typeof(md_json->'geo_metadata') = 'array'
-    ) a
-  ) b
-  join public.spatial_ref_sys s
-    on b.srtext = s.srtext
-    and b.proj4text = s.proj4text
-;
-
-create index poi_hash
-  on polygons (po_hash);
-
-create index poi_stamp
-  on polygons (po_min_stamp, po_max_stamp);
-
-create index poi_stamps
-  on polygons using gin (po_stamps);
-
-create index poi_name
-  on polygons (po_name);
-
--- A list of SRID values for the schema, used for faster intersections
-drop materialized view if exists polygon_srids cascade;
-create materialized view polygon_srids as
-  select
-    distinct(public.st_srid(po_polygon))
-      as ps_srid
-    from
-      polygons;
-
 -- Extracted NetCDF headers
 drop view if exists netcdf cascade;
 create view netcdf as
@@ -555,6 +482,7 @@ create or replace function refresh_polygons()
   declare
 
     rec record;
+    pg_version int;
 
   begin
 
@@ -596,9 +524,115 @@ create or replace function refresh_polygons()
       select srid, auth_name, srid, srtext, proj4text from public.nci_spatial_ref_sys
     on conflict (srid) do nothing;
 
-    for rec in select ci.relname from pg_index i, pg_class ci, pg_class ct where i.indexrelid = ci.oid and i.indrelid = ct.oid and ct.relname = 'polygons' and ci.relname like 'poi\_polygon\_%' loop
+    pg_version := (select split_part(setting, '.', 1)::int
+      from pg_settings where name = 'server_version');
 
-      raise notice 'drop index %', rec.relname;
+    if pg_version >= 11 then
+      raise notice 'PG version %, enabling parallel query', pg_version;
+      set parallel_setup_cost = 1;
+      set parallel_tuple_cost = 0.000001;
+      set max_parallel_workers = 4;
+      set max_parallel_workers_per_gather = 4;
+      set max_parallel_maintenance_workers = 4;
+      set synchronous_commit = 'off';
+      set work_mem = '1GB';
+      set maintenance_work_mem = '1GB';
+      set effective_cache_size = '128GB';
+    end if;
+
+    analyze metadata;
+    analyze public.spatial_ref_sys;
+
+    raise notice 'refresh polygons';
+
+    -- View of polygon metadata supplied by GDAL crawler, for GSKY
+    drop materialized view if exists polygons_tmp cascade;
+    create materialized view polygons_tmp as
+      select
+        hash
+          as po_hash,
+        array(select jsonb_array_elements_text(stamps))::timestamptz[]
+          as po_stamps,
+        (select min(t) from unnest(array(select jsonb_array_elements_text(stamps))::timestamptz[]) t)
+          as po_min_stamp,
+        (select max(t) from unnest(array(select jsonb_array_elements_text(stamps))::timestamptz[]) t)
+          as po_max_stamp,
+        variable
+          as po_name,
+        (geotransform->>1)::numeric
+          as po_pixel_x,
+        (geotransform->>5)::numeric
+          as po_pixel_y,
+        public.st_geomfromtext(polygon, srid)
+          as po_polygon
+      from (
+        select
+          hash,
+          trim(geo#>>'{polygon}')
+            as polygon,
+          trim(geo#>>'{proj_wkt}')
+            as srtext,
+          trim(geo#>>'{proj4}')
+            as proj4text,
+          regexp_replace(trim(geo#>>'{namespace}'), '[^a-zA-Z0-9_]', '_', 'g')
+            as variable,
+          geo#>'{timestamps}'
+            as stamps,
+          geo#>'{geotransform}'
+            as geotransform
+        from (
+          select
+            md_hash
+              as hash,
+            jsonb_array_elements(md_json->'geo_metadata')
+              as geo
+          from metadata
+          where
+          md_type = 'gdal'
+          and jsonb_typeof(md_json->'geo_metadata') = 'array'
+        ) a
+      ) b
+      join public.spatial_ref_sys s
+        on b.srtext = s.srtext
+        and b.proj4text = s.proj4text
+    ;
+
+    drop materialized view if exists polygons_old cascade;
+    alter materialized view if exists polygons rename to polygons_old;
+    alter materialized view polygons_tmp rename to polygons;
+    drop materialized view if exists polygons_old cascade;
+
+    drop index if exists poi_hash;
+    create index poi_hash
+      on polygons (po_hash);
+
+    drop index if exists poi_stamp;
+    create index poi_stamp
+      on polygons (po_min_stamp, po_max_stamp);
+
+    drop index if exists poi_stamps;
+    create index poi_stamps
+      on polygons using gin (po_stamps);
+
+    drop index if exists poi_name;
+    create index poi_name
+      on polygons (po_name);
+
+    raise notice 'refresh polygon_srids';
+    drop materialized view if exists polygon_srids_tmp cascade;
+    create materialized view polygon_srids_tmp as
+      select
+        distinct(public.st_srid(po_polygon))
+          as ps_srid
+        from
+          polygons;
+
+    drop materialized view if exists polygon_srids_old cascade;
+    alter materialized view if exists polygon_srids rename to polygons_srids_old;
+    alter materialized view polygon_srids_tmp rename to polygon_srids;
+    drop materialized view if exists polygon_srids_old cascade;
+
+    for rec in select ci.relname from pg_index i, pg_class ci, pg_class ct where i.indexrelid = ci.oid and i.indrelid = ct.oid and ct.relname = 'polygons' and ci.relname like 'poi\_polygon\_%' loop
 
       execute format($f$
         drop index if exists %1$s
@@ -606,12 +640,6 @@ create or replace function refresh_polygons()
       );
 
     end loop;
-
-    raise notice 'refresh polygons';
-    refresh materialized view polygons;
-
-    raise notice 'refresh polygon_srids';
-    refresh materialized view polygon_srids;
 
     for rec in select ps_srid as srid from polygon_srids loop
 
@@ -627,8 +655,6 @@ create or replace function refresh_polygons()
     analyze polygons;
     analyze polygon_srids;
     analyze paths;
-    analyze metadata;
-    analyze public.spatial_ref_sys;
 
     return true;
   end
