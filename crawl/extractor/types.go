@@ -50,13 +50,14 @@ type DatasetAxis struct {
 }
 
 type GeoFile struct {
-	FileName string         `json:"filename,omitempty"`
-	Driver   string         `json:"file_type"`
-	DataSets []*GeoMetaData `json:"geo_metadata"`
+	FileName  string         `json:"filename,omitempty"`
+	Driver    string         `json:"file_type"`
+	DataSets  []*GeoMetaData `json:"geo_metadata"`
+	PosixInfo *PosixInfo     `json:"posix_info,omitempty"`
 }
 
 type PosixInfo struct {
-	FilePath string    `json:"file_path"`
+	FilePath string    `json:"file_path,omitempty"`
 	INode    uint64    `json:"inode"`
 	Size     int64     `json:"size"`
 	MTime    time.Time `json:"mtime"`

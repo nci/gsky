@@ -172,7 +172,16 @@ func ExtractGDALInfo(path string, concLimit int, approx bool, config *Config) (*
 		}
 	}
 
-	return &GeoFile{FileName: path, Driver: shortName, DataSets: datasets}, nil
+	geoFile := &GeoFile{FileName: path, Driver: shortName, DataSets: datasets}
+	fStat, fErr := os.Lstat(path)
+	if fErr != nil {
+		geoFile.PosixInfo = &PosixInfo{}
+	} else {
+		geoFile.PosixInfo = GetPosixInfo(path, fStat)
+		geoFile.PosixInfo.FilePath = ""
+	}
+
+	return geoFile, nil
 }
 
 func getDataSetInfo(filename string, dsName *C.char, driverName string, approx bool, config *Config) (*GeoMetaData, error) {
