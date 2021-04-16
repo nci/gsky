@@ -1616,10 +1616,6 @@ func (config *Config) LoadConfigString(cfg []byte, verbose bool) error {
 		}
 		config.Layers[i].FeatureInfoExpressions = featureInfoExpr
 
-		if len(strings.TrimSpace(config.Layers[i].TimestampsLoadStrategy)) == 0 {
-			config.Layers[i].TimestampsLoadStrategy = "on_demand"
-		}
-
 		if config.Layers[i].TimestampsLoadStrategy != "on_demand" {
 			config.GetLayerDates(i, verbose)
 		}
