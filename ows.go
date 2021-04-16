@@ -1675,6 +1675,9 @@ func owsHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		conf, err := utils.LoadConfigOnDemand(utils.EtcDir, namespace, *verbose)
 		if err != nil {
+			if *verbose {
+				log.Printf("LoadConfigOnDemaind error: %v", err)
+			}
 			masAddress, masErr := getMASAddress()
 			if masErr != nil {
 				namespaceErr(masErr)
