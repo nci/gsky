@@ -35,6 +35,19 @@ func ExtractPosix(rootDir string, conc int, pattern string, followSymlink bool, 
 	return nil
 }
 
+func GetPosixInfo(filePath string, fStat os.FileInfo) *PosixInfo {
+	stat := fStat.Sys().(*syscall.Stat_t)
+	fileSignature := fmt.Sprintf("%s%d%d%d%d", filePath, stat.Ino, stat.Size, stat.Mtim.Sec, stat.Mtim.Nsec)
+	return &PosixInfo{
+		FilePath: filePath,
+		INode:    stat.Ino,
+		Size:     stat.Size,
+		MTime:    time.Unix(int64(stat.Mtim.Sec), int64(stat.Mtim.Nsec)).UTC(),
+		CTime:    time.Unix(int64(stat.Ctim.Sec), int64(stat.Ctim.Nsec)).UTC(),
+		ID:       fmt.Sprintf("%x", md5.Sum([]byte(fileSignature))),
+	}
+}
+
 func parsePatternExpression(pattern string) (*goeval.EvaluableExpression, error) {
 	if len(strings.TrimSpace(pattern)) == 0 {
 		return nil, nil
@@ -209,16 +222,19 @@ func (pc *PosixCrawler) crawlDir(currPath string, serialised bool) {
 			}
 		}
 
-		stat := fStat.Sys().(*syscall.Stat_t)
-		fileSignature := fmt.Sprintf("%s%d%d%d%d", filePath, stat.Ino, stat.Size, stat.Mtim.Sec, stat.Mtim.Nsec)
-		info := &PosixInfo{
-			FilePath: filePath,
-			INode:    stat.Ino,
-			Size:     stat.Size,
-			MTime:    time.Unix(int64(stat.Mtim.Sec), int64(stat.Mtim.Nsec)).UTC(),
-			CTime:    time.Unix(int64(stat.Ctim.Sec), int64(stat.Ctim.Nsec)).UTC(),
-			ID:       fmt.Sprintf("%x", md5.Sum([]byte(fileSignature))),
-		}
+		info := GetPosixInfo(filePath, fStat)
+		/*
+			stat := fStat.Sys().(*syscall.Stat_t)
+			fileSignature := fmt.Sprintf("%s%d%d%d%d", filePath, stat.Ino, stat.Size, stat.Mtim.Sec, stat.Mtim.Nsec)
+			info := &PosixInfo{
+				FilePath: filePath,
+				INode:    stat.Ino,
+				Size:     stat.Size,
+				MTime:    time.Unix(int64(stat.Mtim.Sec), int64(stat.Mtim.Nsec)).UTC(),
+				CTime:    time.Unix(int64(stat.Ctim.Sec), int64(stat.Ctim.Nsec)).UTC(),
+				ID:       fmt.Sprintf("%x", md5.Sum([]byte(fileSignature))),
+			}
+		*/
 		pc.Outputs <- info
 	}
 }

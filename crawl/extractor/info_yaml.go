@@ -44,6 +44,7 @@ import (
 	"gopkg.in/yaml.v2"
 	"io/ioutil"
 	"log"
+	"os"
 	"path/filepath"
 	"strings"
 	"time"
@@ -51,13 +52,28 @@ import (
 )
 
 func ExtractYaml(filename string, family string) (*GeoFile, error) {
+	var geoFile *GeoFile
+	var err error
 	if family == "sentinel2" {
-		return ExtractSentinel2Yaml(filename)
+		geoFile, err = ExtractSentinel2Yaml(filename)
 	} else if family == "landsat" {
-		return ExtractLandsatYaml(filename)
+		geoFile, err = ExtractLandsatYaml(filename)
 	} else {
 		return nil, fmt.Errorf("unsupported yaml family: %s", family)
 	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	fStat, fErr := os.Lstat(filename)
+	if fErr != nil {
+		geoFile.PosixInfo = &PosixInfo{}
+	} else {
+		geoFile.PosixInfo = GetPosixInfo(filename, fStat)
+		geoFile.PosixInfo.FilePath = ""
+	}
+	return geoFile, nil
 }
 
 func ExtractSentinel2Yaml(filename string) (*GeoFile, error) {
