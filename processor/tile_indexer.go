@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"log"
 	"math"
+	"math/rand"
 	"net/http"
 	"sort"
 	"strings"
@@ -69,6 +70,9 @@ type TileIndexer struct {
 	APIAddress string
 	QueryLimit int
 }
+
+const DefaultMASConcQuery = 32
+const DefaultMASMaxConnsPerHost = 256
 
 func NewTileIndexer(ctx context.Context, apiAddr string, errChan chan error) *TileIndexer {
 	return &TileIndexer{
@@ -237,6 +241,8 @@ func (p *TileIndexer) Run(verbose bool) {
 				yRes := (clippedBBox[3] - clippedBBox[1]) / float64(resHeight)
 				reqRes := math.Max(xRes, yRes)
 				if geoReq.QueryLimit <= 0 && reqRes > geoReq.IndexResLimit {
+					cLimiter := NewConcLimiter(DefaultMASConcQuery)
+					var urls []string
 					for y := 0; y < resHeight; y += maxYTileSize {
 						for x := 0; x < resWidth; x += maxXTileSize {
 							yMin := clippedBBox[1] + float64(y)*yRes
@@ -247,11 +253,16 @@ func (p *TileIndexer) Run(verbose bool) {
 							bbox := []float64{xMin, yMin, xMax, yMax}
 							bboxWkt = BBox2WKT(bbox)
 							url = p.getIndexerURL(geoReq, nameSpaces, bboxWkt, "EPSG:3857")
-
-							wg.Add(1)
-							go p.URLIndexGet(p.Context, url, geoReq, p.Error, p.Out, &wg, isEmptyTile, verbose)
+							urls = append(urls, url)
 						}
 					}
+					rand.Shuffle(len(urls), func(i, j int) { urls[i], urls[j] = urls[j], urls[i] })
+					for _, url := range urls {
+						wg.Add(1)
+						cLimiter.Increase()
+						go p.URLIndexGet(p.Context, url, geoReq, p.Error, p.Out, &wg, isEmptyTile, cLimiter, verbose)
+					}
+
 				} else {
 					hasSubDivision = false
 				}
@@ -259,7 +270,7 @@ func (p *TileIndexer) Run(verbose bool) {
 
 			if !hasSubDivision {
 				wg.Add(1)
-				go p.URLIndexGet(p.Context, url, geoReq, p.Error, p.Out, &wg, isEmptyTile, verbose)
+				go p.URLIndexGet(p.Context, url, geoReq, p.Error, p.Out, &wg, isEmptyTile, nil, verbose)
 			}
 
 			if geoReq.Mask != nil {
@@ -279,7 +290,7 @@ func (p *TileIndexer) Run(verbose bool) {
 					}
 
 					wg.Add(1)
-					go p.URLIndexGet(p.Context, url, geoReq, p.Error, p.Out, &wg, isEmptyTile, verbose)
+					go p.URLIndexGet(p.Context, url, geoReq, p.Error, p.Out, &wg, isEmptyTile, nil, verbose)
 				}
 			}
 			wg.Wait()
@@ -298,8 +309,11 @@ func (p *TileIndexer) getIndexerURL(geoReq *GeoTileRequest, nameSpaces string, b
 	return url
 }
 
-func (p *TileIndexer) URLIndexGet(ctx context.Context, url string, geoReq *GeoTileRequest, errChan chan error, out chan *GeoTileGranule, wg *sync.WaitGroup, isEmptyTile bool, verbose bool) {
+func (p *TileIndexer) URLIndexGet(ctx context.Context, url string, geoReq *GeoTileRequest, errChan chan error, out chan *GeoTileGranule, wg *sync.WaitGroup, isEmptyTile bool, cLimiter *ConcLimiter, verbose bool) {
 	defer wg.Done()
+	if cLimiter != nil {
+		defer cLimiter.Decrease()
+	}
 
 	resp, err := http.Get(url)
 	if err != nil {
@@ -307,9 +321,9 @@ func (p *TileIndexer) URLIndexGet(ctx context.Context, url string, geoReq *GeoTi
 		out <- &GeoTileGranule{ConfigPayLoad: ConfigPayLoad{NameSpaces: []string{utils.EmptyTileNS}, ScaleParams: geoReq.ScaleParams, Palette: geoReq.Palette}, Path: "NULL", NameSpace: utils.EmptyTileNS, RasterType: "Byte", TimeStamp: 0, BBox: geoReq.BBox, Height: geoReq.Height, Width: geoReq.Width, OffX: geoReq.OffX, OffY: geoReq.OffY, CRS: geoReq.CRS}
 		return
 	}
-	defer resp.Body.Close()
 	t0 := time.Now()
 	body, err := ioutil.ReadAll(resp.Body)
+	resp.Body.Close()
 	if geoReq.MetricsCollector != nil {
 		geoReq.MetricsCollector.Info.Indexer.Duration += time.Since(t0)
 	}

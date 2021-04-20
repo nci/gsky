@@ -105,6 +105,7 @@ func init() {
 		}
 	}
 
+	http.DefaultTransport.(*http.Transport).MaxConnsPerHost = proc.DefaultMASMaxConnsPerHost
 	confMap, err := utils.LoadAllConfigFiles(utils.EtcDir, *verbose)
 	if err != nil {
 		Error.Printf("Error in loading config files: %v\n", err)
