@@ -583,6 +583,11 @@ func LoadConfigOnDemand(searchPath string, namespace string, verbose bool) (map[
 			}
 
 			configMap := make(map[string]*Config)
+			err = conf["."].postprocessConfig(namespace)
+			if err != nil {
+				return nil, fmt.Errorf("Error in on-demand postprocessConfig: %v", err)
+			}
+
 			configMap[namespace] = conf["."]
 			return configMap, nil
 		}
