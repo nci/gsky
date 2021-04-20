@@ -7,12 +7,12 @@ import (
 	"io/ioutil"
 	"log"
 	"math"
+	"math/rand"
 	"net/http"
 	"sort"
 	"strings"
 	"sync"
 	"time"
-	"math/rand"
 
 	"github.com/nci/gsky/utils"
 )
@@ -257,7 +257,7 @@ func (p *TileIndexer) Run(verbose bool) {
 						}
 					}
 					rand.Shuffle(len(urls), func(i, j int) { urls[i], urls[j] = urls[j], urls[i] })
-					for _, url := range(urls) {
+					for _, url := range urls {
 						wg.Add(1)
 						cLimiter.Increase()
 						go p.URLIndexGet(p.Context, url, geoReq, p.Error, p.Out, &wg, isEmptyTile, cLimiter, verbose)
