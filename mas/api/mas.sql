@@ -254,7 +254,7 @@ create or replace function mas_intersect_polygons(
 
               -- %1$L::timestamptz and %2$L::timestamptz range overlaps stamps
               or (%1$L::timestamptz is not null and %2$L::timestamptz is not null
-                and (%1$L::timestamptz - interval '1 second', %2$L::timestamptz + interval '1 second') overlaps (po_min_stamp, po_max_stamp)
+                and ('[' || %2$L::timestamptz - interval '1 second' || ',' || %3$L::timestamptz + interval '1 second' || ']')::tstzrange && po_duration
               )
             )
             and (%3$L is null
@@ -306,7 +306,7 @@ create or replace function mas_intersect_polygons(
 
             -- %2$L::timestamptz and %3$L::timestamptz range overlaps stamps
             or (%2$L::timestamptz is not null and %3$L::timestamptz is not null
-              and (%2$L::timestamptz - interval '1 second', %3$L::timestamptz + interval '1 second') overlaps (po_min_stamp, po_max_stamp)
+              and ('[' || %2$L::timestamptz - interval '1 second' || ',' || %3$L::timestamptz + interval '1 second' || ']')::tstzrange && po_duration
             )
           )
           and (%4$L is null
