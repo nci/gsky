@@ -72,11 +72,10 @@ func handler(response http.ResponseWriter, request *http.Request) {
 				nullif($5,'')::timestamptz,
 				nullif($6,'')::timestamptz,
 				string_to_array(nullif($7,''), ','),
-				nullif($8,'')::numeric,
-				nullif($9,'')::text,
-				nullif($10,'')::float8,
-				nullif($11,'')::float,
-				nullif($12,'')::int
+				nullif($8,'')::text,
+				nullif($9,'')::float8,
+				nullif($10,'')::float,
+				nullif($11,'')::int
 			) as json`,
 			request.URL.Path,
 			request.FormValue("srs"),
@@ -85,7 +84,6 @@ func handler(response http.ResponseWriter, request *http.Request) {
 			request.FormValue("time"),
 			request.FormValue("until"),
 			request.FormValue("namespace"),
-			request.FormValue("resolution"),
 			request.FormValue("metadata"),
 			request.FormValue("identitytol"),
 			request.FormValue("dptol"),
