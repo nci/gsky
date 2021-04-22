@@ -211,7 +211,6 @@ create or replace function mas_intersect_polygons(
   namespaces text[],
   time_a timestamptz,
   time_b timestamptz,
-  resolution bigint,
   limit_val integer
 )
   returns text language plpgsql as $$
@@ -254,19 +253,16 @@ create or replace function mas_intersect_polygons(
 
               -- %1$L::timestamptz and %2$L::timestamptz range overlaps stamps
               or (%1$L::timestamptz is not null and %2$L::timestamptz is not null
-                and ('[' || %2$L::timestamptz - interval '1 second' || ',' || %3$L::timestamptz + interval '1 second' || ']')::tstzrange && po_duration
+                and ('[' || %1$L::timestamptz - interval '1 second' || ',' || %2$L::timestamptz + interval '1 second' || ']')::tstzrange && po_duration
               )
             )
             and (%3$L is null
               or po_name = any(%3$L)
             )
-            and (%4$L is null
-              or po_pixel_x::bigint = %4$L::bigint
-            )
-            and path_hash(%5$L) = any(pa_parents)
-            %6$s
+            and path_hash(%4$L) = any(pa_parents)
+            %5$s
 
-          $f$, time_a, time_b, namespaces, resolution, gpath, limit_str);
+          $f$, time_a, time_b, namespaces, gpath, limit_str);
 
       return str;
 
@@ -312,13 +308,10 @@ create or replace function mas_intersect_polygons(
           and (%4$L is null
             or po_name = any(%4$L)
           )
-          and (%5$L is null
-            or po_pixel_x::bigint = %5$L::bigint
-          )
-          and path_hash(%6$L) = any(pa_parents)
-          %7$s )
+          and path_hash(%5$L) = any(pa_parents)
+          %6$s )
 
-        $f$, rec.srid, time_a, time_b, namespaces, resolution, gpath, limit_str
+        $f$, rec.srid, time_a, time_b, namespaces, gpath, limit_str
 
       ));
 
@@ -358,7 +351,7 @@ create or replace function mas_intersect_polygons(
 $$;
 
 -- Find files that contain data within a given bounding polygon, optionally
--- filtered by time, namespace (netcdf variable), and pixel resolution.
+-- filtered by time, namespace (netcdf variable), etc.
 -- Include raw metadata from crawlers for each matched file, if requested.
 
 create or replace function mas_intersects(
@@ -369,7 +362,6 @@ create or replace function mas_intersects(
   time_a     timestamptz, -- time range low
   time_b     timestamptz, -- time range high
   namespace  text[], -- for NetCDF, the variable name
-  resolution numeric, -- pixel resolution
   raw_metadata text, -- gdal, pdal
   identity_tol float8, -- distance tolerance considered as same point
   dp_tol       float, -- distance tolerance for Douglas-Peucker algorithm
@@ -456,7 +448,7 @@ create or replace function mas_intersects(
       limit_val := -1;
     end if;
 
-    qstr := mas_intersect_polygons(gpath, segmask, namespace, time_a, time_b, resolution::bigint, limit_val);
+    qstr := mas_intersect_polygons(gpath, segmask, namespace, time_a, time_b, limit_val);
 
     files := array[]::text[];
 

@@ -550,7 +550,7 @@ create or replace function refresh_polygons()
     create materialized view polygons_tmp as
       select po_hash, po_stamps, po_min_stamp, po_max_stamp,
         ('[' || po_min_stamp || ',' || po_max_stamp || ']')::tstzrange as po_duration,
-        po_name, po_pixel_x, po_pixel_y, po_polygon
+        po_name, po_polygon
       from (
         select
           hash
@@ -563,10 +563,6 @@ create or replace function refresh_polygons()
             as po_max_stamp,
           variable
             as po_name,
-          (geotransform->>1)::numeric
-            as po_pixel_x,
-          (geotransform->>5)::numeric
-            as po_pixel_y,
           public.st_geomfromtext(polygon, srid)
             as po_polygon
         from (
@@ -581,9 +577,7 @@ create or replace function refresh_polygons()
             regexp_replace(trim(geo#>>'{namespace}'), '[^a-zA-Z0-9_]', '_', 'g')
               as variable,
             geo#>'{timestamps}'
-              as stamps,
-            geo#>'{geotransform}'
-              as geotransform
+              as stamps
           from (
             select
               md_hash
