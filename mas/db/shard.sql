@@ -548,53 +548,58 @@ create or replace function refresh_polygons()
     -- View of polygon metadata supplied by GDAL crawler, for GSKY
     drop materialized view if exists polygons_tmp cascade;
     create materialized view polygons_tmp as
-      select
-        hash
-          as po_hash,
-        array(select jsonb_array_elements_text(stamps))::timestamptz[]
-          as po_stamps,
-        (select min(t) from unnest(array(select jsonb_array_elements_text(stamps))::timestamptz[]) t)
-          as po_min_stamp,
-        (select max(t) from unnest(array(select jsonb_array_elements_text(stamps))::timestamptz[]) t)
-          as po_max_stamp,
-        variable
-          as po_name,
-        (geotransform->>1)::numeric
-          as po_pixel_x,
-        (geotransform->>5)::numeric
-          as po_pixel_y,
-        public.st_geomfromtext(polygon, srid)
-          as po_polygon
+      select po_hash, po_stamps, po_min_stamp, po_max_stamp,
+        ('[' || po_min_stamp || ',' || po_max_stamp || ']')::tstzrange as po_duration,
+        po_name, po_pixel_x, po_pixel_y, po_polygon
       from (
         select
-          hash,
-          trim(geo#>>'{polygon}')
-            as polygon,
-          trim(geo#>>'{proj_wkt}')
-            as srtext,
-          trim(geo#>>'{proj4}')
-            as proj4text,
-          regexp_replace(trim(geo#>>'{namespace}'), '[^a-zA-Z0-9_]', '_', 'g')
-            as variable,
-          geo#>'{timestamps}'
-            as stamps,
-          geo#>'{geotransform}'
-            as geotransform
+          hash
+            as po_hash,
+          array(select jsonb_array_elements_text(stamps))::timestamptz[]
+            as po_stamps,
+          (select min(t) from unnest(array(select jsonb_array_elements_text(stamps))::timestamptz[]) t)
+            as po_min_stamp,
+          (select max(t) from unnest(array(select jsonb_array_elements_text(stamps))::timestamptz[]) t)
+            as po_max_stamp,
+          variable
+            as po_name,
+          (geotransform->>1)::numeric
+            as po_pixel_x,
+          (geotransform->>5)::numeric
+            as po_pixel_y,
+          public.st_geomfromtext(polygon, srid)
+            as po_polygon
         from (
           select
-            md_hash
-              as hash,
-            jsonb_array_elements(md_json->'geo_metadata')
-              as geo
-          from metadata
-          where
-          md_type = 'gdal'
-          and jsonb_typeof(md_json->'geo_metadata') = 'array'
-        ) a
-      ) b
-      join public.spatial_ref_sys s
-        on b.srtext = s.srtext
-        and b.proj4text = s.proj4text
+            hash,
+            trim(geo#>>'{polygon}')
+              as polygon,
+            trim(geo#>>'{proj_wkt}')
+              as srtext,
+            trim(geo#>>'{proj4}')
+              as proj4text,
+            regexp_replace(trim(geo#>>'{namespace}'), '[^a-zA-Z0-9_]', '_', 'g')
+              as variable,
+            geo#>'{timestamps}'
+              as stamps,
+            geo#>'{geotransform}'
+              as geotransform
+          from (
+            select
+              md_hash
+                as hash,
+              jsonb_array_elements(md_json->'geo_metadata')
+                as geo
+            from metadata
+            where
+            md_type = 'gdal'
+            and jsonb_typeof(md_json->'geo_metadata') = 'array'
+          ) a
+        ) b
+        join public.spatial_ref_sys s
+          on b.srtext = s.srtext
+          and b.proj4text = s.proj4text
+      ) t
     ;
 
     drop materialized view if exists polygons_old cascade;
@@ -613,6 +618,10 @@ create or replace function refresh_polygons()
     drop index if exists poi_stamps;
     create index poi_stamps
       on polygons using gin (po_stamps);
+
+    drop index if exists poi_duration;
+    create index poi_duration
+      on polygons using gist (po_duration);
 
     drop index if exists poi_name;
     create index poi_name
