@@ -21,11 +21,11 @@ EOD
 
 set role mas;
 create schema if not exists ${shard};
-set search_path to ${shard};
+set search_path to ${shard},public;
 grant usage on schema ${shard} to public;
 alter default privileges for role mas in schema ${shard} grant select on tables to public;
 
-insert into public.shards (sh_code, sh_path)
+insert into shards (sh_code, sh_path)
   values ('${shard}', '${gpath}')
   on conflict (sh_code) do nothing;
 
