@@ -20,6 +20,7 @@ set search_path to ${shard}_tmp;
 
 select refresh_polygons();
 select refresh_caches();
+select refresh_codegens();
 
 set search_path to public;
 alter schema ${shard} rename to ${shard}_old;

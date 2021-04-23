@@ -476,7 +476,8 @@ create function refresh_views()
   end
 $$;
 
-create or replace function refresh_polygons()
+drop function if exists refresh_polygons();
+create function refresh_polygons()
   returns boolean language plpgsql as $$
 
   declare
@@ -671,11 +672,261 @@ create unlogged table timestamps_cache (
   timestamps jsonb not null
 );
 
-create or replace function refresh_caches()
+drop function if exists refresh_caches();
+create function refresh_caches()
   returns boolean language plpgsql as $$
   begin
     raise notice 'refresh caches';
     truncate timestamps_cache;
     return true;
+  end
+$$;
+
+drop function if exists refresh_codegen();
+create function refresh_codegen()
+returns boolean language plpgsql as $$
+  begin
+    raise notice 'refresh codegen';
+    execute codegen_shard_intersect_polygons();
+    execute codegen_shard_intersect_times();
+
+    return true;
+  end
+$$;
+
+drop function if exists codegen_shard_intersect_times();
+create function codegen_shard_intersect_times()
+  returns text language plpgsql as $$
+  declare
+    str text;
+  begin
+    str := $f$
+      select distinct po_hash
+      from
+        polygons
+      inner join paths
+          on po_hash = pa_hash
+      where
+        (
+          -- time_a and time_b range overlaps stamps
+          (time_a is not null and time_b is not null
+            and ('[' || time_a - interval '1 second' || ',' || time_b + interval '1 second' || ']')::tstzrange && po_duration
+          )
+
+          -- time_a only
+          or (time_a is not null and time_b is null
+            and time_a between po_min_stamp and po_max_stamp
+            and time_a = any(po_stamps)
+          )
+
+          -- no times
+          or time_a is null
+        )
+        and (namespaces is null
+          or po_name = any(namespaces)
+        )
+        and path_hash(gpath) = any(pa_parents)
+        limit limit_val
+
+      $f$;
+
+    str := format(codegen_gdal_json(), str);
+
+    return format($f$
+
+      drop function if exists shard_intersect_times;
+      create function shard_intersect_times(
+          gpath text,
+          namespaces text[],
+          time_a timestamptz,
+          time_b timestamptz,
+          limit_val integer
+      )
+        returns jsonb language plpgsql as $ff$
+        begin
+          return %1$s
+        end
+      $ff$;
+
+    $f$, str);
+
+  end
+$$;
+
+drop function if exists codegen_shard_intersect_polygons();
+create function codegen_shard_intersect_polygons()
+  returns text language plpgsql as $$
+  declare
+    str text;
+    parts text[];
+    rec record;
+    qstr text;
+  begin
+
+    for rec in select ps_srid as srid from polygon_srids loop
+
+      parts := array_append(parts, format($f$
+        (
+        select
+          po_hash
+        from
+          polygons
+        inner join
+          geometries
+            on ge_srid = %1$s
+        inner join paths
+            on po_hash = pa_hash
+        where
+          st_srid(po_polygon) = %1$s
+
+          and ST_Intersects(po_polygon, ge_geom)
+
+          and (
+             -- time_a and time_b range overlaps stamps
+            (time_a is not null and time_b is not null
+              and ('[' || time_a - interval '1 second' || ',' || time_b + interval '1 second' || ']')::tstzrange && po_duration
+            )
+
+            -- time_a only
+            or (time_a is not null and time_b is null
+              and time_a::timestamptz between po_min_stamp and po_max_stamp
+              and time_a::timestamptz = any(po_stamps)
+            )
+
+            -- no times
+            or time_a is null
+          )
+          and (
+            po_name = any(namespaces)
+            or namespaces is null
+          )
+          and path_hash(gpath) = any(pa_parents)
+          limit limit_val )
+
+        $f$, rec.srid
+
+      ));
+
+    end loop;
+
+    -- for empty shards
+    qstr := coalesce(
+      nullif(array_to_string(parts, ' union '), ''),
+      'select null::uuid as po_hash limit 0'
+    );
+
+    str := format($f$
+
+      with
+      geometries as (
+        select
+          ps_srid
+            as ge_srid,
+          ST_ConvexHull(ST_LossyTransform(bbox, ps_srid))
+            as ge_geom
+        from
+          polygon_srids
+      )
+      select po_hash
+      from (select po_hash as po_hash from (%1$s) u limit limit_val) hashes
+
+      $f$, qstr
+    );
+
+    str := format(codegen_gdal_json(), str);
+
+    return format($f$
+
+      drop function if exists shard_intersect_polygons;
+      create function shard_intersect_polygons(
+          gpath text,
+          bbox geometry,
+          namespaces text[],
+          time_a timestamptz,
+          time_b timestamptz,
+          limit_val integer
+      )
+        returns jsonb language plpgsql as $ff$
+        begin
+          return %1$s
+        end
+      $ff$;
+
+    $f$, str);
+
+  end
+$$;
+
+drop function if exists codegen_gdal_json();
+create function codegen_gdal_json()
+  returns text language plpgsql as $$
+  begin
+
+    return $f$
+
+      jsonb_build_object('gdal', coalesce((
+        select
+          jsonb_agg(dataset)
+
+        from
+          metadata
+
+        inner join (
+          %1$s
+        ) h
+          on po_hash = md_hash
+
+        inner join lateral (
+
+          select
+            jsonb_build_object(
+              'file_path',
+              md_json->>'filename',
+              'ds_name',
+              geo->>'ds_name',
+              'namespace',
+              regexp_replace(trim(geo->>'namespace'), '[^a-zA-Z0-9_]', '_', 'g'),
+              'array_type',
+              geo->'array_type',
+              'srs',
+              geo->'proj_wkt',
+              'geo_transform',
+              geo->'geotransform',
+              'timestamps',
+              geo->'timestamps',
+              'polygon',
+              geo->>'polygon',
+              'overviews',
+              geo->'overviews',
+              'means',
+              geo->'means',
+              'sample_counts',
+              geo->'sample_counts',
+              'nodata',
+              geo->'nodata',
+              'axes',
+              geo->'axes',
+              'geo_loc',
+              geo->'geo_loc'
+            )
+              as dataset
+
+          from
+            jsonb_array_elements(md_json->'geo_metadata') geo
+
+        ) t
+          on true
+
+        where
+          md_type = 'gdal'
+
+          and (
+            namespaces is null
+            or dataset->>'namespace' = any(namespaces)
+          )
+
+      ), '[]'::jsonb));
+
+    $f$;
   end
 $$;
