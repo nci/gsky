@@ -682,8 +682,8 @@ create function refresh_caches()
   end
 $$;
 
-drop function if exists refresh_codegen();
-create function refresh_codegen()
+drop function if exists refresh_codegens();
+create function refresh_codegens()
 returns boolean language plpgsql as $$
   begin
     raise notice 'refresh codegen';
