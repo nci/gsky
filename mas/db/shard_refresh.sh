@@ -16,7 +16,7 @@ trap cleanup EXIT
 (cd "$here" && psql -v ON_ERROR_STOP=1 -A -t -q -d mas <<EOD
 
 set role mas;
-set search_path to ${shard}_tmp;
+set search_path to ${shard}_tmp,public;
 
 select refresh_polygons();
 select refresh_caches();
