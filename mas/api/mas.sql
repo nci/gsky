@@ -10,8 +10,7 @@
 \c mas
 set role mas;
 
-drop function if exists ST_SplitDatelineWGS84;
-create function ST_SplitDatelineWGS84(polygon geometry)
+create or replace function ST_SplitDatelineWGS84(polygon geometry)
   returns geometry language plpgsql immutable as $$
   declare
     extended geometry;
@@ -86,8 +85,7 @@ create function ST_SplitDatelineWGS84(polygon geometry)
   end
 $$;
 
-drop function if exists ST_TryTransform;
-create function ST_TryTransform(polygon geometry, in_srid integer)
+create or replace function ST_TryTransform(polygon geometry, in_srid integer)
   returns geometry language plpgsql immutable as $$
 
   declare
@@ -103,8 +101,7 @@ create function ST_TryTransform(polygon geometry, in_srid integer)
   end
 $$;
 
-drop function if exists ST_TryMakeLine;
-create function ST_TryMakeLine(points geometry[])
+create or replace function ST_TryMakeLine(points geometry[])
   returns geometry language plpgsql immutable as $$
 
   begin
@@ -115,8 +112,7 @@ create function ST_TryMakeLine(points geometry[])
   end
 $$;
 
-drop function if exists ST_TryMakePolygon;
-create function ST_TryMakePolygon(line geometry)
+create or replace function ST_TryMakePolygon(line geometry)
   returns geometry language plpgsql immutable as $$
 
   begin
@@ -129,8 +125,7 @@ $$;
 
 -- Automatically clip invalid points during transformation
 
-drop function if exists ST_LossyTransform;
-create function ST_LossyTransform(polygon geometry, srid integer)
+create or replace function ST_LossyTransform(polygon geometry, srid integer)
   returns geometry language sql immutable as $$
     select
       coalesce(
@@ -163,8 +158,7 @@ $$;
 
 -- Connection pooling probably in use...
 
-drop function if exists mas_reset;
-create function mas_reset()
+create or replace function mas_reset()
   returns void language plpgsql as $$
   begin
     set work_mem to '32MB';
@@ -179,8 +173,7 @@ $$;
 -- contains multi-schema views to enable cross-dataset queries. The mas_view
 -- function sets an API request search_path appropriately.
 
-drop function if exists mas_view;
-create function mas_view(gpath text)
+create or replace function mas_view(gpath text)
   returns text language plpgsql as $$
 
   declare
@@ -212,8 +205,7 @@ $$;
 -- filtered by time, namespace (netcdf variable), etc.
 -- Include raw metadata from crawlers for each matched file, if requested.
 
-drop function if exists mas_intersects;
-create function mas_intersects(
+create or replace function mas_intersects(
   gpath      text,
   srs        text, -- EPSG:nnnn
   wkt        text, -- bounding polygon
@@ -329,8 +321,7 @@ $$;
 -- Find all the time stamps overlapping with a given time range
 -- The time stamps are filtered by gpath, namespace
 
-drop function if exists mas_timestamps;
-create function mas_timestamps(
+create or replace function mas_timestamps(
   gpath      text,        -- file path to search
   time_a     timestamptz, -- time range low
   time_b     timestamptz, -- time range high
@@ -419,8 +410,7 @@ $$;
 
 -- Find geospatial and temporal extents 
 
-drop function if exists mas_spatial_temporal_extents;
-create function mas_spatial_temporal_extents(
+create or replace function mas_spatial_temporal_extents(
   gpath      text,        -- file path to search
   namespace  text[]       -- the variable name
 )
@@ -492,8 +482,7 @@ create function mas_spatial_temporal_extents(
     end
 $$;
 
-drop function if exists mas_generate_layers;
-create function mas_generate_layers (
+create or replace function mas_generate_layers (
   gpath text
 )
   returns jsonb language plpgsql as $$
@@ -550,8 +539,7 @@ create function mas_generate_layers (
   end
 $$;
 
-drop function if exists mas_list_namespaces;
-create function mas_list_namespaces (
+create or replace function mas_list_namespaces (
   gpath text
 )
   returns jsonb language plpgsql as $$
@@ -587,8 +575,7 @@ create function mas_list_namespaces (
   end
 $$;
 
-drop function if exists mas_list_namespace_axes;
-create function mas_list_namespace_axes (
+create or replace function mas_list_namespace_axes (
   gpath text,
   namespaces jsonb
 )
@@ -629,8 +616,7 @@ create function mas_list_namespace_axes (
   end
 $$;
 
-drop function if exists mas_list_root_gpath;
-create function mas_list_root_gpath ()
+create or replace function mas_list_root_gpath ()
   returns jsonb language plpgsql as $$
   declare
     result jsonb;
@@ -650,8 +636,7 @@ create function mas_list_root_gpath ()
   end
 $$;
 
-drop function if exists mas_list_sub_gpath;
-create function mas_list_sub_gpath (
+create or replace function mas_list_sub_gpath (
   gpath text
 )
   returns jsonb language plpgsql as $$

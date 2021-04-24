@@ -30,8 +30,7 @@ create unlogged table ingest (
 );
 
 -- Ingest a record from a crawler (3-column TSV)
-drop function if exists ingest_line();
-create function ingest_line()
+create or replace function ingest_line()
   returns trigger language plpgsql as $$
 
   begin
@@ -117,8 +116,7 @@ create trigger ingest before insert on ingest
   for each row execute procedure ingest_line();
 
 -- Ingest a batch of crawler records (3-column TSV)
-drop function if exists ingested_lines();
-create function ingested_lines()
+create or replace function ingested_lines()
   returns trigger language plpgsql as $$
 
   begin
@@ -418,8 +416,7 @@ create view netcdf as
 ;
 
 -- Refresh the state of this schema after an ingest operation
-drop function if exists refresh_views();
-create function refresh_views()
+create or replace function refresh_views()
   returns boolean language plpgsql as $$
 
   declare
@@ -476,8 +473,7 @@ create function refresh_views()
   end
 $$;
 
-drop function if exists refresh_polygons();
-create function refresh_polygons()
+create or replace function refresh_polygons()
   returns boolean language plpgsql as $$
 
   declare
@@ -672,8 +668,7 @@ create unlogged table timestamps_cache (
   timestamps jsonb not null
 );
 
-drop function if exists refresh_caches();
-create function refresh_caches()
+create or replace function refresh_caches()
   returns boolean language plpgsql as $$
   begin
     raise notice 'refresh caches';
@@ -682,8 +677,7 @@ create function refresh_caches()
   end
 $$;
 
-drop function if exists refresh_codegens();
-create function refresh_codegens()
+create or replace function refresh_codegens()
 returns boolean language plpgsql as $$
   begin
     raise notice 'refresh codegen';
@@ -694,8 +688,7 @@ returns boolean language plpgsql as $$
   end
 $$;
 
-drop function if exists codegen_shard_intersect_times();
-create function codegen_shard_intersect_times()
+create or replace function codegen_shard_intersect_times()
   returns text language plpgsql as $$
   declare
     str text;
@@ -734,8 +727,7 @@ create function codegen_shard_intersect_times()
 
     return format($f$
 
-      drop function if exists shard_intersect_times;
-      create function shard_intersect_times(
+      create or replace function shard_intersect_times(
           gpath text,
           namespaces text[],
           time_a timestamptz,
@@ -753,8 +745,7 @@ create function codegen_shard_intersect_times()
   end
 $$;
 
-drop function if exists codegen_shard_intersect_polygons();
-create function codegen_shard_intersect_polygons()
+create or replace function codegen_shard_intersect_polygons()
   returns text language plpgsql as $$
   declare
     str text;
@@ -837,8 +828,7 @@ create function codegen_shard_intersect_polygons()
 
     return format($f$
 
-      drop function if exists shard_intersect_polygons;
-      create function shard_intersect_polygons(
+      create or replace function shard_intersect_polygons(
           gpath text,
           bbox geometry,
           namespaces text[],
@@ -857,8 +847,7 @@ create function codegen_shard_intersect_polygons()
   end
 $$;
 
-drop function if exists codegen_gdal_json();
-create function codegen_gdal_json()
+create or replace function codegen_gdal_json()
   returns text language plpgsql as $$
   begin
 
