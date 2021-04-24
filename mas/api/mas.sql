@@ -229,6 +229,7 @@ create function mas_intersects(
   returns jsonb language plpgsql as $$
   declare
 
+    shard      text;
     srid       integer; -- spatial_ref_sys.srid
     in_geom    geometry; -- temp variable for supplied WKT geometry
     mask       geometry; -- supplied WKT geometry
@@ -246,7 +247,11 @@ create function mas_intersects(
     end if;
 
     perform mas_reset();
-    perform mas_view(gpath);
+    shard := mas_view(gpath);
+
+    if shard = '' then
+      return jsonb_build_object('gdal', '[]'::jsonb);
+    end if;
 
     if srs is null or wkt is null then
       segmask := null;
