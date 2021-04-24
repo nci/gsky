@@ -208,156 +208,6 @@ create function mas_view(gpath text)
   end
 $$;
 
--- Construct an intersection query on "polygons" as a union of statements using
--- each relevant partial index on srid -- ie, how to do indexed postgis
--- intersections with mixed srids.
-
-drop function if exists mas_intersect_polygons;
-create function mas_intersect_polygons(
-  gpath text,
-  bbox geometry,
-  namespaces text[],
-  time_a timestamptz,
-  time_b timestamptz,
-  limit_val integer
-)
-  returns text language plpgsql as $$
-
-  declare
-
-    str text;
-    parts text[];
-    rec record;
-    qstr text;
-    limit_str text;
-
-  begin
-
-    if limit_val <= 0 then
-      limit_str := '';
-    else
-      limit_str := format(' limit %1$s ', limit_val);
-    end if;
-
-    -- this is the fast path - non-spatial query
-    if bbox is null then
-      str := format($f$
-          select
-            distinct pa_path as file
-          from
-            polygons
-          inner join paths
-              on po_hash = pa_hash
-          where
-            (
-              -- no times
-              %1$L::timestamptz is null
-
-              -- %1$L::timestamptz only
-              or (%1$L::timestamptz is not null and %2$L::timestamptz is null
-                and %1$L::timestamptz between po_min_stamp and po_max_stamp
-                and %1$L::timestamptz = any(po_stamps)
-              )
-
-              -- %1$L::timestamptz and %2$L::timestamptz range overlaps stamps
-              or (%1$L::timestamptz is not null and %2$L::timestamptz is not null
-                and ('[' || %1$L::timestamptz - interval '1 second' || ',' || %2$L::timestamptz + interval '1 second' || ']')::tstzrange && po_duration
-              )
-            )
-            and (%3$L is null
-              or po_name = any(%3$L)
-            )
-            and path_hash(%4$L) = any(pa_parents)
-            %5$s
-
-          $f$, time_a, time_b, namespaces, gpath, limit_str);
-
-      return str;
-
-    end if;
-
-    for rec in select ps_srid as srid from polygon_srids loop
-
-      parts := array_append(parts, format($f$
-        (
-        select
-          po_hash
-        from
-          polygons
-        inner join
-          geometries
-            on ge_srid = %1$s
-        inner join paths
-            on po_hash = pa_hash
-        where
-          st_srid(po_polygon) = %1$s
-
-          and (
-            ST_Intersects(po_polygon, ge_geom)
-            -- Lossy transform gemoetry may have become a linestring if any points could not be transformed
-            or ST_Crosses(po_polygon, ge_geom)
-          )
-
-          and (
-            -- no times
-            %2$L::timestamptz is null
-
-            -- %2$L::timestamptz only
-            or (%2$L::timestamptz is not null and %3$L::timestamptz is null
-              and %2$L::timestamptz between po_min_stamp and po_max_stamp
-              and %2$L::timestamptz = any(po_stamps)
-            )
-
-            -- %2$L::timestamptz and %3$L::timestamptz range overlaps stamps
-            or (%2$L::timestamptz is not null and %3$L::timestamptz is not null
-              and ('[' || %2$L::timestamptz - interval '1 second' || ',' || %3$L::timestamptz + interval '1 second' || ']')::tstzrange && po_duration
-            )
-          )
-          and (%4$L is null
-            or po_name = any(%4$L)
-          )
-          and path_hash(%5$L) = any(pa_parents)
-          %6$s )
-
-        $f$, rec.srid, time_a, time_b, namespaces, gpath, limit_str
-
-      ));
-
-    end loop;
-
-    -- for empty shards
-    qstr := coalesce(
-      nullif(array_to_string(parts, ' union '), ''),
-      'select null::uuid as po_hash limit 0'
-    );
-
-    str := format($f$
-
-      with
-      geometries as (
-        select
-          ps_srid
-            as ge_srid,
-          ST_ConvexHull(ST_LossyTransform(%2$L, ps_srid))
-            as ge_geom
-        from
-          polygon_srids
-      )
-      select
-        distinct(
-          path_unhash(po_hash)
-        )
-          as file
-      from (select distinct(po_hash) as po_hash from (%1$s) u %3$s) hashes
-
-      $f$, qstr, bbox, limit_str
-    );
-
-    return str;
-
-  end
-$$;
-
 -- Find files that contain data within a given bounding polygon, optionally
 -- filtered by time, namespace (netcdf variable), etc.
 -- Include raw metadata from crawlers for each matched file, if requested.
@@ -379,6 +229,7 @@ create function mas_intersects(
   returns jsonb language plpgsql as $$
   declare
 
+    shard      text;
     srid       integer; -- spatial_ref_sys.srid
     in_geom    geometry; -- temp variable for supplied WKT geometry
     mask       geometry; -- supplied WKT geometry
@@ -396,7 +247,11 @@ create function mas_intersects(
     end if;
 
     perform mas_reset();
-    perform mas_view(gpath);
+    shard := mas_view(gpath);
+
+    if shard = '' then
+      return jsonb_build_object('gdal', '[]'::jsonb);
+    end if;
 
     if srs is null or wkt is null then
       segmask := null;
@@ -427,7 +282,7 @@ create function mas_intersects(
         dp_tol := -1.0;
       end if;
 
-      if ST_NPoints(in_geom) > 100 and identity_tol >= 0 and dp_tol >= 0 then
+      if identity_tol >= 0 and dp_tol >= 0 and ST_NPoints(in_geom) > 100 then
         mask := ST_SimplifyPreserveTopology(ST_RemoveRepeatedPoints(in_geom, identity_tol), dp_tol);
         if mask is null then
           mask := in_geom;
@@ -453,90 +308,16 @@ create function mas_intersects(
       );
     end if;
 
-    if limit_val is null then
-      limit_val := -1;
+    if limit_val <= 0 then
+      limit_val := null;
     end if;
 
-    qstr := mas_intersect_polygons(gpath, segmask, namespace, time_a, time_b, limit_val);
-
-    files := array[]::text[];
-
-    for rec in execute qstr loop
-      files := array_append(files, rec.file);
-    end loop;
-
-    result := jsonb_build_object(
-      'files',
-      to_jsonb(files)
-    );
-
-    -- &metadata=gdal - bundle some raw GDAL metadata for GSKY
     if raw_metadata = 'gdal' then
-
-      result := jsonb_build_object('gdal', coalesce((
-
-        select
-          jsonb_agg(dataset)
-
-        from
-          metadata
-
-        inner join
-          -- Extract and iterate the files discovered above
-          jsonb_array_elements_text(result->'files') path
-            on md_hash = path_hash(path.value)
-
-        inner join lateral (
-
-          select
-            jsonb_build_object(
-              'file_path',
-              path.value,
-              'ds_name',
-              geo->>'ds_name',
-              'namespace',
-              regexp_replace(trim(geo->>'namespace'), '[^a-zA-Z0-9_]', '_', 'g'),
-              'array_type',
-              geo->'array_type',
-              'srs',
-              geo->'proj_wkt',
-              'geo_transform',
-              geo->'geotransform',
-              'timestamps',
-              geo->'timestamps',
-              'polygon',
-              geo->>'polygon',
-              'overviews',
-              geo->'overviews',
-              'means',
-              geo->'means',
-              'sample_counts',
-              geo->'sample_counts',
-              'nodata',
-              geo->'nodata',
-              'axes',
-              geo->'axes',
-              'geo_loc',
-              geo->'geo_loc'
-            )
-              as dataset
-
-          from
-            jsonb_array_elements(md_json->'geo_metadata') geo
-
-        ) t
-          on true
-
-        where
-          md_type = 'gdal'
-
-          and (
-            namespace is null
-            or dataset->>'namespace' = any(namespace)
-          )
-
-      ), '[]'::jsonb));
-
+      if segmask is not null then
+        return shard_intersect_polygons(gpath, segmask, namespace, time_a, time_b, limit_val);
+      else
+        return shard_intersect_times(gpath, namespace, time_a, time_b, limit_val);
+      end if;
     end if;
 
     perform mas_reset();
