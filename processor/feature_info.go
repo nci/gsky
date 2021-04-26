@@ -300,7 +300,8 @@ func getRaster(ctx context.Context, params utils.WMSParams, conf *utils.Config, 
 	masAddress := styleLayer.MASAddress
 	hasOverview := len(styleLayer.Overviews) > 0
 	if hasOverview {
-		iOvr := utils.FindLayerBestOverview(styleLayer, reqRes, true)
+		allowExtrapolation := styleLayer.ZoomLimit > 0
+		iOvr := utils.FindLayerBestOverview(styleLayer, reqRes, allowExtrapolation)
 		if iOvr >= 0 {
 			ovr := styleLayer.Overviews[iOvr]
 			geoReq.Collection = ovr.DataSource
