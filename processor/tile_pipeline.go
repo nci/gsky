@@ -490,7 +490,8 @@ func (dp *TilePipeline) prepareInputGeoRequests(geoReq *GeoTileRequest, depLayer
 		if useOverview {
 			hasOverview := len(styleLayer.Overviews) > 0
 			if hasOverview {
-				iOvr := utils.FindLayerBestOverview(styleLayer, geoReq.ReqRes, true)
+				allowExtrapolation := styleLayer.ZoomLimit > 0
+				iOvr := utils.FindLayerBestOverview(styleLayer, geoReq.ReqRes, allowExtrapolation)
 				if iOvr >= 0 {
 					ovr := styleLayer.Overviews[iOvr]
 					ctx.GeoReq.Collection = ovr.DataSource
