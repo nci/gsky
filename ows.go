@@ -453,18 +453,6 @@ func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r
 			geoReq.ConfigPayLoad.BandExpr = params.BandExpr
 		}
 
-		masAddress := styleLayer.MASAddress
-		hasOverview := len(styleLayer.Overviews) > 0
-		if hasOverview {
-			allowExtrapolation := styleLayer.ZoomLimit > 0
-			iOvr := utils.FindLayerBestOverview(styleLayer, reqRes, allowExtrapolation)
-			if iOvr >= 0 {
-				ovr := styleLayer.Overviews[iOvr]
-				geoReq.Collection = ovr.DataSource
-				masAddress = ovr.MASAddress
-			}
-		}
-
 		ctx, ctxCancel := context.WithCancel(ctx)
 		defer ctxCancel()
 		errChan := make(chan error, 100)
@@ -472,25 +460,21 @@ func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r
 		timeoutCtx, timeoutCancel := context.WithTimeout(context.Background(), time.Duration(conf.Layers[idx].WmsTimeout)*time.Second)
 		defer timeoutCancel()
 
-		tp := proc.InitTilePipeline(ctx, masAddress, conf.ServiceConfig.WorkerNodes, conf.Layers[idx].MaxGrpcRecvMsgSize, conf.Layers[idx].WmsPolygonShardConcLimit, conf.ServiceConfig.MaxGrpcBufferSize, errChan)
+		tp := proc.InitTilePipeline(ctx, styleLayer.MASAddress, conf.ServiceConfig.WorkerNodes, conf.Layers[idx].MaxGrpcRecvMsgSize, conf.Layers[idx].WmsPolygonShardConcLimit, conf.ServiceConfig.MaxGrpcBufferSize, errChan)
 		tp.CurrentLayer = styleLayer
 		tp.DataSources = getConfigMap()
 
-		if !hasOverview && styleLayer.ZoomLimit != 0.0 && reqRes > styleLayer.ZoomLimit {
-			geoReq.Mask = nil
-			geoReq.QueryLimit = 1
-
-			hasData := false
-			indexerOut, err := tp.GetFileList(geoReq, *verbose)
-			if err == nil {
-				for _, geo := range indexerOut {
-					if geo.NameSpace != utils.EmptyTileNS {
-						hasData = true
-						break
-					}
-				}
+		hasOverview := len(styleLayer.Overviews) > 0
+		if hasOverview {
+			allowExtrapolation := styleLayer.ZoomLimit > 0
+			iOvr := utils.FindLayerBestOverview(styleLayer, reqRes, allowExtrapolation)
+			if iOvr >= 0 {
+				geoReq.Overview = &styleLayer.Overviews[iOvr]
 			}
+		}
 
+		if !hasOverview && styleLayer.ZoomLimit != 0.0 && reqRes > styleLayer.ZoomLimit {
+			hasData := tp.HasFiles(geoReq, *verbose)
 			if hasData {
 				out, err := utils.GetEmptyTile(utils.DataDir+"/zoom.png", *params.Height, *params.Width)
 				if err != nil {
@@ -1072,9 +1056,7 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 					reqRes := utils.GetPixelResolution(bbox, geoReq.Width, geoReq.Height)
 					iOvr := utils.FindLayerBestOverview(styleLayer, reqRes, false)
 					if iOvr >= 0 {
-						ovr := styleLayer.Overviews[iOvr]
-						geoReq.Collection = ovr.DataSource
-						tp.MASAddress = ovr.MASAddress
+						geoReq.Overview = &styleLayer.Overviews[iOvr]
 					}
 				} else if *verbose {
 					Info.Printf("WCS: processing tile (%d of %d): %v", ir+1, len(workerTileRequests[0]), err)

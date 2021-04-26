@@ -49,8 +49,24 @@ func InitTilePipeline(ctx context.Context, masAddr string, rpcAddr []string, max
 }
 
 func (dp *TilePipeline) Process(geoReq *GeoTileRequest, verbose bool) chan []utils.Raster {
+	masAddress := dp.MASAddress
+	if geoReq.Overview != nil {
+		dataSource := geoReq.Collection
+		indexResLimit := geoReq.IndexResLimit
 
-	i := NewTileIndexer(dp.Context, dp.MASAddress, dp.Error)
+		geoReq.Collection = geoReq.Overview.DataSource
+		dp.MASAddress = geoReq.Overview.MASAddress
+		hasData := dp.HasFiles(geoReq, verbose)
+		dp.MASAddress = masAddress
+		masAddress = geoReq.Overview.MASAddress
+		if !hasData {
+			geoReq.Collection = dataSource
+			geoReq.IndexResLimit = indexResLimit
+			masAddress = dp.MASAddress
+		}
+	}
+
+	i := NewTileIndexer(dp.Context, masAddress, dp.Error)
 	m := NewRasterMerger(dp.Context, dp.Error)
 	grpcTiler := NewRasterGRPC(dp.Context, dp.RPCAddress, dp.MaxGrpcRecvMsgSize, dp.PolygonShardConcLimit, dp.MaxGrpcBufferSize, dp.Error)
 
@@ -191,6 +207,30 @@ func (dp *TilePipeline) GetFileList(geoReq *GeoTileRequest, verbose bool) ([]*Ge
 	}
 
 	return totalGrans, nil
+}
+
+func (dp *TilePipeline) HasFiles(geoReq *GeoTileRequest, verbose bool) bool {
+	mask := geoReq.Mask
+	queryLimit := geoReq.QueryLimit
+
+	geoReq.Mask = nil
+	geoReq.QueryLimit = 1
+
+	hasData := false
+	indexerOut, err := dp.GetFileList(geoReq, verbose)
+	if err == nil {
+		for _, geo := range indexerOut {
+			if geo.NameSpace != utils.EmptyTileNS {
+				hasData = true
+				break
+			}
+		}
+	}
+
+	geoReq.Mask = mask
+	geoReq.QueryLimit = queryLimit
+
+	return hasData
 }
 
 func (dp *TilePipeline) processDeps(geoReq *GeoTileRequest, verbose bool) ([]*FlexRaster, error) {
@@ -493,10 +533,7 @@ func (dp *TilePipeline) prepareInputGeoRequests(geoReq *GeoTileRequest, depLayer
 				allowExtrapolation := styleLayer.ZoomLimit > 0
 				iOvr := utils.FindLayerBestOverview(styleLayer, geoReq.ReqRes, allowExtrapolation)
 				if iOvr >= 0 {
-					ovr := styleLayer.Overviews[iOvr]
-					ctx.GeoReq.Collection = ovr.DataSource
-					masAddress = ovr.MASAddress
-
+					ctx.GeoReq.Overview = &styleLayer.Overviews[iOvr]
 				}
 			}
 		}
