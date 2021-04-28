@@ -70,6 +70,7 @@ type GeoTileRequest struct {
 	StartTime     *time.Time
 	EndTime       *time.Time
 	Axes          map[string]*GeoTileAxis
+	Overview      *utils.Layer
 }
 
 type GeoTileGranule struct {

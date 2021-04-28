@@ -266,6 +266,7 @@ func getRaster(ctx context.Context, params utils.WMSParams, conf *utils.Config, 
 		UserSrcGeoTransform: conf.Layers[idx].UserSrcGeoTransform,
 		AxisMapping:         conf.Layers[idx].WmsAxisMapping,
 		MasQueryHint:        conf.Layers[idx].MasQueryHint,
+		ReqRes:              reqRes,
 		SRSCf:               conf.Layers[idx].SRSCf,
 		FusionUnscale:       1,
 		GrpcTileXSize:       conf.Layers[idx].GrpcTileXSize,
@@ -303,9 +304,7 @@ func getRaster(ctx context.Context, params utils.WMSParams, conf *utils.Config, 
 		allowExtrapolation := styleLayer.ZoomLimit > 0
 		iOvr := utils.FindLayerBestOverview(styleLayer, reqRes, allowExtrapolation)
 		if iOvr >= 0 {
-			ovr := styleLayer.Overviews[iOvr]
-			geoReq.Collection = ovr.DataSource
-			masAddress = ovr.MASAddress
+			geoReq.Overview = &styleLayer.Overviews[iOvr]
 		}
 	}
 
