@@ -506,6 +506,7 @@ func (dp *TilePipeline) prepareInputGeoRequests(geoReq *GeoTileRequest, depLayer
 			NoReprojection:      geoReq.NoReprojection,
 			AxisMapping:         layer.WmsAxisMapping,
 			MasQueryHint:        layer.MasQueryHint,
+			ReqRes:              geoReq.ReqRes,
 			SRSCf:               layer.SRSCf,
 			FusionUnscale:       geoReq.FusionUnscale,
 			GrpcTileXSize:       layer.GrpcTileXSize,
@@ -526,7 +527,6 @@ func (dp *TilePipeline) prepareInputGeoRequests(geoReq *GeoTileRequest, depLayer
 			Axes:       geoReq.Axes,
 		}
 
-		masAddress := styleLayer.MASAddress
 		if useOverview {
 			hasOverview := len(styleLayer.Overviews) > 0
 			if hasOverview {
@@ -537,7 +537,7 @@ func (dp *TilePipeline) prepareInputGeoRequests(geoReq *GeoTileRequest, depLayer
 				}
 			}
 		}
-		ctx.MASAddress = masAddress
+		ctx.MASAddress = styleLayer.MASAddress
 	}
 }
 
