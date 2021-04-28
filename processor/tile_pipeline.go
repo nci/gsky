@@ -52,16 +52,17 @@ func (dp *TilePipeline) Process(geoReq *GeoTileRequest, verbose bool) chan []uti
 	masAddress := dp.MASAddress
 	if geoReq.Overview != nil {
 		dataSource := geoReq.Collection
-		indexResLimit := geoReq.IndexResLimit
+		spatialExtent := geoReq.SpatialExtent
 
 		geoReq.Collection = geoReq.Overview.DataSource
+		geoReq.SpatialExtent = geoReq.Overview.SpatialExtent
 		dp.MASAddress = geoReq.Overview.MASAddress
 		hasData := dp.HasFiles(geoReq, verbose)
 		dp.MASAddress = masAddress
 		masAddress = geoReq.Overview.MASAddress
 		if !hasData {
 			geoReq.Collection = dataSource
-			geoReq.IndexResLimit = indexResLimit
+			geoReq.SpatialExtent = spatialExtent
 			masAddress = dp.MASAddress
 		}
 	}
