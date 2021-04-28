@@ -810,7 +810,7 @@ func doSelectionByRange(axis *DatasetAxis, tileAxis *GeoTileAxis, geoReq *GeoTil
 		}
 	} else if axis.Grid == "default" {
 		for it, t := range ds.TimeStamps {
-			if t.Equal(*geoReq.StartTime) || geoReq.EndTime != nil && t.After(*geoReq.StartTime) && t.Before(*geoReq.EndTime) {
+			if t.Equal(*geoReq.StartTime) || geoReq.EndTime != nil && (t.Equal(*geoReq.EndTime) || t.After(*geoReq.StartTime) && t.Before(*geoReq.EndTime)) {
 				axis.IntersectionIdx = append(axis.IntersectionIdx, it)
 				axis.IntersectionValues = append(axis.IntersectionValues, float64(ds.TimeStamps[it].Unix()))
 			}

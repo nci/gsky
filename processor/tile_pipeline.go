@@ -53,9 +53,18 @@ func (dp *TilePipeline) Process(geoReq *GeoTileRequest, verbose bool) chan []uti
 	if geoReq.Overview != nil {
 		dataSource := geoReq.Collection
 		spatialExtent := geoReq.SpatialExtent
+		endTime := geoReq.EndTime
 
 		geoReq.Collection = geoReq.Overview.DataSource
 		geoReq.SpatialExtent = geoReq.Overview.SpatialExtent
+		if !geoReq.Overview.Accum {
+			geoReq.EndTime = nil
+		} else {
+			step := time.Minute * time.Duration(60*24*geoReq.Overview.StepDays+60*geoReq.Overview.StepHours+geoReq.Overview.StepMinutes)
+			et := geoReq.StartTime.Add(step)
+			geoReq.EndTime = &et
+		}
+
 		dp.MASAddress = geoReq.Overview.MASAddress
 		hasData := dp.HasFiles(geoReq, verbose)
 		dp.MASAddress = masAddress
@@ -63,6 +72,7 @@ func (dp *TilePipeline) Process(geoReq *GeoTileRequest, verbose bool) chan []uti
 		if !hasData {
 			geoReq.Collection = dataSource
 			geoReq.SpatialExtent = spatialExtent
+			geoReq.EndTime = endTime
 			masAddress = dp.MASAddress
 		}
 	}
