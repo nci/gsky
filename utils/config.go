@@ -777,6 +777,22 @@ func LoadAllConfigFiles(searchPath string, verbose bool) (map[string]*Config, er
 	return configMap, err
 }
 
+func LoadConfigTimestamps(config *Config, verbose bool) error {
+	for iLayer := range config.Layers {
+		config.GetLayerDates(iLayer, verbose)
+	}
+
+	confMap := make(map[string]*Config)
+	confMap[config.ServiceConfig.NameSpace] = config
+	for iLayer := range config.Layers {
+		err := config.processFusionTimestamps(iLayer, confMap)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // Unmarshal is wrapper around json.Unmarshal that returns user-friendly
 // errors when there are syntax errors.
 // https://github.com/hashicorp/packer/blob/master/common/json/unmarshal.go
@@ -1621,6 +1637,9 @@ func (config *Config) LoadConfigString(cfg []byte, verbose bool) error {
 		}
 		config.Layers[i].FeatureInfoExpressions = featureInfoExpr
 
+		if len(strings.TrimSpace(config.Layers[i].TimestampsLoadStrategy)) == 0 {
+			config.Layers[i].TimestampsLoadStrategy = "on_demand"
+		}
 		if config.Layers[i].TimestampsLoadStrategy != "on_demand" {
 			config.GetLayerDates(i, verbose)
 		}

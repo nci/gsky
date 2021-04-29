@@ -186,12 +186,10 @@ func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r
 			return
 		}
 
-		conf = conf.Copy(r)
-		for iLayer := range conf.Layers {
-			conf.GetLayerDates(iLayer, *verbose)
-		}
+		newConf := conf.Copy(r)
+		utils.LoadConfigTimestamps(newConf, *verbose)
 
-		err := utils.ExecuteWriteTemplateFile(w, conf,
+		err := utils.ExecuteWriteTemplateFile(w, newConf,
 			utils.DataDir+"/templates/WMS_GetCapabilities.tpl")
 		if err != nil {
 			metricsCollector.Info.HTTPStatus = 500
@@ -608,8 +606,8 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 		}
 
 		newConf := conf.Copy(r)
+		utils.LoadConfigTimestamps(newConf, *verbose)
 		for i := range newConf.Layers {
-			conf.GetLayerDates(i, *verbose)
 			if len(newConf.Layers[i].Dates) > 0 {
 				newConf.Layers[i].Dates = []string{newConf.Layers[i].Dates[0], newConf.Layers[i].Dates[len(newConf.Layers[i].Dates)-1]}
 			}
