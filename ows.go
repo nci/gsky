@@ -1688,6 +1688,12 @@ func owsHandler(w http.ResponseWriter, r *http.Request) {
 				namespaceErr(err)
 				return
 			}
+			for _, v := range conf {
+				if len(v.Layers) == 0 {
+					namespaceErr(fmt.Errorf("config returned from MAS has no layers"))
+					return
+				}
+			}
 		}
 		for k, v := range conf {
 			confMap[k] = v
