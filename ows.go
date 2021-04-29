@@ -186,15 +186,48 @@ func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r
 			return
 		}
 
-		newConf := conf.Copy(r)
-		utils.LoadConfigTimestamps(newConf, *verbose)
+		query := fmt.Sprintf("%swms_getcaps", r.URL.Path)
+		gpath := utils.FindConfigGPath(conf)
+		owsCache := utils.NewOWSCache(conf.ServiceConfig.MASAddress, gpath, *verbose)
+		newConf, err := owsCache.GetConfig(query)
+		cacheMiss := false
+		if err != nil {
+			if *verbose {
+				log.Printf("WMS GetCapabilities get cache error: %v", err)
+			}
+			cacheMiss = true
+		} else if newConf == nil {
+			cacheMiss = true
+		} else if len(newConf.Layers) == 0 {
+			cacheMiss = true
+		}
 
-		err := utils.ExecuteWriteTemplateFile(w, newConf,
+		if cacheMiss {
+			newConf = conf.Copy(r)
+			utils.LoadConfigTimestamps(newConf, *verbose)
+		}
+
+		err = utils.ExecuteWriteTemplateFile(w, newConf,
 			utils.DataDir+"/templates/WMS_GetCapabilities.tpl")
 		if err != nil {
 			metricsCollector.Info.HTTPStatus = 500
 			http.Error(w, err.Error(), 500)
 		}
+
+		if cacheMiss {
+			jsonBytes, mErr := json.Marshal(newConf)
+			if mErr == nil {
+				err = owsCache.Put(query, string(jsonBytes))
+				if err != nil {
+					if *verbose {
+						log.Printf("WMS GetCapabilities put cache error: %v", err)
+					}
+				}
+			} else {
+				log.Printf("json.Marshal failed for WMS GetCapabilities")
+			}
+		}
+
 	case "GetFeatureInfo":
 		x, y, err := utils.GetCoordinates(params)
 		if err != nil {

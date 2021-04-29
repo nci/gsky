@@ -660,19 +660,17 @@ create or replace function refresh_polygons()
   end
 $$;
 
-drop table if exists timestamps_cache cascade;
-
--- cache for timestamps
-create unlogged table timestamps_cache (
-  query_id text primary key,
-  timestamps jsonb not null
+drop table if exists ows_cache cascade;
+create table ows_cache (
+  query_id uuid primary key,
+  value jsonb not null
 );
 
 create or replace function refresh_caches()
   returns boolean language plpgsql as $$
   begin
     raise notice 'refresh caches';
-    truncate timestamps_cache;
+    truncate ows_cache;
     return true;
   end
 $$;

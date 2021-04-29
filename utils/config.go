@@ -80,6 +80,7 @@ type ServiceConfig struct {
 	TempDir           string   `json:"temp_dir"`
 	MaxGrpcBufferSize int      `json:"max_grpc_buffer_size"`
 	EnableAutoLayers  bool     `json:"enable_auto_layers"`
+	OWSCacheGPath     string   `json:"ows_cache_gpath"`
 }
 
 type Mask struct {

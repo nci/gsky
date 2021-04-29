@@ -589,7 +589,7 @@ create or replace function mas_timestamps(
   returns jsonb language plpgsql as $$
   declare
     result     jsonb;
-    query_hash text;
+    query_hash uuid;
     shard      text;
   begin
 
@@ -605,16 +605,16 @@ create or replace function mas_timestamps(
     end if;
 
     query_hash := md5(concat(gpath, coalesce(time_a::text, 'null'),
-      coalesce(time_b::text, 'null'), array_to_string(namespace, ',', 'null')));
+      coalesce(time_b::text, 'null'), array_to_string(namespace, ',', 'null')))::uuid;
 
-    if token is not null and token = query_hash then
-      select jsonb_build_object('timestamps', '[]'::jsonb, 'token', query_hash) into result from timestamps_cache where query_id = query_hash;
+    if token is not null and token = query_hash::text then
+      select jsonb_build_object('timestamps', '[]'::jsonb, 'token', query_hash) into result from ows_cache where query_id = query_hash;
       if result is not null then
         return result;
       end if;
     end if;
 
-    select timestamps || jsonb_build_object('token', query_hash) into result from timestamps_cache where query_id = query_hash;
+    select value || jsonb_build_object('token', query_hash) into result from ows_cache where query_id = query_hash;
     if result is not null then
       return result;
     end if;
@@ -657,12 +657,75 @@ create or replace function mas_timestamps(
 
      ), '[]'::jsonb), 'token', query_hash);
 
-     insert into timestamps_cache (query_id, timestamps) values (query_hash, result)
+     insert into ows_cache (query_id, value) values (query_hash, result)
      on conflict (query_id) do nothing;
 
      perform mas_reset();
      return result;
 
+  end
+$$;
+
+create or replace function mas_put_ows_cache(
+  gpath      text,
+  query      text,
+  val        jsonb
+)
+  returns jsonb language plpgsql as $$
+  declare
+    query_hash uuid;
+    shard      text;
+  begin
+
+    if gpath is null then
+      raise exception 'invalid search path';
+    end if;
+
+    perform mas_reset();
+    shard := mas_view(gpath);
+
+    if shard = '' then
+      raise exception 'invalid search path';
+    end if;
+
+    query_hash := md5(query)::uuid;
+    insert into ows_cache (query_id, value) values (query_hash, val)
+      on conflict (query_id) do update set value = val;
+
+    perform mas_reset();
+    return jsonb_build_object('error', '');
+  end
+$$;
+
+create or replace function mas_get_ows_cache(
+  gpath      text,
+  query   text
+)
+  returns jsonb language plpgsql as $$
+  declare
+    query_hash uuid;
+    shard      text;
+    result     jsonb;
+  begin
+
+    if gpath is null then
+      raise exception 'invalid search path';
+    end if;
+
+    perform mas_reset();
+    shard := mas_view(gpath);
+
+    if shard = '' then
+      raise exception 'invalid search path';
+    end if;
+
+    query_hash := md5(query)::uuid;
+
+    result := jsonb_build_object('value',
+      (select value from ows_cache where query_id = query_hash));
+
+    perform mas_reset();
+    return result;
   end
 $$;
 
