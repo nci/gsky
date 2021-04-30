@@ -834,6 +834,7 @@ func (config *Config) postprocessConfig(ns string) error {
 			ns = ""
 		}
 
+		config.ServiceConfig.NameSpace = ns
 		if len(config.Layers[i].MASAddress) == 0 {
 			config.Layers[i].MASAddress = config.ServiceConfig.MASAddress
 		}

@@ -46,6 +46,7 @@ import (
 // Global variable to hold the values specified
 // on the config.json document.
 var configMap *sync.Map
+var mutex *sync.Mutex
 var builtinPalettes *utils.BuiltinPalettes
 var (
 	port            = flag.Int("p", 8080, "Server listening port.")
@@ -130,6 +131,8 @@ func init() {
 	configMap.Store("config", confMap)
 
 	utils.WatchConfig(Info, Error, configMap, *verbose)
+
+	mutex = &sync.Mutex{}
 
 	builtinPalettes = utils.NewBuiltinPalettes()
 
@@ -225,6 +228,16 @@ func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r
 				}
 			} else {
 				log.Printf("json.Marshal failed for WMS GetCapabilities")
+			}
+
+		}
+
+		for iLayer := range conf.Layers {
+			if len(conf.Layers[iLayer].EffectiveStartDate) == 0 && len(newConf.Layers[iLayer].EffectiveStartDate) > 0 {
+				mutex.Lock()
+				conf.Layers[iLayer].EffectiveStartDate = newConf.Layers[iLayer].EffectiveStartDate
+				conf.Layers[iLayer].EffectiveEndDate = newConf.Layers[iLayer].EffectiveEndDate
+				mutex.Unlock()
 			}
 		}
 
@@ -1734,7 +1747,6 @@ func owsHandler(w http.ResponseWriter, r *http.Request) {
 		configMap.Store("config", confMap)
 		config, _ = conf[namespace]
 	}
-	config.ServiceConfig.NameSpace = namespace
 	generalHandler(config, w, r)
 }
 
