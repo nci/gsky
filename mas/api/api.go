@@ -137,6 +137,28 @@ func handler(response http.ResponseWriter, request *http.Request) {
 			request.URL.Path,
 		).Scan(&payload)
 
+	} else if _, ok := query["put_ows_cache"]; ok {
+		err = db.QueryRow(
+			`select mas_put_ows_cache(
+				nullif($1,'')::text,
+        nullif($2,'')::text,
+        nullif($3,'')::jsonb
+			) as json`,
+			request.URL.Path,
+			request.FormValue("query"),
+			request.FormValue("value"),
+		).Scan(&payload)
+
+	} else if _, ok := query["get_ows_cache"]; ok {
+		err = db.QueryRow(
+			`select mas_get_ows_cache(
+				nullif($1,'')::text,
+        nullif($2,'')::text
+			) as json`,
+			request.URL.Path,
+			request.FormValue("query"),
+		).Scan(&payload)
+
 	} else {
 		httpJSONError(response, errors.New("unknown operation; currently supported: ?intersects, ?timestamps, ?extents"), 400)
 		return

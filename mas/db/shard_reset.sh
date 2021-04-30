@@ -15,7 +15,7 @@ alter default privileges for role mas in schema ${shard}_tmp grant select on tab
 
 \\i shard.sql
 
-grant select,insert,update on ${shard}_tmp.timestamps_cache to api;
+grant select,insert,update on ${shard}_tmp.ows_cache to api;
 
 EOD
 )

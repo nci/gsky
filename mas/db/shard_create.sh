@@ -31,7 +31,7 @@ insert into public.shards (sh_code, sh_path)
 
 \\i shard.sql
 
-grant select,insert,update on ${shard}.timestamps_cache to api;
+grant select,insert,update on ${shard}.ows_cache to api;
 
 EOD
 )
