@@ -208,7 +208,10 @@ func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r
 
 		if cacheMiss {
 			newConf = conf.Copy(r)
-			utils.LoadConfigTimestamps(newConf, *verbose)
+			err = utils.LoadConfigTimestamps(newConf, *verbose)
+			if err != nil {
+				log.Printf("WMS GetCapabilities LoadConfigTimestamps error: %v", err)
+			}
 		}
 
 		err = utils.ExecuteWriteTemplateFile(w, newConf,

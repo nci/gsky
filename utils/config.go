@@ -783,8 +783,12 @@ func LoadConfigTimestamps(config *Config, verbose bool) error {
 		config.GetLayerDates(iLayer, verbose)
 	}
 
+	ns := config.ServiceConfig.NameSpace
+	if len(ns) == 0 {
+		ns = "."
+	}
 	confMap := make(map[string]*Config)
-	confMap[config.ServiceConfig.NameSpace] = config
+	confMap[ns] = config
 	for iLayer := range config.Layers {
 		err := config.processFusionTimestamps(iLayer, confMap)
 		if err != nil {
