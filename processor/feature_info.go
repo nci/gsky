@@ -340,13 +340,19 @@ func getRaster(ctx context.Context, params utils.WMSParams, conf *utils.Config, 
 
 	if conf.Layers[idx].FeatureInfoMaxAvailableDates != 0 {
 		geoReq.StartTime = &time.Time{}
-		currTime, _ := time.Parse(ISOFormat, conf.Layers[idx].Dates[len(conf.Layers[idx].Dates)-1])
-		step := 60*24*conf.Layers[idx].StepDays + 60*conf.Layers[idx].StepHours + conf.Layers[idx].StepMinutes
-		if step <= 0 {
-			step = 1
+
+		var currTime time.Time
+		if len(conf.Layers[idx].EffectiveEndDate) == 0 {
+			currTime = time.Now().UTC()
+		} else {
+			currTime, _ = time.Parse(ISOFormat, conf.Layers[idx].EffectiveEndDate)
+			step := 60*24*conf.Layers[idx].StepDays + 60*conf.Layers[idx].StepHours + conf.Layers[idx].StepMinutes
+			if step <= 0 {
+				step = 1
+			}
+			timeStep := time.Minute * time.Duration(step)
+			currTime = currTime.Add(timeStep)
 		}
-		timeStep := time.Minute * time.Duration(step)
-		currTime = currTime.Add(timeStep)
 		geoReq.EndTime = &currTime
 	}
 
