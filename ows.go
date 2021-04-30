@@ -189,7 +189,8 @@ func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r
 			return
 		}
 
-		query := fmt.Sprintf("%swms_getcaps", r.URL.Path)
+		urlPath := strings.Trim(r.URL.Path, "/")
+		query := fmt.Sprintf("wms_getcaps_%s", urlPath)
 		gpath := utils.FindConfigGPath(conf)
 		owsCache := utils.NewOWSCache(conf.ServiceConfig.MASAddress, gpath, *verbose)
 		newConf, err := owsCache.GetConfig(query)
