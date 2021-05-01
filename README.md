@@ -9,31 +9,41 @@ distributed server which presents a new approach for geospatial data
 discovery and delivery using OGC standards. The most recent release is
 [here](https://github.com/nci/gsky/releases).
 
-License
--------
-
-Copyright 2016 Australian National University
-
-Licensed under the Apache License, Version 2.0 (the "License"); you
-may not use this package except in compliance with the License.  A
-copy of the [License](http://www.apache.org/licenses/LICENSE-2.0) may
-be found in this source distribution in `LICENSE-2.0.txt`.
-
-Contributions
--------------
-
-Suggestions, enhancement requests, bug reports and patches to GSKY are
-welcome via this GitHub page. Please submit patches as a GitHub pull
-request. Authors retain copyright over their contributions.
-
 [![Build Status](https://travis-ci.org/nci/gsky.svg?branch=master)](https://travis-ci.org/nci/gsky)
 
-Citing GSKY in publications
----------------------------
+GSKY Docker Image
+-----------------
 
-When referring to GSKY in publications please use the citation in
-[CITATION.md](CITATION.md).  A ready-to-use BibTeX entry for LaTeX
-users can also be found in this file.
+The quickest way to try out GSKY is via GSKY docker image.
+
+GSKY's docker image ships with a fully functional environment of GSKY cluster,
+as well as sample data files and configuration files for testing.
+
+```
+docker pull gjmouse/gsky:latest
+```
+
+For more details of GSKY docker image, please refer [here](docker/README.md).
+
+Overview of Servers Components
+------------------------------
+
+GSKY mainly consists of three servers working together to deliver services. The main server (`ows.go`) is the front-end server that takes WMS/WCS/WPS HTTP requests as inputs. The main server talks to the MAS Restful API server (`mas/api/api.go`) for the data files that intersect with the polygon bounding box in the WMS/WCS/WPS requests. With those data files, the main server talks to the RPC worker nodes (`grpc-server/main.go`) for compute and IO intensive tasks and then sends the results back to the client side.
+
+How To Start the Servers
+------------------------
+
+- Start the MAS Restful API server: `/opt/gsky/sbin/masapi -port 8888`
+
+	The `-port` option sets the API server listening port. The default is port 8080.
+
+- Start all the RPC worker nodes: `/opt/gsky/sbin/gsky-rpc -p 6000`
+
+	The `-p` option sets the gRPC listening port. The default is port 6000.
+
+- Start the main server: `/opt/gsky/sbin/gsky-ows -p 8080`
+
+	The `-p` option sets the main server listening port. The default is port 8080.
 
 Configuration Files
 -------------------
@@ -68,18 +78,6 @@ Configuration Files
           config.json
    ```
 
-Docker Image
--------------------------
-
-GSKY's docker image ships with a fully functional environment of GSKY cluster,
-as well as some testing data files.
-
-```
-docker pull gjmouse/gsky:latest
-```
-
-For the details of building GSKY docker image, please refer [here](docker/README.md).
-
 How To Compile the Source
 -------------------------
 
@@ -100,22 +98,26 @@ $ make all install
 The `configure` script takes all of the standard GNU `configure` flags
 such as `--prefix` (to specify where to install GSKY).
 
-Overview of the Servers
------------------------
+Contributions
+-------------
 
-GSKY mainly consists of three servers working together to deliver services. The main server (`ows.go`) is the front-end server that takes WMS/WCS/WPS HTTP requests as inputs. The main server talks to the MAS Restful API server (`mas/api/api.go`) for the data files that intersect with the polygon bounding box in the WMS/WCS/WPS requests. With those data files, the main server talks to the RPC worker nodes (`grpc-server/main.go`) for compute and IO intensive tasks and then sends the results back to the client side.
+Suggestions, enhancement requests, bug reports and patches to GSKY are
+welcome via this GitHub page. Please submit patches as a GitHub pull
+request. Authors retain copyright over their contributions.
 
-How To Start the Servers
------------------------
+Citing GSKY in publications
+---------------------------
 
-- Start the MAS Restful API server: `/opt/gsky/sbin/masapi -port 8888`
+When referring to GSKY in publications please use the citation in
+[CITATION.md](CITATION.md).  A ready-to-use BibTeX entry for LaTeX
+users can also be found in this file.
 
-	The `-port` option sets the API server listening port. The default is port 8080.
+License
+-------
 
-- Start all the RPC worker nodes: `/opt/gsky/sbin/gsky-rpc -p 6000`
+Copyright 2016 Australian National University
 
-	The `-p` option sets the gRPC listening port. The default is port 6000.
-
-- Start the main server: `/opt/gsky/sbin/gsky-ows -p 8080`
-
-	The `-p` option sets the main server listening port. The default is port 8080.
+Licensed under the Apache License, Version 2.0 (the "License"); you
+may not use this package except in compliance with the License.  A
+copy of the [License](http://www.apache.org/licenses/LICENSE-2.0) may
+be found in this source distribution in `LICENSE-2.0.txt`.
