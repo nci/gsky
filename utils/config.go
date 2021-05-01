@@ -1591,10 +1591,6 @@ func addBandMathVariableConstraints(config *Config, layer *Layer, criteria *Band
 // instance of a Config variable containing all the values
 func (config *Config) LoadConfigFile(configFile string, verbose bool) error {
 	cfg, err := LoadConfigFileTemplate(configFile)
-	if verbose {
-		log.Printf("%v: %v", configFile, string(cfg))
-	}
-
 	if err != nil {
 		return fmt.Errorf("Error while reading config file: %s. Error: %v", configFile, err)
 	}
