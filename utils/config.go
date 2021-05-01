@@ -1630,6 +1630,14 @@ func (config *Config) LoadConfigString(cfg []byte, verbose bool) error {
 		log.Printf("average grpc worker pool size: %d", grpcPoolSize)
 	}
 
+	fileResolver := NewRuntimeFileResolver(DataDir)
+	resolveFilePath := func(filePath, layerName string) string {
+		path, err := fileResolver.Resolve(filePath)
+		if err != nil {
+			log.Printf("File resolution error: layer:%v, err:%v", layerName, err)
+		}
+		return path
+	}
 	for i, layer := range config.Layers {
 		bandExpr, err := ParseBandExpressions(layer.RGBProducts)
 		if err != nil {
@@ -1751,6 +1759,19 @@ func (config *Config) LoadConfigString(cfg []byte, verbose bool) error {
 			config.Layers[i].WcsBandExpressionCriteria.MaxExpressions = DefaultWcsMaxBandExpressions
 		}
 		addBandMathVariableConstraints(config, &config.Layers[i], config.Layers[i].WcsBandExpressionCriteria)
+
+		if len(config.Layers[i].LegendPath) > 0 {
+			config.Layers[i].LegendPath = resolveFilePath(config.Layers[i].LegendPath, config.Layers[i].Name)
+		}
+		if len(config.Layers[i].NoDataLegendPath) > 0 {
+			config.Layers[i].NoDataLegendPath = resolveFilePath(config.Layers[i].NoDataLegendPath, config.Layers[i].Name)
+		}
+		for iStyle := range config.Layers[i].Styles {
+			if len(config.Layers[i].Styles[iStyle].LegendPath) > 0 {
+				config.Layers[i].Styles[iStyle].LegendPath = resolveFilePath(config.Layers[i].Styles[iStyle].LegendPath, fmt.Sprintf("%s/%s", config.Layers[i].Name, config.Layers[i].Styles[iStyle].Name))
+			}
+		}
+
 	}
 
 	for i, proc := range config.Processes {
@@ -1793,6 +1814,14 @@ func (config *Config) LoadConfigString(cfg []byte, verbose bool) error {
 					conc = DefaultGrpcWpsConcPerNode
 				}
 				config.Processes[i].DataSources[ids].GrpcWpsConcPerNode = conc
+			}
+
+			if len(ds.MetadataURL) > 0 {
+				config.Processes[i].DataSources[ids].MetadataURL = resolveFilePath(config.Processes[i].DataSources[ids].MetadataURL, proc.Identifier)
+			}
+
+			if len(ds.VRTURL) > 0 {
+				config.Processes[i].DataSources[ids].VRTURL = resolveFilePath(config.Processes[i].DataSources[ids].VRTURL, proc.Identifier)
 			}
 		}
 
