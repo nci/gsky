@@ -68,6 +68,18 @@ Configuration Files
           config.json
    ```
 
+Docker Image
+-------------------------
+
+GSKY's docker image ships with a fully functional environment of GSKY cluster,
+as well as some testing data files.
+
+```
+docker pull gjmouse/gsky:latest
+```
+
+For the details of building GSKY docker image, please refer [here](docker/README.md).
+
 How To Compile the Source
 -------------------------
 
