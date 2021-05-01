@@ -47,6 +47,7 @@ import (
 // on the config.json document.
 var configMap *sync.Map
 var mutex *sync.Mutex
+var fileResolver *utils.RuntimeFileResolver
 var builtinPalettes *utils.BuiltinPalettes
 var (
 	port            = flag.Int("p", 8080, "Server listening port.")
@@ -89,19 +90,24 @@ func init() {
 	utils.DataDir = *serverDataDir
 	utils.EtcDir = *serverConfigDir
 
+	fileResolver = utils.NewRuntimeFileResolver(utils.DataDir)
+
 	filePaths := []string{
-		utils.DataDir + "/static/index.html",
-		utils.DataDir + "/templates/WMS_GetCapabilities.tpl",
-		utils.DataDir + "/templates/WMS_DescribeLayer.tpl",
-		utils.DataDir + "/templates/WMS_ServiceException.tpl",
-		utils.DataDir + "/templates/WPS_DescribeProcess.tpl",
-		utils.DataDir + "/templates/WPS_Execute.tpl",
-		utils.DataDir + "/templates/WPS_GetCapabilities.tpl",
-		utils.DataDir + "/templates/WCS_GetCapabilities.tpl",
-		utils.DataDir + "/templates/WCS_DescribeCoverage.tpl"}
+		"static/index.html",
+		"templates/WMS_GetCapabilities.tpl",
+		"templates/WMS_DescribeLayer.tpl",
+		"templates/WMS_ServiceException.tpl",
+		"templates/WPS_DescribeProcess.tpl",
+		"templates/WPS_Execute.tpl",
+		"templates/WPS_GetCapabilities.tpl",
+		"templates/WCS_GetCapabilities.tpl",
+		"templates/WCS_DescribeCoverage.tpl",
+		"zoom.png",
+	}
 
 	for _, filePath := range filePaths {
-		if _, err := os.Stat(filePath); os.IsNotExist(err) {
+		_, err := fileResolver.Lookup(filePath)
+		if err != nil {
 			panic(err)
 		}
 	}
@@ -214,8 +220,8 @@ func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r
 			}
 		}
 
-		err = utils.ExecuteWriteTemplateFile(w, newConf,
-			utils.DataDir+"/templates/WMS_GetCapabilities.tpl")
+		tpl, _ := fileResolver.Lookup("templates/WMS_GetCapabilities.tpl")
+		err = utils.ExecuteWriteTemplateFile(w, newConf, tpl)
 		if err != nil {
 			metricsCollector.Info.HTTPStatus = 500
 			http.Error(w, err.Error(), 500)
@@ -307,8 +313,8 @@ func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r
 			return
 		}
 
-		err = utils.ExecuteWriteTemplateFile(w, conf.Layers[idx],
-			utils.DataDir+"/templates/WMS_DescribeLayer.tpl")
+		tpl, _ := fileResolver.Lookup("templates/WMS_DescribeLayer.tpl")
+		err = utils.ExecuteWriteTemplateFile(w, conf.Layers[idx], tpl)
 		if err != nil {
 			metricsCollector.Info.HTTPStatus = 500
 			http.Error(w, err.Error(), 500)
@@ -524,7 +530,8 @@ func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r
 		if !hasOverview && styleLayer.ZoomLimit != 0.0 && reqRes > styleLayer.ZoomLimit {
 			hasData := tp.HasFiles(geoReq, *verbose)
 			if hasData {
-				out, err := utils.GetEmptyTile(utils.DataDir+"/zoom.png", *params.Height, *params.Width)
+				zoomFile, _ := fileResolver.Lookup("zoom.png")
+				out, err := utils.GetEmptyTile(zoomFile, *params.Height, *params.Width)
 				if err != nil {
 					Info.Printf("Error in the utils.GetEmptyTile(zoom.png): %v\n", err)
 					metricsCollector.Info.HTTPStatus = 500
@@ -602,8 +609,8 @@ func serveWMS(ctx context.Context, params utils.WMSParams, conf *utils.Config, r
 		if err != nil {
 			Error.Printf("%s\n", err)
 			if len(params.Layers) > 0 {
-				utils.ExecuteWriteTemplateFile(w, params.Layers[0],
-					utils.DataDir+"/templates/WMS_ServiceException.tpl")
+				tpl, _ := fileResolver.Lookup("templates/WMS_ServiceException.tpl")
+				utils.ExecuteWriteTemplateFile(w, params.Layers[0], tpl)
 			} else {
 				metricsCollector.Info.HTTPStatus = 400
 				http.Error(w, err.Error(), 400)
@@ -663,7 +670,8 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 			}
 		}
 
-		err := utils.ExecuteWriteTemplateFile(w, &newConf, utils.DataDir+"/templates/WCS_GetCapabilities.tpl")
+		tpl, _ := fileResolver.Lookup("templates/WCS_GetCapabilities.tpl")
+		err := utils.ExecuteWriteTemplateFile(w, &newConf, tpl)
 		if err != nil {
 			metricsCollector.Info.HTTPStatus = 500
 			http.Error(w, err.Error(), 500)
@@ -678,7 +686,8 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 			return
 		}
 
-		err = utils.ExecuteWriteTemplateFile(w, conf.Layers[idx], utils.DataDir+"/templates/WCS_DescribeCoverage.tpl")
+		tpl, _ := fileResolver.Lookup("templates/WCS_DescribeCoverage.tpl")
+		err = utils.ExecuteWriteTemplateFile(w, conf.Layers[idx], tpl)
 		if err != nil {
 			http.Error(w, err.Error(), 500)
 		}
@@ -1314,8 +1323,8 @@ func serveWPS(ctx context.Context, params utils.WPSParams, conf *utils.Config, r
 	switch *params.Request {
 	case "GetCapabilities":
 		newConf := conf.Copy(r)
-		err := utils.ExecuteWriteTemplateFile(w, newConf,
-			utils.DataDir+"/templates/WPS_GetCapabilities.tpl")
+		tpl, _ := fileResolver.Lookup("templates/WPS_GetCapabilities.tpl")
+		err := utils.ExecuteWriteTemplateFile(w, newConf, tpl)
 		if err != nil {
 			metricsCollector.Info.HTTPStatus = 500
 			http.Error(w, err.Error(), 500)
@@ -1329,8 +1338,8 @@ func serveWPS(ctx context.Context, params utils.WPSParams, conf *utils.Config, r
 			return
 		}
 		process := conf.Processes[idx]
-		err = utils.ExecuteWriteTemplateFile(w, process,
-			utils.DataDir+"/templates/WPS_DescribeProcess.tpl")
+		tpl, _ := fileResolver.Lookup("templates/WPS_DescribeProcess.tpl")
+		err = utils.ExecuteWriteTemplateFile(w, process, tpl)
 		if err != nil {
 			metricsCollector.Info.HTTPStatus = 500
 			http.Error(w, err.Error(), 500)
@@ -1519,7 +1528,8 @@ func serveWPS(ctx context.Context, params utils.WPSParams, conf *utils.Config, r
 			}
 		}
 
-		err = utils.ExecuteWriteTemplateFile(w, result.String(), utils.DataDir+"/templates/WPS_Execute.tpl")
+		tpl, _ := fileResolver.Lookup("templates/WPS_Execute.tpl")
+		err = utils.ExecuteWriteTemplateFile(w, result.String(), tpl)
 		if err != nil {
 			metricsCollector.Info.HTTPStatus = 500
 			http.Error(w, err.Error(), 500)
@@ -1766,7 +1776,7 @@ func fileHandler(w http.ResponseWriter, r *http.Request) {
 	if isIndex {
 		urlPath = "index.html"
 	}
-	staticRoot := filepath.Join(utils.DataDir, "static")
+	staticRoot, _ := fileResolver.Lookup("static")
 	upath := filepath.Join(staticRoot, urlPath)
 
 	if *verbose {
@@ -1857,8 +1867,9 @@ func cataloguesHandler(w http.ResponseWriter, r *http.Request) {
 
 	host := utils.GetHostURL(r)
 	urlPathRoot := utils.CatalogueDirName
-	staticRoot := filepath.Join(utils.DataDir, "static", utils.CatalogueDirName)
-	templateRoot := filepath.Join(utils.DataDir, "templates")
+	sroot, _ := fileResolver.Lookup("static")
+	staticRoot := filepath.Join(sroot, utils.CatalogueDirName)
+	templateRoot, _ := fileResolver.Lookup("templates")
 
 	catalogueHandler := utils.NewCatalogueHandler(cataloguePath, host, urlPathRoot, staticRoot, masAddress, templateRoot, *verbose, w)
 	status := catalogueHandler.Process()
