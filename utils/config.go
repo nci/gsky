@@ -702,6 +702,11 @@ func LoadAllConfigFiles(searchPath string, verbose bool) (map[string]*Config, er
 		if len(rootDir) == 0 {
 			continue
 		}
+
+		if _, err := os.Stat(rootDir); err != nil {
+			log.Printf("config directory is not accessible: %v", rootDir)
+			continue
+		}
 		err = symWalk(rootDir, rootDir, func(path string, info os.FileInfo, err error) error {
 			if err != nil {
 				return err
@@ -716,7 +721,9 @@ func LoadAllConfigFiles(searchPath string, verbose bool) (map[string]*Config, er
 					if relPath == ".." {
 						relPath = "."
 					}
-					configMap[relPath] = nil
+					if _, found := configMap[relPath]; !found {
+						configMap[relPath] = nil
+					}
 					return filepath.SkipDir
 				}
 			}
@@ -773,6 +780,7 @@ func LoadAllConfigFiles(searchPath string, verbose bool) (map[string]*Config, er
 				return nil, err
 			}
 		}
+		PostprocessServiceConfig(config, configMap, verbose)
 	}
 
 	return configMap, err
@@ -796,6 +804,82 @@ func LoadConfigTimestamps(config *Config, verbose bool) error {
 		}
 	}
 	return nil
+}
+
+func PostprocessServiceConfig(config *Config, confMap map[string]*Config, verbose bool) {
+	namespace := strings.TrimSpace(config.ServiceConfig.NameSpace)
+	if len(namespace) == 0 || namespace == "." {
+		return
+	}
+
+	if config.hasClusterInfo() {
+		return
+	}
+
+	ns := strings.TrimRight(namespace, "/")
+	for {
+		idx := strings.LastIndex(ns, "/")
+		if idx < 0 {
+			break
+		}
+		ns = ns[:idx]
+
+		if conf, found := confMap[ns]; found {
+			if conf != nil && conf.hasClusterInfo() {
+				config.copyClusterInfo(conf)
+				return
+			}
+		}
+	}
+
+	if conf, found := confMap["."]; found {
+		if conf == nil {
+			cm, err := LoadConfigOnDemand(EtcDir, ".", verbose)
+			if err == nil {
+				conf = cm["."]
+			}
+		}
+		if conf != nil && conf.hasClusterInfo() {
+			config.copyClusterInfo(conf)
+		}
+	}
+}
+
+func (config *Config) hasClusterInfo() bool {
+	hasClusterInfo := true
+	if len(strings.TrimSpace(config.ServiceConfig.MASAddress)) == 0 {
+		hasClusterInfo = false
+	}
+	if len(config.ServiceConfig.WorkerNodes) == 0 {
+		hasClusterInfo = false
+	}
+	return hasClusterInfo
+}
+
+func (config *Config) copyClusterInfo(conf *Config) {
+	if len(config.ServiceConfig.MASAddress) == 0 {
+		config.ServiceConfig.MASAddress = conf.ServiceConfig.MASAddress
+		for i := range config.Layers {
+			if len(config.Layers[i].MASAddress) == 0 {
+				config.Layers[i].MASAddress = config.ServiceConfig.MASAddress
+			}
+			if len(config.Layers[i].Overviews) > 0 {
+				for ii := range config.Layers[i].Overviews {
+					if len(config.Layers[i].Overviews[ii].MASAddress) == 0 {
+						config.Layers[i].Overviews[ii].MASAddress = config.Layers[i].MASAddress
+					}
+				}
+			}
+			for j := range config.Layers[i].Styles {
+				if len(config.Layers[i].Styles[j].MASAddress) == 0 {
+					config.Layers[i].Styles[j].MASAddress = config.Layers[i].MASAddress
+				}
+			}
+		}
+	}
+	if len(config.ServiceConfig.WorkerNodes) == 0 {
+		config.ServiceConfig.WorkerNodes = conf.ServiceConfig.WorkerNodes
+	}
 }
 
 // Unmarshal is wrapper around json.Unmarshal that returns user-friendly

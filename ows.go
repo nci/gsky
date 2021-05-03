@@ -1756,6 +1756,7 @@ func owsHandler(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		for k, v := range conf {
+			utils.PostprocessServiceConfig(v, confMap, *verbose)
 			confMap[k] = v
 		}
 		configMap.Store("config", confMap)
