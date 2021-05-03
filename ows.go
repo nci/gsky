@@ -38,8 +38,6 @@ import (
 	proc "github.com/nci/gsky/processor"
 	"github.com/nci/gsky/utils"
 
-	_ "net/http/pprof"
-
 	geo "github.com/nci/geometry"
 )
 

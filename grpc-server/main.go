@@ -11,8 +11,6 @@ import (
 	pp "github.com/nci/gsky/worker/gdalprocess"
 	pb "github.com/nci/gsky/worker/gdalservice"
 
-	_ "net/http/pprof"
-
 	"os"
 	"os/signal"
 	"syscall"
