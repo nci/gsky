@@ -188,10 +188,12 @@ int warp_operation_fast(const char *srcFilePath, char *srcProjRef, double *srcGe
                                 srcGeot[4] *= srcYSize / (double)ovrYSize;
                                 srcGeot[5] *= srcYSize / (double)ovrYSize;
 
-				void *hOvrTransformArg = GDALCreateGenImgProjTransformer3(srcProjRef, srcGeot, dstProjRef, dstGeot);
-				if(hOvrTransformArg) {
-					GDALDestroyGenImgProjTransformer(hTransformArg);
-					hTransformArg = hOvrTransformArg;
+				GenImgProjTransformInfo *psInfo = (GenImgProjTransformInfo *)hTransformArg;
+				memcpy(psInfo->adfSrcGeoTransform, srcGeot,sizeof(psInfo->adfSrcGeoTransform));
+				if(!GDALInvGeoTransform(psInfo->adfSrcGeoTransform, psInfo->adfSrcInvGeoTransform)) {
+					GDALDestroyGenImgProjTransformer(psInfo);
+					GDALClose(hSrcDS);
+					return 3;
 				}
 			}
 		}
