@@ -360,9 +360,9 @@ int warp_operation_fast(const char *srcFilePath, char *srcProjRef, double *srcGe
 
                         int iDstOff = (iDstY * dstXSize + iDstX) * dataSize;
 			if(supportedDataType) {
-				memcpy((uintptr_t *)*dstBuf + iDstOff, (uintptr_t *)blockList[iBlock] + iBlockOff, dataSize);
+				memcpy((uint8_t *)*dstBuf + iDstOff, (uint8_t *)blockList[iBlock] + iBlockOff, dataSize);
 			} else {
-				GDALCopyWords((uintptr_t *)blockList[iBlock] + iBlockOff, srcDataType, srcDataSize, (uintptr_t *)*dstBuf + iDstOff, *dType, dataSize, 1);
+				GDALCopyWords((uint8_t *)blockList[iBlock] + iBlockOff, srcDataType, srcDataSize, (uint8_t *)*dstBuf + iDstOff, *dType, dataSize, 1);
 			}
                 }
         }
