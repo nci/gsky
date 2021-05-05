@@ -20,8 +20,7 @@ class CoordinateTransformCache {
 		void remove(TransformKey key);
 	private:
 		std::map<TransformKey, CacheBlock* > coordLookup;
-		size_t maxCapacity = 1000;
+		size_t maxCapacity = 1024;
 };
 
 #endif
-

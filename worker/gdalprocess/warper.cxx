@@ -133,8 +133,13 @@ int warp_operation_fast(const char *srcFilePath, char *srcProjRef, double *srcGe
 				GDALClose(hSrcDS);
 				return 3;
 			}
-			coordTransformCache->put(key, hTransformArg);
+			GenImgProjTransformInfo *psInfo = (GenImgProjTransformInfo *)hTransformArg;
+			if(psInfo->pReprojectArg != nullptr) {
+				coordTransformCache->put(key, hTransformArg);
+				hasCoordCache = true;
+			}
 		} else {
+			hTransformArg = GDALCreateGenImgProjTransformer3(srcProjRef, srcGeot, dstProjRef, dstGeot);
 			GenImgProjTransformInfo *psInfo = (GenImgProjTransformInfo *)hTransformArg;
 			memcpy(psInfo->adfSrcGeoTransform, srcGeot,sizeof(psInfo->adfSrcGeoTransform));
 			if(!GDALInvGeoTransform(psInfo->adfSrcGeoTransform, psInfo->adfSrcInvGeoTransform)) {
@@ -147,8 +152,8 @@ int warp_operation_fast(const char *srcFilePath, char *srcProjRef, double *srcGe
 				GDALClose(hSrcDS);
 				return 3;
 			}
+			hasCoordCache = true;
 		}
-		hasCoordCache = true;
 	} else {
 		hTransformArg = createGeoLocTransformer(srcProjRef, geoLocOpts, dstProjRef, dstGeot);
 		if(!hTransformArg) {
@@ -355,9 +360,9 @@ int warp_operation_fast(const char *srcFilePath, char *srcProjRef, double *srcGe
 
                         int iDstOff = (iDstY * dstXSize + iDstX) * dataSize;
 			if(supportedDataType) {
-				memcpy(*dstBuf + iDstOff, blockList[iBlock] + iBlockOff, dataSize);
+				memcpy((uintptr_t *)*dstBuf + iDstOff, (uintptr_t *)blockList[iBlock] + iBlockOff, dataSize);
 			} else {
-				GDALCopyWords(blockList[iBlock] + iBlockOff, srcDataType, srcDataSize, *dstBuf + iDstOff, *dType, dataSize, 1);
+				GDALCopyWords((uintptr_t *)blockList[iBlock] + iBlockOff, srcDataType, srcDataSize, (uintptr_t *)*dstBuf + iDstOff, *dType, dataSize, 1);
 			}
                 }
         }

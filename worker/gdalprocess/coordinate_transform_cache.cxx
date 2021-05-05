@@ -23,7 +23,6 @@ void* CoordinateTransformCache::get(TransformKey key) {
 	auto it = coordLookup.find(key);
 	if( it != coordLookup.end() ) {
 		it->second->useCount++;
-		//std::cerr << "xxxxxxxxx " << it->second->useCount << std::endl;
 		return it->second->item;
 	}
 	return nullptr;
@@ -32,7 +31,7 @@ void* CoordinateTransformCache::get(TransformKey key) {
 void CoordinateTransformCache::remove(TransformKey key) {
 	auto it = coordLookup.find(key);
 	if( it != coordLookup.end() ) {
-		GDALDestroyReprojectionTransformer(it->second->item);
+		GDALDestroyGenImgProjTransformer(it->second->item);
 		delete it->second;
 		coordLookup.erase(it);
 	}
