@@ -16,7 +16,7 @@ void CoordinateTransformCache::put(TransformKey key, void* psInfo) {
 		remove(minIt->first);
 	}
 
-	coordLookup[key] = new CacheBlock { psInfo, 1 };
+	coordLookup[key] = std::make_unique<CacheBlock>(psInfo);
 }	
 
 void* CoordinateTransformCache::get(TransformKey key) {
@@ -31,8 +31,6 @@ void* CoordinateTransformCache::get(TransformKey key) {
 void CoordinateTransformCache::remove(TransformKey key) {
 	auto it = coordLookup.find(key);
 	if( it != coordLookup.end() ) {
-		GDALDestroyGenImgProjTransformer(it->second->item);
-		delete it->second;
 		coordLookup.erase(it);
 	}
 }
