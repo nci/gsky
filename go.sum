@@ -6,8 +6,8 @@ github.com/census-instrumentation/opencensus-proto v0.2.1/go.mod h1:f6KPmirojxKA
 github.com/client9/misspell v0.3.4/go.mod h1:qj6jICC3Q7zFZvVWo7KLAzC3yx5G7kyvSDkc90ppPyw=
 github.com/cncf/udpa/go v0.0.0-20201120205902-5459f2c99403/go.mod h1:WmhPx2Nbnhtbo57+VJT5O0JRkEi1Wbu0z5j0R8u5Hbk=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
-github.com/edisonguo/govaluate v3.0.0+incompatible h1:ERkwiG9ZUg6EH5eXgZlXpoUGMVprZMEcJ0ofjOWOcek=
-github.com/edisonguo/govaluate v3.0.0+incompatible/go.mod h1:ZswqvyHOUTXKfb9iW3bSRm0mxCox7qaebbJ+cIXsibc=
+github.com/edisonguo/govaluate v3.0.1-0.20200610034316-8fb8220f46f3+incompatible h1:4nY9MjL6eQyCx/17gN1kQRwsU0P3mwWQ3mPL96PjZko=
+github.com/edisonguo/govaluate v3.0.1-0.20200610034316-8fb8220f46f3+incompatible/go.mod h1:ZswqvyHOUTXKfb9iW3bSRm0mxCox7qaebbJ+cIXsibc=
 github.com/edisonguo/jet v2.1.2+incompatible h1:HfUJXDWy4gtCY2wccWC2p1Xer7lfY1aTzPVsl/oind8=
 github.com/edisonguo/jet v2.1.2+incompatible/go.mod h1:ifj6qFLsvpy+7D+HbDgT1+zq6Le60r0RjgwxMS33KP8=
 github.com/envoyproxy/go-control-plane v0.9.0/go.mod h1:YTl/9mNaCwkRvm6d1a2C3ymFceY/DCBVvsKhRF0iEA4=
