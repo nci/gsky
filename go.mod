@@ -4,7 +4,7 @@ go 1.16
 
 require (
 	github.com/CloudyKit/fastprinter v0.0.0-20200109182630-33d98a066a53 // indirect
-	github.com/edisonguo/govaluate v3.0.0+incompatible
+	github.com/edisonguo/govaluate v3.0.1-0.20200610034316-8fb8220f46f3+incompatible
 	github.com/edisonguo/jet v2.1.2+incompatible
 	github.com/golang/protobuf v1.5.2
 	github.com/kavu/go_reuseport v1.5.0
