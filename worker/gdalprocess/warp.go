@@ -1,7 +1,7 @@
 package gdalprocess
+
 /*
 #cgo pkg-config: gdal
-//#cgo CPPFLAGS: -I/g/data/uc0/jxg900/gsky_provisioning/gsky/include
 
 #include "warper.hxx"
 #include "gdal.h"
