@@ -268,10 +268,15 @@ int warp_operation_fast(const char *srcFilePath, char *srcProjRef, double *srcGe
 	*noData = GDALGetRasterNoDataValue(hBand, nullptr);
 	GDALCopyWords(noData, GDT_Float64, 0, *dstBuf, *dType, dataSize, dstXSize * dstYSize);
 
-        double *dx = (double *)malloc(2 * dstXSize * sizeof(double));
-        double *dy = (double *)malloc(dstXSize * sizeof(double));
-        double *dz = (double *)malloc(dstXSize * sizeof(double));
-        int *bSuccess = (int *)malloc(dstXSize * sizeof(int));
+	auto dVec = std::vector<double>();
+	dVec.resize(5 * dstXSize);
+	double *dx = dVec.data();
+	double *dy = dVec.data() + 2 * dstXSize;
+	double *dz = dVec.data() + 4 * dstXSize;
+
+	auto sVec = std::vector<int>();
+	sVec.resize(dstXSize);
+        int *bSuccess = sVec.data();
 
         for(int iDstX = 0; iDstX < dstXSize; iDstX++) {
                 dx[dstXSize+iDstX] = iDstX + 0.5 + dstXOff;
@@ -324,13 +329,15 @@ int warp_operation_fast(const char *srcFilePath, char *srcProjRef, double *srcGe
 
 	int nBlocksRead = 0;
 
-	auto blockBuffer = (uint8_t *)malloc(srcXBlockSize * srcYBlockSize * srcDataSize);
+	auto blockBuffer = std::vector<uint8_t>();
+	blockBuffer.resize(srcXBlockSize * srcYBlockSize * srcDataSize);
+	uint8_t* blockBuf = blockBuffer.data();
 	for(const auto& it : blockPixelMap) {
 		const int iBlock = it.first;
 		const int iXBlock = iBlock % nXBlocks; 
 		const int iYBlock = iBlock / nXBlocks;
 
-		err = GDALReadBlock(hBand, iXBlock, iYBlock, blockBuffer);
+		err = GDALReadBlock(hBand, iXBlock, iYBlock, blockBuf);
 		if(err != CE_None) continue;
 		nBlocksRead++;
 
@@ -349,11 +356,10 @@ int warp_operation_fast(const char *srcFilePath, char *srcProjRef, double *srcGe
 
                         int iDstOff = (iDstY * dstXSize + iDstX) * dataSize;
 			if(supportedDataType) {
-				memcpy(pDstBuf + iDstOff, blockBuffer + iBlockOff, dataSize);
+				memcpy(pDstBuf + iDstOff, blockBuf + iBlockOff, dataSize);
 			} else {
-				GDALCopyWords(blockBuffer + iBlockOff, srcDataType, srcDataSize, pDstBuf + iDstOff, *dType, dataSize, 1);
+				GDALCopyWords(blockBuf + iBlockOff, srcDataType, srcDataSize, pDstBuf + iDstOff, *dType, dataSize, 1);
 			}
-
 		}
 	}
 
@@ -371,14 +377,7 @@ int warp_operation_fast(const char *srcFilePath, char *srcProjRef, double *srcGe
 		}
 	}
 
-	free(blockBuffer);
-        free(dx);
-        free(dy);
-        free(dz);
-        free(bSuccess);
-
 	GDALDestroyApproxTransformer(hApproxTransformArg);
-
 	if(!hasCoordCache) {
        		GDALDestroyGenImgProjTransformer(hTransformArg);
 	}
