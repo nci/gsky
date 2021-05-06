@@ -248,7 +248,8 @@ int warp_operation_fast(const char *srcFilePath, char *srcProjRef, double *srcGe
 
         int srcXBlockSize, srcYBlockSize;
         GDALGetBlockSize(hBand, &srcXBlockSize, &srcYBlockSize);
-        int nXBlocks = (srcXSize + srcXBlockSize - 1) / srcXBlockSize;
+        const int nXBlocks = (srcXSize + srcXBlockSize - 1) / srcXBlockSize;
+	const int nYBlocks = (srcYSize + srcYBlockSize - 1) / srcYBlockSize;
 
         *dType = GDALGetRasterDataType(hBand);
 	const GDALDataType srcDataType = *dType;
@@ -269,10 +270,10 @@ int warp_operation_fast(const char *srcFilePath, char *srcProjRef, double *srcGe
 	GDALCopyWords(noData, GDT_Float64, 0, *dstBuf, *dType, dataSize, dstXSize * dstYSize);
 
 	auto dVec = std::vector<double>();
-	dVec.resize(5 * dstXSize);
+	dVec.resize(4 * dstXSize);
 	double *dx = dVec.data();
 	double *dy = dVec.data() + 2 * dstXSize;
-	double *dz = dVec.data() + 4 * dstXSize;
+	double *dz = dVec.data() + 3 * dstXSize;
 
 	auto sVec = std::vector<int>();
 	sVec.resize(dstXSize);
@@ -282,8 +283,8 @@ int warp_operation_fast(const char *srcFilePath, char *srcProjRef, double *srcGe
                 dx[dstXSize+iDstX] = iDstX + 0.5 + dstXOff;
         }
 
-	const int dstPixelXSize = dstXSize / srcXBlockSize + 1;
-	const int dstPixelYSize = dstYSize / srcYBlockSize + 1;
+	const int dstPixelXSize = dstXSize / nXBlocks + 1;
+	const int dstPixelYSize = dstYSize / nYBlocks + 1;
 	const int dstPixelSize = dstPixelXSize * dstPixelYSize;
 
 	auto blockPixelMap = std::map<int, std::pair<std::vector<int>, std::vector<int> > >();
@@ -294,7 +295,7 @@ int warp_operation_fast(const char *srcFilePath, char *srcProjRef, double *srcGe
                 for(int iDstX = 0; iDstX < dstXSize; iDstX++) {
                         dy[iDstX] = dfY;
                 }
-                memset(dz, 0, dstXSize * sizeof(double));
+		memset(dz, 0, dstXSize * sizeof(double));
 
                 GDALApproxTransform(hApproxTransformArg, TRUE, dstXSize, dx, dy, dz, bSuccess);
 
