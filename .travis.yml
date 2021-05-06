@@ -1,6 +1,6 @@
 dist: bionic
 language: go
-go: 1.12.x
+go: 1.16.3
 env:
   - PREFIX=$HOME/local PROJVER=6.1.1 GDALVER=3.0.1 OPENJPVER=2.3.1 NJOBS=2
 services:

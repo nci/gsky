@@ -6,7 +6,7 @@ gsky_repo="${1:-$DEFAULT_GSKY_REPO}"
 C_INCLUDE_PATH=$(nc-config --includedir)
 export C_INCLUDE_PATH
 
-wget -q -O go.tar.gz https://dl.google.com/go/go1.12.9.linux-amd64.tar.gz
+wget -q -O go.tar.gz https://dl.google.com/go/go1.16.3.linux-amd64.tar.gz
 tar -xf go.tar.gz
 
 mkdir /gopath
