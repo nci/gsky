@@ -19,10 +19,12 @@ reduction of overheads in grpc (de-)serialisation and network traffic.
 #include "warper.hxx"
 #include "coordinate_transform_cache.hxx"
 #include <utility>
+#include <map>
+#include <vector>
 
 #include <iostream>
 
-CoordinateTransformCache* coordTransformCache = new CoordinateTransformCache();
+auto coordTransformCache = new CoordinateTransformCache();
 
 struct GenImgProjTransformInfo {
 
@@ -139,7 +141,6 @@ int warp_operation_fast(const char *srcFilePath, char *srcProjRef, double *srcGe
 				hasCoordCache = true;
 			}
 		} else {
-			hTransformArg = GDALCreateGenImgProjTransformer3(srcProjRef, srcGeot, dstProjRef, dstGeot);
 			GenImgProjTransformInfo *psInfo = (GenImgProjTransformInfo *)hTransformArg;
 			memcpy(psInfo->adfSrcGeoTransform, srcGeot,sizeof(psInfo->adfSrcGeoTransform));
 			if(!GDALInvGeoTransform(psInfo->adfSrcGeoTransform, psInfo->adfSrcInvGeoTransform)) {
@@ -246,11 +247,8 @@ int warp_operation_fast(const char *srcFilePath, char *srcProjRef, double *srcGe
 
         int srcXBlockSize, srcYBlockSize;
         GDALGetBlockSize(hBand, &srcXBlockSize, &srcYBlockSize);
-
-        int nXBlocks = (srcXSize + srcXBlockSize - 1) / srcXBlockSize;
-        int nYBlocks = (srcYSize + srcYBlockSize - 1) / srcYBlockSize;
-
-        void **blockList = nullptr;
+        const int nXBlocks = (srcXSize + srcXBlockSize - 1) / srcXBlockSize;
+	const int nYBlocks = (srcYSize + srcYBlockSize - 1) / srcYBlockSize;
 
         *dType = GDALGetRasterDataType(hBand);
 	const GDALDataType srcDataType = *dType;
@@ -264,108 +262,112 @@ int warp_operation_fast(const char *srcFilePath, char *srcProjRef, double *srcGe
         const int dataSize = GDALGetDataTypeSizeBytes(*dType);
 
 	*dstBufSize = dstXSize * dstYSize * dataSize;
-	*dstBuf = malloc(*dstBufSize);
+	uint8_t* pDstBuf = (uint8_t *)malloc(*dstBufSize);
+	*dstBuf = pDstBuf;
 
 	*noData = GDALGetRasterNoDataValue(hBand, nullptr);
 	GDALCopyWords(noData, GDT_Float64, 0, *dstBuf, *dType, dataSize, dstXSize * dstYSize);
 
-        double *dx = (double *)malloc(2 * dstXSize * sizeof(double));
-        double *dy = (double *)malloc(dstXSize * sizeof(double));
-        double *dz = (double *)malloc(dstXSize * sizeof(double));
-        int *bSuccess = (int *)malloc(dstXSize * sizeof(int));
+	auto dVec = std::vector<double>();
+	dVec.resize(4 * dstXSize);
+	double *dx = dVec.data();
+	double *dy = dVec.data() + 2 * dstXSize;
+	double *dz = dVec.data() + 3 * dstXSize;
 
-        int iDstX, iDstY, _iDstX;
-        for(iDstX = 0; iDstX < dstXSize; iDstX++) {
+	auto sVec = std::vector<int>();
+	sVec.resize(dstXSize);
+        int *bSuccess = sVec.data();
+
+        for(int iDstX = 0; iDstX < dstXSize; iDstX++) {
                 dx[dstXSize+iDstX] = iDstX + 0.5 + dstXOff;
         }
 
-	int bCache = -1;
-	int nBlocksRead = 0;
-	for(iDstY = 0; iDstY < dstYSize; iDstY++) {
+	const int dstPixelXSize = dstXSize / nXBlocks + 1;
+	const int dstPixelYSize = dstYSize / nYBlocks + 1;
+	const int dstPixelSize = dstPixelXSize * dstPixelYSize;
+
+	auto blockPixelMap = std::map<int, std::pair<std::vector<int>, std::vector<int> > >();
+
+	for(int iDstY = 0; iDstY < dstYSize; iDstY++) {
                 memcpy(dx, dx + dstXSize, dstXSize * sizeof(double));
                 const double dfY = iDstY + 0.5 + dstYOff;
-                for(iDstX = 0; iDstX < dstXSize; iDstX++) {
+                for(int iDstX = 0; iDstX < dstXSize; iDstX++) {
                         dy[iDstX] = dfY;
                 }
-                memset(dz, 0, dstXSize * sizeof(double));
+		memset(dz, 0, dstXSize * sizeof(double));
 
                 GDALApproxTransform(hApproxTransformArg, TRUE, dstXSize, dx, dy, dz, bSuccess);
 
-                for(iDstX = 0; iDstX < dstXSize; iDstX++) {
+                for(int iDstX = 0; iDstX < dstXSize; iDstX++) {
                         if(!bSuccess[iDstX]) continue;
                         if(dx[iDstX] < 0 || dy[iDstX] < 0) continue;
                         const int iSrcX = (int)(dx[iDstX] + 1.0e-10);
                         const int iSrcY = (int)(dy[iDstX] + 1.0e-10);
                         if(iSrcX >= srcXSize || iSrcY >= srcYSize) continue;
 
-			// If the distance between two consecutive iSrcX are less than srcXBlockSize, we cache the blocks.
-			// Otherwise we only allocate a single buffer of block size and keep overwriting this buffer.
-			// This caching strategy is merely heuristic but appears working across various datasets.
-			if(bCache == -1) {
-				int iSrcXPrev = -1;
-				int iSrcXCurr = -1;
-				int srcStride = -1;
-				for(_iDstX = iDstX; _iDstX < dstXSize; _iDstX++) {
-					if(!bSuccess[_iDstX]) continue;
-					if(dx[_iDstX] < 0) continue;
-					const int _iSrcX = (int)(dx[_iDstX] + 1.0e-10);
-					if(_iSrcX >= srcXSize) continue;
+			const int iDst = iDstY * dstXSize + iDstX;
+			const int iSrc = iSrcY * srcXSize + iSrcX;
 
-					if(iSrcXPrev < 0) {
-						iSrcXPrev = _iSrcX;
-					} else {
-						iSrcXCurr = _iSrcX;
-						break;
-					}
-				}
+                        const int iXBlock = iSrcX / srcXBlockSize;
+                        const int iYBlock = iSrcY / srcYBlockSize;
+			const int iBlock = iXBlock + iYBlock * nXBlocks;
 
-				if(iSrcXPrev >= 0 && iSrcXCurr < iSrcXPrev) {
-					iSrcXCurr = iSrcXPrev;
-				}
-				srcStride = iSrcXCurr - iSrcXPrev;
+			auto it = blockPixelMap.find(iBlock);
+			if(it == blockPixelMap.end()) {
+				auto srcPixels = std::vector<int>();
+				srcPixels.reserve(dstPixelSize);
 
-				bCache = srcStride >= 0 && srcStride < srcXBlockSize;
+				auto dstPixels = std::vector<int>();
+				dstPixels.reserve(dstPixelSize);
 
-				if(!bCache) {
-					blockList = (void **)malloc(sizeof(void *));
-					blockList[0] = malloc(srcXBlockSize * srcYBlockSize * srcDataSize);
-				} else {
-					blockList = (void **)malloc(nXBlocks * nYBlocks * sizeof(void *));
-					memset(blockList, 0, nXBlocks * nYBlocks * sizeof(void *));
-				}
+				blockPixelMap[iBlock] = std::make_pair(std::ref(srcPixels), std::ref(dstPixels));
 			}
+			blockPixelMap[iBlock].first.emplace_back(iSrc);
+			blockPixelMap[iBlock].second.emplace_back(iDst);
+		}
+	}
 
-                        int iXBlock = iSrcX / srcXBlockSize;
-                        int iYBlock = iSrcY / srcYBlockSize;
-                        int iBlock = 0;
+	auto blockBuffer = std::vector<uint8_t>();
+	blockBuffer.resize(srcXBlockSize * srcYBlockSize * srcDataSize);
+	uint8_t* blockBuf = blockBuffer.data();
 
-			if(!bCache) {
-				err = GDALReadBlock(hBand, iXBlock, iYBlock, blockList[0]);
-				if(err != CE_None) continue;
-				nBlocksRead++;
+	int nBlocksRead = 0;
 
-			} else {
-				iBlock = iXBlock + iYBlock * nXBlocks;
-	                        if(!blockList[iBlock]) {
-					blockList[iBlock] = malloc(srcXBlockSize * srcYBlockSize * srcDataSize);
-					err = GDALReadBlock(hBand, iXBlock, iYBlock, blockList[iBlock]);
-					if(err != CE_None) continue;
-					nBlocksRead++;
-				}
-			}
+	for(const auto& it : blockPixelMap) {
+		const int nPixels = it.second.first.size();
+		if(nPixels == 0) {
+			continue;
+		}
 
-                        int iXBlockOff = iSrcX % srcXBlockSize;
-                        int iYBlockOff = iSrcY % srcYBlockSize;
-                        int iBlockOff = (iXBlockOff + iYBlockOff * srcXBlockSize) * srcDataSize;
+		const int iBlock = it.first;
+		const int iXBlock = iBlock % nXBlocks;
+		const int iYBlock = iBlock / nXBlocks;
 
-                        int iDstOff = (iDstY * dstXSize + iDstX) * dataSize;
+		int err = GDALReadBlock(hBand, iXBlock, iYBlock, blockBuf);
+		if(err != CE_None) continue;
+		nBlocksRead++;
+
+		for(int i = 0; i < nPixels; i++) {
+			const int iSrc = it.second.first[i];
+			const int iSrcX = iSrc % srcXSize;
+			const int iSrcY = iSrc / srcXSize;
+
+			const int iDst = it.second.second[i];
+			const int iDstX = iDst % dstXSize;
+			const int iDstY = iDst / dstXSize;
+
+			int iXBlockOff = iSrcX % srcXBlockSize;
+			int iYBlockOff = iSrcY % srcYBlockSize;
+			int iBlockOff = (iXBlockOff + iYBlockOff * srcXBlockSize) * srcDataSize;
+
+			int iDstOff = (iDstY * dstXSize + iDstX) * dataSize;
 			if(supportedDataType) {
-				memcpy((uint8_t *)*dstBuf + iDstOff, (uint8_t *)blockList[iBlock] + iBlockOff, dataSize);
+				memcpy(pDstBuf + iDstOff, blockBuf + iBlockOff, dataSize);
 			} else {
-				GDALCopyWords((uint8_t *)blockList[iBlock] + iBlockOff, srcDataType, srcDataSize, (uint8_t *)*dstBuf + iDstOff, *dType, dataSize, 1);
+				GDALCopyWords(blockBuf + iBlockOff, srcDataType, srcDataSize, pDstBuf + iDstOff, *dType, dataSize, 1);
 			}
-                }
-        }
+		}
+	}
 
 	*bytesRead = srcXBlockSize * srcYBlockSize * srcDataSize * nBlocksRead;
 
@@ -381,24 +383,7 @@ int warp_operation_fast(const char *srcFilePath, char *srcProjRef, double *srcGe
 		}
 	}
 
-	if(blockList) {
-		int iBlock;
-		int nBlocks = bCache > 0 ? nXBlocks * nYBlocks : 1;
-		for(iBlock = 0; iBlock < nBlocks; iBlock++) {
-			if(blockList[iBlock]) {
-				free(blockList[iBlock]);
-			}
-		}
-
-		free(blockList);
-	}
-        free(dx);
-        free(dy);
-        free(dz);
-        free(bSuccess);
-
 	GDALDestroyApproxTransformer(hApproxTransformArg);
-
 	if(!hasCoordCache) {
        		GDALDestroyGenImgProjTransformer(hTransformArg);
 	}
@@ -406,4 +391,3 @@ int warp_operation_fast(const char *srcFilePath, char *srcProjRef, double *srcGe
 	GDALClose(hSrcDS);
 	return 0;
 }
-
