@@ -14,12 +14,15 @@ export GOPATH=/gsky/gopath
 export PATH="$PATH:$GOROOT/bin"
 
 rm -rf $GOPATH && mkdir $GOPATH
-git clone "$gsky_repo" $GOPATH/src/github.com/nci/gsky
+
+gsky_src_root=/gsky/gsky_src
+mkdir -p $gsky_src_root
+
+git clone "$gsky_repo" $gsky_src_root/gsky
 
 (set -xeu
-cd $GOPATH/src/github.com/nci/gsky
+cd $gsky_src_root/gsky
 
-mkdir -p /gsky
 ./configure --prefix=/gsky --bindir=/gsky/bin --sbindir=/gsky/bin --libexecdir=/gsky/bin
 make all
 make install
