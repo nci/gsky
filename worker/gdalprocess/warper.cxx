@@ -25,7 +25,6 @@ reduction of overheads in grpc (de-)serialisation and network traffic.
 #include <iostream>
 
 auto coordTransformCache = new CoordinateTransformCache();
-auto blockPixelMap = std::map<int, std::pair<std::vector<int>, std::vector<int> > >();
 
 struct GenImgProjTransformInfo {
 
@@ -142,7 +141,6 @@ int warp_operation_fast(const char *srcFilePath, char *srcProjRef, double *srcGe
 				hasCoordCache = true;
 			}
 		} else {
-			hTransformArg = GDALCreateGenImgProjTransformer3(srcProjRef, srcGeot, dstProjRef, dstGeot);
 			GenImgProjTransformInfo *psInfo = (GenImgProjTransformInfo *)hTransformArg;
 			memcpy(psInfo->adfSrcGeoTransform, srcGeot,sizeof(psInfo->adfSrcGeoTransform));
 			if(!GDALInvGeoTransform(psInfo->adfSrcGeoTransform, psInfo->adfSrcInvGeoTransform)) {
@@ -288,16 +286,15 @@ int warp_operation_fast(const char *srcFilePath, char *srcProjRef, double *srcGe
 	const int dstPixelYSize = dstYSize / nYBlocks + 1;
 	const int dstPixelSize = dstPixelXSize * dstPixelYSize;
 
-	int nBlocksRead = 0;
+	auto blockPixelMap = std::map<int, std::pair<std::vector<int>, std::vector<int> > >();
 
 	auto blockBuffer = std::vector<uint8_t>();
 	blockBuffer.resize(srcXBlockSize * srcYBlockSize * srcDataSize);
 	uint8_t* blockBuf = blockBuffer.data();
 
-	int currYBlock = -1;
-	int iYBlock = -1;
+	int nBlocksRead = 0;
 
-	auto copyPixels = [=, &nBlocksRead](int currYBlock) {
+	auto copyPixels = [=, &blockPixelMap, &nBlocksRead](int currYBlock) {
 		for(auto& it : blockPixelMap) {
 			const int nPixels = it.second.first.size();
 			if(nPixels == 0) {
@@ -307,8 +304,6 @@ int warp_operation_fast(const char *srcFilePath, char *srcProjRef, double *srcGe
 			const int iBlock = it.first + currYBlock * nXBlocks;
 			const int iXBlock = iBlock % nXBlocks;
 			const int iYBlock = iBlock / nXBlocks;
-
-			std::cerr << srcFilePath << ":" << nPixels << "," << it.second.first.capacity() << "," << currYBlock << "," << iBlock << std::endl;
 
 			int err = GDALReadBlock(hBand, iXBlock, iYBlock, blockBuf);
 			if(err != CE_None) continue;
@@ -339,6 +334,9 @@ int warp_operation_fast(const char *srcFilePath, char *srcProjRef, double *srcGe
 			it.second.second.clear();
 		}
 	};
+
+	int currYBlock = -1;
+	int iYBlock = -1;
 
 	for(int iDstY = 0; iDstY < dstYSize; iDstY++) {
                 memcpy(dx, dx + dstXSize, dstXSize * sizeof(double));
@@ -381,16 +379,12 @@ int warp_operation_fast(const char *srcFilePath, char *srcProjRef, double *srcGe
 				dstPixels.reserve(dstPixelSize);
 
 				blockPixelMap[iXBlock] = std::make_pair(std::ref(srcPixels), std::ref(dstPixels));
-
-				std::cerr << " xxxxxxxxxxxx " << iXBlock << " " << srcFilePath << std::endl;
 			}
 			blockPixelMap[iXBlock].first.emplace_back(iSrc);
 			blockPixelMap[iXBlock].second.emplace_back(iDst);
 		}
 	}
-
 	copyPixels(iYBlock);
-	std::cerr << " blocks read: " << nBlocksRead << std::endl;
 
 	*bytesRead = srcXBlockSize * srcYBlockSize * srcDataSize * nBlocksRead;
 
