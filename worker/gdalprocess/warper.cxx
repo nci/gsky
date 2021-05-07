@@ -333,7 +333,7 @@ int warp_operation_fast(const char *srcFilePath, char *srcProjRef, double *srcGe
 
 	int nBlocksRead = 0;
 
-	for(auto& it : blockPixelMap) {
+	for(const auto& it : blockPixelMap) {
 		const int nPixels = it.second.first.size();
 		if(nPixels == 0) {
 			continue;
