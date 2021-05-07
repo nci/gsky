@@ -288,56 +288,6 @@ int warp_operation_fast(const char *srcFilePath, char *srcProjRef, double *srcGe
 
 	auto blockPixelMap = std::map<int, std::pair<std::vector<int>, std::vector<int> > >();
 
-	auto blockBuffer = std::vector<uint8_t>();
-	blockBuffer.resize(srcXBlockSize * srcYBlockSize * srcDataSize);
-	uint8_t* blockBuf = blockBuffer.data();
-
-	int nBlocksRead = 0;
-
-	auto copyPixels = [=, &blockPixelMap, &nBlocksRead](int currYBlock) {
-		for(auto& it : blockPixelMap) {
-			const int nPixels = it.second.first.size();
-			if(nPixels == 0) {
-				continue;
-			}
-
-			const int iBlock = it.first + currYBlock * nXBlocks;
-			const int iXBlock = iBlock % nXBlocks;
-			const int iYBlock = iBlock / nXBlocks;
-
-			int err = GDALReadBlock(hBand, iXBlock, iYBlock, blockBuf);
-			if(err != CE_None) continue;
-			nBlocksRead++;
-
-			for(int i = 0; i < nPixels; i++) {
-				const int iSrc = it.second.first[i];
-				const int iSrcX = iSrc % srcXSize;
-				const int iSrcY = iSrc / srcXSize;
-
-				const int iDst = it.second.second[i];
-				const int iDstX = iDst % dstXSize;
-				const int iDstY = iDst / dstXSize;
-
-				int iXBlockOff = iSrcX % srcXBlockSize;
-				int iYBlockOff = iSrcY % srcYBlockSize;
-				int iBlockOff = (iXBlockOff + iYBlockOff * srcXBlockSize) * srcDataSize;
-
-				int iDstOff = (iDstY * dstXSize + iDstX) * dataSize;
-				if(supportedDataType) {
-					memcpy(pDstBuf + iDstOff, blockBuf + iBlockOff, dataSize);
-				} else {
-					GDALCopyWords(blockBuf + iBlockOff, srcDataType, srcDataSize, pDstBuf + iDstOff, *dType, dataSize, 1);
-				}
-			}
-
-			it.second.first.clear();
-			it.second.second.clear();
-		}
-	};
-
-	int currYBlock = -1;
-	int iYBlock = -1;
-
 	for(int iDstY = 0; iDstY < dstYSize; iDstY++) {
                 memcpy(dx, dx + dstXSize, dstXSize * sizeof(double));
                 const double dfY = iDstY + 0.5 + dstYOff;
@@ -359,18 +309,10 @@ int warp_operation_fast(const char *srcFilePath, char *srcProjRef, double *srcGe
 			const int iSrc = iSrcY * srcXSize + iSrcX;
 
                         const int iXBlock = iSrcX / srcXBlockSize;
-                        iYBlock = iSrcY / srcYBlockSize;
+                        const int iYBlock = iSrcY / srcYBlockSize;
+			const int iBlock = iXBlock + iYBlock * nXBlocks;
 
-			if(currYBlock < 0) {
-				currYBlock = iYBlock;
-			}
-
-			if(iYBlock > currYBlock) {
-				copyPixels(currYBlock);
-				currYBlock = iYBlock;
-			}
-
-			auto it = blockPixelMap.find(iXBlock);
+			auto it = blockPixelMap.find(iBlock);
 			if(it == blockPixelMap.end()) {
 				auto srcPixels = std::vector<int>();
 				srcPixels.reserve(dstPixelSize);
@@ -378,13 +320,54 @@ int warp_operation_fast(const char *srcFilePath, char *srcProjRef, double *srcGe
 				auto dstPixels = std::vector<int>();
 				dstPixels.reserve(dstPixelSize);
 
-				blockPixelMap[iXBlock] = std::make_pair(std::ref(srcPixels), std::ref(dstPixels));
+				blockPixelMap[iBlock] = std::make_pair(std::ref(srcPixels), std::ref(dstPixels));
 			}
-			blockPixelMap[iXBlock].first.emplace_back(iSrc);
-			blockPixelMap[iXBlock].second.emplace_back(iDst);
+			blockPixelMap[iBlock].first.emplace_back(iSrc);
+			blockPixelMap[iBlock].second.emplace_back(iDst);
 		}
 	}
-	copyPixels(iYBlock);
+
+	auto blockBuffer = std::vector<uint8_t>();
+	blockBuffer.resize(srcXBlockSize * srcYBlockSize * srcDataSize);
+	uint8_t* blockBuf = blockBuffer.data();
+
+	int nBlocksRead = 0;
+
+	for(auto& it : blockPixelMap) {
+		const int nPixels = it.second.first.size();
+		if(nPixels == 0) {
+			continue;
+		}
+
+		const int iBlock = it.first;
+		const int iXBlock = iBlock % nXBlocks;
+		const int iYBlock = iBlock / nXBlocks;
+
+		int err = GDALReadBlock(hBand, iXBlock, iYBlock, blockBuf);
+		if(err != CE_None) continue;
+		nBlocksRead++;
+
+		for(int i = 0; i < nPixels; i++) {
+			const int iSrc = it.second.first[i];
+			const int iSrcX = iSrc % srcXSize;
+			const int iSrcY = iSrc / srcXSize;
+
+			const int iDst = it.second.second[i];
+			const int iDstX = iDst % dstXSize;
+			const int iDstY = iDst / dstXSize;
+
+			int iXBlockOff = iSrcX % srcXBlockSize;
+			int iYBlockOff = iSrcY % srcYBlockSize;
+			int iBlockOff = (iXBlockOff + iYBlockOff * srcXBlockSize) * srcDataSize;
+
+			int iDstOff = (iDstY * dstXSize + iDstX) * dataSize;
+			if(supportedDataType) {
+				memcpy(pDstBuf + iDstOff, blockBuf + iBlockOff, dataSize);
+			} else {
+				GDALCopyWords(blockBuf + iBlockOff, srcDataType, srcDataSize, pDstBuf + iDstOff, *dType, dataSize, 1);
+			}
+		}
+	}
 
 	*bytesRead = srcXBlockSize * srcYBlockSize * srcDataSize * nBlocksRead;
 
