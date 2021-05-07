@@ -83,10 +83,11 @@ How To Compile the Source
 
 Dependencies:
 
-+ Go 1.16.0+
++ Go 1.16.x+
 + C++ 14+
-+ GDAL 3.0.0+
++ GDAL 3.x+
 + PostgreSQL 11+
++ PostGIS 3.x+
 + Various Go packages (handled by go modules)
 
 ```console
