@@ -38,7 +38,7 @@ concurrent: src/concurrent.c
 
 src/concurrent.c:
 	mkdir -p $(dir $@)
-	wget --quiet https://github.com/seanpringle/concurrent/raw/634330a119f16916e5ad24da32172fa9312ab5a3/concurrent.c -O $@
+	wget --quiet https://github.com/edisonguo/concurrent/raw/e6ff2d98fb7f4cebf297b1725fee9a9e3d1cc164/concurrent.c -O $@
 
 # Note: install(1) can't deal with directories as source, so use cp -r.
 install:
