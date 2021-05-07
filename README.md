@@ -83,14 +83,15 @@ How To Compile the Source
 
 Dependencies:
 
-+ Go > 1.11.0
-+ GDAL > 3.0.0
-+ Various Go packages (handled by the build system)
++ Go 1.16.0+
++ C++ 14+
++ GDAL 3.0.0+
++ PostgreSQL 11+
++ Various Go packages (handled by go modules)
 
 ```console
-$ export GOPATH=~/go
-$ go get github.com/nci/gsky
-$ cd $GOPATH/src/github.com/nci/gsky
+$ git clone https://github.com/nci/gsky
+$ cd gsky
 $ ./configure
 $ make all install
 ```
