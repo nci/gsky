@@ -343,7 +343,7 @@ int warp_operation_fast(const char *srcFilePath, char *srcProjRef, double *srcGe
 		const int iXBlock = iBlock % nXBlocks;
 		const int iYBlock = iBlock / nXBlocks;
 
-		int err = GDALReadBlock(hBand, iXBlock, iYBlock, blockBuf);
+		const int err = GDALReadBlock(hBand, iXBlock, iYBlock, blockBuf);
 		if(err != CE_None) continue;
 		nBlocksRead++;
 
@@ -356,11 +356,11 @@ int warp_operation_fast(const char *srcFilePath, char *srcProjRef, double *srcGe
 			const int iDstX = iDst % dstXSize;
 			const int iDstY = iDst / dstXSize;
 
-			int iXBlockOff = iSrcX % srcXBlockSize;
-			int iYBlockOff = iSrcY % srcYBlockSize;
-			int iBlockOff = (iXBlockOff + iYBlockOff * srcXBlockSize) * srcDataSize;
+			const int iXBlockOff = iSrcX % srcXBlockSize;
+			const int iYBlockOff = iSrcY % srcYBlockSize;
+			const int iBlockOff = (iXBlockOff + iYBlockOff * srcXBlockSize) * srcDataSize;
 
-			int iDstOff = (iDstY * dstXSize + iDstX) * dataSize;
+			const int iDstOff = (iDstY * dstXSize + iDstX) * dataSize;
 			if(supportedDataType) {
 				memcpy(pDstBuf + iDstOff, blockBuf + iBlockOff, dataSize);
 			} else {
