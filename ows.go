@@ -662,9 +662,12 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 
 		newConf := conf.Copy(r)
 		utils.LoadConfigTimestamps(newConf, *verbose)
-		for i := range newConf.Layers {
-			if len(newConf.Layers[i].Dates) > 0 {
-				newConf.Layers[i].Dates = []string{newConf.Layers[i].Dates[0], newConf.Layers[i].Dates[len(newConf.Layers[i].Dates)-1]}
+		for iLayer := range conf.Layers {
+			if len(conf.Layers[iLayer].EffectiveStartDate) == 0 && len(newConf.Layers[iLayer].EffectiveStartDate) > 0 {
+				mutex.Lock()
+				conf.Layers[iLayer].EffectiveStartDate = newConf.Layers[iLayer].EffectiveStartDate
+				conf.Layers[iLayer].EffectiveEndDate = newConf.Layers[iLayer].EffectiveEndDate
+				mutex.Unlock()
 			}
 		}
 
