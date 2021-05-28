@@ -9,7 +9,7 @@ distributed server which presents a new approach for geospatial data
 discovery and delivery using OGC standards. The most recent release is
 [here](https://github.com/nci/gsky/releases).
 
-[![Build Status](https://travis-ci.org/nci/gsky.svg?branch=master)](https://travis-ci.org/nci/gsky)
+[![Build Status](https://api.travis-ci.com/nci/gsky.svg?branch=master)](https://travis-ci.com/github/nci/gsky)
 
 GSKY Docker Image
 -----------------
