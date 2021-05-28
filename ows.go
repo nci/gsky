@@ -661,18 +661,20 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 		}
 
 		newConf := conf.Copy(r)
-		utils.LoadConfigTimestamps(newConf, *verbose)
 		for iLayer := range conf.Layers {
-			if len(conf.Layers[iLayer].EffectiveStartDate) == 0 && len(newConf.Layers[iLayer].EffectiveStartDate) > 0 {
-				mutex.Lock()
-				conf.Layers[iLayer].EffectiveStartDate = newConf.Layers[iLayer].EffectiveStartDate
-				conf.Layers[iLayer].EffectiveEndDate = newConf.Layers[iLayer].EffectiveEndDate
-				mutex.Unlock()
+			if len(conf.Layers[iLayer].EffectiveStartDate) == 0 {
+				newConf.GetLayerDates(iLayer, *verbose)
+				if len(newConf.Layers[iLayer].EffectiveStartDate) > 0 {
+					mutex.Lock()
+					conf.Layers[iLayer].EffectiveStartDate = newConf.Layers[iLayer].EffectiveStartDate
+					conf.Layers[iLayer].EffectiveEndDate = newConf.Layers[iLayer].EffectiveEndDate
+					mutex.Unlock()
+				}
 			}
 		}
 
 		tpl, _ := fileResolver.Lookup("templates/WCS_GetCapabilities.tpl")
-		err := utils.ExecuteWriteTemplateFile(w, &newConf, tpl)
+		err := utils.ExecuteWriteTemplateFile(w, &conf, tpl)
 		if err != nil {
 			metricsCollector.Info.HTTPStatus = 500
 			http.Error(w, err.Error(), 500)
@@ -687,8 +689,11 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 			return
 		}
 
+		newConf := conf.Copy(r)
+		newConf.GetLayerDates(idx, *verbose)
+
 		tpl, _ := fileResolver.Lookup("templates/WCS_DescribeCoverage.tpl")
-		err = utils.ExecuteWriteTemplateFile(w, conf.Layers[idx], tpl)
+		err = utils.ExecuteWriteTemplateFile(w, newConf.Layers[idx], tpl)
 		if err != nil {
 			http.Error(w, err.Error(), 500)
 		}
