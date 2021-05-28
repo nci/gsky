@@ -48,9 +48,8 @@
       <lonLatEnvelope srsName="urn:ogc:def:crs:OGC:1.3:CRS84">
         <gml:pos>-180.0 -90.0</gml:pos>
         <gml:pos>180.0 90.0</gml:pos>
-		{{ range $index, $value := .Dates }}
-        <gml:timePosition>{{ $value }}</gml:timePosition>
-        {{ end }}
+        <gml:timePosition>{{ .EffectiveStartDate }}</gml:timePosition>
+        <gml:timePosition>{{ .EffectiveEndDate }}</gml:timePosition>
       </lonLatEnvelope>
     </CoverageOfferingBrief>
 	{{end}}
