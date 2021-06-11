@@ -94,7 +94,7 @@ static CPLErr NCDFPutAttr( int nCdfId, int nVarId,
                            const char *pszAttrName, const char *pszValue );
 
 // Replace this where used.
-static CPLErr NCDFGet1DVar( int nCdfId, int nVarId, char **pszValue );
+static CPLErr NCDFGet1DVar( int nCdfId, int nVarId, char **pszValue, size_t interpThreshold );
 static CPLErr NCDFPut1DVar( int nCdfId, int nVarId, const char *pszValue );
 
 static double NCDFGetDefaultNoDataValue( int nVarType );
@@ -4040,7 +4040,7 @@ CPLErr netCDFDataset::Set1DGeolocation( int nGroupId, int nVarId,
 {
     // Get values.
     char *pszVarValues = nullptr;
-    CPLErr eErr = NCDFGet1DVar(nGroupId, nVarId, &pszVarValues);
+    CPLErr eErr = NCDFGet1DVar(nGroupId, nVarId, &pszVarValues, -1);
     if( eErr != CE_None )
         return eErr;
 
@@ -7604,6 +7604,10 @@ GDALDataset *netCDFDataset::Open( GDALOpenInfo *poOpenInfo )
 
     const char *coordQuery = CSLFetchNameValue(poOpenInfo->papszOpenOptions, "coord_query");
     bool hasCoordQuery = coordQuery == nullptr ? true : CPLTestBool(coordQuery);
+
+    const char *interp1DVar = CSLFetchNameValue(poOpenInfo->papszOpenOptions, "interp_1d_var");
+    size_t interpThreshold = interp1DVar == nullptr ? -1 : atol(interp1DVar);
+
     if( effectiveNDims > 2 )
     {
         nDim = 2;
@@ -7653,7 +7657,7 @@ GDALDataset *netCDFDataset::Open( GDALOpenInfo *poOpenInfo )
                         poDS->papszMetadata = CSLSetNameValue(
                             poDS->papszMetadata, szTemp, szExtraDimDef);
                         char *pszTemp = nullptr;
-                        if( NCDFGet1DVar(nIdxGroupID, nIdxVarID, &pszTemp) == CE_None )
+                        if( NCDFGet1DVar(nIdxGroupID, nIdxVarID, &pszTemp, interpThreshold) == CE_None )
                         {
                             snprintf(szTemp, sizeof(szTemp), "NETCDF_DIM_%s_VALUES",
                                      szDimName);
@@ -8883,6 +8887,9 @@ extern "C" void __attribute__((visibility("default"))) GDALRegister_GSKY_netCDF(
 "   <Option name='var_id_query' type='string' "
     "description='querying main variable id from NC_GLOBAL metadata. "
     "e.g. NC_GLOBAL#variable_id, then var_id_query=variable_id' default=''/>"
+"   <Option name='interp_1d_var' type='int' "
+    "description='Threshold for interpolating 1D variable instead of reading it off disk. "
+    "e.g. interp_1d_var=1000' default='-1'/>"
 "   <Option name='srs_cf' type='boolean' "
     "description='Whether to prefer CF SRS. "
     "Setting to YES to prefer CF SRS over GDAL SRS' default='NO'/>"
@@ -9798,7 +9805,7 @@ static inline size_t fastStrcat(char *src, size_t currSize, char **pszVarValue, 
     return currSize + valSize;
 }
 
-static CPLErr NCDFGet1DVar( int nCdfId, int nVarId, char **pszValue )
+static CPLErr NCDFGet1DVar( int nCdfId, int nVarId, char **pszValue, size_t interpThreshold )
 {
     /* get var information */
     int nVarDimId = -1;
@@ -9912,7 +9919,41 @@ static CPLErr NCDFGet1DVar( int nCdfId, int nVarId, char **pszValue )
     {
         double *pdfTemp =
             static_cast<double *>(CPLCalloc(nVarLen, sizeof(double)));
-        nc_get_vara_double(nCdfId, nVarId, start, count, pdfTemp);
+
+        unsigned int maxSteps = 10;
+        if( interpThreshold > 0 && nVarLen > interpThreshold && nVarLen > maxSteps )
+        {
+            size_t step = (size_t)(nVarLen / (double)maxSteps + 0.5);
+            size_t iPrev = 0;
+            size_t iStart = 0;
+
+            start[0] = 0;
+            count[0] = 1;
+            nc_get_vara_double(nCdfId, nVarId, start, count, pdfTemp);
+            for( unsigned int i = 1; i <= maxSteps && iStart < nVarLen; i++ )
+            {
+                iStart = i * step;
+                if( iStart > nVarLen - 1 )
+                {
+                    iStart = nVarLen - 1;
+                }
+                start[0] = iStart;
+                nc_get_vara_double(nCdfId, nVarId, start, count, &pdfTemp[iStart]);
+
+                double slope = (pdfTemp[iStart] - pdfTemp[iPrev]) / (iStart - iPrev); 
+                size_t ss = 1;
+                for( size_t s = iPrev + 1; s < iStart; s++, ss++)
+                {
+                    pdfTemp[s] = pdfTemp[iPrev] + ss * slope;
+                }
+                iPrev = iStart;
+            }
+        }
+        else
+        {
+            nc_get_vara_double(nCdfId, nVarId, start, count, pdfTemp);
+        }
+
         char szTemp[256];
         size_t m = 0;
         for( ; m < nVarLen; m++ )
