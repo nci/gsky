@@ -9940,7 +9940,7 @@ static CPLErr NCDFGet1DVar( int nCdfId, int nVarId, char **pszValue, size_t inte
                 start[0] = iStart;
                 nc_get_vara_double(nCdfId, nVarId, start, count, &pdfTemp[iStart]);
 
-                double slope = (pdfTemp[iStart] - pdfTemp[iPrev]) / (iStart - iPrev); 
+                double slope = (pdfTemp[iStart] - pdfTemp[iPrev]) / (iStart - iPrev);
                 size_t ss = 1;
                 for( size_t s = iPrev + 1; s < iStart; s++, ss++)
                 {
