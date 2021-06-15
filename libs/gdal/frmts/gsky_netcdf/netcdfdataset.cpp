@@ -11224,7 +11224,7 @@ CPLErr netCDFDataset::FilterVars( int nCdfId, bool bKeepRasters,
           {
             *pnGroupId = nCdfId;
             *pnVarId = v;
-            nRasterVars++;
+            *pnRasterVars += 1;
           }
           continue;
         }
