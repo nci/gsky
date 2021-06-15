@@ -5222,15 +5222,19 @@ void netCDFDataset::CreateSubDatasetList( int nGroupId )
     int nVarCount;
     nc_inq_nvars(nGroupId, &nVarCount);
 
+    char **papszIgnoreVars = nullptr;
+    NCDFGetCoordAndBoundVarFullNames(cdfid, &papszIgnoreVars);
+
     for( int nVar = 0; nVar < nVarCount; nVar++ )
     {
         int nDims;
         nc_inq_varndims(nGroupId, nVar, &nDims);
 
         bool isSubdataset = false;
+        char szTemp[NC_MAX_NAME + 1];
+        nc_inq_varname(nGroupId, nVar, szTemp);
+
         if( nDims == 1) {
-          char szTemp[NC_MAX_NAME + 1];
-          nc_inq_varname(nGroupId, nVar, szTemp);
           if( mainVariableId != nullptr && !strcmp(szTemp, mainVariableId) ) {
               isSubdataset = true;
           } else if( !NCDFIsVarLongitude(nGroupId, -1, szTemp) &&
@@ -5242,7 +5246,23 @@ void netCDFDataset::CreateSubDatasetList( int nGroupId )
               isSubdataset = true;
           }
         } else if( nDims >= 2) {
-          isSubdataset = true;
+            char *pszVarFullName = nullptr;
+            CPLErr eErr = NCDFGetVarFullName(nGroupId, nVar, &pszVarFullName);
+            if( eErr != CE_None ) {
+                CPLFree(pszVarFullName);
+                continue;
+            }
+            bool bIgnoreVar = (CSLFindString(papszIgnoreVars, pszVarFullName)
+                               != -1);
+            CPLFree(pszVarFullName);
+            if( bIgnoreVar )
+            {
+                CPLDebug("GDAL_netCDF", "variable #%d [%s] was ignored", nVar,
+                        szTemp);
+                continue;
+            }
+
+            isSubdataset = true;
         }
 
         if( isSubdataset )
@@ -5342,6 +5362,7 @@ void netCDFDataset::CreateSubDatasetList( int nGroupId )
                                            szVarStdName, pszType));
         }
     }
+    CSLDestroy(papszIgnoreVars);
 
     // Recurse on sub groups.
     int nSubGroups = 0;
@@ -6904,6 +6925,8 @@ GDALDataset *netCDFDataset::Open( GDALOpenInfo *poOpenInfo )
              poOpenInfo->pszFilename);
 #endif
 
+    char *mainVariableId = nullptr;
+
     // Does this appear to be a netcdf file?
     NetCDFFormatEnum eTmpFormat = NCDF_FORMAT_NONE;
     if( !STARTS_WITH_CI(poOpenInfo->pszFilename, "NETCDF:") )
@@ -6922,6 +6945,16 @@ GDALDataset *netCDFDataset::Open( GDALOpenInfo *poOpenInfo )
     }
     else
     {
+        char **tokens =
+            CSLTokenizeString2(poOpenInfo->pszFilename,
+                               "#", CSLT_HONOURSTRINGS|CSLT_PRESERVEESCAPES);
+
+        if( CSLCount(tokens) >= 2 )
+        {
+            poOpenInfo->pszFilename = tokens[0];
+            mainVariableId = tokens[1];
+        }
+
 #ifdef FUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION
         // We don't necessarily want to catch bugs in libnetcdf ...
         if( CPLGetConfigOption("DISABLE_OPEN_REAL_NETCDF_FILES", nullptr) )
@@ -6937,6 +6970,7 @@ GDALDataset *netCDFDataset::Open( GDALOpenInfo *poOpenInfo )
                                 // GDALDataset own mutex.
     netCDFDataset *poDS = new netCDFDataset();
     poDS->papszOpenOptions = CSLDuplicate(poOpenInfo->papszOpenOptions);
+    poDS->mainVariableId = mainVariableId;
     CPLAcquireMutex(hNCMutex, 1000.0);
 
     poDS->SetDescription(poOpenInfo->pszFilename);
@@ -7308,7 +7342,7 @@ GDALDataset *netCDFDataset::Open( GDALOpenInfo *poOpenInfo )
 
     if( !bTreatAsSubdataset ) {
       const char *subDatasetQuery = CSLFetchNameValue(poOpenInfo->papszOpenOptions, "sd_query");
-      if( (subDatasetQuery != nullptr && CPLTestBool(subDatasetQuery)) || nRasterVars > 1 )
+      if( (subDatasetQuery != nullptr && CPLTestBool(subDatasetQuery)) || nRasterVars > 0 )
       {
           poDS->CreateSubDatasetList(cdfid);
           poDS->SetMetadata(poDS->papszMetadata);
