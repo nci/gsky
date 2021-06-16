@@ -7342,7 +7342,7 @@ GDALDataset *netCDFDataset::Open( GDALOpenInfo *poOpenInfo )
 
     if( !bTreatAsSubdataset ) {
       const char *subDatasetQuery = CSLFetchNameValue(poOpenInfo->papszOpenOptions, "sd_query");
-      if( (subDatasetQuery != nullptr && CPLTestBool(subDatasetQuery)) || nRasterVars > 0 )
+      if( (subDatasetQuery != nullptr && CPLTestBool(subDatasetQuery)) || nRasterVars > 1 )
       {
           poDS->CreateSubDatasetList(cdfid);
           poDS->SetMetadata(poDS->papszMetadata);
