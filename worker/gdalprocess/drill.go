@@ -381,7 +381,7 @@ func getDrillFileDescriptor(ds C.GDALDatasetH, g C.OGRGeometryH, rasterXSize flo
 	geot := make([]float64, 6)
 	gdalErr := C.GDALGetGeoTransform(ds, (*C.double)(&geot[0]))
 	if gdalErr != 0 {
-		return nil, fmt.Errorf("Couldn't get the geotransform from the source dataset %v", err)
+		return nil, fmt.Errorf("Couldn't get the geotransform from the source dataset %v", gdalErr)
 	}
 
 	srcBBox, err := getPixelLineBBox(geot, &env)
