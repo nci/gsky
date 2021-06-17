@@ -358,6 +358,7 @@ func getDrillFileDescriptor(ds C.GDALDatasetH, g C.OGRGeometryH, rasterXSize flo
 		srcSRS := C.OSRNewSpatialReference(cWGS84WKT)
 		defer C.OSRDestroySpatialReference(srcSRS)
 		C.OSRSetAxisMappingStrategy(srcSRS, C.OAMS_TRADITIONAL_GIS_ORDER)
+		C.OSRSetAxisMappingStrategy(desSRS, C.OAMS_TRADITIONAL_GIS_ORDER)
 		trans := C.OCTNewCoordinateTransformation(srcSRS, desSRS)
 		C.OGR_G_Transform(gCopy, trans)
 		C.OCTDestroyCoordinateTransformation(trans)
