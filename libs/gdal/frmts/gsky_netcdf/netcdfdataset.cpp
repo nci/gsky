@@ -7295,7 +7295,10 @@ GDALDataset *netCDFDataset::Open( GDALOpenInfo *poOpenInfo )
 
     const char *mainVarLookup = CSLFetchNameValue(poOpenInfo->papszOpenOptions, "var_id_query");
     if(mainVarLookup != nullptr) {
-      poDS->mainVariableId = (char *)poDS->FetchAttr("NC_GLOBAL", mainVarLookup);
+      char *varId = (char *)poDS->FetchAttr("NC_GLOBAL", mainVarLookup);
+      if(poDS->mainVariableId == nullptr && varId != nullptr) {
+        poDS->mainVariableId = varId;
+      }
     }
 
     // Identify coordinate and boundary variables that we should
