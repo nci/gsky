@@ -286,7 +286,7 @@ int warp_operation_fast(const char *srcFilePath, char *srcProjRef, double *srcGe
 	const int dstPixelYSize = dstYSize / nYBlocks + 1;
 	const int dstPixelSize = dstPixelXSize * dstPixelYSize;
 
-	auto blockPixelMap = std::map<int, std::pair<std::vector<int>, std::vector<int> > >();
+	auto blockPixelMap = std::map<size_t, std::pair<std::vector<size_t>, std::vector<size_t> > >();
 
 	for(int iDstY = 0; iDstY < dstYSize; iDstY++) {
                 memcpy(dx, dx + dstXSize, dstXSize * sizeof(double));
@@ -305,19 +305,19 @@ int warp_operation_fast(const char *srcFilePath, char *srcProjRef, double *srcGe
                         const int iSrcY = (int)(dy[iDstX] + 1.0e-10);
                         if(iSrcX >= srcXSize || iSrcY >= srcYSize) continue;
 
-			const int iDst = iDstY * dstXSize + iDstX;
-			const int iSrc = iSrcY * srcXSize + iSrcX;
+			const size_t iDst = (size_t)iDstY * dstXSize + iDstX;
+			const size_t iSrc = (size_t)iSrcY * srcXSize + iSrcX;
 
                         const int iXBlock = iSrcX / srcXBlockSize;
                         const int iYBlock = iSrcY / srcYBlockSize;
-			const int iBlock = iXBlock + iYBlock * nXBlocks;
+			const size_t iBlock = (size_t)iXBlock + iYBlock * nXBlocks;
 
 			auto it = blockPixelMap.find(iBlock);
 			if(it == blockPixelMap.end()) {
-				auto srcPixels = std::vector<int>();
+				auto srcPixels = std::vector<size_t>();
 				srcPixels.reserve(dstPixelSize);
 
-				auto dstPixels = std::vector<int>();
+				auto dstPixels = std::vector<size_t>();
 				dstPixels.reserve(dstPixelSize);
 
 				blockPixelMap[iBlock] = std::make_pair(std::ref(srcPixels), std::ref(dstPixels));
@@ -339,7 +339,7 @@ int warp_operation_fast(const char *srcFilePath, char *srcProjRef, double *srcGe
 			continue;
 		}
 
-		const int iBlock = it.first;
+		const size_t iBlock = it.first;
 		const int iXBlock = iBlock % nXBlocks;
 		const int iYBlock = iBlock / nXBlocks;
 
@@ -348,19 +348,19 @@ int warp_operation_fast(const char *srcFilePath, char *srcProjRef, double *srcGe
 		nBlocksRead++;
 
 		for(int i = 0; i < nPixels; i++) {
-			const int iSrc = it.second.first[i];
+			const size_t iSrc = it.second.first[i];
 			const int iSrcX = iSrc % srcXSize;
 			const int iSrcY = iSrc / srcXSize;
 
-			const int iDst = it.second.second[i];
+			const size_t iDst = it.second.second[i];
 			const int iDstX = iDst % dstXSize;
 			const int iDstY = iDst / dstXSize;
 
 			const int iXBlockOff = iSrcX % srcXBlockSize;
 			const int iYBlockOff = iSrcY % srcYBlockSize;
-			const int iBlockOff = (iXBlockOff + iYBlockOff * srcXBlockSize) * srcDataSize;
+			const size_t iBlockOff = ((size_t)iXBlockOff + iYBlockOff * srcXBlockSize) * srcDataSize;
 
-			const int iDstOff = (iDstY * dstXSize + iDstX) * dataSize;
+			const size_t iDstOff = ((size_t)iDstY * dstXSize + iDstX) * dataSize;
 			if(supportedDataType) {
 				memcpy(pDstBuf + iDstOff, blockBuf + iBlockOff, dataSize);
 			} else {
