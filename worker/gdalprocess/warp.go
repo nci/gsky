@@ -174,7 +174,7 @@ func WarpRaster(in *pb.GeoRPCGranule) *pb.Result {
 	var dstBufC unsafe.Pointer
 	var noData float64
 	var dType C.GDALDataType
-	var bytesReadC C.int
+	var bytesReadC C.size_t
 
 	var resUsage0, resUsage1 syscall.Rusage
 	syscall.Getrusage(syscall.RUSAGE_SELF, &resUsage0)

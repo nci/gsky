@@ -78,7 +78,7 @@ int roundCoord(double coord, int maxExtent) {
 	return c;
 }
 
-int warp_operation_fast(const char *srcFilePath, char *srcProjRef, double *srcGeot, const char **geoLocOpts, const char *dstProjRef, double *dstGeot, int dstXImageSize, int dstYImageSize, int band, int srsCf, void **dstBuf, int *dstBufSize, int *dstBbox, double *noData, GDALDataType *dType, int *bytesRead)
+int warp_operation_fast(const char *srcFilePath, char *srcProjRef, double *srcGeot, const char **geoLocOpts, const char *dstProjRef, double *dstGeot, int dstXImageSize, int dstYImageSize, int band, int srsCf, void **dstBuf, int *dstBufSize, int *dstBbox, double *noData, GDALDataType *dType, size_t *bytesRead)
 {
 	*bytesRead = 0;
 
@@ -331,7 +331,7 @@ int warp_operation_fast(const char *srcFilePath, char *srcProjRef, double *srcGe
 	blockBuffer.resize(srcXBlockSize * srcYBlockSize * srcDataSize);
 	uint8_t* blockBuf = blockBuffer.data();
 
-	int nBlocksRead = 0;
+	size_t nBlocksRead = 0;
 
 	for(const auto& it : blockPixelMap) {
 		const int nPixels = it.second.first.size();
