@@ -105,7 +105,7 @@
 					<northBoundLatitude>90.0</northBoundLatitude>
 				</EX_GeographicBoundingBox>
 				<BoundingBox CRS="EPSG:4326" minx="-90.0" miny="-180.0" maxx="90.0" maxy="180.0"/>
-				<Dimension name="time" default="current" current="True" units="ISO8601">{{ range $index, $value := .Dates }}{{if $index}},{{end}}{{ $value }}{{ end }}</Dimension>
+				<Dimension name="time" units="ISO8601">{{ range $index, $value := .Dates }}{{if $index}},{{end}}{{ $value }}{{ end }}</Dimension>
 
 				{{ range $ia, $axis := .AxesInfo }}
 				<Dimension name="{{ $axis.Name }}" default="{{ $axis.Default }}">{{ range $iv, $value := $axis.Values }}{{if $iv}},{{end}}{{ $value }}{{ end }}</Dimension>
