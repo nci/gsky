@@ -674,7 +674,7 @@ func serveWCS(ctx context.Context, params utils.WCSParams, conf *utils.Config, r
 		}
 
 		tpl, _ := fileResolver.Lookup("templates/WCS_GetCapabilities.tpl")
-		err := utils.ExecuteWriteTemplateFile(w, &conf, tpl)
+		err := utils.ExecuteWriteTemplateFile(w, &newConf, tpl)
 		if err != nil {
 			metricsCollector.Info.HTTPStatus = 500
 			http.Error(w, err.Error(), 500)
